@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd ../.. && npx turbo build",
+  "buildCommand": "cd ../.. && pnpm --filter @communityos/shared run build && cd apps/web && pnpm run build",
   "outputDirectory": ".next",
-  "installCommand": "cd ../.. && pnpm install --no-frozen-lockfile"
+  "installCommand": "cd ../.. && corepack enable && corepack prepare pnpm@9.15.9 --activate && pnpm install --no-frozen-lockfile"
 }
