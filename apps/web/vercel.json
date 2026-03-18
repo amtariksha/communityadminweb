@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd ../.. && echo '=== Building shared ===' && pnpm --filter @communityos/shared run build 2>&1 && echo '=== Building web ===' && cd apps/web && node -e \"console.log('Node:', process.version)\" && npx next build 2>&1",
+  "buildCommand": "cd ../.. && pnpm --filter @communityos/shared build && pnpm --filter @communityos/web build",
   "outputDirectory": ".next",
-  "installCommand": "cd ../.. && corepack enable && corepack prepare pnpm@9.15.9 --activate && pnpm install --no-frozen-lockfile"
+  "installCommand": "cd ../.. && pnpm install --no-frozen-lockfile"
 }
