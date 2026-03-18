@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Building2,
   Users,
@@ -11,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Save,
+  ExternalLink,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,7 +51,11 @@ import {
   useUpdateTenant,
   useTenantSettings,
 } from '@/hooks';
+import { Separator } from '@/components/ui/separator';
+import { setCurrentTenant } from '@/lib/auth';
 import UserManagement from './user-management';
+import AddMemberDialog from './add-member-dialog';
+import TenantMembers from './tenant-members';
 
 // API response may include computed fields beyond the base Tenant type
 interface TenantRow {
@@ -127,9 +133,13 @@ function TenantTableSkeleton(): ReactNode {
 
 export default function SuperAdminContent(): ReactNode {
   const { addToast } = useToast();
+  const router = useRouter();
 
   // Tab state
   const [activeTab, setActiveTab] = useState<'tenants' | 'users'>('tenants');
+
+  // Add member dialog state
+  const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
 
   // Search and pagination
   const [searchInput, setSearchInput] = useState('');
@@ -550,6 +560,7 @@ export default function SuperAdminContent(): ReactNode {
                 <TableHead className="text-right">Units</TableHead>
                 <TableHead>Active</TableHead>
                 <TableHead>Created</TableHead>
+                <TableHead className="w-20"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -578,6 +589,22 @@ export default function SuperAdminContent(): ReactNode {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(String(t.created_at))}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 gap-1 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentTenant(t.id);
+                          localStorage.setItem('communityos_sa_tenant_name', t.name);
+                          router.push('/');
+                        }}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Manage
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -627,7 +654,7 @@ export default function SuperAdminContent(): ReactNode {
       {/* Edit Tenant Dialog                                                   */}
       {/* ------------------------------------------------------------------- */}
       <Dialog open={editDialogOpen} onOpenChange={(open) => { if (!open) handleCloseEditDialog(); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Tenant</DialogTitle>
             <DialogDescription>
@@ -704,6 +731,13 @@ export default function SuperAdminContent(): ReactNode {
                   ))}
                 </div>
               </div>
+
+              <Separator />
+
+              <TenantMembers
+                tenantId={selectedTenantId}
+                onAddMember={() => setAddMemberDialogOpen(true)}
+              />
             </div>
           ) : null}
           <DialogFooter>
@@ -713,6 +747,13 @@ export default function SuperAdminContent(): ReactNode {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AddMemberDialog
+        open={addMemberDialogOpen}
+        onOpenChange={setAddMemberDialogOpen}
+        tenantId={selectedTenantId}
+        tenantName={tenantDetail?.name}
+      />
       </>)}
     </div>
   );

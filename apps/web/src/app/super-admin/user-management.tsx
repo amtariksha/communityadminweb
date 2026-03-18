@@ -42,6 +42,7 @@ import {
   useTenants,
 } from '@/hooks';
 import type { SuperAdminUser } from '@/hooks';
+import AddMemberDialog from './add-member-dialog';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -97,6 +98,9 @@ export default function UserManagement(): ReactNode {
   // Add role form
   const [newRoleTenantId, setNewRoleTenantId] = useState('');
   const [newRoleSlug, setNewRoleSlug] = useState('');
+
+  // Add member dialog
+  const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
 
   // Queries
   const usersQuery = useSuperAdminUsers({
@@ -194,6 +198,10 @@ export default function UserManagement(): ReactNode {
               </div>
               <Button variant="outline" size="sm" onClick={handleSearch}>
                 Search
+              </Button>
+              <Button size="sm" onClick={() => setAddMemberDialogOpen(true)}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add to Society
               </Button>
             </div>
           </div>
@@ -390,6 +398,11 @@ export default function UserManagement(): ReactNode {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AddMemberDialog
+        open={addMemberDialogOpen}
+        onOpenChange={setAddMemberDialogOpen}
+      />
     </>
   );
 }

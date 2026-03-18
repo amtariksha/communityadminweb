@@ -175,3 +175,11 @@ export {
   useRemoveUserRole,
 } from './use-super-admin-users';
 export type { SuperAdminUser, UserRoleDetail } from './use-super-admin-users';
+
+// Tenant Members (Super Admin)
+export {
+  tenantMemberKeys,
+  useTenantMembers,
+  useAddMemberToTenant,
+} from './use-tenant-members';
+export type { TenantMember, AddMemberResult } from './use-tenant-members';
