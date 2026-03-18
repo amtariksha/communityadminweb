@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd ../.. && pnpm --filter @communityos/shared build && cd apps/web && node node_modules/.bin/next build",
+  "buildCommand": "cd ../.. && pnpm --filter @communityos/shared build && cd apps/web && ./node_modules/.bin/next build",
   "outputDirectory": ".next",
   "installCommand": "cd ../.. && pnpm install --no-frozen-lockfile"
 }
