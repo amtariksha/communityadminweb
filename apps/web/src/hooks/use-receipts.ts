@@ -1,0 +1,229 @@
+'use client';
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import type { Receipt, CreditNote } from '@communityos/shared';
+import { invoiceKeys } from '@/hooks/use-invoices';
+import { ledgerKeys } from '@/hooks/use-ledger';
+
+// ---------------------------------------------------------------------------
+// Response types
+// ---------------------------------------------------------------------------
+
+interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+}
+
+interface UnallocatedCredit {
+  receipt_id: string;
+  receipt_number: string;
+  unit_id: string;
+  unit_number: string;
+  unallocated_amount: number;
+  receipt_date: string;
+}
+
+interface ReceiptSummary {
+  total_collected: number;
+  cash: number;
+  cheque: number;
+  bank_transfer: number;
+  upi: number;
+  online: number;
+  count: number;
+}
+
+// ---------------------------------------------------------------------------
+// Filter types
+// ---------------------------------------------------------------------------
+
+interface ReceiptFilters {
+  unit_id?: string;
+  payment_mode?: string;
+  start_date?: string;
+  end_date?: string;
+  page?: number;
+  limit?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Input types
+// ---------------------------------------------------------------------------
+
+interface CreateReceiptInput {
+  financial_year_id: string;
+  unit_id: string;
+  receipt_date: string;
+  amount: number;
+  mode: string;
+  reference_number?: string | null;
+  bank_account_id?: string | null;
+  narration?: string;
+  allocations?: Array<{
+    invoice_id: string;
+    amount: number;
+  }>;
+}
+
+interface BulkImportReceiptsInput {
+  receipts: CreateReceiptInput[];
+}
+
+interface CreateCreditNoteInput {
+  unit_id: string;
+  amount: number;
+  reason: string;
+}
+
+// ---------------------------------------------------------------------------
+// Query keys
+// ---------------------------------------------------------------------------
+
+export const receiptKeys = {
+  all: ['receipts'] as const,
+  lists: () => [...receiptKeys.all, 'list'] as const,
+  list: (filters?: ReceiptFilters) => [...receiptKeys.lists(), filters] as const,
+  details: () => [...receiptKeys.all, 'detail'] as const,
+  detail: (id: string) => [...receiptKeys.details(), id] as const,
+  unallocated: () => [...receiptKeys.all, 'unallocated'] as const,
+  summary: () => [...receiptKeys.all, 'summary'] as const,
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function filtersToParams(filters?: ReceiptFilters): Record<string, string> | undefined {
+  if (!filters) return undefined;
+
+  const params: Record<string, string> = {};
+  if (filters.unit_id) params.unit_id = filters.unit_id;
+  if (filters.payment_mode) params.payment_mode = filters.payment_mode;
+  if (filters.start_date) params.start_date = filters.start_date;
+  if (filters.end_date) params.end_date = filters.end_date;
+  if (filters.page !== undefined) params.page = String(filters.page);
+  if (filters.limit !== undefined) params.limit = String(filters.limit);
+  return params;
+}
+
+// ---------------------------------------------------------------------------
+// Queries
+// ---------------------------------------------------------------------------
+
+export function useReceipts(filters?: ReceiptFilters) {
+  return useQuery({
+    queryKey: receiptKeys.list(filters),
+    queryFn: function fetchReceipts() {
+      return api.get<PaginatedResponse<Receipt>>('/receipts', {
+        params: filtersToParams(filters),
+      });
+    },
+  });
+}
+
+export function useReceipt(id: string) {
+  return useQuery({
+    queryKey: receiptKeys.detail(id),
+    queryFn: function fetchReceipt() {
+      return api
+        .get<{ data: Receipt }>(`/receipts/${id}`)
+        .then(function unwrap(res) {
+          return res.data;
+        });
+    },
+    enabled: id !== '',
+  });
+}
+
+export function useUnallocatedCredits() {
+  return useQuery({
+    queryKey: receiptKeys.unallocated(),
+    queryFn: function fetchUnallocatedCredits() {
+      return api
+        .get<{ data: UnallocatedCredit[] }>('/receipts/unallocated')
+        .then(function unwrap(res) {
+          return res.data;
+        });
+    },
+  });
+}
+
+export function useReceiptSummary() {
+  return useQuery({
+    queryKey: receiptKeys.summary(),
+    queryFn: function fetchReceiptSummary() {
+      return api
+        .get<{ data: ReceiptSummary }>('/receipts/summary')
+        .then(function unwrap(res) {
+          return res.data;
+        });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Mutations
+// ---------------------------------------------------------------------------
+
+export function useCreateReceipt() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function createReceipt(input: CreateReceiptInput) {
+      return api.post<{ data: Receipt }>('/receipts', input);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+    },
+  });
+}
+
+export function useBulkImportReceipts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function bulkImportReceipts(input: BulkImportReceiptsInput) {
+      return api.post<{ message: string }>('/receipts/import', input);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+    },
+  });
+}
+
+export function useCreateCreditNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function createCreditNote(input: CreateCreditNoteInput) {
+      return api.post<{ data: CreditNote }>('/receipts/credit-notes', input);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+    },
+  });
+}
+
+export function useRecalculateArrears() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function recalculateArrears(unitId: string) {
+      return api.post<{ message: string }>(`/receipts/recalculate-arrears/${unitId}`);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+    },
+  });
+}
