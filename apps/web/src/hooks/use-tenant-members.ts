@@ -55,6 +55,12 @@ interface AddMemberInput {
   role: string;
 }
 
+interface AddMemberWithRolesInput {
+  tenant_id: string;
+  phone: string;
+  roles: string[];
+}
+
 // ---------------------------------------------------------------------------
 // Query keys
 // ---------------------------------------------------------------------------
@@ -112,6 +118,28 @@ export function useAddMemberToTenant() {
         `/super-admin/tenants/${input.tenant_id}/members`,
         { phone: input.phone, role: input.role },
       );
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: tenantMemberKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: superAdminUserKeys.lists() });
+    },
+  });
+}
+
+export function useAddMemberWithRoles() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async function addMemberWithRoles(input: AddMemberWithRolesInput) {
+      const results: AddMemberResult[] = [];
+      for (const role of input.roles) {
+        const result = await api.post<AddMemberResult>(
+          `/super-admin/tenants/${input.tenant_id}/members`,
+          { phone: input.phone, role },
+        );
+        results.push(result);
+      }
+      return results;
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: tenantMemberKeys.lists() });

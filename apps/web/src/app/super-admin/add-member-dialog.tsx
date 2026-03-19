@@ -16,7 +16,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
-import { useAddMemberToTenant, useTenants } from '@/hooks';
+import { useAddMemberWithRoles, useTenants } from '@/hooks';
 
 const ASSIGNABLE_ROLES = [
   { slug: 'committee_member', label: 'Committee Member', description: 'Full admin access — manages society settings, approvals, and all modules' },
@@ -44,10 +44,10 @@ export default function AddMemberDialog({
 
   const [phone, setPhone] = useState('');
   const [selectedTenantId, setSelectedTenantId] = useState('');
-  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
   const tenantsQuery = useTenants({ limit: 100 });
-  const addMember = useAddMemberToTenant();
+  const addMember = useAddMemberWithRoles();
 
   const tenantsList = tenantsQuery.data?.data ?? [];
   const effectiveTenantId = preselectedTenantId ?? selectedTenantId;
@@ -55,20 +55,31 @@ export default function AddMemberDialog({
   function resetForm(): void {
     setPhone('');
     setSelectedTenantId('');
-    setSelectedRole('');
+    setSelectedRoles([]);
+  }
+
+  function toggleRole(slug: string): void {
+    setSelectedRoles((prev) =>
+      prev.includes(slug) ? prev.filter((r) => r !== slug) : [...prev, slug],
+    );
   }
 
   function handleSubmit(e: FormEvent): void {
     e.preventDefault();
-    if (!effectiveTenantId || !phone || !selectedRole) return;
+    if (!effectiveTenantId || !phone || selectedRoles.length === 0) return;
 
     addMember.mutate(
-      { tenant_id: effectiveTenantId, phone, role: selectedRole },
+      { tenant_id: effectiveTenantId, phone, roles: selectedRoles },
       {
-        onSuccess(data) {
+        onSuccess(results) {
+          const isNew = results[0]?.user.is_new;
+          const roleLabels = selectedRoles
+            .map((slug) => ASSIGNABLE_ROLES.find((r) => r.slug === slug)?.label)
+            .filter(Boolean)
+            .join(', ');
           addToast({
-            title: data.user.is_new ? 'User created & role assigned' : 'Role assigned',
-            description: data.message,
+            title: isNew ? 'User created & roles assigned' : 'Roles assigned',
+            description: `Assigned ${roleLabels} to ${phone}`,
             variant: 'success',
           });
           resetForm();
@@ -136,23 +147,21 @@ export default function AddMemberDialog({
             )}
 
             <div className="space-y-2">
-              <Label>Role</Label>
+              <Label>Roles <span className="text-xs text-muted-foreground font-normal">(select one or more)</span></Label>
               <div className="grid gap-2 max-h-56 overflow-y-auto rounded-md border p-2">
                 {ASSIGNABLE_ROLES.map((r) => (
                   <label
                     key={r.slug}
                     className={`flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-colors hover:bg-accent ${
-                      selectedRole === r.slug ? 'border-primary bg-primary/5' : 'border-transparent'
+                      selectedRoles.includes(r.slug) ? 'border-primary bg-primary/5' : 'border-transparent'
                     }`}
                   >
                     <input
-                      type="radio"
-                      name="member-role"
+                      type="checkbox"
                       value={r.slug}
-                      checked={selectedRole === r.slug}
-                      onChange={() => setSelectedRole(r.slug)}
+                      checked={selectedRoles.includes(r.slug)}
+                      onChange={() => toggleRole(r.slug)}
                       className="mt-0.5"
-                      required
                     />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium">{r.label}</div>
@@ -161,6 +170,9 @@ export default function AddMemberDialog({
                   </label>
                 ))}
               </div>
+              {selectedRoles.length === 0 && (
+                <p className="text-xs text-destructive">Select at least one role</p>
+              )}
             </div>
           </div>
 
@@ -170,9 +182,9 @@ export default function AddMemberDialog({
             </DialogClose>
             <Button
               type="submit"
-              disabled={!effectiveTenantId || !phone || !selectedRole || addMember.isPending}
+              disabled={!effectiveTenantId || !phone || selectedRoles.length === 0 || addMember.isPending}
             >
-              {addMember.isPending ? 'Adding...' : 'Add Member'}
+              {addMember.isPending ? 'Adding...' : `Add Member${selectedRoles.length > 1 ? ` (${selectedRoles.length} roles)` : ''}`}
             </Button>
           </DialogFooter>
         </form>

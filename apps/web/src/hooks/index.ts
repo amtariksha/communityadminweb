@@ -181,5 +181,6 @@ export {
   tenantMemberKeys,
   useTenantMembers,
   useAddMemberToTenant,
+  useAddMemberWithRoles,
 } from './use-tenant-members';
 export type { TenantMember, AddMemberResult } from './use-tenant-members';
