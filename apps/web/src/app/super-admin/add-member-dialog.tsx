@@ -19,12 +19,12 @@ import { useToast } from '@/components/ui/toast';
 import { useAddMemberToTenant, useTenants } from '@/hooks';
 
 const ASSIGNABLE_ROLES = [
-  { slug: 'committee_member', label: 'Committee Member' },
-  { slug: 'accountant', label: 'Accountant' },
-  { slug: 'moderator', label: 'Moderator' },
-  { slug: 'auditor', label: 'Auditor' },
-  { slug: 'owner', label: 'Owner' },
-  { slug: 'tenant_resident', label: 'Tenant / Resident' },
+  { slug: 'committee_member', label: 'Committee Member', description: 'Full admin access — manages society settings, approvals, and all modules' },
+  { slug: 'accountant', label: 'Accountant', description: 'Manages finances — invoices, receipts, ledger, bank, and vendor payments' },
+  { slug: 'moderator', label: 'Moderator', description: 'Day-to-day operations — units, documents, and member communication' },
+  { slug: 'auditor', label: 'Auditor', description: 'Read-only access to financial records and reports for audit purposes' },
+  { slug: 'owner', label: 'Owner', description: 'Flat/unit owner — can view their own invoices, receipts, and documents' },
+  { slug: 'tenant_resident', label: 'Tenant / Resident', description: 'Renting resident — can view their own invoices and society documents' },
 ];
 
 interface AddMemberDialogProps {
@@ -136,18 +136,31 @@ export default function AddMemberDialog({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="member-role">Role</Label>
-              <Select
-                id="member-role"
-                required
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-              >
-                <option value="">Select role...</option>
+              <Label>Role</Label>
+              <div className="grid gap-2 max-h-56 overflow-y-auto rounded-md border p-2">
                 {ASSIGNABLE_ROLES.map((r) => (
-                  <option key={r.slug} value={r.slug}>{r.label}</option>
+                  <label
+                    key={r.slug}
+                    className={`flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-colors hover:bg-accent ${
+                      selectedRole === r.slug ? 'border-primary bg-primary/5' : 'border-transparent'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="member-role"
+                      value={r.slug}
+                      checked={selectedRole === r.slug}
+                      onChange={() => setSelectedRole(r.slug)}
+                      className="mt-0.5"
+                      required
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium">{r.label}</div>
+                      <div className="text-xs text-muted-foreground">{r.description}</div>
+                    </div>
+                  </label>
                 ))}
-              </Select>
+              </div>
             </div>
           </div>
 
