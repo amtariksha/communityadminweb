@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { Plus, Home, Upload, Search, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Home, Upload, FileSpreadsheet, Search, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
+// Textarea removed — CSV import is now on /units/import page
 import {
   Table,
   TableBody,
@@ -35,7 +36,6 @@ import {
   useUnitStats,
   useUnitMembers,
   useCreateUnit,
-  useBulkImportUnits,
   useAddMember,
 } from '@/hooks';
 import { formatDate } from '@/lib/utils';
@@ -95,6 +95,7 @@ function TableSkeleton(): ReactNode {
 }
 
 export default function UnitsContent(): ReactNode {
+  const router = useRouter();
   const { addToast } = useToast();
   const [page, setPage] = useState(1);
   const [blockFilter, setBlockFilter] = useState('');
@@ -103,7 +104,6 @@ export default function UnitsContent(): ReactNode {
 
   // Dialog state
   const [unitDialogOpen, setUnitDialogOpen] = useState(false);
-  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [detailUnitId, setDetailUnitId] = useState('');
 
@@ -113,9 +113,6 @@ export default function UnitsContent(): ReactNode {
   const [formFloor, setFormFloor] = useState('');
   const [formArea, setFormArea] = useState('');
   const [formUnitType, setFormUnitType] = useState('flat');
-
-  // Bulk import
-  const [bulkJson, setBulkJson] = useState('');
 
   // Add member form
   const [memberUserId, setMemberUserId] = useState('');
@@ -131,7 +128,6 @@ export default function UnitsContent(): ReactNode {
   const statsQuery = useUnitStats();
   const membersQuery = useUnitMembers(detailUnitId);
   const createUnit = useCreateUnit();
-  const bulkImport = useBulkImportUnits();
   const addMember = useAddMember();
 
   const units = unitsQuery.data?.data ?? [];
@@ -177,36 +173,6 @@ export default function UnitsContent(): ReactNode {
     );
   }
 
-  function handleBulkImport(e: FormEvent): void {
-    e.preventDefault();
-    let parsed: unknown[];
-    try {
-      parsed = JSON.parse(bulkJson);
-    } catch {
-      addToast({ title: 'Invalid JSON format', variant: 'destructive' });
-      return;
-    }
-
-    if (!Array.isArray(parsed)) {
-      addToast({ title: 'JSON must be an array', variant: 'destructive' });
-      return;
-    }
-
-    bulkImport.mutate(
-      { units: parsed as Array<{ unit_number: string; floor: number; area_sqft: number; unit_type: string; block?: string | null }> },
-      {
-        onSuccess() {
-          setBulkDialogOpen(false);
-          setBulkJson('');
-          addToast({ title: 'Units imported successfully', variant: 'success' });
-        },
-        onError() {
-          addToast({ title: 'Failed to import units', variant: 'destructive' });
-        },
-      },
-    );
-  }
-
   function handleAddMember(e: FormEvent): void {
     e.preventDefault();
     addMember.mutate(
@@ -242,41 +208,10 @@ export default function UnitsContent(): ReactNode {
         description="Manage flats, shops, and parking spaces"
         actions={
           <>
-            <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
-              <DialogTrigger>
-                <Button variant="outline">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Bulk Import
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <form onSubmit={handleBulkImport}>
-                  <DialogHeader>
-                    <DialogTitle>Bulk Import Units</DialogTitle>
-                    <DialogDescription>
-                      Paste a JSON array of units. Each object needs: unit_number, floor, area_sqft, unit_type.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="py-4">
-                    <Textarea
-                      rows={10}
-                      placeholder={'[\n  { "unit_number": "A-301", "floor": 3, "area_sqft": 1200, "unit_type": "flat", "block": "A" }\n]'}
-                      value={bulkJson}
-                      onChange={(e) => setBulkJson(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <DialogFooter>
-                    <DialogClose>
-                      <Button type="button" variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button type="submit" disabled={bulkImport.isPending}>
-                      {bulkImport.isPending ? 'Importing...' : 'Import'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <Button variant="outline" onClick={() => router.push('/units/import')}>
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              Import from App
+            </Button>
 
             <Dialog open={unitDialogOpen} onOpenChange={setUnitDialogOpen}>
               <DialogTrigger>

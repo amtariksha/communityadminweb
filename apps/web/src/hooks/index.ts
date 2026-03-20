@@ -20,7 +20,9 @@ export {
   useBulkImportUnits,
   useAddMember,
   useRemoveMember,
+  useCsvImportUnits,
 } from './use-units';
+export type { CsvImportRow, CsvImportResult } from './use-units';
 
 // Ledger
 export {

@@ -52,6 +52,50 @@ interface BulkImportUnitsInput {
   units: CreateUnitInput[];
 }
 
+interface CsvImportRow {
+  unit_number: string;
+  floor?: number;
+  block?: string | null;
+  area_sqft?: number;
+  unit_type?: string;
+  apartment_number?: string | null;
+  bhk_type?: string | null;
+  garden_area?: number | null;
+  occupancy_status?: string | null;
+  maintenance_amount?: number | null;
+  maintenance_rate_1?: number | null;
+  maintenance_rate_2?: number | null;
+  meter_number?: string | null;
+  meter_in_owner_name?: boolean | null;
+  khata_in_owner_name?: boolean | null;
+  intercom?: string | null;
+  parking_slot?: string | null;
+  previous_owner?: string | null;
+  transfer_amount_received?: boolean | null;
+  metadata?: Record<string, unknown>;
+  owner_name?: string | null;
+  owner_phone?: string | null;
+  owner_email?: string | null;
+  owner_pan?: string | null;
+  owner_id_proof?: string | null;
+  tenant_name?: string | null;
+  tenant_phone?: string | null;
+  tenant_email?: string | null;
+  lease_end_date?: string | null;
+}
+
+interface CsvImportInput {
+  rows: CsvImportRow[];
+  source?: 'adda' | 'nobroker' | 'mygate' | 'apnacomplex' | 'custom';
+}
+
+interface CsvImportResult {
+  units_created: number;
+  units_updated: number;
+  members_created: number;
+  errors: string[];
+}
+
 interface AddMemberInput {
   unit_id: string;
   user_id: string;
@@ -217,3 +261,18 @@ export function useRemoveMember() {
     },
   });
 }
+
+export function useCsvImportUnits() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function csvImportUnits(input: CsvImportInput) {
+      return api.post<{ data: CsvImportResult }>('/units/import-csv', input);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: unitKeys.all });
+    },
+  });
+}
+
+export type { CsvImportRow, CsvImportInput, CsvImportResult };
