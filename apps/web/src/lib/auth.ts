@@ -45,6 +45,11 @@ export function setCurrentTenant(tenantId: string): void {
   localStorage.setItem(TENANT_KEY, tenantId);
 }
 
+export function clearCurrentTenant(): void {
+  if (!isBrowser()) return;
+  localStorage.removeItem(TENANT_KEY);
+}
+
 export function getUser(): User | null {
   if (!isBrowser()) return null;
   const raw = localStorage.getItem(USER_KEY);

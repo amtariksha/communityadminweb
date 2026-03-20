@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast';
 import { useSendOtp, useVerifyOtp } from '@/hooks';
+import { getUser, setCurrentTenant } from '@/lib/auth';
 
 type LoginStep = 'phone' | 'otp';
 
@@ -48,7 +49,22 @@ export default function LoginContent(): ReactNode {
       { phone: `+91${phone}`, otp },
       {
         onSuccess() {
-          router.push('/');
+          const user = getUser();
+          if (!user) {
+            router.push('/login');
+            return;
+          }
+
+          if (user.isSuperAdmin) {
+            router.push('/super-admin');
+          } else if (user.societies.length === 0) {
+            router.push('/no-access');
+          } else if (user.societies.length === 1) {
+            setCurrentTenant(user.societies[0].id);
+            router.push('/');
+          } else {
+            router.push('/select-tenant');
+          }
         },
         onError(error) {
           addToast({

@@ -156,11 +156,6 @@ export function useVerifyOtp() {
       };
       setUser(user);
 
-      const firstTenant = data.user.tenants[0];
-      if (firstTenant) {
-        setCurrentTenant(firstTenant.tenantId);
-      }
-
       queryClient.invalidateQueries({ queryKey: authKeys.me });
     },
   });

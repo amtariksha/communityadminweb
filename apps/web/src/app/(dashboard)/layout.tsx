@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Shield, ArrowLeft } from 'lucide-react';
-import { isAuthenticated, getUser, getCurrentTenant } from '@/lib/auth';
+import { isAuthenticated, getUser, getCurrentTenant, setCurrentTenant } from '@/lib/auth';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 
@@ -37,6 +37,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): Rea
     setMounted(true);
     if (!isAuthenticated()) {
       router.replace('/login');
+      return;
+    }
+    const user = getUser();
+    const tenant = getCurrentTenant();
+    if (!tenant && user && !user.isSuperAdmin) {
+      if (user.societies.length === 1) {
+        setCurrentTenant(user.societies[0].id);
+      } else if (user.societies.length > 1) {
+        router.replace('/select-tenant');
+      } else {
+        router.replace('/no-access');
+      }
     }
   }, [router]);
 
