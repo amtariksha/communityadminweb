@@ -20,6 +20,9 @@ import {
   ChevronDown,
   LogOut,
   Building2,
+  ShieldCheck,
+  TicketCheck,
+  Megaphone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, getInitials } from '@/components/ui/avatar';
@@ -68,6 +71,9 @@ const navGroups: NavGroup[] = [
     label: 'Management',
     items: [
       { label: 'Units', href: '/units', icon: <Home className="h-4 w-4" /> },
+      { label: 'Gate', href: '/gate', icon: <ShieldCheck className="h-4 w-4" /> },
+      { label: 'Tickets', href: '/tickets', icon: <TicketCheck className="h-4 w-4" /> },
+      { label: 'Announcements', href: '/announcements', icon: <Megaphone className="h-4 w-4" /> },
       { label: 'Documents', href: '/documents', icon: <FolderOpen className="h-4 w-4" /> },
     ],
   },

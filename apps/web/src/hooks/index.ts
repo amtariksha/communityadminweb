@@ -186,3 +186,60 @@ export {
   useAddMemberWithRoles,
 } from './use-tenant-members';
 export type { TenantMember, AddMemberResult } from './use-tenant-members';
+
+// Gate Management
+export {
+  gateKeys,
+  useGateStats,
+  useVisitors,
+  useMyVisitors,
+  useCreateVisitor,
+  useWalkInVisitor,
+  useVerifyVisitorOtp,
+  useCheckInVisitor,
+  useCheckOutVisitor,
+  useCancelVisitor,
+  useStaffLogs,
+  useStaffCheckIn,
+  useStaffCheckOut,
+  useParcels,
+  useCreateParcel,
+  useCollectParcel,
+} from './use-gate';
+export type {
+  Visitor,
+  StaffLog,
+  Parcel,
+  GateStats,
+  VisitorFilters,
+  MyVisitorFilters,
+  StaffLogFilters,
+  ParcelFilters,
+} from './use-gate';
+
+// Tickets
+export {
+  ticketKeys,
+  useTickets,
+  useMyTickets,
+  useTicket,
+  useTicketStats,
+  useTicketCategories,
+  useCreateTicket,
+  useUpdateTicket,
+  useAddTicketComment,
+} from './use-tickets';
+export type { Ticket, TicketComment, TicketStats, TicketFilters } from './use-tickets';
+
+// Announcements
+export {
+  announcementKeys,
+  useAnnouncements,
+  useActiveAnnouncements,
+  useAnnouncement,
+  useCreateAnnouncement,
+  useUpdateAnnouncement,
+  usePublishAnnouncement,
+  useDeleteAnnouncement,
+} from './use-announcements';
+export type { Announcement, AnnouncementFilters } from './use-announcements';
