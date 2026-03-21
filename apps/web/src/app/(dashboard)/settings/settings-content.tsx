@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { Save, Plus, Power, CalendarRange, MoreVertical, Lock, Unlock, Star } from 'lucide-react';
+import { Save, Plus, Power, CalendarRange, MoreVertical, Lock, Unlock, Star, MapPin, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +43,15 @@ import {
   useSetCurrentYear,
   useFreezeYear,
   useUnfreezeYear,
+  useGates,
+  useCreateGate,
+  useUpdateGate,
+  useDeleteGate,
+  useRbacPermissions,
+  useUpdatePermission,
+  useSeedPermissions,
 } from '@/hooks';
+import type { Gate, RbacPermission } from '@/hooks/use-staff';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -117,6 +125,28 @@ export default function SettingsContent(): ReactNode {
 
   // Feature toggles
   const [features, setFeatures] = useState<Record<string, boolean>>({});
+
+  // Gate dialog state
+  const [gateDialogOpen, setGateDialogOpen] = useState(false);
+  const [editingGateId, setEditingGateId] = useState('');
+  const [gateName, setGateName] = useState('');
+  const [gateLocation, setGateLocation] = useState('');
+  const [gateType, setGateType] = useState('main');
+
+  // Permissions state
+  const [permissionChanges, setPermissionChanges] = useState<Record<string, { can_read: boolean; can_write: boolean; can_delete: boolean }>>({});
+
+  // Gate & RBAC queries/mutations
+  const gatesQuery = useGates();
+  const gatesList: Gate[] = gatesQuery.data ?? [];
+  const createGate = useCreateGate();
+  const updateGateM = useUpdateGate();
+  const deleteGate = useDeleteGate();
+
+  const permissionsQuery = useRbacPermissions();
+  const permissions: RbacPermission[] = permissionsQuery.data ?? [];
+  const updatePermissionM = useUpdatePermission();
+  const seedPermissions = useSeedPermissions();
 
   const tenant = tenantQuery.data;
   const rules = rulesQuery.data ?? [];
@@ -283,6 +313,136 @@ export default function SettingsContent(): ReactNode {
         },
       },
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gate handlers
+  // ---------------------------------------------------------------------------
+
+  function resetGateForm(): void {
+    setEditingGateId('');
+    setGateName('');
+    setGateLocation('');
+    setGateType('main');
+  }
+
+  function handleOpenEditGate(gate: Gate): void {
+    setEditingGateId(gate.id);
+    setGateName(gate.name);
+    setGateLocation(gate.location ?? '');
+    setGateType(gate.gate_type);
+    setGateDialogOpen(true);
+  }
+
+  function handleSaveGate(e: FormEvent): void {
+    e.preventDefault();
+    if (editingGateId) {
+      updateGateM.mutate(
+        { id: editingGateId, data: { name: gateName, location: gateLocation || undefined, gate_type: gateType } },
+        {
+          onSuccess() {
+            setGateDialogOpen(false);
+            resetGateForm();
+            addToast({ title: 'Gate updated', variant: 'success' });
+          },
+          onError(error) {
+            addToast({ title: 'Failed to update gate', description: error.message, variant: 'destructive' });
+          },
+        },
+      );
+    } else {
+      createGate.mutate(
+        { name: gateName, location: gateLocation || undefined, gate_type: gateType },
+        {
+          onSuccess() {
+            setGateDialogOpen(false);
+            resetGateForm();
+            addToast({ title: 'Gate created', variant: 'success' });
+          },
+          onError(error) {
+            addToast({ title: 'Failed to create gate', description: error.message, variant: 'destructive' });
+          },
+        },
+      );
+    }
+  }
+
+  function handleDeactivateGate(gateId: string): void {
+    updateGateM.mutate(
+      { id: gateId, data: { is_active: false } },
+      {
+        onSuccess() {
+          addToast({ title: 'Gate deactivated', variant: 'success' });
+        },
+        onError(error) {
+          addToast({ title: 'Failed to deactivate gate', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Permission handlers
+  // ---------------------------------------------------------------------------
+
+  const RBAC_RESOURCES = ['finance', 'gate', 'tickets', 'units', 'staff', 'announcements', 'documents', 'reports', 'settings'];
+  const RBAC_ROLES = ['community_admin', 'committee_member', 'resident', 'security_guard', 'accountant'];
+
+  function getPermission(role: string, resource: string): { can_read: boolean; can_write: boolean; can_delete: boolean } {
+    const key = `${role}:${resource}`;
+    if (permissionChanges[key]) return permissionChanges[key];
+    const found = permissions.find((p) => p.role === role && p.resource === resource);
+    return found ? { can_read: found.can_read, can_write: found.can_write, can_delete: found.can_delete } : { can_read: false, can_write: false, can_delete: false };
+  }
+
+  function handlePermissionChange(role: string, resource: string, field: 'can_read' | 'can_write' | 'can_delete', value: boolean): void {
+    const key = `${role}:${resource}`;
+    const current = getPermission(role, resource);
+    setPermissionChanges((prev) => ({
+      ...prev,
+      [key]: { ...current, [field]: value },
+    }));
+  }
+
+  function handleSavePermissions(): void {
+    const entries = Object.entries(permissionChanges);
+    if (entries.length === 0) {
+      addToast({ title: 'No changes to save', variant: 'default' });
+      return;
+    }
+
+    let completed = 0;
+    let hasError = false;
+    for (const [key, perms] of entries) {
+      const [role, resource] = key.split(':');
+      updatePermissionM.mutate(
+        { role, resource, ...perms },
+        {
+          onSuccess() {
+            completed += 1;
+            if (completed === entries.length && !hasError) {
+              setPermissionChanges({});
+              addToast({ title: 'Permissions updated', variant: 'success' });
+            }
+          },
+          onError(error) {
+            hasError = true;
+            addToast({ title: `Failed to update ${role}/${resource}`, description: error.message, variant: 'destructive' });
+          },
+        },
+      );
+    }
+  }
+
+  function handleSeedPermissions(): void {
+    seedPermissions.mutate(undefined, {
+      onSuccess() {
+        addToast({ title: 'Default permissions seeded', variant: 'success' });
+      },
+      onError(error) {
+        addToast({ title: 'Failed to seed permissions', description: error.message, variant: 'destructive' });
+      },
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -777,6 +937,246 @@ export default function SettingsContent(): ReactNode {
             <p className="py-8 text-center text-muted-foreground">
               No financial years defined. Create one to start recording transactions.
             </p>
+          )}
+        </CardContent>
+      </Card>
+      {/* ------------------------------------------------------------------- */}
+      {/* Gates Configuration Section                                          */}
+      {/* ------------------------------------------------------------------- */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Gates Configuration</CardTitle>
+            <Dialog open={gateDialogOpen} onOpenChange={(open) => { setGateDialogOpen(open); if (!open) resetGateForm(); }}>
+              <DialogTrigger>
+                <Button size="sm" onClick={() => resetGateForm()}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Gate
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <form onSubmit={handleSaveGate}>
+                  <DialogHeader>
+                    <DialogTitle>{editingGateId ? 'Edit Gate' : 'Add Gate'}</DialogTitle>
+                    <DialogDescription>
+                      {editingGateId ? 'Update gate configuration' : 'Add a new gate entry point'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="gate-name">Gate Name</Label>
+                      <Input
+                        id="gate-name"
+                        required
+                        placeholder="e.g., Main Gate"
+                        value={gateName}
+                        onChange={(e) => setGateName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="gate-location">Location</Label>
+                      <Input
+                        id="gate-location"
+                        placeholder="e.g., North entrance"
+                        value={gateLocation}
+                        onChange={(e) => setGateLocation(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="gate-type">Type</Label>
+                      <Select
+                        id="gate-type"
+                        value={gateType}
+                        onChange={(e) => setGateType(e.target.value)}
+                      >
+                        <option value="main">Main</option>
+                        <option value="service">Service</option>
+                        <option value="parking">Parking</option>
+                        <option value="emergency">Emergency</option>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <DialogClose>
+                      <Button type="button" variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button type="submit" disabled={createGate.isPending || updateGateM.isPending}>
+                      {(createGate.isPending || updateGateM.isPending) ? 'Saving...' : 'Save Gate'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {gatesQuery.isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : gatesList.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Staff Count</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-20">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {gatesList.map((gate) => (
+                  <TableRow key={gate.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        {gate.name}
+                      </div>
+                    </TableCell>
+                    <TableCell>{gate.location ?? '-'}</TableCell>
+                    <TableCell className="capitalize">{gate.gate_type}</TableCell>
+                    <TableCell>{gate.staff_count ?? 0}</TableCell>
+                    <TableCell>
+                      <Badge variant={gate.is_active ? 'success' : 'secondary'}>
+                        {gate.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleOpenEditGate(gate)}>
+                            Edit
+                          </DropdownMenuItem>
+                          {gate.is_active && (
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDeactivateGate(gate.id)}
+                            >
+                              <Power className="mr-2 h-4 w-4" />
+                              Deactivate
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="py-8 text-center text-muted-foreground">
+              No gates configured. Add gates to manage entry points.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Roles & Permissions Section                                          */}
+      {/* ------------------------------------------------------------------- */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Roles &amp; Permissions</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSeedPermissions}
+                disabled={seedPermissions.isPending}
+              >
+                {seedPermissions.isPending ? 'Seeding...' : 'Seed Defaults'}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSavePermissions}
+                disabled={updatePermissionM.isPending || Object.keys(permissionChanges).length === 0}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {updatePermissionM.isPending ? 'Saving...' : 'Save Permissions'}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {permissionsQuery.isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="sticky left-0 bg-background">Role</TableHead>
+                    {RBAC_RESOURCES.map((resource) => (
+                      <TableHead key={resource} className="text-center capitalize min-w-[100px]">
+                        {resource}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {RBAC_ROLES.map((role) => (
+                    <TableRow key={role}>
+                      <TableCell className="sticky left-0 bg-background font-medium capitalize whitespace-nowrap">
+                        {role.replace(/_/g, ' ')}
+                      </TableCell>
+                      {RBAC_RESOURCES.map((resource) => {
+                        const perms = getPermission(role, resource);
+                        return (
+                          <TableCell key={resource} className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <label className="flex flex-col items-center gap-0.5 cursor-pointer" title="Read">
+                                <span className="text-[10px] text-muted-foreground">R</span>
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-input"
+                                  checked={perms.can_read}
+                                  onChange={(e) => handlePermissionChange(role, resource, 'can_read', e.target.checked)}
+                                />
+                              </label>
+                              <label className="flex flex-col items-center gap-0.5 cursor-pointer" title="Write">
+                                <span className="text-[10px] text-muted-foreground">W</span>
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-input"
+                                  checked={perms.can_write}
+                                  onChange={(e) => handlePermissionChange(role, resource, 'can_write', e.target.checked)}
+                                />
+                              </label>
+                              <label className="flex flex-col items-center gap-0.5 cursor-pointer" title="Delete">
+                                <span className="text-[10px] text-muted-foreground">D</span>
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-input"
+                                  checked={perms.can_delete}
+                                  onChange={(e) => handlePermissionChange(role, resource, 'can_delete', e.target.checked)}
+                                />
+                              </label>
+                            </div>
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

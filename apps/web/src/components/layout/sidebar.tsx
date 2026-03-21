@@ -74,6 +74,7 @@ const navGroups: NavGroup[] = [
       { label: 'Gate', href: '/gate', icon: <ShieldCheck className="h-4 w-4" /> },
       { label: 'Tickets', href: '/tickets', icon: <TicketCheck className="h-4 w-4" /> },
       { label: 'Announcements', href: '/announcements', icon: <Megaphone className="h-4 w-4" /> },
+      { label: 'Staff', href: '/staff', icon: <Users className="h-4 w-4" /> },
       { label: 'Documents', href: '/documents', icon: <FolderOpen className="h-4 w-4" /> },
     ],
   },
