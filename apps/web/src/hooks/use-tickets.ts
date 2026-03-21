@@ -230,3 +230,43 @@ export function useAddTicketComment() {
     },
   });
 }
+
+export function useBulkCloseTickets() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function bulkClose(input: {
+      ticket_ids: string[];
+      resolution_note?: string;
+    }) {
+      return api.post<{ data: { closed: number } }>(
+        '/tickets/bulk/close',
+        input,
+      );
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ticketKeys.stats() });
+    },
+  });
+}
+
+export function useBulkReassignTickets() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function bulkReassign(input: {
+      ticket_ids: string[];
+      assigned_to: string;
+    }) {
+      return api.post<{ data: { reassigned: number } }>(
+        '/tickets/bulk/reassign',
+        input,
+      );
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ticketKeys.stats() });
+    },
+  });
+}

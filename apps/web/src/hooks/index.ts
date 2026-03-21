@@ -244,8 +244,37 @@ export {
   useCreateTicket,
   useUpdateTicket,
   useAddTicketComment,
+  useBulkCloseTickets,
+  useBulkReassignTickets,
 } from './use-tickets';
 export type { Ticket, TicketComment, TicketStats, TicketFilters } from './use-tickets';
+
+// Tax & Compliance
+export {
+  taxKeys,
+  useGstSummary,
+  useGstReport,
+  useGstr1Export,
+  useTdsSummary,
+  useTdsVendors,
+  useForm16A,
+  useChallans,
+  useRemittances,
+  useComplianceCalendar,
+  useCreateChallan,
+  useCreateRemittance,
+} from './use-tax';
+export type {
+  GstSummary,
+  GstReportRow,
+  Gstr1Export,
+  TdsSummary,
+  Form16AData,
+  ComplianceItem,
+  TdsChallan,
+  Remittance,
+  TaxPeriodFilters,
+} from './use-tax';
 
 // Announcements
 export {
