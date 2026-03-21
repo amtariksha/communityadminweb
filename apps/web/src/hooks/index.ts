@@ -245,6 +245,34 @@ export {
 } from './use-announcements';
 export type { Announcement, AnnouncementFilters } from './use-announcements';
 
+// Utilities
+export {
+  utilityKeys,
+  useUtilityStats,
+  useMeters,
+  useReadings,
+  useSlabs,
+  useUtilityBills,
+  useCreateMeter,
+  useUpdateMeter,
+  useSubmitReading,
+  useSubmitBulkReadings,
+  useCreateSlab,
+  useUpdateSlab,
+  useDeleteSlab,
+  useCalculateBills,
+  useBillToInvoice,
+} from './use-utilities';
+export type {
+  Meter,
+  Reading,
+  Slab,
+  UtilityBill,
+  UtilityStats,
+  MeterFilters,
+  BillFilters,
+} from './use-utilities';
+
 // Staff Management
 export {
   staffKeys,
