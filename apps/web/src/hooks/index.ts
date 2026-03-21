@@ -67,6 +67,8 @@ export {
   useBulkUpdateDueDates,
   useDefaulters,
   useCalculateLPI,
+  usePostLPI,
+  useWaiveInterest,
 } from './use-invoices';
 
 // Receipts
@@ -80,7 +82,10 @@ export {
   useReceiptSummary,
   useCreateCreditNote,
   useRecalculateArrears,
+  useAdvances,
+  useApplyAdvance,
 } from './use-receipts';
+export type { Advance } from './use-receipts';
 
 // Vendors
 export {
@@ -124,7 +129,17 @@ export {
   useCreateFD,
   useMatureFD,
   useRenewFD,
+  useStatementRows,
+  useImportStatement,
+  useManualMatchRow,
+  useExcludeRow,
+  useCheques,
+  useIssueCheque,
+  useClearCheque,
+  useBounceCheque,
+  useCancelCheque,
 } from './use-bank';
+export type { StatementRow, Cheque } from './use-bank';
 
 // Documents
 export {

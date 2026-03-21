@@ -382,3 +382,196 @@ export function useRenewFD() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Bank Statement Import
+// ---------------------------------------------------------------------------
+
+export interface StatementRow {
+  id: string;
+  transaction_date: string;
+  description: string;
+  debit: number;
+  credit: number;
+  balance: number | null;
+  match_status: 'unmatched' | 'auto_matched' | 'manual_matched' | 'excluded';
+  matched_journal_entry_id: string | null;
+  je_narration?: string;
+  je_entry_number?: string;
+  import_batch_id: string;
+  imported_at: string;
+}
+
+export function useStatementRows(
+  accountId: string,
+  matchStatus?: string,
+  batchId?: string,
+) {
+  return useQuery({
+    queryKey: [...bankKeys.all, 'statement-rows', accountId, matchStatus, batchId] as const,
+    queryFn: function fetchRows() {
+      const params: Record<string, string> = {};
+      if (matchStatus) params.match_status = matchStatus;
+      if (batchId) params.batch_id = batchId;
+      return api.get<{ data: StatementRow[]; total: number }>(
+        `/bank/statement-rows/${accountId}`,
+        { params },
+      );
+    },
+    enabled: accountId !== '',
+  });
+}
+
+export function useImportStatement() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function importStatement(input: {
+      bank_account_id: string;
+      rows: Array<{
+        transaction_date: string;
+        description: string;
+        debit: number;
+        credit: number;
+        balance?: number;
+      }>;
+    }) {
+      return api.post<{
+        data: { total_rows: number; auto_matched: number; unmatched: number; batch_id: string };
+      }>('/bank/import-statement', input);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.all });
+    },
+  });
+}
+
+export function useManualMatchRow() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function manualMatch(input: { row_id: string; journal_entry_id: string }) {
+      return api.post(`/bank/statement-rows/${input.row_id}/match`, {
+        journal_entry_id: input.journal_entry_id,
+      });
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.all });
+    },
+  });
+}
+
+export function useExcludeRow() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function excludeRow(rowId: string) {
+      return api.post(`/bank/statement-rows/${rowId}/exclude`);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.all });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Cheque Management
+// ---------------------------------------------------------------------------
+
+export interface Cheque {
+  id: string;
+  bank_account_id: string;
+  bank_name: string;
+  cheque_number: string;
+  payee: string;
+  amount: number;
+  issue_date: string;
+  clearing_date: string | null;
+  bounce_date: string | null;
+  status: 'issued' | 'cleared' | 'bounced' | 'cancelled';
+  notes: string | null;
+  created_at: string;
+}
+
+export function useCheques(bankAccountId?: string, status?: string) {
+  return useQuery({
+    queryKey: [...bankKeys.all, 'cheques', bankAccountId, status] as const,
+    queryFn: function fetchCheques() {
+      const params: Record<string, string> = {};
+      if (bankAccountId) params.bank_account_id = bankAccountId;
+      if (status) params.status = status;
+      return api.get<{ data: Cheque[]; total: number }>('/bank/cheques', { params });
+    },
+  });
+}
+
+export function useIssueCheque() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function issueCheque(input: {
+      bank_account_id: string;
+      cheque_number: string;
+      payee: string;
+      amount: number;
+      issue_date: string;
+      payee_ledger_account_id: string;
+      vendor_bill_id?: string;
+      notes?: string;
+    }) {
+      return api.post('/bank/cheques', input);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.all });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+    },
+  });
+}
+
+export function useClearCheque() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function clearCheque(input: { id: string; clearing_date: string }) {
+      return api.patch(`/bank/cheques/${input.id}/clear`, {
+        clearing_date: input.clearing_date,
+      });
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.all });
+    },
+  });
+}
+
+export function useBounceCheque() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function bounceCheque(input: { id: string; bounce_date: string }) {
+      return api.patch(`/bank/cheques/${input.id}/bounce`, {
+        bounce_date: input.bounce_date,
+      });
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.all });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+    },
+  });
+}
+
+export function useCancelCheque() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function cancelCheque(id: string) {
+      return api.patch(`/bank/cheques/${id}/cancel`);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.all });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+    },
+  });
+}

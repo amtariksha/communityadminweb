@@ -227,3 +227,50 @@ export function useRecalculateArrears() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Member Advances
+// ---------------------------------------------------------------------------
+
+export interface Advance {
+  id: string;
+  unit_id: string;
+  unit_number: string;
+  amount: number;
+  remaining: number;
+  receipt_id: string | null;
+  receipt_number: string | null;
+  description: string | null;
+  created_at: string;
+}
+
+export function useAdvances(unitId?: string) {
+  return useQuery({
+    queryKey: [...receiptKeys.all, 'advances', unitId] as const,
+    queryFn: function fetchAdvances() {
+      const params: Record<string, string> = {};
+      if (unitId) params.unit_id = unitId;
+      return api.get<{ data: Advance[] }>('/receipts/advances', { params });
+    },
+  });
+}
+
+export function useApplyAdvance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function applyAdvance(input: {
+      advance_id: string;
+      invoice_id: string;
+      amount: number;
+    }) {
+      return api.post<{
+        data: { applied: number; advance_remaining: number };
+      }>('/receipts/advances/apply', input);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+    },
+  });
+}

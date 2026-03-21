@@ -270,3 +270,37 @@ export function useBulkUpdateDueDates() {
     },
   });
 }
+
+export function usePostLPI() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function postLPI(input: { as_of_date: string }) {
+      return api.post<{
+        data: { posted_count: number; total_interest: number };
+      }>('/invoices/lpi/post', input);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+    },
+  });
+}
+
+export function useWaiveInterest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function waiveInterest(invoiceId: string) {
+      return api.post<{
+        data: { credit_note_number: string; amount_waived: number };
+      }>(`/invoices/${invoiceId}/waive-interest`);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+    },
+  });
+}
