@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, useRef, type FormEvent, type ChangeEvent, type ReactNode } from 'react';
 import Link from 'next/link';
-import { ChevronRight, ChevronDown, Plus, BookOpen } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, BookOpen, Upload, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,7 @@ import {
   useCreateAccountGroup,
   useCreateLedgerAccount,
   useSetOpeningBalance,
+  useBulkImportBalances,
 } from '@/hooks';
 import type { AccountGroup, LedgerAccount, AccountType } from '@communityos/shared';
 
@@ -187,6 +188,7 @@ export default function AccountsContent(): ReactNode {
   const createGroup = useCreateAccountGroup();
   const createAccount = useCreateLedgerAccount();
   const setOpeningBalance = useSetOpeningBalance();
+  const bulkImportBalances = useBulkImportBalances();
 
   const isLoading = groupsLoading || accountsLoading;
   const accounts = accountsResponse?.data ?? [];
@@ -300,6 +302,99 @@ export default function AccountsContent(): ReactNode {
     );
   }
 
+  // -- CSV import state --
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importRows, setImportRows] = useState<Array<{
+    account_code: string;
+    amount: number;
+    balance_type: string;
+    account_id: string | null;
+    account_name: string | null;
+  }>>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleDownloadTemplate(): void {
+    const csv = 'account_code,amount,balance_type\n1001,50000,debit\n2001,30000,credit\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'opening_balances_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleFileUpload(e: ChangeEvent<HTMLInputElement>): void {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function onLoad(event) {
+      const text = event.target?.result as string;
+      const lines = text.split('\n').filter((line) => line.trim());
+      if (lines.length < 2) {
+        addToast({ title: 'CSV file is empty or has no data rows', variant: 'destructive' });
+        return;
+      }
+
+      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+      const codeIdx = headers.indexOf('account_code');
+      const amountIdx = headers.indexOf('amount');
+      const typeIdx = headers.indexOf('balance_type');
+
+      if (codeIdx === -1 || amountIdx === -1) {
+        addToast({ title: 'CSV must have account_code and amount columns', variant: 'destructive' });
+        return;
+      }
+
+      const parsed = lines.slice(1).map(function parseRow(line) {
+        const cols = line.split(',').map((c) => c.trim());
+        const code = cols[codeIdx] ?? '';
+        const matchedAccount = accounts.find((a) => a.code === code);
+
+        return {
+          account_code: code,
+          amount: parseFloat(cols[amountIdx] ?? '0') || 0,
+          balance_type: typeIdx !== -1 ? (cols[typeIdx] ?? 'debit') : 'debit',
+          account_id: matchedAccount?.id ?? null,
+          account_name: matchedAccount?.name ?? null,
+        };
+      }).filter((row) => row.account_code && row.amount > 0);
+
+      setImportRows(parsed);
+    };
+    reader.readAsText(file);
+  }
+
+  function handleImportSubmit(): void {
+    const validRows = importRows.filter((r) => r.account_id);
+    if (validRows.length === 0) {
+      addToast({ title: 'No valid rows to import', variant: 'destructive' });
+      return;
+    }
+
+    bulkImportBalances.mutate(
+      {
+        balances: validRows.map((r) => ({
+          account_id: r.account_id as string,
+          amount: r.amount,
+          balance_type: r.balance_type,
+        })),
+      },
+      {
+        onSuccess() {
+          addToast({ title: `Opening balances updated for ${validRows.length} accounts`, variant: 'success' });
+          setImportDialogOpen(false);
+          setImportRows([]);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        },
+        onError(error: Error) {
+          addToast({ title: 'Import failed', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
+  }
+
   // Build a flat list of groups for the select dropdowns
   const flatGroups = groups ?? [];
 
@@ -387,6 +482,95 @@ export default function AccountsContent(): ReactNode {
                     </Button>
                   </DialogFooter>
                 </form>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={importDialogOpen} onOpenChange={(open) => { setImportDialogOpen(open); if (!open) { setImportRows([]); if (fileInputRef.current) fileInputRef.current.value = ''; } }}>
+              <DialogTrigger>
+                <Button variant="outline">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import Balances
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Import Opening Balances</DialogTitle>
+                  <DialogDescription>Upload a CSV file with account codes and opening balances</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="flex items-center gap-4">
+                    <Input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileUpload}
+                      className="flex-1"
+                    />
+                    <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Template
+                    </Button>
+                  </div>
+
+                  {importRows.length > 0 && (
+                    <div className="max-h-64 overflow-y-auto rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Account Code</TableHead>
+                            <TableHead>Matched Account</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead className="w-8" />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {importRows.map((row, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-mono text-sm">{row.account_code}</TableCell>
+                              <TableCell>
+                                {row.account_name ? (
+                                  <span className="text-sm">{row.account_name}</span>
+                                ) : (
+                                  <span className="text-sm text-destructive">Not found</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right font-medium">{formatCurrency(row.amount)}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{row.balance_type === 'debit' ? 'Dr' : 'Cr'}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                {row.account_id ? (
+                                  <CheckCircle2 className="h-4 w-4 text-success" />
+                                ) : (
+                                  <AlertCircle className="h-4 w-4 text-destructive" />
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+
+                  {importRows.length > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      {importRows.filter((r) => r.account_id).length} of {importRows.length} rows matched.
+                      {importRows.filter((r) => !r.account_id).length > 0 && ' Unmatched rows will be skipped.'}
+                    </p>
+                  )}
+                </div>
+                <DialogFooter>
+                  <DialogClose>
+                    <Button type="button" variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <Button
+                    onClick={handleImportSubmit}
+                    disabled={bulkImportBalances.isPending || importRows.filter((r) => r.account_id).length === 0}
+                  >
+                    {bulkImportBalances.isPending ? 'Importing...' : `Import ${importRows.filter((r) => r.account_id).length} Balances`}
+                  </Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
 

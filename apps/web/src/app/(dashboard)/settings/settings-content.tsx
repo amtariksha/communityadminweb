@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { Save, Plus, Power, CalendarRange } from 'lucide-react';
+import { Save, Plus, Power, CalendarRange, MoreVertical, Lock, Unlock, Star } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,7 +40,16 @@ import {
   useUpdateInvoiceRule,
   useFinancialYears,
   useCreateFinancialYear,
+  useSetCurrentYear,
+  useFreezeYear,
+  useUnfreezeYear,
 } from '@/hooks';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // ---------------------------------------------------------------------------
 // Feature toggle definitions
@@ -80,6 +89,9 @@ export default function SettingsContent(): ReactNode {
   const createRule = useCreateInvoiceRule();
   const updateRule = useUpdateInvoiceRule();
   const createFY = useCreateFinancialYear();
+  const setCurrentYear = useSetCurrentYear();
+  const freezeYear = useFreezeYear();
+  const unfreezeYear = useUnfreezeYear();
 
   // Society info form state
   const [societyName, setSocietyName] = useState('');
@@ -696,6 +708,67 @@ export default function SettingsContent(): ReactNode {
                     {fy.is_current && <Badge variant="success">Current</Badge>}
                     {fy.is_frozen && <Badge variant="secondary">Frozen</Badge>}
                     {!fy.is_current && !fy.is_frozen && <Badge variant="default">Open</Badge>}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {!fy.is_current && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setCurrentYear.mutate(fy.id, {
+                                onSuccess() {
+                                  addToast({ title: `${fy.label} set as current year`, variant: 'success' });
+                                },
+                                onError(error: Error) {
+                                  addToast({ title: 'Failed to set current year', description: error.message, variant: 'destructive' });
+                                },
+                              });
+                            }}
+                          >
+                            <Star className="mr-2 h-4 w-4" />
+                            Set as Current
+                          </DropdownMenuItem>
+                        )}
+                        {!fy.is_frozen && !fy.is_current && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (!confirm(`Freeze ${fy.label}? No transactions can be posted to a frozen year.`)) return;
+                              freezeYear.mutate(fy.id, {
+                                onSuccess() {
+                                  addToast({ title: `${fy.label} frozen`, variant: 'success' });
+                                },
+                                onError(error: Error) {
+                                  addToast({ title: 'Failed to freeze year', description: error.message, variant: 'destructive' });
+                                },
+                              });
+                            }}
+                          >
+                            <Lock className="mr-2 h-4 w-4" />
+                            Freeze Year
+                          </DropdownMenuItem>
+                        )}
+                        {fy.is_frozen && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              unfreezeYear.mutate(fy.id, {
+                                onSuccess() {
+                                  addToast({ title: `${fy.label} unfrozen`, variant: 'success' });
+                                },
+                                onError(error: Error) {
+                                  addToast({ title: 'Failed to unfreeze year', description: error.message, variant: 'destructive' });
+                                },
+                              });
+                            }}
+                          >
+                            <Unlock className="mr-2 h-4 w-4" />
+                            Unfreeze Year
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ))}

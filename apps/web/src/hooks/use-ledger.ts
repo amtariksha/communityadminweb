@@ -479,6 +479,21 @@ export function useFreezeYear() {
   });
 }
 
+export function useUnfreezeYear() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function unfreezeYear(id: string) {
+      return api.patch<{ data: FinancialYear }>(
+        `/ledger/financial-years/${id}/unfreeze`,
+      );
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.financialYears() });
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Journal Entry queries
 // ---------------------------------------------------------------------------
