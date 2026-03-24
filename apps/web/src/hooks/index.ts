@@ -381,6 +381,60 @@ export type {
   ApprovalFilters,
 } from './use-approvals';
 
+// Amenities
+export {
+  amenityKeys,
+  useAmenities,
+  useAmenitySlots,
+  useAmenityBookings,
+  useCreateAmenity,
+  useUpdateAmenity,
+  useCreateBooking,
+  useCancelBooking,
+} from './use-amenities';
+export type {
+  Amenity,
+  AmenitySlot,
+  AmenityBooking,
+  AmenityBookingFilters,
+} from './use-amenities';
+
+// Voting
+export {
+  votingKeys,
+  usePolls,
+  usePoll,
+  useActivePolls,
+  useCreatePoll,
+  useCastVote,
+  useClosePoll,
+} from './use-voting';
+export type {
+  Poll,
+  PollOption,
+  PollVote,
+  PollResult,
+  PollFilters,
+} from './use-voting';
+
+// Notifications
+export {
+  notificationKeys,
+  useNotificationTemplates,
+  useCreateTemplate,
+  useSendTemplate,
+  useMyNotifications,
+  useUnreadCount,
+  useMarkRead,
+  useMarkAllRead,
+} from './use-notifications';
+export type {
+  NotificationTemplate,
+  Notification,
+  NotificationTemplateFilters,
+  MyNotificationFilters,
+} from './use-notifications';
+
 // Staff Management
 export {
   staffKeys,
