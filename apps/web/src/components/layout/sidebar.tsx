@@ -25,6 +25,7 @@ import {
   Megaphone,
   Gauge,
   ClipboardCheck,
+  Car,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, getInitials } from '@/components/ui/avatar';
@@ -75,6 +76,7 @@ const navGroups: NavGroup[] = [
       { label: 'Units', href: '/units', icon: <Home className="h-4 w-4" /> },
       { label: 'Gate', href: '/gate', icon: <ShieldCheck className="h-4 w-4" /> },
       { label: 'Utilities', href: '/utilities', icon: <Gauge className="h-4 w-4" /> },
+      { label: 'Parking', href: '/parking', icon: <Car className="h-4 w-4" /> },
       { label: 'Tickets', href: '/tickets', icon: <TicketCheck className="h-4 w-4" /> },
       { label: 'Announcements', href: '/announcements', icon: <Megaphone className="h-4 w-4" /> },
       { label: 'Staff', href: '/staff', icon: <Users className="h-4 w-4" /> },

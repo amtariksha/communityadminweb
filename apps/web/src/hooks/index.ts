@@ -338,6 +338,31 @@ export type {
   BillFilters,
 } from './use-utilities';
 
+// Parking
+export {
+  parkingKeys,
+  useSlots,
+  useSlotStats,
+  useVehicles,
+  useSublets,
+  useCreateSlot,
+  useBulkCreateSlots,
+  useAssignSlot,
+  useDeallocateSlot,
+  useRegisterVehicle,
+  useUpdateVehicle,
+  useRemoveVehicle,
+} from './use-parking';
+export type {
+  ParkingSlot,
+  Vehicle,
+  ParkingSublet,
+  SlotStats,
+  SlotFilters,
+  VehicleFilters,
+  SubletFilters,
+} from './use-parking';
+
 // Approvals
 export {
   approvalKeys,
