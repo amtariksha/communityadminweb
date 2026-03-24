@@ -335,6 +335,24 @@ export type {
   BillFilters,
 } from './use-utilities';
 
+// Approvals
+export {
+  approvalKeys,
+  useMyPendingApprovals,
+  useMyPendingCount,
+  useApprovalRequests,
+  useApprovalDetail,
+  useApproveRequest,
+  useRejectRequest,
+  useCancelRequest,
+} from './use-approvals';
+export type {
+  ApprovalRequest,
+  ApprovalStep,
+  ApprovalDetail,
+  ApprovalFilters,
+} from './use-approvals';
+
 // Staff Management
 export {
   staffKeys,

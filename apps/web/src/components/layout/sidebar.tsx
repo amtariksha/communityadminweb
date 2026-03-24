@@ -24,6 +24,7 @@ import {
   TicketCheck,
   Megaphone,
   Gauge,
+  ClipboardCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, getInitials } from '@/components/ui/avatar';
@@ -83,6 +84,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'System',
     items: [
+      { label: 'Approvals', href: '/approvals', icon: <ClipboardCheck className="h-4 w-4" /> },
       { label: 'Settings', href: '/settings', icon: <Settings className="h-4 w-4" /> },
     ],
   },
