@@ -253,6 +253,7 @@ export default function InvoicesContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Invoices' }]}
         title="Invoices"
         description="Manage maintenance and other invoices"
         actions={

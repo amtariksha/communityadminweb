@@ -79,6 +79,7 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Accounts', href: '/accounts' }, { label: 'Account Detail' }]}
         title={accountLoading ? 'Loading...' : (account?.name ?? 'Account Detail')}
         description={account ? `Account Code: ${account.code}` : undefined}
         actions={

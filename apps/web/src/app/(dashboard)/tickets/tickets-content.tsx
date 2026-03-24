@@ -263,6 +263,7 @@ export default function TicketsContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Tickets' }]}
         title="Tickets"
         description="Manage maintenance requests and complaints"
         actions={

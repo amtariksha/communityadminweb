@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Upload,
+  Download,
   FileSpreadsheet,
   CheckCircle2,
   AlertTriangle,
@@ -129,6 +130,53 @@ export default function ImportContent(): ReactNode {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvImport = useCsvImportUnits();
 
+  function handleDownloadTemplate(): void {
+    const headers = [
+      'unit_number',
+      'block',
+      'floor',
+      'area_sqft',
+      'unit_type',
+      'bhk_type',
+      'apartment_number',
+      'parking_slot',
+      'intercom',
+      'owner_name',
+      'owner_phone',
+      'owner_email',
+      'tenant_name',
+      'tenant_phone',
+      'tenant_email',
+      'lease_end_date',
+    ];
+    const sampleRow = [
+      'A-101',
+      'A',
+      '1',
+      '1200',
+      'flat',
+      '2BHK',
+      '101',
+      'P-12',
+      '201',
+      'Amit Sharma',
+      '+919876543210',
+      'amit@example.com',
+      '',
+      '',
+      '',
+      '',
+    ];
+    const csvContent = [headers.join(','), sampleRow.join(',')].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'communityos_unit_import_template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   const [step, setStep] = useState<Step>('select-template');
   const [selectedSource, setSelectedSource] = useState<ImportSource | null>(null);
   const [rawHeaders, setRawHeaders] = useState<string[]>([]);
@@ -225,6 +273,7 @@ export default function ImportContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Units', href: '/units' }, { label: 'Import' }]}
         title="Import Units"
         description="Import unit and resident data from other society management apps"
         actions={
@@ -301,6 +350,22 @@ export default function ImportContent(): ReactNode {
                       </Badge>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {selectedSource === 'custom' && (
+                <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-4">
+                  <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Need a template?</p>
+                    <p className="text-xs text-muted-foreground">
+                      Download a pre-formatted CSV with all supported columns and a sample row
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Template
+                  </Button>
                 </div>
               )}
 

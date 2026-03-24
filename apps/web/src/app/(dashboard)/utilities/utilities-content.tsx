@@ -135,6 +135,7 @@ export default function UtilitiesContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Utilities' }]}
         title="Utilities"
         description="Manage metered billing for water, electricity, and gas"
       />

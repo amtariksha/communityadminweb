@@ -176,6 +176,7 @@ export default function PaymentsContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Payments' }]}
         title="Payments"
         description="Track online payment transactions via Razorpay"
       />

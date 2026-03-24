@@ -206,6 +206,7 @@ export default function DocumentsContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Documents' }]}
         title="Documents"
         description="Society documents and compliance records"
         actions={

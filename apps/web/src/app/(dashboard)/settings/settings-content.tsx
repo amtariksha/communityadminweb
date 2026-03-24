@@ -484,6 +484,7 @@ export default function SettingsContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Settings' }]}
         title="Settings"
         description="Manage society configuration, billing rules, and features"
       />

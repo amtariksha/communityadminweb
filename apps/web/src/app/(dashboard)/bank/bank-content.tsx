@@ -462,6 +462,7 @@ export default function BankContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Bank' }]}
         title="Bank & Treasury"
         description="Manage bank accounts, transfers, reconciliation and fixed deposits"
       />

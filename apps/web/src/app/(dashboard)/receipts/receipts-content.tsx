@@ -213,6 +213,7 @@ export default function ReceiptsContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Receipts' }]}
         title="Receipts"
         description="Record and manage payment receipts"
         actions={

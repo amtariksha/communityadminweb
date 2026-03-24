@@ -286,6 +286,7 @@ export default function AnnouncementsContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Announcements' }]}
         title="Announcements"
         description="Community-wide and block-specific announcements"
         actions={

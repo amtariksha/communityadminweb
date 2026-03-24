@@ -967,6 +967,7 @@ export default function GateContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Gate' }]}
         title="Gate Management"
         description="Manage visitors, staff check-ins, and parcel deliveries"
       />

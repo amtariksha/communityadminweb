@@ -401,6 +401,7 @@ export default function AccountsContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Accounts' }]}
         title="Chart of Accounts"
         description={
           currentFY

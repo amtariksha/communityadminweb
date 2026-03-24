@@ -484,6 +484,7 @@ export default function PurchasesContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Purchases' }]}
         title="Purchases"
         description="Manage purchase requests and vendor bills"
       />

@@ -204,6 +204,7 @@ export default function UnitsContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Units' }]}
         title="Units"
         description="Manage flats, shops, and parking spaces"
         actions={

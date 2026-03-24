@@ -147,6 +147,7 @@ export default function VendorsContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Vendors' }]}
         title="Vendors"
         description="Manage your service providers and suppliers"
         actions={

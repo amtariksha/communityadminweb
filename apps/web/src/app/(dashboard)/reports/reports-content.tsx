@@ -572,6 +572,7 @@ export default function ReportsContent(): ReactNode {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumbs={[{ label: 'Reports' }]}
         title="Reports"
         description="Generate financial and management reports"
       />
