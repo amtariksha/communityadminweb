@@ -116,6 +116,7 @@ export const unitKeys = {
   detail: (id: string) => [...unitKeys.details(), id] as const,
   stats: () => [...unitKeys.all, 'stats'] as const,
   members: (unitId: string) => [...unitKeys.all, unitId, 'members'] as const,
+  blocks: () => [...unitKeys.all, 'blocks'] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -165,6 +166,17 @@ export function useUnitStats() {
     queryKey: unitKeys.stats(),
     queryFn: function fetchUnitStats() {
       return api.get<{ data: UnitStats }>('/units/stats').then(function unwrap(res) {
+        return res.data;
+      });
+    },
+  });
+}
+
+export function useBlocks() {
+  return useQuery({
+    queryKey: unitKeys.blocks(),
+    queryFn: function fetchBlocks() {
+      return api.get<{ data: string[] }>('/units/blocks').then(function unwrap(res) {
         return res.data;
       });
     },

@@ -1,17 +1,40 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
-import { Search, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, type FormEvent, type ReactNode } from 'react';
+import { Search, UserPlus, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useTenantMembers } from '@/hooks';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/toast';
+import { useTenantMembers, useUpdateTenantMember, useRemoveTenantMember } from '@/hooks';
+import type { TenantMember } from '@/hooks';
 
 const ITEMS_PER_PAGE = 10;
+
+const ASSIGNABLE_ROLES = [
+  { slug: 'community_admin', label: 'Community Admin' },
+  { slug: 'committee_member', label: 'Committee Member' },
+  { slug: 'accountant', label: 'Accountant' },
+  { slug: 'moderator', label: 'Moderator' },
+  { slug: 'security_guard', label: 'Security Guard' },
+  { slug: 'auditor', label: 'Auditor' },
+  { slug: 'owner', label: 'Owner' },
+  { slug: 'tenant_resident', label: 'Tenant / Resident' },
+];
 
 interface TenantMembersProps {
   tenantId: string;
@@ -19,9 +42,23 @@ interface TenantMembersProps {
 }
 
 export default function TenantMembers({ tenantId, onAddMember }: TenantMembersProps): ReactNode {
+  const { addToast } = useToast();
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
+
+  // Edit member state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editMember, setEditMember] = useState<TenantMember | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editRoles, setEditRoles] = useState<string[]>([]);
+
+  // Remove member state
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [removeMember, setRemoveMember] = useState<TenantMember | null>(null);
+
+  const updateMember = useUpdateTenantMember();
+  const removeMemberMutation = useRemoveTenantMember();
 
   const membersQuery = useTenantMembers(tenantId, {
     search: searchQuery || undefined,
@@ -36,6 +73,66 @@ export default function TenantMembers({ tenantId, onAddMember }: TenantMembersPr
   function handleSearch(): void {
     setSearchQuery(searchInput);
     setPage(1);
+  }
+
+  function openEditDialog(member: TenantMember): void {
+    setEditMember(member);
+    setEditName(member.name ?? '');
+    setEditRoles([...member.roles]);
+    setEditOpen(true);
+  }
+
+  function toggleEditRole(slug: string): void {
+    setEditRoles((prev) =>
+      prev.includes(slug) ? prev.filter((r) => r !== slug) : [...prev, slug],
+    );
+  }
+
+  function handleEditSubmit(e: FormEvent): void {
+    e.preventDefault();
+    if (!editMember || editRoles.length === 0) return;
+
+    updateMember.mutate(
+      {
+        tenantId,
+        userId: editMember.id,
+        name: editName || undefined,
+        roles: editRoles,
+      },
+      {
+        onSuccess() {
+          setEditOpen(false);
+          setEditMember(null);
+          addToast({ title: 'Member updated successfully', variant: 'success' });
+        },
+        onError() {
+          addToast({ title: 'Failed to update member', variant: 'destructive' });
+        },
+      },
+    );
+  }
+
+  function openRemoveDialog(member: TenantMember): void {
+    setRemoveMember(member);
+    setRemoveOpen(true);
+  }
+
+  function handleRemoveConfirm(): void {
+    if (!removeMember) return;
+
+    removeMemberMutation.mutate(
+      { tenantId, userId: removeMember.id },
+      {
+        onSuccess() {
+          setRemoveOpen(false);
+          setRemoveMember(null);
+          addToast({ title: 'Member removed successfully', variant: 'success' });
+        },
+        onError() {
+          addToast({ title: 'Failed to remove member', variant: 'destructive' });
+        },
+      },
+    );
   }
 
   return (
@@ -82,6 +179,7 @@ export default function TenantMembers({ tenantId, onAddMember }: TenantMembersPr
               <TableHead>Name</TableHead>
               <TableHead>Roles</TableHead>
               <TableHead>Unit</TableHead>
+              <TableHead className="w-20">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -100,6 +198,26 @@ export default function TenantMembers({ tenantId, onAddMember }: TenantMembersPr
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
                   {member.unit_number ?? '—'}
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => openEditDialog(member)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                      onClick={() => openRemoveDialog(member)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -122,6 +240,87 @@ export default function TenantMembers({ tenantId, onAddMember }: TenantMembersPr
           </div>
         </div>
       )}
+
+      {/* Edit Member Dialog */}
+      <Dialog open={editOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditMember(null); setEditOpen(isOpen); }}>
+        <DialogContent>
+          <form onSubmit={handleEditSubmit}>
+            <DialogHeader>
+              <DialogTitle>Edit Member</DialogTitle>
+              <DialogDescription>
+                Update details for {editMember?.phone ?? ''}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-member-name">Name</Label>
+                <Input
+                  id="edit-member-name"
+                  placeholder="Full name"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Roles <span className="text-xs text-muted-foreground font-normal">(select one or more)</span></Label>
+                <div className="grid gap-2 max-h-48 overflow-y-auto rounded-md border p-2">
+                  {ASSIGNABLE_ROLES.map((r) => (
+                    <label
+                      key={r.slug}
+                      className={`flex items-center gap-3 rounded-md border p-2 cursor-pointer transition-colors hover:bg-accent ${
+                        editRoles.includes(r.slug) ? 'border-primary bg-primary/5' : 'border-transparent'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        value={r.slug}
+                        checked={editRoles.includes(r.slug)}
+                        onChange={() => toggleEditRole(r.slug)}
+                      />
+                      <span className="text-sm">{r.label}</span>
+                    </label>
+                  ))}
+                </div>
+                {editRoles.length === 0 && (
+                  <p className="text-xs text-destructive">Select at least one role</p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={editRoles.length === 0 || updateMember.isPending}>
+                {updateMember.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Member Confirmation Dialog */}
+      <Dialog open={removeOpen} onOpenChange={setRemoveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Member</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove {removeMember?.name ?? removeMember?.phone ?? 'this member'} from the society? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose>
+              <Button type="button" variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              disabled={removeMemberMutation.isPending}
+              onClick={handleRemoveConfirm}
+            >
+              {removeMemberMutation.isPending ? 'Removing...' : 'Remove Member'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

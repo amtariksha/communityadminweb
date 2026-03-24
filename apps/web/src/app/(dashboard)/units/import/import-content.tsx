@@ -257,6 +257,21 @@ export default function ImportContent(): ReactNode {
     );
   }
 
+  function handleDownloadErrors(): void {
+    if (!importResult?.errors) return;
+    const csvContent = [
+      'Row,Error',
+      ...importResult.errors.map((e) => `"${e.replace(/"/g, '""')}"`),
+    ].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'import_errors.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   function resetImport(): void {
     setStep('select-template');
     setSelectedSource(null);
@@ -557,6 +572,12 @@ export default function ImportContent(): ReactNode {
                       </li>
                     ))}
                   </ul>
+                  <div className="mt-3">
+                    <Button variant="outline" size="sm" onClick={handleDownloadErrors}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download Error Report ({importResult.errors.length} issues)
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Home, Upload, FileSpreadsheet, Search, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
+import { Plus, Home, Upload, FileSpreadsheet, Search, ChevronLeft, ChevronRight, UserPlus, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,8 +34,10 @@ import { useToast } from '@/components/ui/toast';
 import {
   useUnits,
   useUnitStats,
+  useBlocks,
   useUnitMembers,
   useCreateUnit,
+  useUpdateUnit,
   useAddMember,
 } from '@/hooks';
 import { formatDate } from '@/lib/utils';
@@ -88,6 +90,7 @@ function TableSkeleton(): ReactNode {
           <TableCell><Skeleton className="h-4 w-14" /></TableCell>
           <TableCell><Skeleton className="h-5 w-12" /></TableCell>
           <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+          <TableCell><Skeleton className="h-5 w-5" /></TableCell>
         </TableRow>
       ))}
     </>
@@ -114,10 +117,23 @@ export default function UnitsContent(): ReactNode {
   const [formArea, setFormArea] = useState('');
   const [formUnitType, setFormUnitType] = useState('flat');
 
+  // Edit unit state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editUnitId, setEditUnitId] = useState('');
+  const [editUnitNumber, setEditUnitNumber] = useState('');
+  const [editBlock, setEditBlock] = useState('');
+  const [editFloor, setEditFloor] = useState('');
+  const [editArea, setEditArea] = useState('');
+  const [editUnitType, setEditUnitType] = useState('flat');
+  const [editIsActive, setEditIsActive] = useState(true);
+
   // Add member form
   const [memberUserId, setMemberUserId] = useState('');
   const [memberType, setMemberType] = useState('owner');
   const [memberMoveIn, setMemberMoveIn] = useState('');
+
+  const blocksQuery = useBlocks();
+  const blocks = blocksQuery.data ?? [];
 
   const unitsQuery = useUnits({
     search: searchQuery || undefined,
@@ -128,6 +144,7 @@ export default function UnitsContent(): ReactNode {
   const statsQuery = useUnitStats();
   const membersQuery = useUnitMembers(detailUnitId);
   const createUnit = useCreateUnit();
+  const updateUnit = useUpdateUnit();
   const addMember = useAddMember();
 
   const units = unitsQuery.data?.data ?? [];
@@ -199,6 +216,43 @@ export default function UnitsContent(): ReactNode {
 
   function handleRowClick(unitId: string): void {
     setDetailUnitId(unitId);
+  }
+
+  function openEditDialog(unit: { id: string; unit_number: string; block?: string | null; floor: number; area_sqft: number; unit_type: string; is_active: boolean }): void {
+    setEditUnitId(unit.id);
+    setEditUnitNumber(unit.unit_number);
+    setEditBlock(unit.block ?? '');
+    setEditFloor(String(unit.floor));
+    setEditArea(String(unit.area_sqft));
+    setEditUnitType(unit.unit_type);
+    setEditIsActive(unit.is_active);
+    setEditDialogOpen(true);
+  }
+
+  function handleEditUnit(e: FormEvent): void {
+    e.preventDefault();
+    updateUnit.mutate(
+      {
+        id: editUnitId,
+        data: {
+          unit_number: editUnitNumber,
+          block: editBlock || null,
+          floor: Number(editFloor),
+          area_sqft: Number(editArea),
+          unit_type: editUnitType,
+          is_active: editIsActive,
+        },
+      },
+      {
+        onSuccess() {
+          setEditDialogOpen(false);
+          addToast({ title: 'Unit updated successfully', variant: 'success' });
+        },
+        onError() {
+          addToast({ title: 'Failed to update unit', variant: 'destructive' });
+        },
+      },
+    );
   }
 
   return (
@@ -355,16 +409,22 @@ export default function UnitsContent(): ReactNode {
                 }}
               >
                 <option value="">All Blocks</option>
-                <option value="A">Block A</option>
-                <option value="B">Block B</option>
-                <option value="C">Block C</option>
+                {blocks.map((b) => (
+                  <option key={b} value={b}>Block {b}</option>
+                ))}
               </Select>
               <div className="relative w-full sm:w-56">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search units..."
                   value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
+                  onChange={(e) => {
+                    setSearchInput(e.target.value);
+                    if (e.target.value === '') {
+                      setSearchQuery('');
+                      setPage(1);
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSearch();
                   }}
@@ -387,6 +447,7 @@ export default function UnitsContent(): ReactNode {
                 <TableHead>Area (sqft)</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Occupied</TableHead>
+                <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -412,6 +473,19 @@ export default function UnitsContent(): ReactNode {
                       ) : (
                         <Badge variant="secondary">Vacant</Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditDialog(unit);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -585,6 +659,97 @@ export default function UnitsContent(): ReactNode {
           </CardContent>
         </Card>
       )}
+
+      {/* Edit Unit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleEditUnit}>
+            <DialogHeader>
+              <DialogTitle>Edit Unit</DialogTitle>
+              <DialogDescription>Update unit details</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-unit-no">Unit Number</Label>
+                  <Input
+                    id="edit-unit-no"
+                    placeholder="e.g., A-301"
+                    required
+                    value={editUnitNumber}
+                    onChange={(e) => setEditUnitNumber(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-unit-block">Block</Label>
+                  <Input
+                    id="edit-unit-block"
+                    placeholder="e.g., A"
+                    value={editBlock}
+                    onChange={(e) => setEditBlock(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-unit-floor">Floor</Label>
+                  <Input
+                    id="edit-unit-floor"
+                    type="number"
+                    placeholder="0"
+                    required
+                    value={editFloor}
+                    onChange={(e) => setEditFloor(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-unit-area">Area (sq ft)</Label>
+                  <Input
+                    id="edit-unit-area"
+                    type="number"
+                    placeholder="1200"
+                    required
+                    value={editArea}
+                    onChange={(e) => setEditArea(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-unit-type">Type</Label>
+                <Select
+                  id="edit-unit-type"
+                  required
+                  value={editUnitType}
+                  onChange={(e) => setEditUnitType(e.target.value)}
+                >
+                  <option value="flat">Flat</option>
+                  <option value="shop">Shop</option>
+                  <option value="office">Office</option>
+                  <option value="parking">Parking</option>
+                  <option value="other">Other</option>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="edit-unit-active"
+                  type="checkbox"
+                  checked={editIsActive}
+                  onChange={(e) => setEditIsActive(e.target.checked)}
+                />
+                <Label htmlFor="edit-unit-active">Active</Label>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={updateUnit.isPending}>
+                {updateUnit.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

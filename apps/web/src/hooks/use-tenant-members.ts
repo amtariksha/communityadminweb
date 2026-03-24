@@ -126,6 +126,52 @@ export function useAddMemberToTenant() {
   });
 }
 
+export function useUpdateTenantMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function updateMember({
+      tenantId,
+      userId,
+      ...body
+    }: {
+      tenantId: string;
+      userId: string;
+      name?: string;
+      roles?: string[];
+      unit_id?: string | null;
+    }) {
+      return api.patch(
+        `/super-admin/tenants/${tenantId}/members/${userId}`,
+        body,
+      );
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: tenantMemberKeys.all });
+    },
+  });
+}
+
+export function useRemoveTenantMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function removeMember({
+      tenantId,
+      userId,
+    }: {
+      tenantId: string;
+      userId: string;
+    }) {
+      return api.delete(`/super-admin/tenants/${tenantId}/members/${userId}`);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: tenantMemberKeys.all });
+      queryClient.invalidateQueries({ queryKey: superAdminUserKeys.lists() });
+    },
+  });
+}
+
 export function useAddMemberWithRoles() {
   const queryClient = useQueryClient();
 

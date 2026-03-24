@@ -14,6 +14,7 @@ export {
   useUnits,
   useUnit,
   useUnitStats,
+  useBlocks,
   useUnitMembers,
   useCreateUnit,
   useUpdateUnit,
@@ -199,6 +200,8 @@ export {
   tenantMemberKeys,
   useTenantMembers,
   useAddMemberToTenant,
+  useUpdateTenantMember,
+  useRemoveTenantMember,
   useAddMemberWithRoles,
 } from './use-tenant-members';
 export type { TenantMember, AddMemberResult } from './use-tenant-members';

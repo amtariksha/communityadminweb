@@ -68,10 +68,13 @@ export function setUser(user: User): void {
 
 export function logout(): void {
   if (!isBrowser()) return;
+  // Clear all auth-related storage
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(TENANT_KEY);
   localStorage.removeItem(USER_KEY);
-  window.location.href = '/login';
+  localStorage.removeItem('refresh_token');
+  // Force full page navigation to clear any cached state
+  window.location.replace('/login');
 }
 
 export function isAuthenticated(): boolean {
