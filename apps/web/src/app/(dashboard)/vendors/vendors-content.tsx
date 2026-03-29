@@ -149,7 +149,7 @@ export default function VendorsContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Vendors' }]}
         title="Vendors"
-        description="Manage your service providers and suppliers"
+        description="Manage society vendors and suppliers — contact info, bank details, TDS"
         actions={
           <Dialog open={vendorDialogOpen} onOpenChange={setVendorDialogOpen}>
             <DialogTrigger>

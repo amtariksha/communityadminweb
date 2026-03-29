@@ -486,7 +486,7 @@ export default function PurchasesContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Purchases' }]}
         title="Purchases"
-        description="Manage purchase requests and vendor bills"
+        description="Track purchase requests, vendor bills, and approvals"
       />
 
       {/* Tab bar */}

@@ -21,6 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -487,7 +488,10 @@ export default function AccountsContent(): ReactNode {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="group-parent">Parent Group</Label>
+                      <Label htmlFor="group-parent" className="flex items-center gap-1">
+                        Parent Group
+                        <HelpTooltip text="Root groups (no parent) are top-level categories like Income, Expense, Assets, Liabilities. Sub-groups nest under a parent to create a multi-level hierarchy." />
+                      </Label>
                       <Select
                         id="group-parent"
                         value={groupParentId}

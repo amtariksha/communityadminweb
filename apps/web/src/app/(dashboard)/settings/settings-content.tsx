@@ -602,7 +602,7 @@ export default function SettingsContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Settings' }]}
         title="Settings"
-        description="Manage society configuration, billing rules, and features"
+        description="Society settings — gates, amenities, roles & permissions"
       />
 
       {/* ------------------------------------------------------------------- */}

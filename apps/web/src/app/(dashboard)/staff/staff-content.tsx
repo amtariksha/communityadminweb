@@ -488,7 +488,7 @@ export default function StaffContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Staff' }]}
         title="Staff Management"
-        description="Manage staff employees, shifts, attendance, and leaves"
+        description="Manage society staff — employees, shifts, attendance, and leaves"
       />
 
       {/* Tabs */}

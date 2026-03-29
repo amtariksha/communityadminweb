@@ -265,7 +265,7 @@ export default function TicketsContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Tickets' }]}
         title="Tickets"
-        description="Manage maintenance requests and complaints"
+        description="Track and resolve maintenance requests, complaints, and service issues"
         actions={
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />

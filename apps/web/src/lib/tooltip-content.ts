@@ -60,6 +60,14 @@ export const TOOLTIP = {
     refund: 'Initiate a full refund for this payment. The amount will be returned to the payer.',
   },
 
+  // Bank
+  bank: {
+    reconciliation:
+      'Compare your bank statement entries against GL records to verify that every transaction is accounted for',
+    unreconciledItems:
+      'Transactions recorded in your books that have not yet been matched to a bank statement entry',
+  },
+
   // Settings
   settings: {
     features: 'Enable or disable optional modules for this society',

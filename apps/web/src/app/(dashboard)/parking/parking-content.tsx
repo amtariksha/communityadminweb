@@ -135,7 +135,7 @@ export default function ParkingContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Parking' }]}
         title="Parking"
-        description="Manage parking slots, vehicles, and sublets"
+        description="Manage parking slots, vehicle registration, and subletting"
       />
 
       {/* Stat cards */}

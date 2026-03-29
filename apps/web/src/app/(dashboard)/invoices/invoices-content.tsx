@@ -28,6 +28,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -320,7 +321,7 @@ export default function InvoicesContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Invoices' }]}
         title="Invoices"
-        description="Manage maintenance and other invoices"
+        description="Generate and manage member invoices — billing rules, bulk generation, posting to GL"
         actions={
           <>
             {selectedIds.size > 0 && (
@@ -409,7 +410,10 @@ export default function InvoicesContent(): ReactNode {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                   <div className="space-y-2">
-                                    <Label htmlFor="rule-charge-type">Charge Type</Label>
+                                    <Label htmlFor="rule-charge-type" className="flex items-center gap-1">
+                                      Charge Type
+                                      <HelpTooltip text="Flat = fixed amount per unit. Per Sq Ft = rate multiplied by unit area in sq ft." />
+                                    </Label>
                                     <Select
                                       id="rule-charge-type"
                                       value={ruleChargeType}

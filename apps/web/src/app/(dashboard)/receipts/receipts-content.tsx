@@ -28,6 +28,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -215,7 +216,7 @@ export default function ReceiptsContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Receipts' }]}
         title="Receipts"
-        description="Record and manage payment receipts"
+        description="Record payments received from members — cash, cheque, bank transfer, UPI"
         actions={
           <>
             <Dialog open={creditNoteDialogOpen} onOpenChange={setCreditNoteDialogOpen}>
@@ -290,7 +291,10 @@ export default function ReceiptsContent(): ReactNode {
                 <form onSubmit={handleRecordReceipt}>
                   <DialogHeader>
                     <DialogTitle>Record Receipt</DialogTitle>
-                    <DialogDescription>Record a new payment receipt from a unit owner</DialogDescription>
+                    <DialogDescription className="flex items-center gap-1">
+                      Record a new payment receipt from a unit owner
+                      <HelpTooltip text="The receipt amount is automatically allocated against the unit's oldest pending invoices to track dues clearance." />
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">

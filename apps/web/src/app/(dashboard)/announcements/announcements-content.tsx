@@ -288,7 +288,7 @@ export default function AnnouncementsContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Announcements' }]}
         title="Announcements"
-        description="Community-wide and block-specific announcements"
+        description="Create and publish announcements to residents — supports targeting by audience"
         actions={
           <Button onClick={handleOpenCreate}>
             <Plus className="mr-2 h-4 w-4" />

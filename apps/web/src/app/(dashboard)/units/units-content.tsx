@@ -263,7 +263,7 @@ export default function UnitsContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Units' }]}
         title="Units"
-        description="Manage flats, shops, and parking spaces"
+        description="Manage apartment units — add, edit, import, and assign members"
         actions={
           <>
             <Button variant="outline" onClick={() => router.push('/units/import')}>

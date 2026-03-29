@@ -39,6 +39,8 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { HelpTooltip } from '@/components/ui/help-tooltip';
+import { TOOLTIP } from '@/lib/tooltip-content';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -464,7 +466,7 @@ export default function BankContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Bank' }]}
         title="Bank & Treasury"
-        description="Manage bank accounts, transfers, reconciliation and fixed deposits"
+        description="Bank accounts, transfers, reconciliation, fixed deposits, and cheque management"
       />
 
       {/* Tab bar */}
@@ -844,7 +846,10 @@ export default function BankContent(): ReactNode {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Bank Reconciliation</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                Bank Reconciliation
+                <HelpTooltip text={TOOLTIP.bank.reconciliation} />
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap items-end gap-4">
@@ -922,7 +927,10 @@ export default function BankContent(): ReactNode {
           {reconAccountId && reconStartDate && reconEndDate && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Unreconciled Transactions</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  Unreconciled Transactions
+                  <HelpTooltip text={TOOLTIP.bank.unreconciledItems} />
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {reconQuery.isLoading ? (

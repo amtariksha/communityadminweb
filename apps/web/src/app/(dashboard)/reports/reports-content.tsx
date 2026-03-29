@@ -574,7 +574,7 @@ export default function ReportsContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Reports' }]}
         title="Reports"
-        description="Generate financial and management reports"
+        description="Financial and management reports — trial balance, balance sheet, I&E, general ledger"
       />
 
       {!selectedReport ? (

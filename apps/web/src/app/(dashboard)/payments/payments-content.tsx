@@ -178,7 +178,7 @@ export default function PaymentsContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Payments' }]}
         title="Payments"
-        description="Track online payment transactions via Razorpay"
+        description="Online payment collection via Razorpay — orders, settlements, refunds"
       />
 
       {/* Stat cards */}

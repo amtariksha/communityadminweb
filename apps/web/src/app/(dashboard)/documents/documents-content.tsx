@@ -208,7 +208,7 @@ export default function DocumentsContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Documents' }]}
         title="Documents"
-        description="Society documents and compliance records"
+        description="Document vault — store society documents with categorization and expiry tracking"
         actions={
           <>
             <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
