@@ -98,7 +98,9 @@ interface CsvImportResult {
 
 interface AddMemberInput {
   unit_id: string;
-  user_id: string;
+  user_id?: string;
+  phone?: string;
+  name?: string;
   member_type: string;
   move_in_date: string;
   is_primary_contact?: boolean;

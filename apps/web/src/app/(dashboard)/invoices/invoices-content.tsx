@@ -33,6 +33,8 @@ import { useToast } from '@/components/ui/toast';
 import {
   useInvoices,
   useInvoiceRules,
+  useCreateInvoiceRule,
+  useLedgerAccounts,
   useGenerateInvoices,
   usePostInvoices,
   useCancelInvoice,
@@ -141,6 +143,16 @@ export default function InvoicesContent(): ReactNode {
   const [selectedRuleId, setSelectedRuleId] = useState('');
   const [billingDate, setBillingDate] = useState('');
 
+  // Form state for create rule
+  const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
+  const [ruleName, setRuleName] = useState('');
+  const [ruleLedgerAccountId, setRuleLedgerAccountId] = useState('');
+  const [ruleChargeType, setRuleChargeType] = useState('flat');
+  const [ruleAmount, setRuleAmount] = useState('');
+  const [ruleFrequency, setRuleFrequency] = useState('monthly');
+  const [ruleGstApplicable, setRuleGstApplicable] = useState(false);
+  const [ruleGstRate, setRuleGstRate] = useState('');
+
   const statusFilter = activeTab === 'all' ? undefined : activeTab;
   const { data: invoicesResponse, isLoading } = useInvoices({
     status: statusFilter,
@@ -148,8 +160,11 @@ export default function InvoicesContent(): ReactNode {
     limit,
   });
   const { data: rules } = useInvoiceRules();
+  const { data: accountsResponse } = useLedgerAccounts({ limit: 500 });
+  const ledgerAccounts = accountsResponse?.data ?? [];
 
   const generateInvoices = useGenerateInvoices();
+  const createInvoiceRule = useCreateInvoiceRule();
   const postInvoices = usePostInvoices();
   const cancelInvoice = useCancelInvoice();
 
@@ -182,6 +197,56 @@ export default function InvoicesContent(): ReactNode {
     } else {
       setSelectedIds(new Set(invoices.map((inv) => inv.id)));
     }
+  }
+
+  function resetRuleForm(): void {
+    setRuleName('');
+    setRuleLedgerAccountId('');
+    setRuleChargeType('flat');
+    setRuleAmount('');
+    setRuleFrequency('monthly');
+    setRuleGstApplicable(false);
+    setRuleGstRate('');
+  }
+
+  function handleCreateRule(e: FormEvent): void {
+    e.preventDefault();
+
+    const amount = Number(ruleAmount);
+    const payload: {
+      name: string;
+      ledger_account_id: string;
+      frequency: string;
+      amount: number;
+      is_gst_applicable?: boolean;
+      gst_rate?: number;
+    } = {
+      name: ruleName,
+      ledger_account_id: ruleLedgerAccountId,
+      frequency: ruleFrequency,
+      amount,
+    };
+
+    if (ruleGstApplicable) {
+      payload.is_gst_applicable = true;
+      payload.gst_rate = Number(ruleGstRate) || 0;
+    }
+
+    createInvoiceRule.mutate(payload, {
+      onSuccess(response) {
+        setRuleDialogOpen(false);
+        resetRuleForm();
+        setSelectedRuleId(response.data.id);
+        addToast({ title: 'Billing rule created', variant: 'success' });
+      },
+      onError(error) {
+        addToast({
+          title: 'Failed to create billing rule',
+          description: error.message,
+          variant: 'destructive',
+        });
+      },
+    });
   }
 
   function handleGenerate(e: FormEvent): void {
@@ -288,19 +353,137 @@ export default function InvoicesContent(): ReactNode {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="billing-rule">Billing Rule</Label>
-                      <Select
-                        id="billing-rule"
-                        value={selectedRuleId}
-                        onChange={(e) => setSelectedRuleId(e.target.value)}
-                        required
-                      >
-                        <option value="">Select billing rule</option>
-                        {rules?.map((rule) => (
-                          <option key={rule.id} value={rule.id}>
-                            {rule.name} ({formatCurrency(rule.amount)})
-                          </option>
-                        ))}
-                      </Select>
+                      <div className="flex gap-2">
+                        <Select
+                          id="billing-rule"
+                          value={selectedRuleId}
+                          onChange={(e) => setSelectedRuleId(e.target.value)}
+                          required
+                          className="flex-1"
+                        >
+                          <option value="">Select billing rule</option>
+                          {rules?.map((rule) => (
+                            <option key={rule.id} value={rule.id}>
+                              {rule.name} ({formatCurrency(rule.amount)})
+                            </option>
+                          ))}
+                        </Select>
+                        <Dialog open={ruleDialogOpen} onOpenChange={setRuleDialogOpen}>
+                          <DialogTrigger>
+                            <Button type="button" variant="outline" size="sm" className="shrink-0">
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <form onSubmit={handleCreateRule}>
+                              <DialogHeader>
+                                <DialogTitle>Create Billing Rule</DialogTitle>
+                                <DialogDescription>Add a new billing rule for invoice generation</DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="rule-name">Name</Label>
+                                  <Input
+                                    id="rule-name"
+                                    placeholder="e.g., Maintenance Charge"
+                                    value={ruleName}
+                                    onChange={(e) => setRuleName(e.target.value)}
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="rule-ledger-account">Ledger Account</Label>
+                                  <Select
+                                    id="rule-ledger-account"
+                                    value={ruleLedgerAccountId}
+                                    onChange={(e) => setRuleLedgerAccountId(e.target.value)}
+                                    required
+                                  >
+                                    <option value="">Select account</option>
+                                    {ledgerAccounts.map((account) => (
+                                      <option key={account.id} value={account.id}>
+                                        {account.name} ({account.code})
+                                      </option>
+                                    ))}
+                                  </Select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="rule-charge-type">Charge Type</Label>
+                                    <Select
+                                      id="rule-charge-type"
+                                      value={ruleChargeType}
+                                      onChange={(e) => setRuleChargeType(e.target.value)}
+                                      required
+                                    >
+                                      <option value="flat">Flat Amount</option>
+                                      <option value="area_based">Per Sq Ft</option>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="rule-amount">
+                                      {ruleChargeType === 'area_based' ? 'Rate per sqft' : 'Amount'}
+                                    </Label>
+                                    <Input
+                                      id="rule-amount"
+                                      type="number"
+                                      placeholder="0"
+                                      value={ruleAmount}
+                                      onChange={(e) => setRuleAmount(e.target.value)}
+                                      required
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="rule-frequency">Frequency</Label>
+                                  <Select
+                                    id="rule-frequency"
+                                    value={ruleFrequency}
+                                    onChange={(e) => setRuleFrequency(e.target.value)}
+                                    required
+                                  >
+                                    <option value="monthly">Monthly</option>
+                                    <option value="quarterly">Quarterly</option>
+                                    <option value="half_yearly">Half Yearly</option>
+                                    <option value="yearly">Yearly</option>
+                                    <option value="one_time">One Time</option>
+                                  </Select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    id="rule-gst"
+                                    type="checkbox"
+                                    checked={ruleGstApplicable}
+                                    onChange={(e) => setRuleGstApplicable(e.target.checked)}
+                                  />
+                                  <Label htmlFor="rule-gst">GST Applicable</Label>
+                                </div>
+                                {ruleGstApplicable && (
+                                  <div className="space-y-2">
+                                    <Label htmlFor="rule-gst-rate">GST Rate (%)</Label>
+                                    <Input
+                                      id="rule-gst-rate"
+                                      type="number"
+                                      placeholder="18"
+                                      value={ruleGstRate}
+                                      onChange={(e) => setRuleGstRate(e.target.value)}
+                                      required
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              <DialogFooter>
+                                <DialogClose>
+                                  <Button type="button" variant="outline">Cancel</Button>
+                                </DialogClose>
+                                <Button type="submit" disabled={createInvoiceRule.isPending}>
+                                  {createInvoiceRule.isPending ? 'Creating...' : 'Create Rule'}
+                                </Button>
+                              </DialogFooter>
+                            </form>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="billing-date">Billing Date</Label>

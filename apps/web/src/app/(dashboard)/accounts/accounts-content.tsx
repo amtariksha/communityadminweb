@@ -201,6 +201,13 @@ export default function AccountsContent(): ReactNode {
   const [groupParentId, setGroupParentId] = useState('');
   const [groupType, setGroupType] = useState<AccountType>('asset');
 
+  // -- inline create group dialog (inside create account) --
+  const [inlineGroupDialogOpen, setInlineGroupDialogOpen] = useState(false);
+  const [inlineGroupName, setInlineGroupName] = useState('');
+  const [inlineGroupCode, setInlineGroupCode] = useState('');
+  const [inlineGroupParentId, setInlineGroupParentId] = useState('');
+  const [inlineGroupType, setInlineGroupType] = useState<AccountType>('asset');
+
   // -- form state for create account --
   const [accountName, setAccountName] = useState('');
   const [accountCode, setAccountCode] = useState('');
@@ -221,6 +228,41 @@ export default function AccountsContent(): ReactNode {
     setAccountGroupId('');
     setOpeningBalanceValue('0');
     setBalanceType('debit');
+  }
+
+  function resetInlineGroupForm(): void {
+    setInlineGroupName('');
+    setInlineGroupCode('');
+    setInlineGroupParentId('');
+    setInlineGroupType('asset');
+  }
+
+  function handleInlineCreateGroup(e: FormEvent): void {
+    e.preventDefault();
+
+    createGroup.mutate(
+      {
+        name: inlineGroupName,
+        code: inlineGroupCode,
+        parent_id: inlineGroupParentId || null,
+        type: inlineGroupType,
+      },
+      {
+        onSuccess(response) {
+          setInlineGroupDialogOpen(false);
+          resetInlineGroupForm();
+          setAccountGroupId(response.data.id);
+          addToast({ title: 'Account group created', variant: 'success' });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to create group',
+            description: error.message,
+            variant: 'destructive',
+          });
+        },
+      },
+    );
   }
 
   function handleCreateGroup(e: FormEvent): void {
@@ -611,19 +653,97 @@ export default function AccountsContent(): ReactNode {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="account-group">Group</Label>
-                      <Select
-                        id="account-group"
-                        value={accountGroupId}
-                        onChange={(e) => setAccountGroupId(e.target.value)}
-                        required
-                      >
-                        <option value="">Select group</option>
-                        {flatGroups.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {g.name} ({g.code})
-                          </option>
-                        ))}
-                      </Select>
+                      <div className="flex gap-2">
+                        <Select
+                          id="account-group"
+                          value={accountGroupId}
+                          onChange={(e) => setAccountGroupId(e.target.value)}
+                          required
+                          className="flex-1"
+                        >
+                          <option value="">Select group</option>
+                          {flatGroups.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.name} ({g.code})
+                            </option>
+                          ))}
+                        </Select>
+                        <Dialog open={inlineGroupDialogOpen} onOpenChange={setInlineGroupDialogOpen}>
+                          <DialogTrigger>
+                            <Button type="button" variant="outline" size="sm" className="shrink-0">
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <form onSubmit={handleInlineCreateGroup}>
+                              <DialogHeader>
+                                <DialogTitle>Create Account Group</DialogTitle>
+                                <DialogDescription>Quickly add a new group for this account</DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="inline-group-name">Group Name</Label>
+                                  <Input
+                                    id="inline-group-name"
+                                    placeholder="e.g., Fixed Assets"
+                                    value={inlineGroupName}
+                                    onChange={(e) => setInlineGroupName(e.target.value)}
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="inline-group-code">Group Code</Label>
+                                  <Input
+                                    id="inline-group-code"
+                                    placeholder="e.g., 1300"
+                                    value={inlineGroupCode}
+                                    onChange={(e) => setInlineGroupCode(e.target.value)}
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="inline-group-type">Type</Label>
+                                  <Select
+                                    id="inline-group-type"
+                                    value={inlineGroupType}
+                                    onChange={(e) => setInlineGroupType(e.target.value as AccountType)}
+                                    required
+                                  >
+                                    <option value="asset">Asset</option>
+                                    <option value="liability">Liability</option>
+                                    <option value="income">Income</option>
+                                    <option value="expense">Expense</option>
+                                    <option value="equity">Equity</option>
+                                  </Select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="inline-group-parent">Parent Group</Label>
+                                  <Select
+                                    id="inline-group-parent"
+                                    value={inlineGroupParentId}
+                                    onChange={(e) => setInlineGroupParentId(e.target.value)}
+                                  >
+                                    <option value="">No parent (root group)</option>
+                                    {flatGroups.map((g) => (
+                                      <option key={g.id} value={g.id}>
+                                        {g.name} ({g.code})
+                                      </option>
+                                    ))}
+                                  </Select>
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <DialogClose>
+                                  <Button type="button" variant="outline">Cancel</Button>
+                                </DialogClose>
+                                <Button type="submit" disabled={createGroup.isPending}>
+                                  {createGroup.isPending ? 'Creating...' : 'Create Group'}
+                                </Button>
+                              </DialogFooter>
+                            </form>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="opening-balance">Opening Balance</Label>

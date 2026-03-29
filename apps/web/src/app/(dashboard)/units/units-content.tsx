@@ -128,7 +128,8 @@ export default function UnitsContent(): ReactNode {
   const [editIsActive, setEditIsActive] = useState(true);
 
   // Add member form
-  const [memberUserId, setMemberUserId] = useState('');
+  const [memberPhone, setMemberPhone] = useState('');
+  const [memberName, setMemberName] = useState('');
   const [memberType, setMemberType] = useState('owner');
   const [memberMoveIn, setMemberMoveIn] = useState('');
 
@@ -195,14 +196,16 @@ export default function UnitsContent(): ReactNode {
     addMember.mutate(
       {
         unit_id: detailUnitId,
-        user_id: memberUserId,
+        phone: memberPhone,
+        name: memberName,
         member_type: memberType,
         move_in_date: memberMoveIn,
       },
       {
         onSuccess() {
           setMemberDialogOpen(false);
-          setMemberUserId('');
+          setMemberPhone('');
+          setMemberName('');
           setMemberType('owner');
           setMemberMoveIn('');
           addToast({ title: 'Member added successfully', variant: 'success' });
@@ -556,13 +559,25 @@ export default function UnitsContent(): ReactNode {
                       </DialogHeader>
                       <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                          <Label htmlFor="member-user-id">User ID</Label>
+                          <Label htmlFor="member-phone">Phone Number</Label>
                           <Input
-                            id="member-user-id"
-                            placeholder="User ID"
+                            id="member-phone"
+                            placeholder="+91 9876543210"
                             required
-                            value={memberUserId}
-                            onChange={(e) => setMemberUserId(e.target.value)}
+                            value={memberPhone}
+                            onChange={(e) => setMemberPhone(e.target.value)}
+                            maxLength={10}
+                          />
+                          <p className="text-xs text-muted-foreground">10-digit mobile number (without +91)</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="member-name">Name</Label>
+                          <Input
+                            id="member-name"
+                            placeholder="Full name"
+                            required
+                            value={memberName}
+                            onChange={(e) => setMemberName(e.target.value)}
                           />
                         </div>
                         <div className="space-y-2">
