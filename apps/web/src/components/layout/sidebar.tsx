@@ -26,6 +26,7 @@ import {
   Gauge,
   ClipboardCheck,
   Car,
+  CalendarCheck,
   Vote,
   Bell,
 } from 'lucide-react';
@@ -79,6 +80,7 @@ const navGroups: NavGroup[] = [
       { label: 'Gate', href: '/gate', icon: <ShieldCheck className="h-4 w-4" /> },
       { label: 'Utilities', href: '/utilities', icon: <Gauge className="h-4 w-4" /> },
       { label: 'Parking', href: '/parking', icon: <Car className="h-4 w-4" /> },
+      { label: 'Amenities', href: '/amenities', icon: <CalendarCheck className="h-4 w-4" /> },
       { label: 'Tickets', href: '/tickets', icon: <TicketCheck className="h-4 w-4" /> },
       { label: 'Announcements', href: '/announcements', icon: <Megaphone className="h-4 w-4" /> },
       { label: 'Voting', href: '/voting', icon: <Vote className="h-4 w-4" /> },
