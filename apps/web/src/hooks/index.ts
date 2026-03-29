@@ -480,3 +480,12 @@ export type {
   AttendanceFilters,
   LeaveFilters,
 } from './use-staff';
+
+// Platform Config (Super Admin)
+export {
+  platformConfigKeys,
+  usePlatformConfig,
+  usePlatformConfigByKey,
+  useUpdatePlatformConfig,
+} from './use-platform-config';
+export type { PlatformConfigItem } from './use-platform-config';

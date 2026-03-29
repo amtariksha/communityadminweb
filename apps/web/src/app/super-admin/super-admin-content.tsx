@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Save,
   ExternalLink,
+  Settings,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,7 @@ import { setCurrentTenant } from '@/lib/auth';
 import UserManagement from './user-management';
 import AddMemberDialog from './add-member-dialog';
 import TenantMembers from './tenant-members';
+import PlatformSettings from './platform-settings';
 
 // API response may include computed fields beyond the base Tenant type
 interface TenantRow {
@@ -136,7 +138,7 @@ export default function SuperAdminContent(): ReactNode {
   const router = useRouter();
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'tenants' | 'users'>('tenants');
+  const [activeTab, setActiveTab] = useState<'tenants' | 'users' | 'platform-settings'>('tenants');
 
   // Add member dialog state
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
@@ -324,6 +326,18 @@ export default function SuperAdminContent(): ReactNode {
           <Users className="mr-2 h-4 w-4 inline-block" />
           Users
         </button>
+        <button
+          className={cn(
+            'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+            activeTab === 'platform-settings'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground',
+          )}
+          onClick={() => setActiveTab('platform-settings')}
+        >
+          <Settings className="mr-2 h-4 w-4 inline-block" />
+          Platform Settings
+        </button>
       </div>
 
       {/* ------------------------------------------------------------------- */}
@@ -395,6 +409,11 @@ export default function SuperAdminContent(): ReactNode {
       {/* Users Tab                                                            */}
       {/* ------------------------------------------------------------------- */}
       {activeTab === 'users' && <UserManagement />}
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Platform Settings                                                    */}
+      {/* ------------------------------------------------------------------- */}
+      {activeTab === 'platform-settings' && <PlatformSettings />}
 
       {/* ------------------------------------------------------------------- */}
       {/* Tenant List                                                          */}
