@@ -184,7 +184,7 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </div>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuContent align="start" side="top" sideOffset={8} className="w-56">
               <DropdownMenuItem onClick={() => router.push('/settings')}>
                 <UserCircle className="mr-2 h-4 w-4" />
                 Profile
