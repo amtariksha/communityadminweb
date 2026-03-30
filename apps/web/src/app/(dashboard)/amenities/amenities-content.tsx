@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
-import { Plus, Pencil, X } from 'lucide-react';
+import { useState, useMemo, type ReactNode } from 'react';
+import { Plus, Pencil, X, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -582,28 +582,108 @@ function AmenitiesTab({ createOpen, setCreateOpen }: AmenitiesTabProps): ReactNo
 }
 
 // ---------------------------------------------------------------------------
-// Bookings Tab
+// Bookings Tab — Calendar View
 // ---------------------------------------------------------------------------
+
+/** Consistent color per amenity type for calendar dots */
+const AMENITY_TYPE_COLORS: Record<string, string> = {
+  clubhouse: 'bg-blue-500',
+  party_hall: 'bg-purple-500',
+  guest_room: 'bg-amber-500',
+  gym: 'bg-green-500',
+  pool: 'bg-cyan-500',
+  tennis_court: 'bg-lime-500',
+  community_hall: 'bg-indigo-500',
+  terrace: 'bg-orange-500',
+  ev_charger: 'bg-yellow-500',
+};
+
+function amenityColor(type: string): string {
+  return AMENITY_TYPE_COLORS[type] ?? 'bg-gray-400';
+}
+
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** Build the 6-row calendar grid for a given month (0-indexed) */
+function buildCalendarDays(year: number, month: number): Array<{ date: Date; isCurrentMonth: boolean }> {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDayOfWeek = firstDay.getDay(); // 0=Sun
+  const totalDays = lastDay.getDate();
+
+  const days: Array<{ date: Date; isCurrentMonth: boolean }> = [];
+
+  // Fill leading days from previous month
+  for (let idx = startDayOfWeek - 1; idx >= 0; idx--) {
+    const prevDate = new Date(year, month, -idx);
+    days.push({ date: prevDate, isCurrentMonth: false });
+  }
+
+  // Current month days
+  for (let day = 1; day <= totalDays; day++) {
+    days.push({ date: new Date(year, month, day), isCurrentMonth: true });
+  }
+
+  // Fill trailing days to complete last row (always fill to 42 = 6 rows)
+  const remaining = 42 - days.length;
+  for (let idx = 1; idx <= remaining; idx++) {
+    days.push({ date: new Date(year, month + 1, idx), isCurrentMonth: false });
+  }
+
+  return days;
+}
+
+function toDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
 
 function BookingsTab(): ReactNode {
   const { addToast } = useToast();
+  const today = useMemo(() => new Date(), []);
+
+  // Calendar month navigation
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   // Filters
   const [amenityFilter, setAmenityFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
 
   // Cancel dialog
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<AmenityBooking | null>(null);
   const [cancelReason, setCancelReason] = useState('');
 
+  // Compute month date range for data fetching
+  const monthStart = useMemo(() => {
+    const d = new Date(viewYear, viewMonth, 1);
+    return toDateKey(d);
+  }, [viewYear, viewMonth]);
+
+  const monthEnd = useMemo(() => {
+    const d = new Date(viewYear, viewMonth + 1, 0);
+    return toDateKey(d);
+  }, [viewYear, viewMonth]);
+
   const filters: AmenityBookingFilters = {
     amenity_id: amenityFilter || undefined,
     status: statusFilter || undefined,
-    date_from: dateFrom || undefined,
-    date_to: dateTo || undefined,
+    date_from: monthStart,
+    date_to: monthEnd,
+    limit: 500,
   };
 
   const amenitiesQuery = useAmenities();
@@ -613,6 +693,71 @@ function BookingsTab(): ReactNode {
   const amenities = amenitiesQuery.data?.data ?? [];
   const bookings = bookingsQuery.data?.data ?? [];
 
+  // Build amenity lookup by id
+  const amenityById = useMemo(() => {
+    const map = new Map<string, Amenity>();
+    for (const amenity of amenities) {
+      map.set(amenity.id, amenity);
+    }
+    return map;
+  }, [amenities]);
+
+  // Group bookings by date key
+  const bookingsByDate = useMemo(() => {
+    const map = new Map<string, AmenityBooking[]>();
+    for (const booking of bookings) {
+      const key = booking.date.slice(0, 10); // yyyy-mm-dd
+      const existing = map.get(key);
+      if (existing) {
+        existing.push(booking);
+      } else {
+        map.set(key, [booking]);
+      }
+    }
+    return map;
+  }, [bookings]);
+
+  // Calendar grid
+  const calendarDays = useMemo(
+    () => buildCalendarDays(viewYear, viewMonth),
+    [viewYear, viewMonth],
+  );
+
+  // Bookings for the selected day
+  const selectedDayBookings = useMemo(() => {
+    if (!selectedDate) return [];
+    const key = toDateKey(selectedDate);
+    return bookingsByDate.get(key) ?? [];
+  }, [selectedDate, bookingsByDate]);
+
+  // Navigation
+  function goToPrevMonth(): void {
+    if (viewMonth === 0) {
+      setViewYear((prev) => prev - 1);
+      setViewMonth(11);
+    } else {
+      setViewMonth((prev) => prev - 1);
+    }
+    setSelectedDate(null);
+  }
+
+  function goToNextMonth(): void {
+    if (viewMonth === 11) {
+      setViewYear((prev) => prev + 1);
+      setViewMonth(0);
+    } else {
+      setViewMonth((prev) => prev + 1);
+    }
+    setSelectedDate(null);
+  }
+
+  function goToToday(): void {
+    setViewYear(today.getFullYear());
+    setViewMonth(today.getMonth());
+    setSelectedDate(today);
+  }
+
+  // Cancel
   function openCancel(booking: AmenityBooking): void {
     setCancelTarget(booking);
     setCancelReason('');
@@ -642,27 +787,20 @@ function BookingsTab(): ReactNode {
     );
   }
 
-  function handleClearFilters(): void {
-    setAmenityFilter('');
-    setStatusFilter('');
-    setDateFrom('');
-    setDateTo('');
-  }
-
   return (
     <>
-      {/* Filters */}
+      {/* Filter bar */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-2">
-              <Label htmlFor="booking-amenity">Amenity</Label>
+              <Label htmlFor="cal-amenity">Amenity</Label>
               <Select
-                id="booking-amenity"
+                id="cal-amenity"
                 value={amenityFilter}
                 onChange={(e) => setAmenityFilter(e.target.value)}
               >
-                <option value="">All</option>
+                <option value="">All Amenities</option>
                 {amenities.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
@@ -671,9 +809,9 @@ function BookingsTab(): ReactNode {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="booking-status">Status</Label>
+              <Label htmlFor="cal-status">Status</Label>
               <Select
-                id="booking-status"
+                id="cal-status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
@@ -685,108 +823,190 @@ function BookingsTab(): ReactNode {
                 ))}
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="booking-from">From</Label>
-              <Input
-                id="booking-from"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="booking-to">To</Label>
-              <Input
-                id="booking-to"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
-            </div>
-            <Button variant="outline" onClick={handleClearFilters}>
-              Clear
-            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Bookings table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Bookings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Amenity</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Time Slot</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead className="w-20">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {bookingsQuery.isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: 7 }).map((__, j) => (
-                      <TableCell key={j}>
-                        <Skeleton className="h-4 w-20" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : bookings.length > 0 ? (
-                bookings.map((booking) => (
-                  <TableRow key={booking.id}>
-                    <TableCell className="font-medium">
-                      {booking.amenity_name ?? '-'}
-                    </TableCell>
-                    <TableCell>{booking.unit_number ?? '-'}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(booking.date)}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {booking.start_time} - {booking.end_time}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={bookingStatusVariant(booking.status)}>
-                        {formatBookingStatus(booking.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatCurrency(booking.amount)}</TableCell>
-                    <TableCell>
+      {/* Calendar + Detail panel layout */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Calendar grid — spans 2 cols on large screens */}
+        <Card className="lg:col-span-2">
+          <CardContent className="pt-6">
+            {/* Month header */}
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={goToPrevMonth}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <h3 className="text-lg font-semibold">
+                  {MONTH_NAMES[viewMonth]} {viewYear}
+                </h3>
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={goToNextMonth}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              <Button variant="outline" size="sm" onClick={goToToday}>
+                Today
+              </Button>
+            </div>
+
+            {/* Weekday headers */}
+            <div className="grid grid-cols-7 gap-px">
+              {WEEKDAY_LABELS.map((day) => (
+                <div key={day} className="py-2 text-center text-xs font-medium text-muted-foreground">
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            {/* Day cells */}
+            {bookingsQuery.isLoading ? (
+              <div className="grid grid-cols-7 gap-px">
+                {Array.from({ length: 42 }).map((_, idx) => (
+                  <div key={idx} className="min-h-[80px] rounded border border-border p-1">
+                    <Skeleton className="mb-1 h-4 w-6" />
+                    <Skeleton className="h-3 w-12" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-7 gap-px">
+                {calendarDays.map((cell, idx) => {
+                  const dateKey = toDateKey(cell.date);
+                  const dayBookings = bookingsByDate.get(dateKey) ?? [];
+                  const isToday = isSameDay(cell.date, today);
+                  const isSelected = selectedDate !== null && isSameDay(cell.date, selectedDate);
+                  const maxVisible = 3;
+                  const overflow = dayBookings.length - maxVisible;
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedDate(cell.date)}
+                      className={`min-h-[80px] rounded border p-1.5 text-left transition-colors ${
+                        cell.isCurrentMonth
+                          ? 'bg-card hover:bg-accent/50'
+                          : 'bg-muted/30 text-muted-foreground/50'
+                      } ${isSelected ? 'ring-2 ring-primary border-primary' : 'border-border'} ${
+                        isToday ? 'border-primary/50' : ''
+                      }`}
+                    >
+                      <span
+                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${
+                          isToday ? 'bg-primary text-primary-foreground' : ''
+                        }`}
+                      >
+                        {cell.date.getDate()}
+                      </span>
+                      {dayBookings.length > 0 && (
+                        <div className="mt-1 flex flex-col gap-0.5">
+                          {dayBookings.slice(0, maxVisible).map((booking) => {
+                            const amenity = amenityById.get(booking.amenity_id);
+                            const dotColor = amenity ? amenityColor(amenity.type) : 'bg-gray-400';
+                            return (
+                              <div
+                                key={booking.id}
+                                className="flex items-center gap-1 truncate"
+                                title={`${booking.amenity_name ?? 'Booking'} ${booking.start_time}-${booking.end_time}`}
+                              >
+                                <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
+                                <span className="truncate text-[10px] leading-tight">
+                                  {booking.amenity_name ?? 'Booking'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                          {overflow > 0 && (
+                            <span className="text-[10px] text-muted-foreground">
+                              +{overflow} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Day detail side panel */}
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Calendar className="h-4 w-4" />
+              {selectedDate
+                ? selectedDate.toLocaleDateString('en-IN', {
+                    weekday: 'long',
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })
+                : 'Select a Day'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!selectedDate ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Click on a day in the calendar to see bookings.
+              </p>
+            ) : selectedDayBookings.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No bookings for this day.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {selectedDayBookings.map((booking) => {
+                  const amenity = amenityById.get(booking.amenity_id);
+                  return (
+                    <div
+                      key={booking.id}
+                      className="rounded-lg border border-border bg-card p-3 space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {amenity && (
+                            <span className="text-base" title={formatAmenityType(amenity.type)}>
+                              {amenityTypeIcon(amenity.type)}
+                            </span>
+                          )}
+                          <span className="font-medium text-sm">
+                            {booking.amenity_name ?? 'Unknown Amenity'}
+                          </span>
+                        </div>
+                        <Badge variant={bookingStatusVariant(booking.status)}>
+                          {formatBookingStatus(booking.status)}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        <div>
+                          {booking.start_time} &mdash; {booking.end_time}
+                        </div>
+                        {booking.unit_number && <div>Unit {booking.unit_number}</div>}
+                        {booking.notes && <div>{booking.notes}</div>}
+                        {booking.amount > 0 && <div>{formatCurrency(booking.amount)}</div>}
+                      </div>
                       {booking.status === 'confirmed' && (
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="h-8 w-8 p-0"
+                          className="h-7 text-xs text-red-600 hover:text-red-700"
                           onClick={() => openCancel(booking)}
-                          title="Cancel booking"
                         >
-                          <X className="h-4 w-4 text-red-500" />
+                          <X className="mr-1 h-3 w-3" />
+                          Cancel
                         </Button>
                       )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-8 text-center text-muted-foreground"
-                  >
-                    No bookings found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Cancel booking confirmation dialog */}
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
