@@ -56,36 +56,34 @@ interface CreatePurchaseRequestInput {
 }
 
 interface ApprovePRInput {
-  remarks?: string;
+  comments?: string;
+  level: number;
 }
 
 interface RejectPRInput {
-  remarks: string;
+  comments: string;
+  level: number;
 }
 
 interface CreateBillInput {
   vendor_id: string;
-  purchase_request_id?: string | null;
   bill_date: string;
   due_date: string;
   total_amount: number;
+  expense_account_id: string;
+  payable_account_id: string;
+  bill_number?: string;
+  tds_amount?: number;
   narration?: string;
-  lines: Array<{
-    ledger_account_id: string;
-    description: string;
-    amount: number;
-    gst_rate?: number;
-  }>;
 }
 
 interface RecordBillPaymentInput {
   bill_id: string;
   payment_date: string;
   amount: number;
-  mode: string;
+  payment_mode: string;
   reference_number?: string | null;
-  bank_account_id?: string | null;
-  narration?: string;
+  bank_account_id: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -218,12 +216,30 @@ export function useRejectPR() {
   });
 }
 
+interface ConvertPRToBillInput {
+  vendor_id: string;
+  bill_number?: string;
+  bill_date: string;
+  due_date: string;
+  total_amount: number;
+  expense_account_id: string;
+  payable_account_id: string;
+  tds_amount?: number;
+  narration?: string;
+}
+
 export function useConvertPRToBill() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: function convertPRToBill(id: string) {
-      return api.post<{ data: VendorBill }>(`/purchases/requests/${id}/convert`);
+    mutationFn: function convertPRToBill(params: {
+      id: string;
+      data: ConvertPRToBillInput;
+    }) {
+      return api.post<{ data: VendorBill }>(
+        `/purchases/requests/${params.id}/convert`,
+        params.data,
+      );
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.requests() });

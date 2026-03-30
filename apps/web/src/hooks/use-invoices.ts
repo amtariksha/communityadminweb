@@ -55,6 +55,11 @@ interface CreateInvoiceRuleInput {
   ledger_account_id: string;
   frequency: string;
   amount: number;
+  charge_type?: string;
+  flat_amount?: number;
+  rate_per_sqft?: number;
+  fixed_addon?: number;
+  gst_rule?: string;
   is_gst_applicable?: boolean;
   gst_rate?: number;
 }
@@ -218,7 +223,7 @@ export function useGenerateInvoices() {
 
   return useMutation({
     mutationFn: function generateInvoices(input: GenerateInvoicesInput) {
-      return api.post<{ data: Invoice[]; message: string }>('/invoices/generate', input);
+      return api.post<{ data: { count: number } }>('/invoices/generate', input);
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
@@ -247,8 +252,10 @@ export function useCancelInvoice() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: function cancelInvoice(id: string) {
-      return api.post<{ message: string }>(`/invoices/${id}/cancel`);
+    mutationFn: function cancelInvoice(params: { id: string; reason: string }) {
+      return api.post<{ data: unknown }>(`/invoices/${params.id}/cancel`, {
+        reason: params.reason,
+      });
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.all });

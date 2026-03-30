@@ -77,8 +77,8 @@ interface UpdateBankAccountInput extends Partial<CreateBankAccountInput> {
 }
 
 interface CreateTransferInput {
-  from_bank_account_id: string;
-  to_bank_account_id: string;
+  from_account_id: string;
+  to_account_id: string;
   amount: number;
   transfer_date: string;
   reference_number?: string | null;
@@ -86,18 +86,19 @@ interface CreateTransferInput {
 }
 
 interface ReconcileTransactionInput {
-  statement_date: string;
-  statement_balance: number;
+  bank_date: string;
 }
 
 interface CreateFDInput {
   bank_account_id: string;
+  fd_account_id: string;
   fd_number: string;
   principal_amount: number;
   interest_rate: number;
   start_date: string;
   maturity_date: string;
   maturity_amount: number;
+  interest_account_id?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -364,9 +365,8 @@ export function useRenewFD() {
     mutationFn: function renewFD(params: {
       id: string;
       data?: {
-        interest_rate?: number;
-        maturity_date?: string;
-        maturity_amount?: number;
+        new_rate?: number;
+        new_maturity_date?: string;
       };
     }) {
       return api.post<{ data: FixedDeposit }>(

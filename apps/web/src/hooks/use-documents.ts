@@ -39,9 +39,14 @@ interface UploadDocumentInput {
   title: string;
   description?: string | null;
   file_url: string;
-  file_type: string;
+  file_name: string;
+  mime_type: string;
   file_size: number;
   access_level?: string;
+  entity_type?: string;
+  entity_id?: string;
+  expiry_date?: string;
+  tags?: string[];
 }
 
 interface UpdateDocumentInput {

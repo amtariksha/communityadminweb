@@ -185,8 +185,8 @@ interface AssignStaffInput {
   staff_id: string;
   gate_id: string;
   shift_id: string;
-  from_date: string;
-  until_date?: string;
+  effective_from: string;
+  effective_until?: string;
 }
 
 interface ClockInInput {
@@ -199,8 +199,8 @@ interface ClockInInput {
 interface ApplyLeaveInput {
   staff_id: string;
   leave_type: string;
-  from_date: string;
-  to_date: string;
+  start_date: string;
+  end_date: string;
   reason?: string;
 }
 

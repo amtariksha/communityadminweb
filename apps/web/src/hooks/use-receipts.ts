@@ -101,7 +101,7 @@ function filtersToParams(filters?: ReceiptFilters): Record<string, string> | und
 
   const params: Record<string, string> = {};
   if (filters.unit_id) params.unit_id = filters.unit_id;
-  if (filters.payment_mode) params.payment_mode = filters.payment_mode;
+  if (filters.payment_mode) params.mode = filters.payment_mode;
   if (filters.start_date) params.start_date = filters.start_date;
   if (filters.end_date) params.end_date = filters.end_date;
   if (filters.page !== undefined) params.page = String(filters.page);
