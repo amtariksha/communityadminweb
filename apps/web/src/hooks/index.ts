@@ -524,3 +524,26 @@ export type {
   TallyImportResult,
   TallyImportHistory,
 } from './use-tally-import';
+
+// Unit Members (Detail, Directory, Occupancy)
+export {
+  unitMemberKeys,
+  useUnitDetail,
+  useMemberDirectory,
+  useOccupancyReport,
+  useUpdateMemberDetail,
+  useTransferOwnership,
+  useDisconnectTenant,
+} from './use-unit-members';
+export type {
+  UnitDetailMember,
+  UnitDetailResponse,
+  DirectoryMember,
+  OccupancyReport,
+  OccupancyBlockBreakdown,
+  OccupancyTimelineEntry,
+  DirectoryFilters,
+  UpdateMemberInput,
+  TransferOwnershipInput,
+  DisconnectTenantInput,
+} from './use-unit-members';

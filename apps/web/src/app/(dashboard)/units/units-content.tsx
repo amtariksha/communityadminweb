@@ -2,7 +2,22 @@
 
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Home, Upload, FileSpreadsheet, Search, ChevronLeft, ChevronRight, UserPlus, Pencil } from 'lucide-react';
+import {
+  Plus,
+  Home,
+  FileSpreadsheet,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  UserPlus,
+  Pencil,
+  ArrowRightLeft,
+  UserMinus,
+  Users,
+  Clock,
+  Phone,
+  Mail,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-// Textarea removed — CSV import is now on /units/import page
+import { Separator } from '@/components/ui/separator';
 import {
   Table,
   TableBody,
@@ -35,12 +50,17 @@ import {
   useUnits,
   useUnitStats,
   useBlocks,
-  useUnitMembers,
   useCreateUnit,
   useUpdateUnit,
   useAddMember,
+  useRemoveMember,
+  useUnitDetail,
+  useUpdateMemberDetail,
+  useTransferOwnership,
+  useDisconnectTenant,
 } from '@/hooks';
-import { formatDate } from '@/lib/utils';
+import type { UnitDetailMember } from '@/hooks';
+import { cn, formatDate } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -58,6 +78,23 @@ function getUnitTypeLabel(type: string): string {
       return 'Other';
     default:
       return type;
+  }
+}
+
+function getMemberTypeBadge(type: string): ReactNode {
+  switch (type) {
+    case 'owner':
+      return <Badge variant="default">Owner</Badge>;
+    case 'tenant':
+      return <Badge variant="warning">Tenant</Badge>;
+    case 'owner_family':
+      return <Badge variant="outline">Owner Family</Badge>;
+    case 'tenant_family':
+      return <Badge variant="outline">Tenant Family</Badge>;
+    case 'family_member':
+      return <Badge variant="outline">Family</Badge>;
+    default:
+      return <Badge variant="secondary">{type}</Badge>;
   }
 }
 
@@ -99,6 +136,70 @@ function TableSkeleton(): ReactNode {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Member Card Component
+// ---------------------------------------------------------------------------
+
+function MemberCard({
+  member,
+  unitId,
+  onEdit,
+  onRemove,
+  isRemoving,
+}: {
+  member: UnitDetailMember;
+  unitId: string;
+  onEdit: (member: UnitDetailMember) => void;
+  onRemove: (memberId: string) => void;
+  isRemoving: boolean;
+}): ReactNode {
+  return (
+    <div className="flex items-center justify-between rounded-md border p-3">
+      <div className="space-y-1">
+        <p className="text-sm font-medium">{member.name ?? 'Unknown'}</p>
+        {member.phone && (
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Phone className="h-3 w-3" />
+            {member.phone}
+          </p>
+        )}
+        {member.email && (
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Mail className="h-3 w-3" />
+            {member.email}
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Since {formatDate(member.move_in_date)}
+        </p>
+      </div>
+      <div className="flex gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={() => onEdit(member)}
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+          disabled={isRemoving}
+          onClick={() => onRemove(member.id)}
+        >
+          <UserMinus className="h-3 w-3" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 export default function UnitsContent(): ReactNode {
   const router = useRouter();
   const { addToast } = useToast();
@@ -107,38 +208,53 @@ export default function UnitsContent(): ReactNode {
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Dialog state
+  // Create unit dialog state
   const [unitDialogOpen, setUnitDialogOpen] = useState(false);
-  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
-  const [detailUnitId, setDetailUnitId] = useState('');
-
-  // Create unit form
   const [formUnitNumber, setFormUnitNumber] = useState('');
   const [formBlock, setFormBlock] = useState('');
   const [formFloor, setFormFloor] = useState('');
   const [formArea, setFormArea] = useState('');
   const [formUnitType, setFormUnitType] = useState('flat');
 
-  // Edit unit state
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editUnitId, setEditUnitId] = useState('');
+  // Unit detail dialog state
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailUnitId, setDetailUnitId] = useState('');
+  const [activeTab, setActiveTab] = useState<'details' | 'members' | 'history'>('members');
+
+  // Edit unit form (Details tab)
   const [editUnitNumber, setEditUnitNumber] = useState('');
   const [editBlock, setEditBlock] = useState('');
   const [editFloor, setEditFloor] = useState('');
   const [editArea, setEditArea] = useState('');
   const [editUnitType, setEditUnitType] = useState('flat');
   const [editIsActive, setEditIsActive] = useState(true);
-  const [editOwnerName, setEditOwnerName] = useState<string | null>(null);
-  const [editOwnerPhone, setEditOwnerPhone] = useState<string | null>(null);
-  const [editTenantName, setEditTenantName] = useState<string | null>(null);
-  const [editTenantPhone, setEditTenantPhone] = useState<string | null>(null);
 
-  // Add member form
-  const [memberPhone, setMemberPhone] = useState('');
-  const [memberName, setMemberName] = useState('');
-  const [memberType, setMemberType] = useState('owner');
-  const [memberMoveIn, setMemberMoveIn] = useState('');
+  // Edit member dialog state
+  const [editMemberOpen, setEditMemberOpen] = useState(false);
+  const [editMemberId, setEditMemberId] = useState('');
+  const [editMemberName, setEditMemberName] = useState('');
+  const [editMemberPhone, setEditMemberPhone] = useState('');
+  const [editMemberEmail, setEditMemberEmail] = useState('');
 
+  // Transfer ownership dialog
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferName, setTransferName] = useState('');
+  const [transferPhone, setTransferPhone] = useState('');
+  const [transferEmail, setTransferEmail] = useState('');
+  const [transferMoveIn, setTransferMoveIn] = useState('');
+
+  // Disconnect tenant dialog
+  const [disconnectOpen, setDisconnectOpen] = useState(false);
+
+  // Add member dialog (family / tenant)
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [addMemberName, setAddMemberName] = useState('');
+  const [addMemberPhone, setAddMemberPhone] = useState('');
+  const [addMemberType, setAddMemberType] = useState('owner_family');
+  const [addMemberParentId, setAddMemberParentId] = useState('');
+  const [addMemberMoveIn, setAddMemberMoveIn] = useState('');
+
+  // Queries
   const blocksQuery = useBlocks();
   const blocks = blocksQuery.data ?? [];
 
@@ -149,17 +265,36 @@ export default function UnitsContent(): ReactNode {
     limit: ITEMS_PER_PAGE,
   });
   const statsQuery = useUnitStats();
-  const membersQuery = useUnitMembers(detailUnitId);
+  const unitDetailQuery = useUnitDetail(detailUnitId);
+
+  // Mutations
   const createUnit = useCreateUnit();
   const updateUnit = useUpdateUnit();
   const addMember = useAddMember();
+  const removeMember = useRemoveMember();
+  const updateMemberDetail = useUpdateMemberDetail();
+  const transferOwnership = useTransferOwnership();
+  const disconnectTenant = useDisconnectTenant();
 
   const units = unitsQuery.data?.data ?? [];
   const totalUnits = unitsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalUnits / ITEMS_PER_PAGE));
-
   const stats = statsQuery.data;
-  const members = membersQuery.data ?? [];
+  const detail = unitDetailQuery.data;
+
+  // Derived member groups
+  const owner = detail?.current_members.find((m) => m.member_type === 'owner') ?? null;
+  const ownerFamily = detail?.current_members.filter(
+    (m) => m.member_type === 'owner_family' || (m.member_type === 'family_member' && m.parent_member_id === owner?.id),
+  ) ?? [];
+  const tenant = detail?.current_members.find((m) => m.member_type === 'tenant') ?? null;
+  const tenantFamily = detail?.current_members.filter(
+    (m) => m.member_type === 'tenant_family' || (m.member_type === 'family_member' && m.parent_member_id === tenant?.id),
+  ) ?? [];
+
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
 
   function handleSearch(): void {
     setSearchQuery(searchInput);
@@ -197,56 +332,31 @@ export default function UnitsContent(): ReactNode {
     );
   }
 
-  function handleAddMember(e: FormEvent): void {
-    e.preventDefault();
-    addMember.mutate(
-      {
-        unit_id: detailUnitId,
-        phone: memberPhone,
-        name: memberName,
-        member_type: memberType,
-        move_in_date: memberMoveIn,
-      },
-      {
-        onSuccess() {
-          setMemberDialogOpen(false);
-          setMemberPhone('');
-          setMemberName('');
-          setMemberType('owner');
-          setMemberMoveIn('');
-          addToast({ title: 'Member added successfully', variant: 'success' });
-        },
-        onError() {
-          addToast({ title: 'Failed to add member', variant: 'destructive' });
-        },
-      },
-    );
-  }
-
-  function handleRowClick(unitId: string): void {
-    setDetailUnitId(unitId);
-  }
-
-  function openEditDialog(unit: { id: string; unit_number: string; block?: string | null; floor: number; area_sqft: number; unit_type: string; is_active: boolean; owner_name?: string | null; owner_phone?: string | null; tenant_name?: string | null; tenant_phone?: string | null }): void {
-    setEditUnitId(unit.id);
+  function openDetailDialog(unit: {
+    id: string;
+    unit_number: string;
+    block?: string | null;
+    floor: number;
+    area_sqft: number;
+    unit_type: string;
+    is_active: boolean;
+  }): void {
+    setDetailUnitId(unit.id);
     setEditUnitNumber(unit.unit_number);
     setEditBlock(unit.block ?? '');
     setEditFloor(String(unit.floor));
     setEditArea(String(unit.area_sqft));
     setEditUnitType(unit.unit_type);
     setEditIsActive(unit.is_active);
-    setEditOwnerName(unit.owner_name ?? null);
-    setEditOwnerPhone(unit.owner_phone ?? null);
-    setEditTenantName(unit.tenant_name ?? null);
-    setEditTenantPhone(unit.tenant_phone ?? null);
-    setEditDialogOpen(true);
+    setActiveTab('members');
+    setDetailDialogOpen(true);
   }
 
   function handleEditUnit(e: FormEvent): void {
     e.preventDefault();
     updateUnit.mutate(
       {
-        id: editUnitId,
+        id: detailUnitId,
         data: {
           unit_number: editUnitNumber,
           block: editBlock || null,
@@ -258,7 +368,6 @@ export default function UnitsContent(): ReactNode {
       },
       {
         onSuccess() {
-          setEditDialogOpen(false);
           addToast({ title: 'Unit updated successfully', variant: 'success' });
         },
         onError() {
@@ -268,6 +377,136 @@ export default function UnitsContent(): ReactNode {
     );
   }
 
+  function openEditMember(member: UnitDetailMember): void {
+    setEditMemberId(member.id);
+    setEditMemberName(member.name ?? '');
+    setEditMemberPhone(member.phone ?? '');
+    setEditMemberEmail(member.email ?? '');
+    setEditMemberOpen(true);
+  }
+
+  function handleEditMember(e: FormEvent): void {
+    e.preventDefault();
+    updateMemberDetail.mutate(
+      {
+        unitId: detailUnitId,
+        memberId: editMemberId,
+        name: editMemberName || undefined,
+        phone: editMemberPhone || undefined,
+        email: editMemberEmail || null,
+      },
+      {
+        onSuccess() {
+          setEditMemberOpen(false);
+          addToast({ title: 'Member updated', variant: 'success' });
+        },
+        onError(error) {
+          addToast({ title: 'Failed to update member', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
+  }
+
+  function handleRemoveMember(memberId: string): void {
+    removeMember.mutate(
+      { unitId: detailUnitId, memberId },
+      {
+        onSuccess() {
+          addToast({ title: 'Member removed', variant: 'success' });
+        },
+        onError(error) {
+          addToast({ title: 'Failed to remove member', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
+  }
+
+  function handleTransferOwnership(e: FormEvent): void {
+    e.preventDefault();
+    transferOwnership.mutate(
+      {
+        unitId: detailUnitId,
+        name: transferName,
+        phone: transferPhone,
+        email: transferEmail || undefined,
+        move_in_date: transferMoveIn || undefined,
+      },
+      {
+        onSuccess() {
+          setTransferOpen(false);
+          setTransferName('');
+          setTransferPhone('');
+          setTransferEmail('');
+          setTransferMoveIn('');
+          addToast({ title: 'Ownership transferred successfully', variant: 'success' });
+        },
+        onError(error) {
+          addToast({ title: 'Transfer failed', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
+  }
+
+  function handleDisconnectTenant(): void {
+    disconnectTenant.mutate(
+      { unitId: detailUnitId },
+      {
+        onSuccess() {
+          setDisconnectOpen(false);
+          addToast({ title: 'Tenant disconnected', variant: 'success' });
+        },
+        onError(error) {
+          addToast({ title: 'Failed to disconnect tenant', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
+  }
+
+  function openAddFamilyMember(parentId: string, memberType: string): void {
+    setAddMemberParentId(parentId);
+    setAddMemberType(memberType);
+    setAddMemberName('');
+    setAddMemberPhone('');
+    setAddMemberMoveIn('');
+    setAddMemberOpen(true);
+  }
+
+  function openAddTenant(): void {
+    setAddMemberParentId('');
+    setAddMemberType('tenant');
+    setAddMemberName('');
+    setAddMemberPhone('');
+    setAddMemberMoveIn('');
+    setAddMemberOpen(true);
+  }
+
+  function handleAddMember(e: FormEvent): void {
+    e.preventDefault();
+    addMember.mutate(
+      {
+        unit_id: detailUnitId,
+        name: addMemberName,
+        phone: addMemberPhone,
+        member_type: addMemberType,
+        move_in_date: addMemberMoveIn,
+        ...(addMemberParentId ? { parent_member_id: addMemberParentId } : {}),
+      } as Parameters<typeof addMember.mutate>[0],
+      {
+        onSuccess() {
+          setAddMemberOpen(false);
+          addToast({ title: 'Member added', variant: 'success' });
+        },
+        onError(error) {
+          addToast({ title: 'Failed to add member', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -276,6 +515,10 @@ export default function UnitsContent(): ReactNode {
         description="Manage apartment units — add, edit, import, and assign members"
         actions={
           <>
+            <Button variant="outline" onClick={() => router.push('/units/directory')}>
+              <Users className="mr-2 h-4 w-4" />
+              Member Directory
+            </Button>
             <Button variant="outline" onClick={() => router.push('/units/import')}>
               <FileSpreadsheet className="mr-2 h-4 w-4" />
               Import from App
@@ -371,6 +614,7 @@ export default function UnitsContent(): ReactNode {
         }
       />
 
+      {/* Stats cards */}
       {statsQuery.isLoading ? (
         <StatsCardsSkeleton />
       ) : (
@@ -408,6 +652,7 @@ export default function UnitsContent(): ReactNode {
         </div>
       )}
 
+      {/* Units table */}
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -462,7 +707,6 @@ export default function UnitsContent(): ReactNode {
                 <TableHead>Owner</TableHead>
                 <TableHead>Resident</TableHead>
                 <TableHead>Occupied</TableHead>
-                <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -473,7 +717,7 @@ export default function UnitsContent(): ReactNode {
                   <TableRow
                     key={unit.id}
                     className="cursor-pointer"
-                    onClick={() => handleRowClick(unit.id)}
+                    onClick={() => openDetailDialog(unit)}
                   >
                     <TableCell className="font-medium">{unit.unit_number}</TableCell>
                     <TableCell>{unit.block ?? '-'}</TableCell>
@@ -514,19 +758,6 @@ export default function UnitsContent(): ReactNode {
                       ) : (
                         <Badge variant="secondary">Vacant</Badge>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditDialog(unit);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -572,172 +803,51 @@ export default function UnitsContent(): ReactNode {
         </CardContent>
       </Card>
 
-      {detailUnitId && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">
-                Members of Unit {units.find((u) => u.id === detailUnitId)?.unit_number ?? ''}
-              </CardTitle>
-              <div className="flex gap-2">
-                <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
-                  <DialogTrigger>
-                    <Button size="sm">
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Add Member
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <form onSubmit={handleAddMember}>
-                      <DialogHeader>
-                        <DialogTitle>Add Member</DialogTitle>
-                        <DialogDescription>
-                          Add a member to unit {units.find((u) => u.id === detailUnitId)?.unit_number ?? ''}
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="member-phone">Phone Number</Label>
-                          <Input
-                            id="member-phone"
-                            placeholder="+91 9876543210"
-                            required
-                            value={memberPhone}
-                            onChange={(e) => setMemberPhone(e.target.value)}
-                            maxLength={10}
-                          />
-                          <p className="text-xs text-muted-foreground">10-digit mobile number (without +91)</p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="member-name">Name</Label>
-                          <Input
-                            id="member-name"
-                            placeholder="Full name"
-                            required
-                            value={memberName}
-                            onChange={(e) => setMemberName(e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="member-type">Member Type</Label>
-                          <Select
-                            id="member-type"
-                            required
-                            value={memberType}
-                            onChange={(e) => setMemberType(e.target.value)}
-                          >
-                            <option value="owner">Owner</option>
-                            <option value="tenant">Tenant</option>
-                            <option value="family_member">Family Member</option>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="member-move-in">Move-in Date</Label>
-                          <Input
-                            id="member-move-in"
-                            type="date"
-                            required
-                            value={memberMoveIn}
-                            onChange={(e) => setMemberMoveIn(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <DialogClose>
-                          <Button type="button" variant="outline">Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={addMember.isPending}>
-                          {addMember.isPending ? 'Adding...' : 'Add Member'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-                <Button variant="ghost" size="sm" onClick={() => setDetailUnitId('')}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {membersQuery.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-              </div>
-            ) : members.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                No members assigned to this unit yet.
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User ID</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Move-in Date</TableHead>
-                    <TableHead>Primary Contact</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {members.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell className="font-mono text-xs">{member.user_id}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{member.member_type}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatDate(member.move_in_date)}
-                      </TableCell>
-                      <TableCell>
-                        {member.is_primary_contact ? (
-                          <Badge variant="success">Yes</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">No</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {member.is_active ? (
-                          <Badge variant="success">Active</Badge>
-                        ) : (
-                          <Badge variant="secondary">Inactive</Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {/* ----------------------------------------------------------------- */}
+      {/* Unit Detail Dialog (3 tabs)                                        */}
+      {/* ----------------------------------------------------------------- */}
+      <Dialog
+        open={detailDialogOpen}
+        onOpenChange={(open) => {
+          setDetailDialogOpen(open);
+          if (!open) setDetailUnitId('');
+        }}
+      >
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Unit {detail?.unit.unit_number ?? editUnitNumber}
+              {detail?.unit.block ? ` — Block ${detail.unit.block}` : ''}
+            </DialogTitle>
+            <DialogDescription>
+              View and manage unit details, members, and history
+            </DialogDescription>
+          </DialogHeader>
 
-      {/* Edit Unit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleEditUnit}>
-            <DialogHeader>
-              <DialogTitle>Edit Unit</DialogTitle>
-              <DialogDescription>Update unit details</DialogDescription>
-            </DialogHeader>
-            <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-1 mt-4">
-              <div className="flex gap-2">
-                <span className="text-muted-foreground">Owner:</span>
-                <span>{editOwnerName ? `${editOwnerName}${editOwnerPhone ? ` (${editOwnerPhone})` : ''}` : 'No owner assigned'}</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="text-muted-foreground">Current Resident:</span>
-                <span>
-                  {editTenantName
-                    ? `${editTenantName}${editTenantPhone ? ` (${editTenantPhone})` : ''}`
-                    : editOwnerName
-                      ? 'Self-occupied'
-                      : 'Vacant'}
-                </span>
-              </div>
-            </div>
-            <div className="space-y-4 py-4">
+          {/* Tab bar */}
+          <div className="flex border-b">
+            {(['details', 'members', 'history'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                className={cn(
+                  'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+                  activeTab === tab
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/50',
+                )}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab === 'details' && 'Details'}
+                {tab === 'members' && 'Members'}
+                {tab === 'history' && 'History'}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab: Details */}
+          {activeTab === 'details' && (
+            <form onSubmit={handleEditUnit} className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-unit-no">Unit Number</Label>
@@ -807,13 +917,462 @@ export default function UnitsContent(): ReactNode {
                 />
                 <Label htmlFor="edit-unit-active">Active</Label>
               </div>
+              <div className="flex justify-end">
+                <Button type="submit" disabled={updateUnit.isPending}>
+                  {updateUnit.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {/* Tab: Members */}
+          {activeTab === 'members' && (
+            <div className="space-y-6 py-2">
+              {unitDetailQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ) : (
+                <>
+                  {/* Owner Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold flex items-center gap-2">
+                        <Home className="h-4 w-4" />
+                        Owner
+                      </h4>
+                      <div className="flex gap-1">
+                        {owner && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setTransferOpen(true)}
+                            >
+                              <ArrowRightLeft className="mr-1 h-3 w-3" />
+                              Transfer
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openAddFamilyMember(owner.id, 'owner_family')}
+                            >
+                              <UserPlus className="mr-1 h-3 w-3" />
+                              Add Family
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {owner ? (
+                      <div className="space-y-2">
+                        <MemberCard
+                          member={owner}
+                          unitId={detailUnitId}
+                          onEdit={openEditMember}
+                          onRemove={handleRemoveMember}
+                          isRemoving={removeMember.isPending}
+                        />
+                        {ownerFamily.length > 0 && (
+                          <div className="ml-4 space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground">Family Members</p>
+                            {ownerFamily.map((fm) => (
+                              <MemberCard
+                                key={fm.id}
+                                member={fm}
+                                unitId={detailUnitId}
+                                onEdit={openEditMember}
+                                onRemove={handleRemoveMember}
+                                isRemoving={removeMember.isPending}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-2">No owner assigned</p>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Tenant Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Tenant
+                      </h4>
+                      <div className="flex gap-1">
+                        {tenant ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                              onClick={() => setDisconnectOpen(true)}
+                            >
+                              <UserMinus className="mr-1 h-3 w-3" />
+                              Disconnect
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openAddFamilyMember(tenant.id, 'tenant_family')}
+                            >
+                              <UserPlus className="mr-1 h-3 w-3" />
+                              Add Family
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={openAddTenant}
+                          >
+                            <UserPlus className="mr-1 h-3 w-3" />
+                            Assign Tenant
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {tenant ? (
+                      <div className="space-y-2">
+                        <MemberCard
+                          member={tenant}
+                          unitId={detailUnitId}
+                          onEdit={openEditMember}
+                          onRemove={handleRemoveMember}
+                          isRemoving={removeMember.isPending}
+                        />
+                        {tenant.lease_end_date && (
+                          <p className="ml-3 text-xs text-muted-foreground">
+                            Lease ends: {formatDate(tenant.lease_end_date)}
+                          </p>
+                        )}
+                        {tenantFamily.length > 0 && (
+                          <div className="ml-4 space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground">Family Members</p>
+                            {tenantFamily.map((fm) => (
+                              <MemberCard
+                                key={fm.id}
+                                member={fm}
+                                unitId={detailUnitId}
+                                onEdit={openEditMember}
+                                onRemove={handleRemoveMember}
+                                isRemoving={removeMember.isPending}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-2">No tenant assigned</p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Tab: History */}
+          {activeTab === 'history' && (
+            <div className="space-y-4 py-2">
+              {unitDetailQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : (
+                <>
+                  {/* Past Members */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Past Members
+                    </h4>
+                    {detail?.past_members && detail.past_members.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Move In</TableHead>
+                            <TableHead>Move Out</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {detail.past_members.map((member) => (
+                            <TableRow key={member.id}>
+                              <TableCell className="font-medium">
+                                {member.name ?? 'Unknown'}
+                              </TableCell>
+                              <TableCell>{getMemberTypeBadge(member.member_type)}</TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {formatDate(member.move_in_date)}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {member.move_out_date ? formatDate(member.move_out_date) : '—'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-4 text-center">
+                        No past members for this unit
+                      </p>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Occupancy Timeline */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold">Occupancy Timeline</h4>
+                    {detail?.occupancy_timeline && detail.occupancy_timeline.length > 0 ? (
+                      <div className="space-y-2">
+                        {detail.occupancy_timeline.map((entry, index) => (
+                          <div
+                            key={`${entry.member_id}-${index}`}
+                            className="flex items-center gap-3 rounded-md border p-3"
+                          >
+                            <div className="h-2 w-2 rounded-full bg-primary" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">
+                                {entry.name ?? 'Unknown'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {getMemberTypeBadge(entry.member_type)}
+                              </p>
+                            </div>
+                            <div className="text-right text-xs text-muted-foreground">
+                              <p>{formatDate(entry.move_in_date)}</p>
+                              <p>{entry.move_out_date ? formatDate(entry.move_out_date) : 'Present'}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-4 text-center">
+                        No timeline data available
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <DialogClose>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Edit Member Dialog                                                 */}
+      {/* ----------------------------------------------------------------- */}
+      <Dialog open={editMemberOpen} onOpenChange={setEditMemberOpen}>
+        <DialogContent>
+          <form onSubmit={handleEditMember}>
+            <DialogHeader>
+              <DialogTitle>Edit Member</DialogTitle>
+              <DialogDescription>Update member details</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-m-name">Name</Label>
+                <Input
+                  id="edit-m-name"
+                  value={editMemberName}
+                  onChange={(e) => setEditMemberName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-m-phone">Phone</Label>
+                <Input
+                  id="edit-m-phone"
+                  value={editMemberPhone}
+                  onChange={(e) => setEditMemberPhone(e.target.value)}
+                  maxLength={10}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-m-email">Email</Label>
+                <Input
+                  id="edit-m-email"
+                  type="email"
+                  value={editMemberEmail}
+                  onChange={(e) => setEditMemberEmail(e.target.value)}
+                />
+              </div>
             </div>
             <DialogFooter>
               <DialogClose>
                 <Button type="button" variant="outline">Cancel</Button>
               </DialogClose>
-              <Button type="submit" disabled={updateUnit.isPending}>
-                {updateUnit.isPending ? 'Saving...' : 'Save Changes'}
+              <Button type="submit" disabled={updateMemberDetail.isPending}>
+                {updateMemberDetail.isPending ? 'Saving...' : 'Save'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Transfer Ownership Dialog                                          */}
+      {/* ----------------------------------------------------------------- */}
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+        <DialogContent>
+          <form onSubmit={handleTransferOwnership}>
+            <DialogHeader>
+              <DialogTitle>Transfer Ownership</DialogTitle>
+              <DialogDescription>
+                The current owner will be moved out and a new owner assigned.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="transfer-name">New Owner Name</Label>
+                <Input
+                  id="transfer-name"
+                  required
+                  placeholder="Full name"
+                  value={transferName}
+                  onChange={(e) => setTransferName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="transfer-phone">Phone</Label>
+                <Input
+                  id="transfer-phone"
+                  required
+                  placeholder="10-digit mobile"
+                  maxLength={10}
+                  value={transferPhone}
+                  onChange={(e) => setTransferPhone(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="transfer-email">Email (optional)</Label>
+                <Input
+                  id="transfer-email"
+                  type="email"
+                  value={transferEmail}
+                  onChange={(e) => setTransferEmail(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="transfer-date">Move-in Date (optional)</Label>
+                <Input
+                  id="transfer-date"
+                  type="date"
+                  value={transferMoveIn}
+                  onChange={(e) => setTransferMoveIn(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={transferOwnership.isPending}>
+                {transferOwnership.isPending ? 'Transferring...' : 'Transfer Ownership'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Disconnect Tenant Confirmation Dialog                              */}
+      {/* ----------------------------------------------------------------- */}
+      <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Disconnect Tenant</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to disconnect the current tenant
+              {tenant?.name ? ` (${tenant.name})` : ''}? They will be marked as moved out.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose>
+              <Button type="button" variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              disabled={disconnectTenant.isPending}
+              onClick={handleDisconnectTenant}
+            >
+              {disconnectTenant.isPending ? 'Disconnecting...' : 'Disconnect Tenant'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Add Member Dialog (Family / Tenant)                                */}
+      {/* ----------------------------------------------------------------- */}
+      <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
+        <DialogContent>
+          <form onSubmit={handleAddMember}>
+            <DialogHeader>
+              <DialogTitle>
+                {addMemberType === 'tenant' ? 'Assign Tenant' : 'Add Family Member'}
+              </DialogTitle>
+              <DialogDescription>
+                {addMemberType === 'tenant'
+                  ? 'Assign a tenant to this unit'
+                  : 'Add a family member'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="add-m-name">Name</Label>
+                <Input
+                  id="add-m-name"
+                  required
+                  placeholder="Full name"
+                  value={addMemberName}
+                  onChange={(e) => setAddMemberName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-m-phone">Phone</Label>
+                <Input
+                  id="add-m-phone"
+                  required
+                  placeholder="10-digit mobile"
+                  maxLength={10}
+                  value={addMemberPhone}
+                  onChange={(e) => setAddMemberPhone(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-m-movein">Move-in Date</Label>
+                <Input
+                  id="add-m-movein"
+                  type="date"
+                  required
+                  value={addMemberMoveIn}
+                  onChange={(e) => setAddMemberMoveIn(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={addMember.isPending}>
+                {addMember.isPending ? 'Adding...' : addMemberType === 'tenant' ? 'Assign Tenant' : 'Add Member'}
               </Button>
             </DialogFooter>
           </form>

@@ -27,6 +27,7 @@ import {
   CalendarCheck,
   Vote,
   Bell,
+  Contact,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEnabledFeatures } from '@/hooks';
@@ -70,6 +71,7 @@ const navGroups: NavGroup[] = [
     label: 'Management',
     items: [
       { label: 'Units', href: '/units', icon: <Home className="h-4 w-4" />, feature: 'units' },
+      { label: 'Member Directory', href: '/units/directory', icon: <Contact className="h-4 w-4" />, feature: 'units' },
       { label: 'Gate', href: '/gate', icon: <ShieldCheck className="h-4 w-4" />, feature: 'gate' },
       { label: 'Utilities', href: '/utilities', icon: <Gauge className="h-4 w-4" />, feature: 'utilities' },
       { label: 'Parking', href: '/parking', icon: <Car className="h-4 w-4" />, feature: 'parking' },
@@ -106,7 +108,18 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
     if (href === '/') {
       return pathname === '/';
     }
-    return pathname.startsWith(href);
+    // Exact match takes priority for sub-routes (e.g., /units/directory vs /units)
+    if (pathname === href) return true;
+    // Only match parent route if pathname doesn't match a more specific sibling
+    if (pathname.startsWith(href + '/')) {
+      // Check if there is a more specific nav item that matches
+      const allItems = navGroups.flatMap((g) => g.items);
+      const hasMoreSpecific = allItems.some(
+        (item) => item.href !== href && item.href.startsWith(href + '/') && pathname.startsWith(item.href),
+      );
+      return !hasMoreSpecific;
+    }
+    return false;
   }
 
   function isFeatureVisible(item: NavItem): boolean {
