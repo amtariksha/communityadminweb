@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { type ReactNode } from 'react';
 import {
@@ -13,11 +13,9 @@ import {
   Landmark,
   BarChart3,
   Home,
-  UserCircle,
   FolderOpen,
   IndianRupee,
   Settings,
-  ChevronDown,
   LogOut,
   Building2,
   ShieldCheck,
@@ -34,13 +32,6 @@ import { cn } from '@/lib/utils';
 import { useEnabledFeatures } from '@/hooks';
 import { Avatar, AvatarFallback, getInitials } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { getUser, logout } from '@/lib/auth';
 
 interface NavItem {
@@ -107,7 +98,6 @@ interface SidebarProps {
 
 export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
   const pathname = usePathname();
-  const router = useRouter();
   const user = getUser();
   const userName = user?.name ?? 'Admin User';
   const { data: enabledFeatures } = useEnabledFeatures();
@@ -183,39 +173,24 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
 
         <Separator />
 
-        <div className="p-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 rounded-md px-3 py-2 hover:bg-accent text-left"
-              >
-                <Avatar size="sm">
-                  <AvatarFallback>{getInitials(userName)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{userName}</p>
-                  <p className="text-xs text-muted-foreground">{user?.role ?? 'Admin'}</p>
-                </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="top" sideOffset={8} className="w-56">
-              <DropdownMenuItem onSelect={() => router.push('/settings')}>
-                <UserCircle className="mr-2 h-4 w-4" />
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => router.push('/settings')}>
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => logout()}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="p-3 space-y-2">
+          <div className="flex items-center gap-3 px-3 py-2">
+            <Avatar size="sm">
+              <AvatarFallback>{getInitials(userName)}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{userName}</p>
+              <p className="text-xs text-muted-foreground">{user?.role ?? 'Admin'}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </button>
         </div>
       </aside>
     </>
