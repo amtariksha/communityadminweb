@@ -310,6 +310,21 @@ export {
 } from './use-announcements';
 export type { Announcement, AnnouncementFilters } from './use-announcements';
 
+// OCR
+export {
+  useOcrInvoice,
+  useOcrMeterReading,
+  useOcrIdDocument,
+  useOcrText,
+  fileToBase64,
+} from './use-ocr';
+export type {
+  InvoiceOcrResult,
+  MeterReadingOcrResult,
+  IdDocumentOcrResult,
+  GenericOcrResult,
+} from './use-ocr';
+
 // Utilities
 export {
   utilityKeys,
