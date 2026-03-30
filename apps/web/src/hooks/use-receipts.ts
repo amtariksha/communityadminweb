@@ -71,6 +71,8 @@ interface BulkImportReceiptsInput {
 }
 
 interface CreateCreditNoteInput {
+  financial_year_id: string;
+  invoice_id: string;
   unit_id: string;
   amount: number;
   reason: string;

@@ -36,6 +36,8 @@ import {
   useReceiptSummary,
   useCreateReceipt,
   useCreateCreditNote,
+  useFinancialYears,
+  useInvoices,
 } from '@/hooks';
 import { useUnits } from '@/hooks';
 import type { ReceiptMode } from '@communityos/shared';
@@ -128,6 +130,7 @@ export default function ReceiptsContent(): ReactNode {
 
   // Form state for credit note
   const [cnUnitId, setCnUnitId] = useState('');
+  const [cnInvoiceId, setCnInvoiceId] = useState('');
   const [cnAmount, setCnAmount] = useState('');
   const [cnReason, setCnReason] = useState('');
 
@@ -138,8 +141,13 @@ export default function ReceiptsContent(): ReactNode {
   });
   const summaryQuery = useReceiptSummary();
   const unitsQuery = useUnits({ limit: 500 });
+  const fyQuery = useFinancialYears();
+  const invoicesQuery = useInvoices({ status: 'posted', unit_id: cnUnitId || undefined, limit: 50 });
   const createReceipt = useCreateReceipt();
   const createCreditNote = useCreateCreditNote();
+
+  const currentFY = fyQuery.data?.find((fy: { is_current: boolean }) => fy.is_current);
+  const currentFYId = currentFY?.id ?? '';
 
   const receipts = receiptsQuery.data?.data ?? [];
   const totalReceipts = receiptsQuery.data?.total ?? 0;
@@ -162,6 +170,7 @@ export default function ReceiptsContent(): ReactNode {
 
   function resetCreditNoteForm(): void {
     setCnUnitId('');
+    setCnInvoiceId('');
     setCnAmount('');
     setCnReason('');
   }
@@ -170,7 +179,7 @@ export default function ReceiptsContent(): ReactNode {
     e.preventDefault();
     createReceipt.mutate(
       {
-        financial_year_id: '',
+        financial_year_id: currentFYId,
         unit_id: receiptUnitId,
         receipt_date: receiptDate,
         amount: Number(receiptAmount),
@@ -194,6 +203,8 @@ export default function ReceiptsContent(): ReactNode {
     e.preventDefault();
     createCreditNote.mutate(
       {
+        financial_year_id: currentFYId,
+        invoice_id: cnInvoiceId,
         unit_id: cnUnitId,
         amount: Number(cnAmount),
         reason: cnReason,
@@ -242,6 +253,22 @@ export default function ReceiptsContent(): ReactNode {
                         {units.map((unit) => (
                           <option key={unit.id} value={unit.id}>
                             {unit.unit_number}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cn-invoice">Invoice</Label>
+                      <Select
+                        id="cn-invoice"
+                        required
+                        value={cnInvoiceId}
+                        onChange={(e) => setCnInvoiceId(e.target.value)}
+                      >
+                        <option value="">Select invoice</option>
+                        {(invoicesQuery.data?.data ?? []).map((inv: { id: string; invoice_number: string; balance_due: number }) => (
+                          <option key={inv.id} value={inv.id}>
+                            {inv.invoice_number} (Due: {formatCurrency(Number(inv.balance_due))})
                           </option>
                         ))}
                       </Select>
