@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, type FormEvent, type ReactNode } from 'react';
-import { FileText, Plus, Send, Ban } from 'lucide-react';
+import { FileText, Plus, Send, Ban, Eye, MoreHorizontal } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +32,15 @@ import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
+import {
   useInvoices,
+  useInvoice,
   useInvoiceRules,
   useCreateInvoiceRule,
   useLedgerAccounts,
@@ -137,6 +145,8 @@ export default function InvoicesContent(): ReactNode {
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [viewInvoiceId, setViewInvoiceId] = useState('');
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [page, setPage] = useState(1);
   const limit = 20;
 
@@ -168,6 +178,7 @@ export default function InvoicesContent(): ReactNode {
   const createInvoiceRule = useCreateInvoiceRule();
   const postInvoices = usePostInvoices();
   const cancelInvoice = useCancelInvoice();
+  const { data: viewInvoiceData } = useInvoice(viewInvoiceId);
 
   const invoices = invoicesResponse?.data ?? [];
   const totalCount = invoicesResponse?.total ?? 0;
@@ -631,7 +642,9 @@ export default function InvoicesContent(): ReactNode {
                       {formatCurrency(invoice.total_amount)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(invoice.paid_amount)}
+                      {Number(invoice.amount_paid ?? invoice.paid_amount ?? 0) > 0
+                        ? formatCurrency(Number(invoice.amount_paid ?? invoice.paid_amount))
+                        : <span className="text-xs text-muted-foreground">UNPAID</span>}
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(invoice.balance_due)}
@@ -645,18 +658,32 @@ export default function InvoicesContent(): ReactNode {
                       {formatDate(String(invoice.due_date))}
                     </TableCell>
                     <TableCell>
-                      {(invoice.status === 'draft' || invoice.status === 'sent') && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-destructive"
-                          onClick={() => handleCancel(invoice.id)}
-                          disabled={cancelInvoice.isPending}
-                          title="Cancel invoice"
-                        >
-                          <Ban className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setViewInvoiceId(invoice.id);
+                              setViewDialogOpen(true);
+                            }}
+                          >
+                            <Eye className="mr-2 h-4 w-4" /> View Invoice
+                          </DropdownMenuItem>
+                          {(invoice.status === 'draft' || invoice.status === 'sent') && (
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleCancel(invoice.id)}
+                              disabled={cancelInvoice.isPending}
+                            >
+                              <Ban className="mr-2 h-4 w-4" /> Cancel
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))
@@ -702,6 +729,144 @@ export default function InvoicesContent(): ReactNode {
           )}
         </CardContent>
       </Card>
+
+      {/* View Invoice Dialog */}
+      <Dialog
+        open={viewDialogOpen}
+        onOpenChange={(open) => {
+          setViewDialogOpen(open);
+          if (!open) setViewInvoiceId('');
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Invoice {viewInvoiceData?.invoice_number ?? ''}
+            </DialogTitle>
+            <DialogDescription>
+              Invoice details and line items
+            </DialogDescription>
+          </DialogHeader>
+
+          {viewInvoiceData ? (
+            <div className="space-y-6 py-4">
+              {/* Invoice header info */}
+              <div className="grid grid-cols-2 gap-y-3 text-sm">
+                <span className="text-muted-foreground">Invoice Number</span>
+                <span className="font-mono font-medium">
+                  {viewInvoiceData.invoice_number}
+                </span>
+
+                <span className="text-muted-foreground">Status</span>
+                <span>
+                  <Badge variant={getStatusBadgeVariant(viewInvoiceData.status as TabFilter)}>
+                    {getStatusLabel(viewInvoiceData.status as TabFilter)}
+                  </Badge>
+                </span>
+
+                <span className="text-muted-foreground">Unit</span>
+                <span>{viewInvoiceData.unit_number ?? viewInvoiceData.unit_id}</span>
+
+                <span className="text-muted-foreground">Invoice Date</span>
+                <span>{formatDate(String(viewInvoiceData.invoice_date ?? viewInvoiceData.issue_date ?? viewInvoiceData.created_at))}</span>
+
+                <span className="text-muted-foreground">Due Date</span>
+                <span>{formatDate(String(viewInvoiceData.due_date))}</span>
+
+                <span className="text-muted-foreground">Billing Period</span>
+                <span>{viewInvoiceData.billing_period ?? '—'}</span>
+              </div>
+
+              <Separator />
+
+              {/* Line items */}
+              {viewInvoiceData.lines && viewInvoiceData.lines.length > 0 ? (
+                <div>
+                  <h4 className="mb-2 text-sm font-semibold">Line Items</h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">GST</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {viewInvoiceData.lines.map((line: { id: string; description: string; amount: number; gst_amount?: number; total?: number }, idx: number) => (
+                        <TableRow key={line.id ?? idx}>
+                          <TableCell>{line.description}</TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(Number(line.amount))}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(Number(line.gst_amount ?? 0))}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(Number(line.total ?? line.amount))}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No line items</p>
+              )}
+
+              <Separator />
+
+              {/* Totals */}
+              <div className="grid grid-cols-2 gap-y-2 text-sm">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="text-right font-medium">
+                  {formatCurrency(Number(viewInvoiceData.subtotal ?? viewInvoiceData.total_amount))}
+                </span>
+
+                {Number(viewInvoiceData.gst_amount ?? 0) > 0 && (
+                  <>
+                    <span className="text-muted-foreground">GST</span>
+                    <span className="text-right">
+                      {formatCurrency(Number(viewInvoiceData.gst_amount))}
+                    </span>
+                  </>
+                )}
+
+                <span className="font-semibold">Total Amount</span>
+                <span className="text-right font-bold text-lg">
+                  {formatCurrency(Number(viewInvoiceData.total_amount))}
+                </span>
+
+                <span className="text-muted-foreground">Amount Paid</span>
+                <span className="text-right text-green-600">
+                  {Number(viewInvoiceData.amount_paid) > 0
+                    ? formatCurrency(Number(viewInvoiceData.amount_paid))
+                    : 'UNPAID'}
+                </span>
+
+                <span className="font-semibold">Balance Due</span>
+                <span className="text-right font-bold text-destructive">
+                  {Number(viewInvoiceData.balance_due) > 0
+                    ? formatCurrency(Number(viewInvoiceData.balance_due))
+                    : '—'}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-3/4" />
+            </div>
+          )}
+
+          <DialogFooter>
+            <DialogClose>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
