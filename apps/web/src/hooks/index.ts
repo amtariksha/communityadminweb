@@ -496,3 +496,16 @@ export {
   useUpdatePlatformConfig,
 } from './use-platform-config';
 export type { PlatformConfigItem } from './use-platform-config';
+
+// Tally Import
+export {
+  tallyImportKeys,
+  useTallyImportHistory,
+  useTallyXmlImport,
+  useTallyCsvImport,
+  useDownloadInvoicePdf,
+} from './use-tally-import';
+export type {
+  TallyImportResult,
+  TallyImportHistory,
+} from './use-tally-import';

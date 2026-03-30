@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, type FormEvent, type ReactNode } from 'react';
-import { FileText, Plus, Send, Ban, Eye, MoreHorizontal } from 'lucide-react';
+import { FileText, Plus, Send, Ban, Eye, MoreHorizontal, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +47,7 @@ import {
   useGenerateInvoices,
   usePostInvoices,
   useCancelInvoice,
+  useDownloadInvoicePdf,
 } from '@/hooks';
 import type { InvoiceStatus, Invoice } from '@communityos/shared';
 
@@ -178,6 +179,7 @@ export default function InvoicesContent(): ReactNode {
   const createInvoiceRule = useCreateInvoiceRule();
   const postInvoices = usePostInvoices();
   const cancelInvoice = useCancelInvoice();
+  const downloadPdf = useDownloadInvoicePdf();
   const { data: viewInvoiceData } = useInvoice(viewInvoiceId);
 
   const invoices = invoicesResponse?.data ?? [];
@@ -673,6 +675,12 @@ export default function InvoicesContent(): ReactNode {
                           >
                             <Eye className="mr-2 h-4 w-4" /> View Invoice
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => downloadPdf.mutate(invoice.id)}
+                            disabled={downloadPdf.isPending}
+                          >
+                            <Download className="mr-2 h-4 w-4" /> Download PDF
+                          </DropdownMenuItem>
                           {(invoice.status === 'draft' || invoice.status === 'sent') && (
                             <DropdownMenuItem
                               className="text-destructive"
@@ -861,6 +869,16 @@ export default function InvoicesContent(): ReactNode {
           )}
 
           <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (viewInvoiceId) downloadPdf.mutate(viewInvoiceId);
+              }}
+              disabled={downloadPdf.isPending || !viewInvoiceId}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {downloadPdf.isPending ? 'Generating...' : 'Download PDF'}
+            </Button>
             <DialogClose>
               <Button variant="outline">Close</Button>
             </DialogClose>
