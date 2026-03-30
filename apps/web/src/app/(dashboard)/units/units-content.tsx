@@ -89,6 +89,8 @@ function TableSkeleton(): ReactNode {
           <TableCell><Skeleton className="h-4 w-8" /></TableCell>
           <TableCell><Skeleton className="h-4 w-14" /></TableCell>
           <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
           <TableCell><Skeleton className="h-5 w-20" /></TableCell>
           <TableCell><Skeleton className="h-5 w-5" /></TableCell>
         </TableRow>
@@ -126,6 +128,10 @@ export default function UnitsContent(): ReactNode {
   const [editArea, setEditArea] = useState('');
   const [editUnitType, setEditUnitType] = useState('flat');
   const [editIsActive, setEditIsActive] = useState(true);
+  const [editOwnerName, setEditOwnerName] = useState<string | null>(null);
+  const [editOwnerPhone, setEditOwnerPhone] = useState<string | null>(null);
+  const [editTenantName, setEditTenantName] = useState<string | null>(null);
+  const [editTenantPhone, setEditTenantPhone] = useState<string | null>(null);
 
   // Add member form
   const [memberPhone, setMemberPhone] = useState('');
@@ -221,7 +227,7 @@ export default function UnitsContent(): ReactNode {
     setDetailUnitId(unitId);
   }
 
-  function openEditDialog(unit: { id: string; unit_number: string; block?: string | null; floor: number; area_sqft: number; unit_type: string; is_active: boolean }): void {
+  function openEditDialog(unit: { id: string; unit_number: string; block?: string | null; floor: number; area_sqft: number; unit_type: string; is_active: boolean; owner_name?: string | null; owner_phone?: string | null; tenant_name?: string | null; tenant_phone?: string | null }): void {
     setEditUnitId(unit.id);
     setEditUnitNumber(unit.unit_number);
     setEditBlock(unit.block ?? '');
@@ -229,6 +235,10 @@ export default function UnitsContent(): ReactNode {
     setEditArea(String(unit.area_sqft));
     setEditUnitType(unit.unit_type);
     setEditIsActive(unit.is_active);
+    setEditOwnerName(unit.owner_name ?? null);
+    setEditOwnerPhone(unit.owner_phone ?? null);
+    setEditTenantName(unit.tenant_name ?? null);
+    setEditTenantPhone(unit.tenant_phone ?? null);
     setEditDialogOpen(true);
   }
 
@@ -449,6 +459,8 @@ export default function UnitsContent(): ReactNode {
                 <TableHead>Floor</TableHead>
                 <TableHead>Area (sqft)</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Owner</TableHead>
+                <TableHead>Resident</TableHead>
                 <TableHead>Occupied</TableHead>
                 <TableHead className="w-10"></TableHead>
               </TableRow>
@@ -469,6 +481,32 @@ export default function UnitsContent(): ReactNode {
                     <TableCell>{unit.area_sqft.toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{getUnitTypeLabel(unit.unit_type)}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {(unit as Record<string, unknown>).owner_name ? (
+                        <div>
+                          <div className="text-sm">{String((unit as Record<string, unknown>).owner_name)}</div>
+                          {(unit as Record<string, unknown>).owner_phone && (
+                            <div className="text-xs text-muted-foreground">{String((unit as Record<string, unknown>).owner_phone)}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No owner</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {(unit as Record<string, unknown>).tenant_name ? (
+                        <div>
+                          <div className="text-sm">{String((unit as Record<string, unknown>).tenant_name)}</div>
+                          {(unit as Record<string, unknown>).tenant_phone && (
+                            <div className="text-xs text-muted-foreground">{String((unit as Record<string, unknown>).tenant_phone)}</div>
+                          )}
+                        </div>
+                      ) : (unit as Record<string, unknown>).owner_name ? (
+                        <span className="text-sm text-muted-foreground">{String((unit as Record<string, unknown>).owner_name)} (Self)</span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {unit.is_occupied ? (
@@ -683,6 +721,22 @@ export default function UnitsContent(): ReactNode {
               <DialogTitle>Edit Unit</DialogTitle>
               <DialogDescription>Update unit details</DialogDescription>
             </DialogHeader>
+            <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-1 mt-4">
+              <div className="flex gap-2">
+                <span className="text-muted-foreground">Owner:</span>
+                <span>{editOwnerName ? `${editOwnerName}${editOwnerPhone ? ` (${editOwnerPhone})` : ''}` : 'No owner assigned'}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground">Current Resident:</span>
+                <span>
+                  {editTenantName
+                    ? `${editTenantName}${editTenantPhone ? ` (${editTenantPhone})` : ''}`
+                    : editOwnerName
+                      ? 'Self-occupied'
+                      : 'Vacant'}
+                </span>
+              </div>
+            </div>
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

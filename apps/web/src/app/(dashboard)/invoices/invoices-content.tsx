@@ -613,7 +613,7 @@ export default function InvoicesContent(): ReactNode {
                   />
                 </TableHead>
                 <TableHead>Invoice #</TableHead>
-                <TableHead>Unit</TableHead>
+                <TableHead>Unit / Owner</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Paid</TableHead>
                 <TableHead className="text-right">Balance</TableHead>
@@ -639,17 +639,33 @@ export default function InvoicesContent(): ReactNode {
                     <TableCell>
                       <span className="font-mono text-xs">{invoice.invoice_number}</span>
                     </TableCell>
-                    <TableCell className="font-medium">{invoice.unit_id}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">
+                        {(invoice as Record<string, unknown>).unit_number
+                          ? `${(invoice as Record<string, unknown>).unit_number}${(invoice as Record<string, unknown>).block ? ` (Block ${(invoice as Record<string, unknown>).block})` : ''}`
+                          : invoice.unit_id}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {(invoice as Record<string, unknown>).owner_name
+                          ? String((invoice as Record<string, unknown>).owner_name)
+                          : '\u2014'}
+                      </div>
+                      {(invoice as Record<string, unknown>).tenant_name && (
+                        <div className="text-xs text-muted-foreground/70">
+                          (Tenant: {String((invoice as Record<string, unknown>).tenant_name)})
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(invoice.total_amount)}
+                      {formatCurrency(Number(invoice.total_amount) || 0)}
                     </TableCell>
                     <TableCell className="text-right">
                       {Number(invoice.amount_paid ?? invoice.paid_amount ?? 0) > 0
-                        ? formatCurrency(Number(invoice.amount_paid ?? invoice.paid_amount))
+                        ? formatCurrency(Number(invoice.amount_paid ?? invoice.paid_amount) || 0)
                         : <span className="text-xs text-muted-foreground">UNPAID</span>}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(invoice.balance_due)}
+                      {formatCurrency(Number(invoice.balance_due) || 0)}
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(invoice.status)}>
