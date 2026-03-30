@@ -46,8 +46,47 @@ async function request<T>(
   });
 
   if (response.status === 401) {
+    // Try to refresh the token once before logging out
+    const refreshToken = typeof window !== 'undefined'
+      ? localStorage.getItem('refresh_token')
+      : null;
+
+    if (refreshToken && !path.includes('/auth/')) {
+      try {
+        const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+
+        if (refreshResponse.ok) {
+          const data = await refreshResponse.json();
+          const newToken = data.access_token ?? data.token;
+          if (newToken && typeof window !== 'undefined') {
+            localStorage.setItem('token', newToken);
+            if (data.refresh_token) {
+              localStorage.setItem('refresh_token', data.refresh_token);
+            }
+            // Retry the original request with the new token
+            headers['Authorization'] = `Bearer ${newToken}`;
+            const retryResponse = await fetch(url, {
+              method,
+              headers,
+              body: body ? JSON.stringify(body) : undefined,
+            });
+            if (retryResponse.ok) {
+              if (retryResponse.status === 204) return undefined as T;
+              return retryResponse.json() as Promise<T>;
+            }
+          }
+        }
+      } catch {
+        // Refresh failed — fall through to logout
+      }
+    }
+
     logout();
-    throw new Error('Unauthorized');
+    throw new Error('Session expired. Please log in again.');
   }
 
   if (!response.ok) {
