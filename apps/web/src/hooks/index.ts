@@ -481,6 +481,13 @@ export type {
   LeaveFilters,
 } from './use-staff';
 
+// Tenant Features
+export {
+  tenantFeatureKeys,
+  useEnabledFeatures,
+  useUpdateFeatures,
+} from './use-tenant-features';
+
 // Platform Config (Super Admin)
 export {
   platformConfigKeys,

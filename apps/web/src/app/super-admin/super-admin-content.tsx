@@ -51,6 +51,7 @@ import {
   useCreateTenant,
   useUpdateTenant,
   useTenantSettings,
+  useUpdateFeatures,
 } from '@/hooks';
 import { Separator } from '@/components/ui/separator';
 import { setCurrentTenant } from '@/lib/auth';
@@ -94,6 +95,26 @@ const allFeatureKeys = [
   { key: 'parking_management', label: 'Parking Management' },
 ];
 
+const allModuleFeatures = [
+  { key: 'units', label: 'Units' },
+  { key: 'gate', label: 'Gate Management' },
+  { key: 'utilities', label: 'Utilities' },
+  { key: 'parking', label: 'Parking' },
+  { key: 'amenities', label: 'Amenities' },
+  { key: 'tickets', label: 'Tickets' },
+  { key: 'announcements', label: 'Announcements' },
+  { key: 'voting', label: 'Voting' },
+  { key: 'staff', label: 'Staff' },
+  { key: 'documents', label: 'Documents' },
+  { key: 'invoices', label: 'Invoices' },
+  { key: 'receipts', label: 'Receipts' },
+  { key: 'vendors', label: 'Vendors' },
+  { key: 'purchases', label: 'Purchases' },
+  { key: 'payments', label: 'Payments' },
+  { key: 'bank', label: 'Bank' },
+  { key: 'reports', label: 'Reports' },
+];
+
 // ---------------------------------------------------------------------------
 // Skeleton components
 // ---------------------------------------------------------------------------
@@ -123,6 +144,7 @@ function TenantTableSkeleton(): ReactNode {
           <TableCell><Skeleton className="h-4 w-12" /></TableCell>
           <TableCell><Skeleton className="h-5 w-14" /></TableCell>
           <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-16" /></TableCell>
         </TableRow>
       ))}
     </>
@@ -166,6 +188,12 @@ export default function SuperAdminContent(): ReactNode {
   const [editPlan, setEditPlan] = useState('');
   const [editFeatures, setEditFeatures] = useState<Record<string, boolean>>({});
 
+  // Feature toggles dialog
+  const [featuresDialogOpen, setFeaturesDialogOpen] = useState(false);
+  const [featuresTenantId, setFeaturesTenantId] = useState('');
+  const [featuresTenantName, setFeaturesTenantName] = useState('');
+  const [editEnabledFeatures, setEditEnabledFeatures] = useState<string[]>([]);
+
   // Data queries
   const dashboardQuery = useSuperAdminDashboard();
   const tenantsQuery = useTenants({
@@ -179,6 +207,7 @@ export default function SuperAdminContent(): ReactNode {
   const createTenant = useCreateTenant();
   const updateTenant = useUpdateTenant();
   const updateSettings = useTenantSettings();
+  const updateFeatures = useUpdateFeatures();
 
   // Derived data
   const dashboard = dashboardQuery.data;
@@ -290,6 +319,42 @@ export default function SuperAdminContent(): ReactNode {
     setEditPlan('');
     setEditPricePerUnit('');
     setEditFeatures({});
+  }
+
+  function handleOpenFeaturesDialog(tenant: TenantRow): void {
+    setFeaturesTenantId(tenant.id);
+    setFeaturesTenantName(tenant.name);
+    const existing = (tenant as unknown as { enabled_features?: string[] }).enabled_features;
+    setEditEnabledFeatures(existing ?? allModuleFeatures.map((f) => f.key));
+    setFeaturesDialogOpen(true);
+  }
+
+  function handleCloseFeaturesDialog(): void {
+    setFeaturesDialogOpen(false);
+    setFeaturesTenantId('');
+    setFeaturesTenantName('');
+    setEditEnabledFeatures([]);
+  }
+
+  function handleToggleModuleFeature(key: string): void {
+    setEditEnabledFeatures((prev) =>
+      prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key],
+    );
+  }
+
+  function handleSaveModuleFeatures(): void {
+    updateFeatures.mutate(
+      { tenantId: featuresTenantId, features: editEnabledFeatures },
+      {
+        onSuccess() {
+          addToast({ title: 'Module features updated', variant: 'success' });
+          handleCloseFeaturesDialog();
+        },
+        onError(error) {
+          addToast({ title: 'Failed to update features', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -579,6 +644,7 @@ export default function SuperAdminContent(): ReactNode {
                 <TableHead className="text-right">Units</TableHead>
                 <TableHead>Active</TableHead>
                 <TableHead>Created</TableHead>
+                <TableHead>Features</TableHead>
                 <TableHead className="w-20"></TableHead>
               </TableRow>
             </TableHeader>
@@ -608,6 +674,20 @@ export default function SuperAdminContent(): ReactNode {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(String(t.created_at))}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenFeaturesDialog(t);
+                        }}
+                      >
+                        <Settings className="h-3.5 w-3.5" />
+                        Modules
+                      </Button>
                     </TableCell>
                     <TableCell>
                       <Button
@@ -773,6 +853,40 @@ export default function SuperAdminContent(): ReactNode {
         tenantId={selectedTenantId}
         tenantName={tenantDetail?.name}
       />
+
+      {/* Module Feature Toggles Dialog */}
+      <Dialog open={featuresDialogOpen} onOpenChange={(open) => { if (!open) handleCloseFeaturesDialog(); }}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Module Features</DialogTitle>
+            <DialogDescription>
+              Toggle which modules are visible for {featuresTenantName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4">
+            {allModuleFeatures.map((feature) => (
+              <div key={feature.key} className="flex items-center justify-between rounded-md border px-3 py-2">
+                <span className="text-sm">{feature.label}</span>
+                <input
+                  type="checkbox"
+                  checked={editEnabledFeatures.includes(feature.key)}
+                  onChange={() => handleToggleModuleFeature(feature.key)}
+                  className="rounded border-input"
+                />
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <DialogClose>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={handleSaveModuleFeatures} disabled={updateFeatures.isPending}>
+              <Save className="mr-2 h-4 w-4" />
+              {updateFeatures.isPending ? 'Saving...' : 'Save Features'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </>)}
     </div>
   );

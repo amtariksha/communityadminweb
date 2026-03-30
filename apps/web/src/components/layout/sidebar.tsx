@@ -31,6 +31,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useEnabledFeatures } from '@/hooks';
 import { Avatar, AvatarFallback, getInitials } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -46,6 +47,7 @@ interface NavItem {
   label: string;
   href: string;
   icon: ReactNode;
+  feature?: string;
 }
 
 interface NavGroup {
@@ -63,29 +65,29 @@ const navGroups: NavGroup[] = [
   {
     label: 'Finance',
     items: [
-      { label: 'Accounts', href: '/accounts', icon: <BookOpen className="h-4 w-4" /> },
-      { label: 'Invoices', href: '/invoices', icon: <FileText className="h-4 w-4" /> },
-      { label: 'Receipts', href: '/receipts', icon: <Receipt className="h-4 w-4" /> },
-      { label: 'Vendors', href: '/vendors', icon: <Users className="h-4 w-4" /> },
-      { label: 'Purchases', href: '/purchases', icon: <ShoppingCart className="h-4 w-4" /> },
-      { label: 'Payments', href: '/payments', icon: <IndianRupee className="h-4 w-4" /> },
-      { label: 'Bank', href: '/bank', icon: <Landmark className="h-4 w-4" /> },
-      { label: 'Reports', href: '/reports', icon: <BarChart3 className="h-4 w-4" /> },
+      { label: 'Accounts', href: '/accounts', icon: <BookOpen className="h-4 w-4" />, feature: 'invoices' },
+      { label: 'Invoices', href: '/invoices', icon: <FileText className="h-4 w-4" />, feature: 'invoices' },
+      { label: 'Receipts', href: '/receipts', icon: <Receipt className="h-4 w-4" />, feature: 'receipts' },
+      { label: 'Vendors', href: '/vendors', icon: <Users className="h-4 w-4" />, feature: 'vendors' },
+      { label: 'Purchases', href: '/purchases', icon: <ShoppingCart className="h-4 w-4" />, feature: 'purchases' },
+      { label: 'Payments', href: '/payments', icon: <IndianRupee className="h-4 w-4" />, feature: 'payments' },
+      { label: 'Bank', href: '/bank', icon: <Landmark className="h-4 w-4" />, feature: 'bank' },
+      { label: 'Reports', href: '/reports', icon: <BarChart3 className="h-4 w-4" />, feature: 'reports' },
     ],
   },
   {
     label: 'Management',
     items: [
-      { label: 'Units', href: '/units', icon: <Home className="h-4 w-4" /> },
-      { label: 'Gate', href: '/gate', icon: <ShieldCheck className="h-4 w-4" /> },
-      { label: 'Utilities', href: '/utilities', icon: <Gauge className="h-4 w-4" /> },
-      { label: 'Parking', href: '/parking', icon: <Car className="h-4 w-4" /> },
-      { label: 'Amenities', href: '/amenities', icon: <CalendarCheck className="h-4 w-4" /> },
-      { label: 'Tickets', href: '/tickets', icon: <TicketCheck className="h-4 w-4" /> },
-      { label: 'Announcements', href: '/announcements', icon: <Megaphone className="h-4 w-4" /> },
-      { label: 'Voting', href: '/voting', icon: <Vote className="h-4 w-4" /> },
-      { label: 'Staff', href: '/staff', icon: <Users className="h-4 w-4" /> },
-      { label: 'Documents', href: '/documents', icon: <FolderOpen className="h-4 w-4" /> },
+      { label: 'Units', href: '/units', icon: <Home className="h-4 w-4" />, feature: 'units' },
+      { label: 'Gate', href: '/gate', icon: <ShieldCheck className="h-4 w-4" />, feature: 'gate' },
+      { label: 'Utilities', href: '/utilities', icon: <Gauge className="h-4 w-4" />, feature: 'utilities' },
+      { label: 'Parking', href: '/parking', icon: <Car className="h-4 w-4" />, feature: 'parking' },
+      { label: 'Amenities', href: '/amenities', icon: <CalendarCheck className="h-4 w-4" />, feature: 'amenities' },
+      { label: 'Tickets', href: '/tickets', icon: <TicketCheck className="h-4 w-4" />, feature: 'tickets' },
+      { label: 'Announcements', href: '/announcements', icon: <Megaphone className="h-4 w-4" />, feature: 'announcements' },
+      { label: 'Voting', href: '/voting', icon: <Vote className="h-4 w-4" />, feature: 'voting' },
+      { label: 'Staff', href: '/staff', icon: <Users className="h-4 w-4" />, feature: 'staff' },
+      { label: 'Documents', href: '/documents', icon: <FolderOpen className="h-4 w-4" />, feature: 'documents' },
     ],
   },
   {
@@ -108,12 +110,19 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
   const router = useRouter();
   const user = getUser();
   const userName = user?.name ?? 'Admin User';
+  const { data: enabledFeatures } = useEnabledFeatures();
 
   function isActive(href: string): boolean {
     if (href === '/') {
       return pathname === '/';
     }
     return pathname.startsWith(href);
+  }
+
+  function isFeatureVisible(item: NavItem): boolean {
+    if (!item.feature) return true;
+    if (!enabledFeatures) return true;
+    return enabledFeatures.includes(item.feature);
   }
 
   return (
@@ -140,13 +149,16 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
         <Separator />
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
-          {navGroups.map((group) => (
+          {navGroups.map((group) => {
+            const visibleItems = group.items.filter(isFeatureVisible);
+            if (visibleItems.length === 0) return null;
+            return (
             <div key={group.label} className="mb-4">
               <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {group.label}
               </p>
               <ul className="space-y-0.5">
-                {group.items.map((item) => (
+                {visibleItems.map((item) => (
                   <li key={item.href}>
                     <Link
                       href={item.href}
@@ -165,7 +177,8 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
                 ))}
               </ul>
             </div>
-          ))}
+            );
+          })}
         </nav>
 
         <Separator />
