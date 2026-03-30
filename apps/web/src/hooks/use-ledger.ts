@@ -571,14 +571,26 @@ export function useReverseJournalEntry() {
 export function useTrialBalance(asOfDate: string) {
   return useQuery({
     queryKey: ledgerKeys.trialBalance(asOfDate),
-    queryFn: function fetchTrialBalance() {
-      return api
-        .get<{ data: TrialBalanceReport }>('/ledger/reports/trial-balance', {
-          params: { as_of_date: asOfDate },
-        })
-        .then(function unwrap(res) {
-          return res.data;
-        });
+    queryFn: async function fetchTrialBalance(): Promise<TrialBalanceReport> {
+      const res = await api.get<{ data: TrialBalanceRow[] | TrialBalanceReport }>(
+        '/ledger/reports/trial-balance',
+        { params: { as_of_date: asOfDate } },
+      );
+
+      const rawData = res.data;
+
+      // Backend returns flat array { data: [...] } — transform to structured format
+      if (Array.isArray(rawData)) {
+        const rows = rawData as TrialBalanceRow[];
+        return {
+          rows,
+          total_debit: rows.reduce((s, r) => s + Number(r.debit ?? r.total_debit ?? 0), 0),
+          total_credit: rows.reduce((s, r) => s + Number(r.credit ?? r.total_credit ?? 0), 0),
+          as_of_date: asOfDate,
+        };
+      }
+
+      return rawData as TrialBalanceReport;
     },
     enabled: asOfDate !== '',
   });
