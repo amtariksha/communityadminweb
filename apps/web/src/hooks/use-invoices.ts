@@ -65,7 +65,7 @@ interface UpdateInvoiceRuleInput extends Partial<CreateInvoiceRuleInput> {
 
 interface GenerateInvoicesInput {
   rule_id: string;
-  date: string;
+  invoice_date: string;
 }
 
 interface PostInvoicesInput {

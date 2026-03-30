@@ -254,7 +254,7 @@ export default function InvoicesContent(): ReactNode {
     e.preventDefault();
 
     generateInvoices.mutate(
-      { rule_id: selectedRuleId, date: billingDate },
+      { rule_id: selectedRuleId, invoice_date: billingDate },
       {
         onSuccess(response) {
           setGenerateDialogOpen(false);
