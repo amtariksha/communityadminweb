@@ -1,6 +1,10 @@
 import { getToken, getCurrentTenant, logout } from '@/lib/auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (typeof window !== 'undefined' && window.location.hostname === 'communityos.eassy.life'
+    ? 'https://community.eassy.life'
+    : 'http://localhost:4000');
 
 interface ApiRequestOptions {
   headers?: Record<string, string>;

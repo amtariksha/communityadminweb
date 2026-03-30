@@ -183,31 +183,34 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
 
         <Separator />
 
-        <div className="relative p-3">
+        <div className="p-3">
           <DropdownMenu>
-            <DropdownMenuTrigger className="w-full">
-              <div className="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-accent">
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2 hover:bg-accent text-left"
+              >
                 <Avatar size="sm">
                   <AvatarFallback>{getInitials(userName)}</AvatarFallback>
                 </Avatar>
-                <div className="flex-1 text-left">
+                <div className="flex-1">
                   <p className="text-sm font-medium">{userName}</p>
                   <p className="text-xs text-muted-foreground">{user?.role ?? 'Admin'}</p>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </div>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="top" sideOffset={8} className="w-56">
-              <DropdownMenuItem onClick={() => router.push('/settings')}>
+              <DropdownMenuItem onSelect={() => router.push('/settings')}>
                 <UserCircle className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/settings')}>
+              <DropdownMenuItem onSelect={() => router.push('/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => logout()}>
+              <DropdownMenuItem onSelect={() => logout()}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign Out
               </DropdownMenuItem>
