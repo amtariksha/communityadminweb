@@ -52,7 +52,18 @@ async function request<T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message ?? `Request failed with status ${response.status}`);
+
+    // Build a user-friendly error message that includes field-level validation errors
+    let message = error.message ?? `Request failed with status ${response.status}`;
+
+    if (error.errors && typeof error.errors === 'object') {
+      const fieldErrors = Object.entries(error.errors as Record<string, string[]>)
+        .map(([field, messages]) => `${field}: ${(messages as string[]).join(', ')}`)
+        .join('; ');
+      message = fieldErrors || message;
+    }
+
+    throw new Error(message);
   }
 
   if (response.status === 204) {
