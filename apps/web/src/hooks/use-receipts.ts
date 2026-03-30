@@ -152,11 +152,19 @@ export function useUnallocatedCredits() {
 }
 
 export function useReceiptSummary() {
+  // Default to current financial year (Apr 1 to Mar 31)
+  const now = new Date();
+  const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const startDate = `${fyStartYear}-04-01`;
+  const endDate = `${fyStartYear + 1}-03-31`;
+
   return useQuery({
-    queryKey: receiptKeys.summary(),
+    queryKey: [...receiptKeys.summary(), startDate, endDate],
     queryFn: function fetchReceiptSummary() {
       return api
-        .get<{ data: ReceiptSummary }>('/receipts/summary')
+        .get<{ data: ReceiptSummary }>('/receipts/summary', {
+          params: { start_date: startDate, end_date: endDate },
+        })
         .then(function unwrap(res) {
           return res.data;
         });
