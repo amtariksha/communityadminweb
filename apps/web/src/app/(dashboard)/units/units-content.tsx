@@ -992,7 +992,24 @@ export default function UnitsContent(): ReactNode {
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground py-2">No owner assigned</p>
+                      <div className="flex items-center gap-3 py-2">
+                        <p className="text-sm text-muted-foreground">No owner assigned</p>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            setAddMemberParentId('');
+                            setAddMemberType('owner');
+                            setAddMemberName('');
+                            setAddMemberPhone('');
+                            setAddMemberMoveIn('');
+                            setAddMemberOpen(true);
+                          }}
+                        >
+                          <UserPlus className="mr-1 h-3 w-3" />
+                          Assign Owner
+                        </Button>
+                      </div>
                     )}
                   </div>
 
@@ -1326,12 +1343,18 @@ export default function UnitsContent(): ReactNode {
           <form onSubmit={handleAddMember}>
             <DialogHeader>
               <DialogTitle>
-                {addMemberType === 'tenant' ? 'Assign Tenant' : 'Add Family Member'}
+                {addMemberType === 'owner'
+                  ? 'Assign Owner'
+                  : addMemberType === 'tenant'
+                    ? 'Assign Tenant'
+                    : 'Add Family Member'}
               </DialogTitle>
               <DialogDescription>
-                {addMemberType === 'tenant'
-                  ? 'Assign a tenant to this unit'
-                  : 'Add a family member'}
+                {addMemberType === 'owner'
+                  ? 'Assign an owner to this unit'
+                  : addMemberType === 'tenant'
+                    ? 'Assign a tenant to this unit'
+                    : 'Add a family member'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -1372,7 +1395,13 @@ export default function UnitsContent(): ReactNode {
                 <Button type="button" variant="outline">Cancel</Button>
               </DialogClose>
               <Button type="submit" disabled={addMember.isPending}>
-                {addMember.isPending ? 'Adding...' : addMemberType === 'tenant' ? 'Assign Tenant' : 'Add Member'}
+                {addMember.isPending
+                  ? 'Adding...'
+                  : addMemberType === 'owner'
+                    ? 'Assign Owner'
+                    : addMemberType === 'tenant'
+                      ? 'Assign Tenant'
+                      : 'Add Member'}
               </Button>
             </DialogFooter>
           </form>
