@@ -143,7 +143,7 @@ export default function ReceiptsContent(): ReactNode {
   const summaryQuery = useReceiptSummary();
   const unitsQuery = useUnits({ limit: 500 });
   const fyQuery = useFinancialYears();
-  const invoicesQuery = useInvoices({ status: 'posted', unit_id: cnUnitId || undefined, limit: 50 });
+  const invoicesQuery = useInvoices({ unit_id: cnUnitId || undefined, limit: 50 });
   const createReceipt = useCreateReceipt();
   const createCreditNote = useCreateCreditNote();
 
