@@ -289,4 +289,28 @@ export function useCsvImportUnits() {
   });
 }
 
+export function useBulkImportMembers() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: function importMembers(input: {
+      members: Array<{
+        unit_number: string;
+        name: string;
+        phone: string;
+        member_type: 'owner' | 'tenant' | 'owner_family' | 'tenant_family';
+        email?: string;
+        move_in_date?: string;
+      }>;
+    }) {
+      return api.post<{ data: { imported: number; skipped: number; errors: string[] } }>(
+        '/units/import-members',
+        input,
+      );
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: unitKeys.all });
+    },
+  });
+}
+
 export type { CsvImportRow, CsvImportInput, CsvImportResult };

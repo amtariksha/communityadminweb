@@ -39,6 +39,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { TOOLTIP } from '@/lib/tooltip-content';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -467,6 +468,20 @@ export default function BankContent(): ReactNode {
         breadcrumbs={[{ label: 'Bank' }]}
         title="Bank & Treasury"
         description="Bank accounts, transfers, reconciliation, fixed deposits, and cheque management"
+        actions={
+          <ExportButton
+            data={bankAccounts as unknown as Record<string, unknown>[]}
+            filename={`bank-accounts-${new Date().toISOString().split('T')[0]}`}
+            columns={[
+              { key: 'bank_name', label: 'Bank Name' },
+              { key: 'account_number', label: 'Account Number' },
+              { key: 'ifsc_code', label: 'IFSC' },
+              { key: 'account_type', label: 'Type' },
+              { key: 'branch', label: 'Branch' },
+              { key: 'balance', label: 'Balance' },
+            ]}
+          />
+        }
       />
 
       {/* Tab bar */}

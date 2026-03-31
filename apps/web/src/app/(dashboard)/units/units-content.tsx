@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, useCallback, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus,
@@ -17,6 +17,10 @@ import {
   Clock,
   Phone,
   Mail,
+  Upload,
+  Download,
+  AlertCircle,
+  CheckCircle2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +49,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { useToast } from '@/components/ui/toast';
 import {
   useUnits,
@@ -58,6 +63,7 @@ import {
   useUpdateMemberDetail,
   useTransferOwnership,
   useDisconnectTenant,
+  useBulkImportMembers,
 } from '@/hooks';
 import type { UnitDetailMember } from '@/hooks';
 import { cn, formatDate } from '@/lib/utils';
@@ -246,6 +252,15 @@ export default function UnitsContent(): ReactNode {
   // Disconnect tenant dialog
   const [disconnectOpen, setDisconnectOpen] = useState(false);
 
+  // Import members dialog state
+  const [importMembersOpen, setImportMembersOpen] = useState(false);
+  const [importCsvText, setImportCsvText] = useState('');
+  const [importResult, setImportResult] = useState<{
+    imported: number;
+    skipped: number;
+    errors: string[];
+  } | null>(null);
+
   // Add member dialog (family / tenant)
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [addMemberName, setAddMemberName] = useState('');
@@ -275,6 +290,7 @@ export default function UnitsContent(): ReactNode {
   const updateMemberDetail = useUpdateMemberDetail();
   const transferOwnership = useTransferOwnership();
   const disconnectTenant = useDisconnectTenant();
+  const bulkImportMembers = useBulkImportMembers();
 
   const units = unitsQuery.data?.data ?? [];
   const totalUnits = unitsQuery.data?.total ?? 0;
@@ -299,6 +315,76 @@ export default function UnitsContent(): ReactNode {
   function handleSearch(): void {
     setSearchQuery(searchInput);
     setPage(1);
+  }
+
+  const handleDownloadMemberTemplate = useCallback(function downloadTemplate(): void {
+    const headers = 'unit_number,name,phone,member_type,email,move_in_date';
+    const sampleRow = 'A-101,John Doe,9876543210,owner,john@example.com,2024-01-15';
+    const csv = `${headers}\n${sampleRow}`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'member_import_template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  function handleImportMembers(): void {
+    const lines = importCsvText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    if (lines.length === 0) {
+      addToast({ title: 'CSV is empty', variant: 'destructive' });
+      return;
+    }
+
+    // Skip header row if it looks like headers
+    const firstLine = lines[0].toLowerCase();
+    const dataLines =
+      firstLine.includes('unit_number') || firstLine.includes('name')
+        ? lines.slice(1)
+        : lines;
+
+    if (dataLines.length === 0) {
+      addToast({ title: 'No data rows found in CSV', variant: 'destructive' });
+      return;
+    }
+
+    const validTypes = ['owner', 'tenant', 'owner_family', 'tenant_family'] as const;
+
+    const members = dataLines.map(function parseLine(line) {
+      const parts = line.split(',').map((p) => p.trim());
+      return {
+        unit_number: parts[0] ?? '',
+        name: parts[1] ?? '',
+        phone: parts[2] ?? '',
+        member_type: (validTypes.includes(parts[3] as typeof validTypes[number])
+          ? parts[3]
+          : 'owner') as 'owner' | 'tenant' | 'owner_family' | 'tenant_family',
+        email: parts[4] || undefined,
+        move_in_date: parts[5] || undefined,
+      };
+    });
+
+    bulkImportMembers.mutate(
+      { members },
+      {
+        onSuccess(response) {
+          const result = response.data;
+          setImportResult(result);
+          addToast({
+            title: `Imported ${result.imported} members, ${result.skipped} skipped`,
+            variant: result.errors.length > 0 ? 'warning' : 'success',
+          });
+        },
+        onError() {
+          addToast({ title: 'Import failed', variant: 'destructive' });
+        },
+      },
+    );
   }
 
   function resetUnitForm(): void {
@@ -515,6 +601,18 @@ export default function UnitsContent(): ReactNode {
         description="Manage apartment units — add, edit, import, and assign members"
         actions={
           <>
+            <ExportButton
+              data={units as unknown as Record<string, unknown>[]}
+              filename={`units-${new Date().toISOString().split('T')[0]}`}
+              columns={[
+                { key: 'unit_number', label: 'Unit #' },
+                { key: 'block', label: 'Block' },
+                { key: 'floor', label: 'Floor' },
+                { key: 'unit_type', label: 'Type' },
+                { key: 'area_sqft', label: 'Area (sqft)' },
+                { key: 'owner_name', label: 'Owner' },
+              ]}
+            />
             <Button variant="outline" onClick={() => router.push('/units/directory')}>
               <Users className="mr-2 h-4 w-4" />
               Member Directory
@@ -523,6 +621,95 @@ export default function UnitsContent(): ReactNode {
               <FileSpreadsheet className="mr-2 h-4 w-4" />
               Import from App
             </Button>
+
+            <Dialog
+              open={importMembersOpen}
+              onOpenChange={(open) => {
+                setImportMembersOpen(open);
+                if (!open) {
+                  setImportCsvText('');
+                  setImportResult(null);
+                }
+              }}
+            >
+              <DialogTrigger>
+                <Button variant="outline">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import Members
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Bulk Import Members</DialogTitle>
+                  <DialogDescription>
+                    Paste CSV data to import members into units. Format: unit_number, name, phone, member_type, email, move_in_date
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadMemberTemplate}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Template
+                  </Button>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="import-csv">CSV Data</Label>
+                    <textarea
+                      id="import-csv"
+                      className="flex min-h-[160px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      placeholder={`unit_number,name,phone,member_type,email,move_in_date\nA-101,John Doe,9876543210,owner,john@example.com,2024-01-15`}
+                      value={importCsvText}
+                      onChange={(e) => setImportCsvText(e.target.value)}
+                    />
+                  </div>
+
+                  {importResult && (
+                    <div className="space-y-2 rounded-md border p-3">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <span className="text-sm font-medium">
+                          Imported: {importResult.imported}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          Skipped: {importResult.skipped}
+                        </span>
+                      </div>
+                      {importResult.errors.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1 text-sm font-medium text-destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            Errors ({importResult.errors.length}):
+                          </div>
+                          <ul className="max-h-32 overflow-y-auto text-xs text-destructive">
+                            {importResult.errors.map((err, idx) => (
+                              <li key={idx} className="py-0.5">
+                                {err}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <DialogFooter>
+                  <DialogClose>
+                    <Button variant="outline">Close</Button>
+                  </DialogClose>
+                  <Button
+                    onClick={handleImportMembers}
+                    disabled={bulkImportMembers.isPending || !importCsvText.trim()}
+                  >
+                    {bulkImportMembers.isPending ? 'Importing...' : 'Import Members'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             <Dialog open={unitDialogOpen} onOpenChange={setUnitDialogOpen}>
               <DialogTrigger>

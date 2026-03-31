@@ -36,6 +36,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { Separator } from '@/components/ui/separator';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
@@ -256,6 +257,19 @@ export default function ApprovalsContent(): ReactNode {
         breadcrumbs={[{ label: 'Approvals' }]}
         title="Approvals"
         description="Review and approve pending requests"
+        actions={
+          <ExportButton
+            data={approvals as unknown as Record<string, unknown>[]}
+            filename={`approvals-${new Date().toISOString().split('T')[0]}`}
+            columns={[
+              { key: 'request_type', label: 'Type' },
+              { key: 'title', label: 'Title' },
+              { key: 'requester_name', label: 'Requester' },
+              { key: 'status', label: 'Status' },
+              { key: 'created_at', label: 'Created' },
+            ]}
+          />
+        }
       />
 
       {/* Stat cards */}

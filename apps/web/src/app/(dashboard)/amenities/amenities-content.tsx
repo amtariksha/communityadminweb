@@ -28,6 +28,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -136,6 +137,10 @@ export default function AmenitiesContent(): ReactNode {
   const [activeTab, setActiveTab] = useState<Tab>('amenities');
   const [createOpen, setCreateOpen] = useState(false);
 
+  // Amenities data for export
+  const allAmenitiesQuery = useAmenities();
+  const allAmenities = allAmenitiesQuery.data?.data ?? [];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -143,12 +148,25 @@ export default function AmenitiesContent(): ReactNode {
         title="Amenities"
         description="Manage community amenities and bookings"
         actions={
-          activeTab === 'amenities' ? (
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Amenity
-            </Button>
-          ) : undefined
+          <>
+            <ExportButton
+              data={allAmenities as unknown as Record<string, unknown>[]}
+              filename={`amenities-${new Date().toISOString().split('T')[0]}`}
+              columns={[
+                { key: 'name', label: 'Name' },
+                { key: 'amenity_type', label: 'Type' },
+                { key: 'pricing_type', label: 'Pricing' },
+                { key: 'rate', label: 'Rate' },
+                { key: 'is_active', label: 'Active' },
+              ]}
+            />
+            {activeTab === 'amenities' && (
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Amenity
+              </Button>
+            )}
+          </>
         }
       />
 

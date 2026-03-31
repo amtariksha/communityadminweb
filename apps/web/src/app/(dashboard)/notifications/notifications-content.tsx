@@ -25,6 +25,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -176,6 +177,19 @@ export default function NotificationsContent(): ReactNode {
         breadcrumbs={[{ label: 'Notifications' }]}
         title="Notifications"
         description="Compose and manage notifications for society members"
+        actions={
+          <ExportButton
+            data={templates as unknown as Record<string, unknown>[]}
+            filename={`notifications-${new Date().toISOString().split('T')[0]}`}
+            columns={[
+              { key: 'title', label: 'Title' },
+              { key: 'channel', label: 'Channel' },
+              { key: 'target_audience', label: 'Audience' },
+              { key: 'status', label: 'Status' },
+              { key: 'created_at', label: 'Created' },
+            ]}
+          />
+        }
       />
 
       {/* Compose notification card */}

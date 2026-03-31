@@ -46,6 +46,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -290,10 +291,23 @@ export default function AnnouncementsContent(): ReactNode {
         title="Announcements"
         description="Create and publish announcements to residents — supports targeting by audience"
         actions={
-          <Button onClick={handleOpenCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Announcement
-          </Button>
+          <>
+            <ExportButton
+              data={announcements as unknown as Record<string, unknown>[]}
+              filename={`announcements-${new Date().toISOString().split('T')[0]}`}
+              columns={[
+                { key: 'title', label: 'Title' },
+                { key: 'priority', label: 'Priority' },
+                { key: 'status', label: 'Status' },
+                { key: 'created_at', label: 'Created' },
+                { key: 'published_at', label: 'Published' },
+              ]}
+            />
+            <Button onClick={handleOpenCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Announcement
+            </Button>
+          </>
         }
       />
 

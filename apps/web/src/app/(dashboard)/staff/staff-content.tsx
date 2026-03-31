@@ -43,6 +43,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { useToast } from '@/components/ui/toast';
 import { formatDate } from '@/lib/utils';
 import {
@@ -489,6 +490,19 @@ export default function StaffContent(): ReactNode {
         breadcrumbs={[{ label: 'Staff' }]}
         title="Staff Management"
         description="Manage society staff — employees, shifts, attendance, and leaves"
+        actions={
+          <ExportButton
+            data={employees as unknown as Record<string, unknown>[]}
+            filename={`staff-${new Date().toISOString().split('T')[0]}`}
+            columns={[
+              { key: 'name', label: 'Name' },
+              { key: 'staff_type', label: 'Type' },
+              { key: 'phone', label: 'Phone' },
+              { key: 'status', label: 'Status' },
+              { key: 'joined_at', label: 'Joined' },
+            ]}
+          />
+        }
       />
 
       {/* Tabs */}

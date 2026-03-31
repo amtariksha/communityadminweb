@@ -41,6 +41,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -487,6 +488,21 @@ export default function PurchasesContent(): ReactNode {
         breadcrumbs={[{ label: 'Purchases' }]}
         title="Purchases"
         description="Track purchase requests, vendor bills, and approvals"
+        actions={
+          <ExportButton
+            data={[...purchaseRequests, ...bills] as unknown as Record<string, unknown>[]}
+            filename={`purchases-${new Date().toISOString().split('T')[0]}`}
+            columns={[
+              { key: 'pr_number', label: 'PR #' },
+              { key: 'bill_number', label: 'Bill #' },
+              { key: 'title', label: 'Title' },
+              { key: 'vendor_name', label: 'Vendor' },
+              { key: 'estimated_amount', label: 'Amount' },
+              { key: 'status', label: 'Status' },
+              { key: 'created_at', label: 'Date' },
+            ]}
+          />
+        }
       />
 
       {/* Tab bar */}

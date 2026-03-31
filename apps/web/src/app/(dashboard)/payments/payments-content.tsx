@@ -37,6 +37,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { TOOLTIP } from '@/lib/tooltip-content';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -179,6 +180,20 @@ export default function PaymentsContent(): ReactNode {
         breadcrumbs={[{ label: 'Payments' }]}
         title="Payments"
         description="Online payment collection via Razorpay — orders, settlements, refunds"
+        actions={
+          <ExportButton
+            data={payments as unknown as Record<string, unknown>[]}
+            filename={`payments-${new Date().toISOString().split('T')[0]}`}
+            columns={[
+              { key: 'order_id', label: 'Order ID' },
+              { key: 'unit_number', label: 'Unit' },
+              { key: 'amount', label: 'Amount' },
+              { key: 'status', label: 'Status' },
+              { key: 'method', label: 'Method' },
+              { key: 'created_at', label: 'Date' },
+            ]}
+          />
+        }
       />
 
       {/* Stat cards */}

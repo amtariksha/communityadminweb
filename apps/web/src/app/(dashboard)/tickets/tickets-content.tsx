@@ -45,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { Separator } from '@/components/ui/separator';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
@@ -267,10 +268,24 @@ export default function TicketsContent(): ReactNode {
         title="Tickets"
         description="Track and resolve maintenance requests, complaints, and service issues"
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Ticket
-          </Button>
+          <>
+            <ExportButton
+              data={tickets as unknown as Record<string, unknown>[]}
+              filename={`tickets-${new Date().toISOString().split('T')[0]}`}
+              columns={[
+                { key: 'ticket_number', label: 'Ticket #' },
+                { key: 'title', label: 'Title' },
+                { key: 'category', label: 'Category' },
+                { key: 'priority', label: 'Priority' },
+                { key: 'status', label: 'Status' },
+                { key: 'created_at', label: 'Created' },
+              ]}
+            />
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Ticket
+            </Button>
+          </>
         }
       />
 

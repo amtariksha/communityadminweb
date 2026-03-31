@@ -21,6 +21,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
@@ -453,6 +454,16 @@ export default function AccountsContent(): ReactNode {
         }
         actions={
           <>
+            <ExportButton
+              data={accounts as unknown as Record<string, unknown>[]}
+              filename={`accounts-${new Date().toISOString().split('T')[0]}`}
+              columns={[
+                { key: 'code', label: 'Code' },
+                { key: 'name', label: 'Account Name' },
+                { key: 'opening_balance', label: 'Opening Balance' },
+                { key: 'balance_type', label: 'Balance Type' },
+              ]}
+            />
             <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
               <DialogTrigger>
                 <Button variant="outline">

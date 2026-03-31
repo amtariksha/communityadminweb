@@ -28,6 +28,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
@@ -230,6 +231,18 @@ export default function ReceiptsContent(): ReactNode {
         description="Record payments received from members — cash, cheque, bank transfer, UPI"
         actions={
           <>
+            <ExportButton
+              data={receipts as unknown as Record<string, unknown>[]}
+              filename={`receipts-${new Date().toISOString().split('T')[0]}`}
+              columns={[
+                { key: 'receipt_number', label: 'Receipt #' },
+                { key: 'unit_id', label: 'Unit' },
+                { key: 'amount', label: 'Amount' },
+                { key: 'mode', label: 'Payment Mode' },
+                { key: 'receipt_date', label: 'Date' },
+                { key: 'reference_number', label: 'Reference' },
+              ]}
+            />
             <Dialog open={creditNoteDialogOpen} onOpenChange={setCreditNoteDialogOpen}>
               <DialogTrigger>
                 <Button variant="outline">Create Credit Note</Button>

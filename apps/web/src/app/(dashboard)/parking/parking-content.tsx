@@ -36,6 +36,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -130,12 +131,29 @@ export default function ParkingContent(): ReactNode {
   const statsQuery = useSlotStats();
   const stats = statsQuery.data;
 
+  // Slots data for export
+  const allSlotsQuery = useSlots();
+  const allSlots = allSlotsQuery.data ?? [];
+
   return (
     <div className="space-y-6">
       <PageHeader
         breadcrumbs={[{ label: 'Parking' }]}
         title="Parking"
         description="Manage parking slots, vehicle registration, and subletting"
+        actions={
+          <ExportButton
+            data={allSlots as unknown as Record<string, unknown>[]}
+            filename={`parking-slots-${new Date().toISOString().split('T')[0]}`}
+            columns={[
+              { key: 'slot_number', label: 'Slot #' },
+              { key: 'slot_type', label: 'Type' },
+              { key: 'floor', label: 'Floor' },
+              { key: 'status', label: 'Status' },
+              { key: 'assigned_unit', label: 'Assigned Unit' },
+            ]}
+          />
+        }
       />
 
       {/* Stat cards */}

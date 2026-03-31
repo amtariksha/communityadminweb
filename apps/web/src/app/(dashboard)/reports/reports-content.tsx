@@ -28,6 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
   useTrialBalance,
@@ -575,6 +576,18 @@ export default function ReportsContent(): ReactNode {
         breadcrumbs={[{ label: 'Reports' }]}
         title="Reports"
         description="Financial and management reports — trial balance, balance sheet, I&E, general ledger"
+        actions={
+          <ExportButton
+            data={accounts as unknown as Record<string, unknown>[]}
+            filename={`ledger-accounts-${new Date().toISOString().split('T')[0]}`}
+            columns={[
+              { key: 'code', label: 'Code' },
+              { key: 'name', label: 'Account Name' },
+              { key: 'opening_balance', label: 'Opening Balance' },
+              { key: 'balance_type', label: 'Balance Type' },
+            ]}
+          />
+        }
       />
 
       {!selectedReport ? (

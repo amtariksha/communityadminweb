@@ -28,6 +28,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
@@ -337,6 +338,19 @@ export default function InvoicesContent(): ReactNode {
         description="Generate and manage member invoices — billing rules, bulk generation, posting to GL"
         actions={
           <>
+            <ExportButton
+              data={invoices as unknown as Record<string, unknown>[]}
+              filename={`invoices-${new Date().toISOString().split('T')[0]}`}
+              columns={[
+                { key: 'invoice_number', label: 'Invoice #' },
+                { key: 'unit_number', label: 'Unit' },
+                { key: 'total_amount', label: 'Amount' },
+                { key: 'amount_paid', label: 'Paid' },
+                { key: 'balance_due', label: 'Balance' },
+                { key: 'status', label: 'Status' },
+                { key: 'due_date', label: 'Due Date' },
+              ]}
+            />
             {selectedIds.size > 0 && (
               <Button
                 variant="outline"

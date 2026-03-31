@@ -28,6 +28,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { useVendors, useVendor, useCreateVendor, useDeactivateVendor } from '@/hooks';
@@ -151,7 +152,19 @@ export default function VendorsContent(): ReactNode {
         title="Vendors"
         description="Manage society vendors and suppliers — contact info, bank details, TDS"
         actions={
-          <Dialog open={vendorDialogOpen} onOpenChange={setVendorDialogOpen}>
+          <>
+            <ExportButton
+              data={vendors as unknown as Record<string, unknown>[]}
+              filename={`vendors-${new Date().toISOString().split('T')[0]}`}
+              columns={[
+                { key: 'name', label: 'Vendor Name' },
+                { key: 'pan', label: 'PAN' },
+                { key: 'gstin', label: 'GSTIN' },
+                { key: 'phone', label: 'Phone' },
+                { key: 'email', label: 'Email' },
+              ]}
+            />
+            <Dialog open={vendorDialogOpen} onOpenChange={setVendorDialogOpen}>
             <DialogTrigger>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -249,6 +262,7 @@ export default function VendorsContent(): ReactNode {
               </form>
             </DialogContent>
           </Dialog>
+          </>
         }
       />
 

@@ -22,6 +22,7 @@ export {
   useAddMember,
   useRemoveMember,
   useCsvImportUnits,
+  useBulkImportMembers,
 } from './use-units';
 export type { CsvImportRow, CsvImportResult } from './use-units';
 

@@ -40,6 +40,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -132,12 +133,29 @@ export default function UtilitiesContent(): ReactNode {
   const statsQuery = useUtilityStats();
   const stats = statsQuery.data;
 
+  // Meters data for export
+  const allMetersQuery = useMeters({ meter_type: meterTypeFilter || undefined });
+  const allMeters = allMetersQuery.data ?? [];
+
   return (
     <div className="space-y-6">
       <PageHeader
         breadcrumbs={[{ label: 'Utilities' }]}
         title="Utilities"
         description="Manage metered billing for water, electricity, and gas"
+        actions={
+          <ExportButton
+            data={allMeters as unknown as Record<string, unknown>[]}
+            filename={`utility-meters-${new Date().toISOString().split('T')[0]}`}
+            columns={[
+              { key: 'meter_number', label: 'Meter #' },
+              { key: 'meter_type', label: 'Type' },
+              { key: 'unit_number', label: 'Unit' },
+              { key: 'is_active', label: 'Active' },
+              { key: 'last_reading', label: 'Last Reading' },
+            ]}
+          />
+        }
       />
 
       {/* Stat cards */}
