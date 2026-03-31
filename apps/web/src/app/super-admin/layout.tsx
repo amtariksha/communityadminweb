@@ -15,8 +15,10 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps): R
       <header className="sticky top-0 z-30 border-b bg-background">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 lg:px-6">
           <div className="flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-primary" />
-            <span className="text-lg font-bold">CommunityOS Super Admin</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F5A623]">
+              <span className="text-sm font-bold text-white">e</span>
+            </div>
+            <span className="text-lg font-bold">Eassy Society — Super Admin</span>
           </div>
           <Separator orientation="vertical" className="h-6" />
           <Link

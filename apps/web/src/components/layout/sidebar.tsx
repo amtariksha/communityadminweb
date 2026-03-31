@@ -145,8 +145,10 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
         )}
       >
         <div className="flex h-16 items-center gap-2 px-6">
-          <Building2 className="h-6 w-6 text-primary" />
-          <span className="text-lg font-bold">CommunityOS</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F5A623]">
+            <span className="text-lg font-bold text-white">e</span>
+          </div>
+          <span className="text-lg font-bold">Eassy Society</span>
         </div>
 
         <Separator />

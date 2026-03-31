@@ -57,7 +57,7 @@ export const TEMPLATES: TemplateInfo[] = [
   {
     id: 'custom',
     name: 'Custom CSV',
-    description: 'Upload any CSV and manually map columns to CommunityOS fields. Use this if your data is from a different app or a custom spreadsheet.',
+    description: 'Upload any CSV and manually map columns to Eassy Society fields. Use this if your data is from a different app or a custom spreadsheet.',
     sampleColumns: [],
   },
 ];

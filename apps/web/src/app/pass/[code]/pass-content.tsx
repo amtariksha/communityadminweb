@@ -147,7 +147,7 @@ export default function PassContent({ code }: { code: string }): ReactNode {
 
         {/* Footer */}
         <p className="mt-6 text-center text-xs text-gray-600">
-          Powered by CommunityOS
+          Powered by Eassy Society
         </p>
       </div>
     </div>

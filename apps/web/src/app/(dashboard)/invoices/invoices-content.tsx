@@ -188,7 +188,7 @@ export default function InvoicesContent(): ReactNode {
   const totalPages = Math.ceil(totalCount / limit);
 
   const stats = useMemo(() => {
-    const total = invoices.reduce((sum, inv) => sum + inv.total_amount, 0);
+    const total = invoices.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0);
     const paidCount = invoices.filter((inv) => inv.status === 'paid').length;
     const overdueCount = invoices.filter((inv) => inv.status === 'overdue').length;
     return { total, totalCount, paidCount, overdueCount };
