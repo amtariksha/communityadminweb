@@ -107,26 +107,26 @@ export default function DashboardContent(): ReactNode {
   const { startDate, endDate } = getMonthRange();
   const { data: incomeExpenditure } = useIncomeExpenditure(startDate, endDate);
 
-  const totalIncome = dashboard?.receipt_summary.total_collected ?? 0;
-  const totalExpenses = dashboard?.trial_balance_totals.total_debit ?? 0;
-  const outstandingDues = dashboard?.defaulter_summary.total_overdue_amount ?? 0;
+  const totalIncome = dashboard?.receipt_summary?.total_collected ?? 0;
+  const totalExpenses = dashboard?.trial_balance_totals?.total_debit ?? 0;
+  const outstandingDues = dashboard?.defaulter_summary?.total_overdue_amount ?? 0;
 
   const invoicedTotal = totalIncome + outstandingDues;
   const collectionRate = invoicedTotal > 0 ? (totalIncome / invoicedTotal) * 100 : 0;
 
-  const chartData =
-    incomeExpenditure
-      ? incomeExpenditure.income.map((inc) => {
-          const matchingExpense = incomeExpenditure.expenditure.find(
-            (exp) => exp.account_id === inc.account_id,
-          );
-          return {
-            name: inc.account_name,
-            income: inc.amount,
-            expenses: matchingExpense?.amount ?? 0,
-          };
-        })
-      : [];
+  const incomeArr = incomeExpenditure?.income ?? [];
+  const expenditureArr = incomeExpenditure?.expenditure ?? [];
+
+  const chartData = incomeArr.map((inc) => {
+    const matchingExpense = expenditureArr.find(
+      (exp) => exp.account_id === inc.account_id,
+    );
+    return {
+      name: inc.account_name,
+      income: inc.amount,
+      expenses: matchingExpense?.amount ?? 0,
+    };
+  });
 
   const recentInvoices = dashboard?.recent_invoices ?? [];
   const recentReceipts = dashboard?.recent_receipts ?? [];
@@ -176,7 +176,7 @@ export default function DashboardContent(): ReactNode {
               <CardContent>
                 <div className="text-2xl font-bold">{formatCurrency(totalIncome)}</div>
                 <p className="text-xs text-muted-foreground">
-                  {dashboard?.receipt_summary.count ?? 0} receipts collected
+                  {dashboard?.receipt_summary?.count ?? 0} receipts collected
                 </p>
               </CardContent>
             </Card>

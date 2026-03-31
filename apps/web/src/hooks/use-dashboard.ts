@@ -2,7 +2,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { Invoice, Receipt } from '@communityos/shared';
 
 // ---------------------------------------------------------------------------
 // Response types
@@ -32,8 +31,8 @@ interface DashboardData {
   receipt_summary: ReceiptSummary;
   defaulter_summary: DefaulterSummary;
   trial_balance_totals: TrialBalanceTotals;
-  recent_invoices: Invoice[];
-  recent_receipts: Receipt[];
+  recent_invoices: unknown[];
+  recent_receipts: unknown[];
 }
 
 // ---------------------------------------------------------------------------
@@ -46,6 +45,29 @@ export const dashboardKeys = {
 };
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function getFYDates(): { start_date: string; end_date: string } {
+  const now = new Date();
+  const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return {
+    start_date: `${year}-04-01`,
+    end_date: `${year + 1}-03-31`,
+  };
+}
+
+const EMPTY_RECEIPT_SUMMARY: ReceiptSummary = {
+  total_collected: 0,
+  cash: 0,
+  cheque: 0,
+  bank_transfer: 0,
+  upi: 0,
+  online: 0,
+  count: 0,
+};
+
+// ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
 
@@ -53,49 +75,72 @@ export function useDashboardData() {
   return useQuery({
     queryKey: dashboardKeys.data(),
     queryFn: async function fetchDashboardData(): Promise<DashboardData> {
+      const { start_date, end_date } = getFYDates();
+      const today = new Date().toISOString().split('T')[0];
+
+      // All calls have .catch() fallbacks so one failure doesn't break the dashboard
       const [receiptSummary, defaulterSummary, trialBalance, recentInvoices, recentReceipts] =
         await Promise.all([
+          // Receipt summary — requires start_date and end_date
           api
-            .get<{ data: ReceiptSummary }>('/receipts/summary')
-            .then(function unwrap(res) {
-              return res.data;
-            }),
-          api
-            .get<{ data: DefaulterSummary }>('/invoices/defaulters/summary')
-            .then(function unwrap(res) {
-              return res.data;
+            .get<{ data: ReceiptSummary }>('/receipts/summary', {
+              params: { start_date, end_date },
             })
-            .catch(function fallback() {
-              return { total_defaulters: 0, total_overdue_amount: 0 };
-            }),
+            .then((res) => res.data)
+            .catch(() => EMPTY_RECEIPT_SUMMARY),
+
+          // Defaulters — use the list endpoint, not /summary
           api
-            .get<{ data: { total_debit: number; total_credit: number } }>(
-              '/ledger/reports/trial-balance',
-              { params: { as_of_date: new Date().toISOString().split('T')[0] } },
-            )
-            .then(function unwrap(res) {
+            .get<{ data: unknown[]; total: number }>('/invoices/defaulters')
+            .then((res) => ({
+              total_defaulters: res.total ?? 0,
+              total_overdue_amount: Array.isArray(res.data)
+                ? res.data.reduce(
+                    (sum: number, d: Record<string, unknown>) =>
+                      sum + (Number(d.total_due) || 0),
+                    0,
+                  )
+                : 0,
+            }))
+            .catch(() => ({ total_defaulters: 0, total_overdue_amount: 0 })),
+
+          // Trial balance
+          api
+            .get<{ data: unknown[] }>('/ledger/reports/trial-balance', {
+              params: { as_of_date: today },
+            })
+            .then((res) => {
+              const rows = Array.isArray(res.data) ? res.data : [];
               return {
-                total_debit: res.data.total_debit,
-                total_credit: res.data.total_credit,
+                total_debit: rows.reduce(
+                  (s: number, r: Record<string, unknown>) =>
+                    s + (Number(r.total_debit) || 0),
+                  0,
+                ),
+                total_credit: rows.reduce(
+                  (s: number, r: Record<string, unknown>) =>
+                    s + (Number(r.total_credit) || 0),
+                  0,
+                ),
               };
             })
-            .catch(function fallback() {
-              return { total_debit: 0, total_credit: 0 };
-            }),
+            .catch(() => ({ total_debit: 0, total_credit: 0 })),
+
+          // Recent invoices
           api
-            .get<{ data: Invoice[]; total: number }>('/invoices', {
+            .get<{ data: unknown[] }>('/invoices', {
               params: { page: '1', limit: '5' },
             })
-            .then(function unwrap(res) {
-              return res.data;
-            }),
+            .then((res) => (Array.isArray(res.data) ? res.data : []))
+            .catch(() => []),
+
+          // Recent receipts
           api
-            .get<{ data: Receipt[]; total: number }>('/receipts', {
+            .get<{ data: unknown[] }>('/receipts', {
               params: { page: '1', limit: '5' },
             })
-            .then(function unwrap(res) {
-              return res.data;
-            }),
+            .then((res) => (Array.isArray(res.data) ? res.data : []))
+            .catch(() => []),
         ]);
 
       return {
