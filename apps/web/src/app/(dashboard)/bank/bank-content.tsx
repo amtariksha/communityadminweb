@@ -721,10 +721,11 @@ export default function BankContent(): ReactNode {
                             <Input
                               id="xfer-amount"
                               type="number"
-                              min="0"
+                              min="0.01"
                               step="0.01"
                               required
                               placeholder="0.00"
+                              title="Amount must be greater than zero"
                               value={transferAmount}
                               onChange={(e) => setTransferAmount(e.target.value)}
                             />

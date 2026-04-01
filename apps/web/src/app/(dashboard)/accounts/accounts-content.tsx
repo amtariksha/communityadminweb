@@ -683,12 +683,16 @@ export default function AccountsContent(): ReactNode {
                             </option>
                           ))}
                         </Select>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setInlineGroupDialogOpen(true); }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
                         <Dialog open={inlineGroupDialogOpen} onOpenChange={setInlineGroupDialogOpen}>
-                          <DialogTrigger>
-                            <Button type="button" variant="outline" size="sm" className="shrink-0">
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
                           <DialogContent>
                             <form onSubmit={handleInlineCreateGroup}>
                               <DialogHeader>

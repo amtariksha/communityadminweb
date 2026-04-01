@@ -194,8 +194,12 @@ export default function VendorsContent(): ReactNode {
                       <Input
                         id="vendor-pan"
                         placeholder="AAAAA1234A"
+                        maxLength={10}
+                        pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}"
+                        title="PAN must be 5 letters, 4 digits, 1 letter (e.g., ABCDE1234F)"
+                        style={{ textTransform: 'uppercase' }}
                         value={formPan}
-                        onChange={(e) => setFormPan(e.target.value)}
+                        onChange={(e) => setFormPan(e.target.value.toUpperCase())}
                       />
                     </div>
                     <div className="space-y-2">
@@ -234,9 +238,13 @@ export default function VendorsContent(): ReactNode {
                       <Input
                         id="vendor-phone"
                         type="tel"
-                        placeholder="Phone number"
+                        placeholder="10-digit phone"
+                        maxLength={10}
+                        pattern="[0-9]{10}"
+                        inputMode="numeric"
+                        title="Phone must be exactly 10 digits"
                         value={formPhone}
-                        onChange={(e) => setFormPhone(e.target.value)}
+                        onChange={(e) => setFormPhone(e.target.value.replace(/\D/g, ''))}
                       />
                     </div>
                     <div className="space-y-2">

@@ -581,11 +581,16 @@ export default function StaffContent(): ReactNode {
                             <Label htmlFor="emp-phone">Phone</Label>
                             <Input
                               id="emp-phone"
+                              type="tel"
                               required={!editingEmployeeId}
                               disabled={Boolean(editingEmployeeId)}
-                              placeholder="Phone number"
+                              placeholder="10-digit phone"
+                              maxLength={10}
+                              pattern="[0-9]{10}"
+                              inputMode="numeric"
+                              title="Phone must be exactly 10 digits"
                               value={empPhone}
-                              onChange={(e) => setEmpPhone(e.target.value)}
+                              onChange={(e) => setEmpPhone(e.target.value.replace(/\D/g, ''))}
                             />
                           </div>
                         </div>
@@ -626,9 +631,14 @@ export default function StaffContent(): ReactNode {
                             <Label htmlFor="emp-emergency">Emergency Contact</Label>
                             <Input
                               id="emp-emergency"
-                              placeholder="Emergency phone"
+                              type="tel"
+                              placeholder="10-digit phone"
+                              maxLength={10}
+                              pattern="[0-9]{10}"
+                              inputMode="numeric"
+                              title="Emergency contact must be exactly 10 digits"
                               value={empEmergencyContact}
-                              onChange={(e) => setEmpEmergencyContact(e.target.value)}
+                              onChange={(e) => setEmpEmergencyContact(e.target.value.replace(/\D/g, ''))}
                             />
                           </div>
                           {!editingEmployeeId && (

@@ -24,6 +24,13 @@ interface UnallocatedCredit {
   receipt_date: string;
 }
 
+interface CollectionSummaryRow {
+  month: string;
+  mode: string;
+  count: number;
+  total: number;
+}
+
 interface ReceiptSummary {
   total_collected: number;
   cash: number;
@@ -32,6 +39,45 @@ interface ReceiptSummary {
   upi: number;
   online: number;
   count: number;
+}
+
+function aggregateSummary(rows: CollectionSummaryRow[]): ReceiptSummary {
+  const summary: ReceiptSummary = {
+    total_collected: 0,
+    cash: 0,
+    cheque: 0,
+    bank_transfer: 0,
+    upi: 0,
+    online: 0,
+    count: 0,
+  };
+
+  for (const row of rows) {
+    const amount = Number(row.total) || 0;
+    const count = Number(row.count) || 0;
+    summary.total_collected += amount;
+    summary.count += count;
+
+    switch (row.mode) {
+      case 'cash':
+        summary.cash += amount;
+        break;
+      case 'cheque':
+        summary.cheque += amount;
+        break;
+      case 'bank_transfer':
+        summary.bank_transfer += amount;
+        break;
+      case 'upi':
+        summary.upi += amount;
+        break;
+      case 'online':
+        summary.online += amount;
+        break;
+    }
+  }
+
+  return summary;
 }
 
 // ---------------------------------------------------------------------------

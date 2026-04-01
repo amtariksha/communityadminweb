@@ -291,8 +291,11 @@ export default function ReceiptsContent(): ReactNode {
                       <Input
                         id="cn-amount"
                         type="number"
-                        placeholder="0"
+                        placeholder="0.00"
                         required
+                        min="0.01"
+                        step="0.01"
+                        title="Amount must be greater than zero"
                         value={cnAmount}
                         onChange={(e) => setCnAmount(e.target.value)}
                       />
@@ -358,8 +361,11 @@ export default function ReceiptsContent(): ReactNode {
                       <Input
                         id="receipt-amount"
                         type="number"
-                        placeholder="0"
+                        placeholder="0.00"
                         required
+                        min="0.01"
+                        step="0.01"
+                        title="Amount must be greater than zero"
                         value={receiptAmount}
                         onChange={(e) => setReceiptAmount(e.target.value)}
                       />
