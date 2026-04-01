@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { Plus, Users, Search, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
+import { Plus, Users, Search, ChevronLeft, ChevronRight, XCircle, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
-import { useVendors, useVendor, useCreateVendor, useDeactivateVendor } from '@/hooks';
+import { useVendors, useVendor, useCreateVendor, useUpdateVendor, useDeactivateVendor } from '@/hooks';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -71,6 +71,17 @@ export default function VendorsContent(): ReactNode {
   const [formPhone, setFormPhone] = useState('');
   const [formEmail, setFormEmail] = useState('');
 
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPan, setEditPan] = useState('');
+  const [editGstin, setEditGstin] = useState('');
+  const [editBankName, setEditBankName] = useState('');
+  const [editBankAccount, setEditBankAccount] = useState('');
+  const [editBankIfsc, setEditBankIfsc] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+
   const vendorsQuery = useVendors({
     search: searchQuery || undefined,
     page,
@@ -78,6 +89,7 @@ export default function VendorsContent(): ReactNode {
   });
   const vendorDetailQuery = useVendor(selectedVendorId);
   const createVendor = useCreateVendor();
+  const updateVendor = useUpdateVendor();
   const deactivateVendor = useDeactivateVendor();
 
   const vendors = vendorsQuery.data?.data ?? [];
@@ -138,6 +150,51 @@ export default function VendorsContent(): ReactNode {
         addToast({ title: 'Failed to deactivate vendor', variant: 'destructive' });
       },
     });
+  }
+
+  function openEditDialog(): void {
+    if (!vendorDetail) return;
+    setEditName(vendorDetail.name);
+    setEditPan(vendorDetail.pan ?? '');
+    setEditGstin(vendorDetail.gstin ?? '');
+    setEditBankName(vendorDetail.bank_name ?? '');
+    setEditBankAccount(vendorDetail.bank_account_number ?? '');
+    setEditBankIfsc(vendorDetail.bank_ifsc ?? '');
+    setEditPhone(vendorDetail.phone ?? '');
+    setEditEmail(vendorDetail.email ?? '');
+    setDetailDialogOpen(false);
+    setEditDialogOpen(true);
+  }
+
+  function handleEditVendor(e: FormEvent): void {
+    e.preventDefault();
+    if (!selectedVendorId) return;
+
+    updateVendor.mutate(
+      {
+        id: selectedVendorId,
+        data: {
+          name: editName,
+          pan: editPan || null,
+          gstin: editGstin || null,
+          bank_name: editBankName || null,
+          bank_account_number: editBankAccount || null,
+          bank_ifsc: editBankIfsc || null,
+          phone: editPhone || null,
+          email: editEmail || null,
+        },
+      },
+      {
+        onSuccess() {
+          setEditDialogOpen(false);
+          setSelectedVendorId('');
+          addToast({ title: 'Vendor updated successfully', variant: 'success' });
+        },
+        onError() {
+          addToast({ title: 'Failed to update vendor', variant: 'destructive' });
+        },
+      },
+    );
   }
 
   function handleRowClick(vendorId: string): void {
@@ -348,6 +405,7 @@ export default function VendorsContent(): ReactNode {
                 <TableHead>GSTIN</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -391,6 +449,20 @@ export default function VendorsContent(): ReactNode {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {vendor.phone ?? '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRowClick(vendor.id);
+                        }}
+                        title="Edit vendor"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -436,6 +508,109 @@ export default function VendorsContent(): ReactNode {
         </CardContent>
       </Card>
 
+      {/* Edit Vendor Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleEditVendor}>
+            <DialogHeader>
+              <DialogTitle>Edit Vendor</DialogTitle>
+              <DialogDescription>Update vendor details</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-vendor-name">Vendor Name</Label>
+                <Input
+                  id="edit-vendor-name"
+                  placeholder="e.g., ABC Services"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-vendor-pan">PAN</Label>
+                  <Input
+                    id="edit-vendor-pan"
+                    placeholder="AAAAA1234A"
+                    maxLength={10}
+                    pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}"
+                    title="PAN must be 5 letters, 4 digits, 1 letter (e.g., ABCDE1234F)"
+                    style={{ textTransform: 'uppercase' }}
+                    value={editPan}
+                    onChange={(e) => setEditPan(e.target.value.toUpperCase())}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-vendor-gstin">GSTIN</Label>
+                  <Input
+                    id="edit-vendor-gstin"
+                    placeholder="Optional"
+                    value={editGstin}
+                    onChange={(e) => setEditGstin(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Bank Details</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    placeholder="Bank Name"
+                    value={editBankName}
+                    onChange={(e) => setEditBankName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="IFSC Code"
+                    value={editBankIfsc}
+                    onChange={(e) => setEditBankIfsc(e.target.value)}
+                  />
+                </div>
+                <Input
+                  placeholder="Account Number"
+                  value={editBankAccount}
+                  onChange={(e) => setEditBankAccount(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-vendor-phone">Phone</Label>
+                  <Input
+                    id="edit-vendor-phone"
+                    type="tel"
+                    placeholder="10-digit phone"
+                    maxLength={10}
+                    pattern="[0-9]{10}"
+                    inputMode="numeric"
+                    title="Phone must be exactly 10 digits"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, ''))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-vendor-email">Email</Label>
+                  <Input
+                    id="edit-vendor-email"
+                    type="email"
+                    placeholder="Email address"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={updateVendor.isPending}>
+                {updateVendor.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Vendor Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -490,18 +665,28 @@ export default function VendorsContent(): ReactNode {
                 <Badge variant={vendorDetail.is_active ? 'success' : 'secondary'}>
                   {vendorDetail.is_active ? 'Active' : 'Inactive'}
                 </Badge>
-                {vendorDetail.is_active && (
+                <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-destructive"
-                    disabled={deactivateVendor.isPending}
-                    onClick={() => handleDeactivateVendor(vendorDetail.id)}
+                    onClick={openEditDialog}
                   >
-                    <XCircle className="mr-1 h-4 w-4" />
-                    {deactivateVendor.isPending ? 'Deactivating...' : 'Deactivate'}
+                    <Pencil className="mr-1 h-4 w-4" />
+                    Edit
                   </Button>
-                )}
+                  {vendorDetail.is_active && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive"
+                      disabled={deactivateVendor.isPending}
+                      onClick={() => handleDeactivateVendor(vendorDetail.id)}
+                    >
+                      <XCircle className="mr-1 h-4 w-4" />
+                      {deactivateVendor.isPending ? 'Deactivating...' : 'Deactivate'}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           ) : null}

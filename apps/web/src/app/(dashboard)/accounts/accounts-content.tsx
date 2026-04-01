@@ -2,7 +2,7 @@
 
 import { useState, useRef, type FormEvent, type ChangeEvent, type ReactNode } from 'react';
 import Link from 'next/link';
-import { ChevronRight, ChevronDown, Plus, BookOpen, Upload, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, BookOpen, Upload, Download, AlertCircle, CheckCircle2, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +38,9 @@ import {
   useLedgerAccounts,
   useFinancialYears,
   useCreateAccountGroup,
+  useUpdateAccountGroup,
   useCreateLedgerAccount,
+  useUpdateLedgerAccount,
   useSetOpeningBalance,
   useBulkImportBalances,
 } from '@/hooks';
@@ -91,6 +101,8 @@ function buildTree(groups: AccountGroup[], accounts: LedgerAccount[]): TreeNode[
 interface TreeNodeViewProps {
   node: TreeNode;
   depth: number;
+  onEditGroup: (group: AccountGroup) => void;
+  onEditAccount: (account: LedgerAccount) => void;
 }
 
 const typeColors: Record<string, string> = {
@@ -100,14 +112,14 @@ const typeColors: Record<string, string> = {
   expense: 'text-warning',
 };
 
-function TreeNodeView({ node, depth }: TreeNodeViewProps): ReactNode {
+function TreeNodeView({ node, depth, onEditGroup, onEditAccount }: TreeNodeViewProps): ReactNode {
   const [expanded, setExpanded] = useState(depth < 2);
   const hasChildren = node.children.length > 0 || node.accounts.length > 0;
 
   return (
     <div>
       <div
-        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
+        className="group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
         style={{ paddingLeft: `${depth * 20 + 8}px` }}
         onClick={() => setExpanded(!expanded)}
       >
@@ -123,30 +135,62 @@ function TreeNodeView({ node, depth }: TreeNodeViewProps): ReactNode {
         <BookOpen className={`h-4 w-4 shrink-0 ${typeColors[node.group.type] ?? 'text-muted-foreground'}`} />
         <span className="text-sm font-medium">{node.group.name}</span>
         <span className="text-xs text-muted-foreground">({node.group.code})</span>
+        <button
+          type="button"
+          className="ml-1 hidden rounded p-0.5 hover:bg-muted group-hover:inline-flex"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEditGroup(node.group);
+          }}
+          title="Edit group"
+        >
+          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
       </div>
 
       {expanded && (
         <>
           {node.children.map((child) => (
-            <TreeNodeView key={child.group.id} node={child} depth={depth + 1} />
+            <TreeNodeView
+              key={child.group.id}
+              node={child}
+              depth={depth + 1}
+              onEditGroup={onEditGroup}
+              onEditAccount={onEditAccount}
+            />
           ))}
           {node.accounts.map((account) => (
-            <Link
+            <div
               key={account.id}
-              href={`/accounts/${account.id}`}
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
+              className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
               style={{ paddingLeft: `${(depth + 1) * 20 + 8}px` }}
             >
               <span className="w-4" />
-              <span className="text-sm">{account.name}</span>
-              <span className="text-xs text-muted-foreground">({account.code})</span>
-              <span className="ml-auto text-sm font-medium">
-                {formatCurrency(account.opening_balance)}
-              </span>
-              <Badge variant="outline" className="text-xs">
-                {account.balance_type === 'debit' ? 'Dr' : 'Cr'}
-              </Badge>
-            </Link>
+              <Link
+                href={`/accounts/${account.id}`}
+                className="flex flex-1 items-center gap-2"
+              >
+                <span className="text-sm">{account.name}</span>
+                <span className="text-xs text-muted-foreground">({account.code})</span>
+                <span className="ml-auto text-sm font-medium">
+                  {formatCurrency(account.opening_balance)}
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  {account.balance_type === 'debit' ? 'Dr' : 'Cr'}
+                </Badge>
+              </Link>
+              <button
+                type="button"
+                className="hidden rounded p-0.5 hover:bg-muted group-hover:inline-flex"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditAccount(account);
+                }}
+                title="Edit account"
+              >
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </div>
           ))}
         </>
       )}
@@ -188,7 +232,9 @@ export default function AccountsContent(): ReactNode {
   const { data: financialYears } = useFinancialYears();
 
   const createGroup = useCreateAccountGroup();
+  const updateGroup = useUpdateAccountGroup();
   const createAccount = useCreateLedgerAccount();
+  const updateAccount = useUpdateLedgerAccount();
   const setOpeningBalance = useSetOpeningBalance();
   const bulkImportBalances = useBulkImportBalances();
 
@@ -217,6 +263,22 @@ export default function AccountsContent(): ReactNode {
   const [openingBalance, setOpeningBalanceValue] = useState('0');
   const [balanceType, setBalanceType] = useState('debit');
 
+  // -- edit group dialog state --
+  const [editGroupDialogOpen, setEditGroupDialogOpen] = useState(false);
+  const [editGroupId, setEditGroupId] = useState('');
+  const [editGroupName, setEditGroupName] = useState('');
+  const [editGroupCode, setEditGroupCode] = useState('');
+  const [editGroupType, setEditGroupType] = useState<AccountType>('asset');
+
+  // -- edit account dialog state --
+  const [editAccountDialogOpen, setEditAccountDialogOpen] = useState(false);
+  const [editAccountId, setEditAccountId] = useState('');
+  const [editAccountName, setEditAccountName] = useState('');
+  const [editAccountCode, setEditAccountCode] = useState('');
+  const [editAccountGroupId, setEditAccountGroupId] = useState('');
+  const [editAccountOpeningBalance, setEditAccountOpeningBalance] = useState('0');
+  const [editAccountBalanceType, setEditAccountBalanceType] = useState('debit');
+
   function resetGroupForm(): void {
     setGroupName('');
     setGroupCode('');
@@ -230,6 +292,84 @@ export default function AccountsContent(): ReactNode {
     setAccountGroupId('');
     setOpeningBalanceValue('0');
     setBalanceType('debit');
+  }
+
+  function handleOpenEditGroup(group: AccountGroup): void {
+    setEditGroupId(group.id);
+    setEditGroupName(group.name);
+    setEditGroupCode(group.code);
+    setEditGroupType(group.type as AccountType);
+    setEditGroupDialogOpen(true);
+  }
+
+  function handleEditGroup(e: FormEvent): void {
+    e.preventDefault();
+    if (!editGroupId) return;
+
+    updateGroup.mutate(
+      {
+        id: editGroupId,
+        data: {
+          name: editGroupName,
+          code: editGroupCode,
+          type: editGroupType,
+        },
+      },
+      {
+        onSuccess() {
+          setEditGroupDialogOpen(false);
+          addToast({ title: 'Account group updated', variant: 'success' });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to update group',
+            description: error.message,
+            variant: 'destructive',
+          });
+        },
+      },
+    );
+  }
+
+  function handleOpenEditAccount(account: LedgerAccount): void {
+    setEditAccountId(account.id);
+    setEditAccountName(account.name);
+    setEditAccountCode(account.code);
+    setEditAccountGroupId(account.group_id);
+    setEditAccountOpeningBalance(String(account.opening_balance ?? 0));
+    setEditAccountBalanceType(account.balance_type ?? 'debit');
+    setEditAccountDialogOpen(true);
+  }
+
+  function handleEditAccount(e: FormEvent): void {
+    e.preventDefault();
+    if (!editAccountId) return;
+
+    updateAccount.mutate(
+      {
+        id: editAccountId,
+        data: {
+          name: editAccountName,
+          code: editAccountCode,
+          group_id: editAccountGroupId,
+          opening_balance: Number(editAccountOpeningBalance),
+          balance_type: editAccountBalanceType,
+        },
+      },
+      {
+        onSuccess() {
+          setEditAccountDialogOpen(false);
+          addToast({ title: 'Ledger account updated', variant: 'success' });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to update account',
+            description: error.message,
+            variant: 'destructive',
+          });
+        },
+      },
+    );
   }
 
   function resetInlineGroupForm(): void {
@@ -812,7 +952,13 @@ export default function AccountsContent(): ReactNode {
           ) : tree.length > 0 ? (
             <div className="space-y-0.5">
               {tree.map((node) => (
-                <TreeNodeView key={node.group.id} node={node} depth={0} />
+                <TreeNodeView
+                  key={node.group.id}
+                  node={node}
+                  depth={0}
+                  onEditGroup={handleOpenEditGroup}
+                  onEditAccount={handleOpenEditAccount}
+                />
               ))}
             </div>
           ) : (
@@ -826,6 +972,142 @@ export default function AccountsContent(): ReactNode {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Account Group Dialog */}
+      <Dialog open={editGroupDialogOpen} onOpenChange={setEditGroupDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleEditGroup}>
+            <DialogHeader>
+              <DialogTitle>Edit Account Group</DialogTitle>
+              <DialogDescription>Update group details</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-group-name">Group Name</Label>
+                <Input
+                  id="edit-group-name"
+                  placeholder="e.g., Fixed Assets"
+                  value={editGroupName}
+                  onChange={(e) => setEditGroupName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-group-code">Group Code</Label>
+                <Input
+                  id="edit-group-code"
+                  placeholder="e.g., 1300"
+                  value={editGroupCode}
+                  onChange={(e) => setEditGroupCode(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-group-type">Type</Label>
+                <Select
+                  id="edit-group-type"
+                  value={editGroupType}
+                  onChange={(e) => setEditGroupType(e.target.value as AccountType)}
+                  required
+                >
+                  <option value="asset">Asset</option>
+                  <option value="liability">Liability</option>
+                  <option value="income">Income</option>
+                  <option value="expense">Expense</option>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={updateGroup.isPending}>
+                {updateGroup.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Ledger Account Dialog */}
+      <Dialog open={editAccountDialogOpen} onOpenChange={setEditAccountDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleEditAccount}>
+            <DialogHeader>
+              <DialogTitle>Edit Ledger Account</DialogTitle>
+              <DialogDescription>Update account details</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-account-name">Account Name</Label>
+                <Input
+                  id="edit-account-name"
+                  placeholder="e.g., ICICI Bank"
+                  value={editAccountName}
+                  onChange={(e) => setEditAccountName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-account-code">Account Code</Label>
+                <Input
+                  id="edit-account-code"
+                  placeholder="e.g., 1113"
+                  value={editAccountCode}
+                  onChange={(e) => setEditAccountCode(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-account-group">Group</Label>
+                <Select
+                  id="edit-account-group"
+                  value={editAccountGroupId}
+                  onChange={(e) => setEditAccountGroupId(e.target.value)}
+                  required
+                >
+                  <option value="">Select group</option>
+                  {flatGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name} ({g.code})
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-opening-balance">Opening Balance</Label>
+                <Input
+                  id="edit-opening-balance"
+                  type="number"
+                  placeholder="0"
+                  value={editAccountOpeningBalance}
+                  onChange={(e) => setEditAccountOpeningBalance(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-balance-type">Balance Type</Label>
+                <Select
+                  id="edit-balance-type"
+                  value={editAccountBalanceType}
+                  onChange={(e) => setEditAccountBalanceType(e.target.value)}
+                  required
+                >
+                  <option value="debit">Debit (Dr)</option>
+                  <option value="credit">Credit (Cr)</option>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={updateAccount.isPending}>
+                {updateAccount.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
