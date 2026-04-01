@@ -617,10 +617,11 @@ export default function PurchasesContent(): ReactNode {
                             <Input
                               id="pr-amount"
                               type="number"
-                              min="0"
+                              min="0.01"
                               step="0.01"
                               required
                               placeholder="0.00"
+                              title="Amount must be greater than zero"
                               value={prEstimatedAmount}
                               onChange={(e) => setPrEstimatedAmount(e.target.value)}
                             />
@@ -941,10 +942,11 @@ export default function PurchasesContent(): ReactNode {
                             <Input
                               id="bill-line-amount"
                               type="number"
-                              min="0"
+                              min="0.01"
                               step="0.01"
                               required
                               placeholder="0.00"
+                              title="Amount must be greater than zero"
                               value={billLineAmount}
                               onChange={(e) => setBillLineAmount(e.target.value)}
                             />
@@ -1177,10 +1179,11 @@ export default function PurchasesContent(): ReactNode {
                   <Input
                     id="pay-amount"
                     type="number"
-                    min="0"
+                    min="0.01"
                     step="0.01"
                     required
                     placeholder="0.00"
+                    title="Amount must be greater than zero"
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
                   />

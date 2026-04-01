@@ -208,11 +208,11 @@ export function useReceiptSummary() {
     queryKey: [...receiptKeys.summary(), startDate, endDate],
     queryFn: function fetchReceiptSummary() {
       return api
-        .get<{ data: ReceiptSummary }>('/receipts/summary', {
+        .get<{ data: CollectionSummaryRow[] }>('/receipts/summary', {
           params: { start_date: startDate, end_date: endDate },
         })
-        .then(function unwrap(res) {
-          return res.data;
+        .then(function unwrapAndAggregate(res) {
+          return aggregateSummary(res.data);
         });
     },
   });

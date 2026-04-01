@@ -550,8 +550,12 @@ export default function BankContent(): ReactNode {
                           id="acct-ifsc"
                           required
                           placeholder="e.g., SBIN0001234"
+                          maxLength={11}
+                          pattern="[A-Z]{4}0[A-Z0-9]{6}"
+                          title="IFSC must be 4 letters, 0, then 6 alphanumeric characters (e.g., SBIN0001234)"
+                          style={{ textTransform: 'uppercase' }}
                           value={accountIfsc}
-                          onChange={(e) => setAccountIfsc(e.target.value)}
+                          onChange={(e) => setAccountIfsc(e.target.value.toUpperCase())}
                         />
                       </div>
                     </div>

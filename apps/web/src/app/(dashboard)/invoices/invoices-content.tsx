@@ -459,6 +459,9 @@ export default function InvoicesContent(): ReactNode {
                                       id="rule-amount"
                                       type="number"
                                       placeholder="0"
+                                      min="0.01"
+                                      step="0.01"
+                                      title="Amount must be greater than zero"
                                       value={ruleAmount}
                                       onChange={(e) => setRuleAmount(e.target.value)}
                                       required

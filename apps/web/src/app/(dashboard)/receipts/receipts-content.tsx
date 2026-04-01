@@ -236,7 +236,7 @@ export default function ReceiptsContent(): ReactNode {
               filename={`receipts-${new Date().toISOString().split('T')[0]}`}
               columns={[
                 { key: 'receipt_number', label: 'Receipt #' },
-                { key: 'unit_id', label: 'Unit' },
+                { key: 'unit_number', label: 'Unit' },
                 { key: 'amount', label: 'Amount' },
                 { key: 'mode', label: 'Payment Mode' },
                 { key: 'receipt_date', label: 'Date' },
@@ -491,7 +491,7 @@ export default function ReceiptsContent(): ReactNode {
             <TableHeader>
               <TableRow>
                 <TableHead>Receipt #</TableHead>
-                <TableHead>Unit</TableHead>
+                <TableHead>Unit / Owner</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Payment Mode</TableHead>
                 <TableHead>Date</TableHead>
@@ -507,7 +507,18 @@ export default function ReceiptsContent(): ReactNode {
                     <TableCell>
                       <span className="font-mono text-xs">{receipt.receipt_number}</span>
                     </TableCell>
-                    <TableCell className="font-medium">{receipt.unit_id}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">
+                        {(receipt as Record<string, unknown>).unit_number
+                          ? String((receipt as Record<string, unknown>).unit_number)
+                          : units.find((u) => u.id === receipt.unit_id)?.unit_number ?? receipt.unit_id}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {(receipt as Record<string, unknown>).owner_name
+                          ? String((receipt as Record<string, unknown>).owner_name)
+                          : '\u2014'}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right font-medium text-success">
                       {formatCurrency(receipt.amount)}
                     </TableCell>

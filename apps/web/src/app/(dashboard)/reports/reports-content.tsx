@@ -129,9 +129,10 @@ function ReportSkeleton(): ReactNode {
 }
 
 function TrialBalanceView({ asOfDate }: { asOfDate: string }): ReactNode {
-  const { data, isLoading } = useTrialBalance(asOfDate);
+  const { data, isLoading, isError, error } = useTrialBalance(asOfDate);
 
   if (isLoading) return <ReportSkeleton />;
+  if (isError) return <p className="py-8 text-center text-destructive">Failed to load: {(error as Error)?.message ?? 'Unknown error'}</p>;
   if (!data) return <p className="py-8 text-center text-muted-foreground">No data available</p>;
 
   return (
@@ -175,10 +176,14 @@ function TrialBalanceView({ asOfDate }: { asOfDate: string }): ReactNode {
 }
 
 function BalanceSheetView({ asOfDate }: { asOfDate: string }): ReactNode {
-  const { data, isLoading } = useBalanceSheet(asOfDate);
+  const { data, isLoading, isError, error } = useBalanceSheet(asOfDate);
 
   if (isLoading) return <ReportSkeleton />;
+  if (isError) return <p className="py-8 text-center text-destructive">Failed to load: {(error as Error)?.message ?? 'Unknown error'}</p>;
   if (!data) return <p className="py-8 text-center text-muted-foreground">No data available</p>;
+
+  const assetRows = data.assets ?? [];
+  const liabilityRows = data.liabilities ?? [];
 
   return (
     <div>
@@ -194,7 +199,7 @@ function BalanceSheetView({ asOfDate }: { asOfDate: string }): ReactNode {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.assets.map((section) => (
+              {assetRows.map((section) => (
                 <>
                   <TableRow key={`group-${section.group}`} className="bg-muted/50">
                     <TableCell colSpan={2} className="font-semibold">{section.group}</TableCell>
@@ -230,7 +235,7 @@ function BalanceSheetView({ asOfDate }: { asOfDate: string }): ReactNode {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.liabilities.map((section) => (
+              {liabilityRows.map((section) => (
                 <>
                   <TableRow key={`group-${section.group}`} className="bg-muted/50">
                     <TableCell colSpan={2} className="font-semibold">{section.group}</TableCell>
@@ -262,12 +267,15 @@ function BalanceSheetView({ asOfDate }: { asOfDate: string }): ReactNode {
 }
 
 function IncomeExpenditureView({ startDate, endDate }: { startDate: string; endDate: string }): ReactNode {
-  const { data, isLoading } = useIncomeExpenditure(startDate, endDate);
+  const { data, isLoading, isError, error } = useIncomeExpenditure(startDate, endDate);
 
   if (isLoading) return <ReportSkeleton />;
+  if (isError) return <p className="py-8 text-center text-destructive">Failed to load: {(error as Error)?.message ?? 'Unknown error'}</p>;
   if (!data) return <p className="py-8 text-center text-muted-foreground">No data available</p>;
 
-  const isSurplus = data.surplus_or_deficit >= 0;
+  const incomeRows = data.income ?? [];
+  const expenditureRows = data.expenditure ?? [];
+  const isSurplus = (data.surplus_or_deficit ?? 0) >= 0;
 
   return (
     <div>
@@ -286,7 +294,7 @@ function IncomeExpenditureView({ startDate, endDate }: { startDate: string; endD
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.income.map((row) => (
+              {incomeRows.map((row) => (
                 <TableRow key={row.account_id}>
                   <TableCell className="font-mono text-xs">{row.account_code}</TableCell>
                   <TableCell>{row.account_name}</TableCell>
@@ -313,7 +321,7 @@ function IncomeExpenditureView({ startDate, endDate }: { startDate: string; endD
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.expenditure.map((row) => (
+              {expenditureRows.map((row) => (
                 <TableRow key={row.account_id}>
                   <TableCell className="font-mono text-xs">{row.account_code}</TableCell>
                   <TableCell>{row.account_name}</TableCell>
@@ -323,7 +331,7 @@ function IncomeExpenditureView({ startDate, endDate }: { startDate: string; endD
               <TableRow className="border-t-2 font-bold">
                 <TableCell colSpan={2} className="text-right">Total Expenditure</TableCell>
                 <TableCell className="text-right text-destructive">
-                  {formatCurrency(data.total_expenditure)}
+                  {formatCurrency(data.total_expenditure ?? 0)}
                 </TableCell>
               </TableRow>
             </TableBody>
@@ -336,7 +344,7 @@ function IncomeExpenditureView({ startDate, endDate }: { startDate: string; endD
           {isSurplus ? 'Surplus' : 'Deficit'}
         </span>
         <span className={`text-2xl font-bold ${isSurplus ? 'text-success' : 'text-destructive'}`}>
-          {formatCurrency(Math.abs(data.surplus_or_deficit))}
+          {formatCurrency(Math.abs(data.surplus_or_deficit ?? 0))}
         </span>
       </div>
     </div>
