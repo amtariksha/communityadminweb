@@ -188,7 +188,10 @@ export default function InvoicesContent(): ReactNode {
   const totalPages = Math.ceil(totalCount / limit);
 
   const stats = useMemo(() => {
-    const total = invoices.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0);
+    const total = invoices.reduce((sum, inv) => {
+      const amt = typeof inv.total_amount === 'string' ? parseFloat(inv.total_amount) : Number(inv.total_amount);
+      return sum + (isNaN(amt) ? 0 : amt);
+    }, 0);
     const paidCount = invoices.filter((inv) => inv.status === 'paid').length;
     const overdueCount = invoices.filter((inv) => inv.status === 'overdue').length;
     return { total, totalCount, paidCount, overdueCount };
@@ -562,7 +565,7 @@ export default function InvoicesContent(): ReactNode {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{formatCurrency(stats.total)}</p>
+                <p className="text-2xl font-bold">{formatCurrency(Number(stats.total) || 0)}</p>
               </CardContent>
             </Card>
             <Card>
