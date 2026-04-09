@@ -225,16 +225,21 @@ export {
   useParcels,
   useCreateParcel,
   useCollectParcel,
+  useAnprLogs,
+  useUnrecognizedVehicles,
 } from './use-gate';
 export type {
   Visitor,
   StaffLog,
   Parcel,
   GateStats,
+  AnprLog,
+  UnrecognizedVehicle,
   VisitorFilters,
   MyVisitorFilters,
   StaffLogFilters,
   ParcelFilters,
+  AnprLogFilters,
 } from './use-gate';
 
 // Tickets
@@ -548,3 +553,82 @@ export type {
   TransferOwnershipInput,
   DisconnectTenantInput,
 } from './use-unit-members';
+
+// Governance (Resolutions + Elections)
+export {
+  governanceKeys,
+  useResolutions,
+  useResolution,
+  useElections,
+  useElection,
+  useElectionResults,
+  useCreateResolution,
+  useProposeResolution,
+  useWithdrawResolution,
+  useRecordMinutes,
+  useCreateElection,
+  useCloseElection,
+} from './use-governance';
+export type {
+  Resolution,
+  Election,
+  ElectionCandidate,
+} from './use-governance';
+
+// Ratings (Service Provider Ratings)
+export {
+  ratingKeys,
+  useServiceRatings,
+  useTopRated,
+  useVerifyRating,
+} from './use-ratings';
+export type {
+  ServiceRating,
+  TopRatedProvider,
+  RatingFilters,
+} from './use-ratings';
+
+// Analytics
+export {
+  analyticsKeys,
+  useHealthScore,
+  useHealthScoreTrend,
+  useBenchmark,
+  useAnomalies,
+  useMaintenancePredictions,
+} from './use-analytics';
+export type {
+  HealthScore,
+  HealthScoreTrend,
+  Anomaly,
+  MaintenancePrediction,
+  BenchmarkMetric,
+} from './use-analytics';
+
+// Gas Management
+export {
+  gasKeys,
+  useGasPlans,
+  useGasWallets,
+  useGasTransactions,
+  useGasStats,
+  useCreateGasPlan,
+  useRechargeWallet,
+  useDispenseGas,
+} from './use-gas';
+export type {
+  GasPlan,
+  GasWallet,
+  GasTransaction,
+  GasStats,
+} from './use-gas';
+
+// Marketplace
+export {
+  marketplaceKeys,
+  useMarketplaceListings,
+  useRemoveListing,
+} from './use-marketplace';
+export type {
+  MarketplaceListing,
+} from './use-marketplace';

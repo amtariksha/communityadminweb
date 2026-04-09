@@ -28,6 +28,8 @@ import {
   Vote,
   Bell,
   Contact,
+  Flame,
+  Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEnabledFeatures } from '@/hooks';
@@ -79,6 +81,8 @@ const navGroups: NavGroup[] = [
       { label: 'Tickets', href: '/tickets', icon: <TicketCheck className="h-4 w-4" />, feature: 'tickets' },
       { label: 'Announcements', href: '/announcements', icon: <Megaphone className="h-4 w-4" />, feature: 'announcements' },
       { label: 'Voting', href: '/voting', icon: <Vote className="h-4 w-4" />, feature: 'voting' },
+      { label: 'Gas', href: '/gas', icon: <Flame className="h-4 w-4" />, feature: 'gas' },
+      { label: 'Marketplace', href: '/marketplace', icon: <Store className="h-4 w-4" />, feature: 'marketplace' },
       { label: 'Staff', href: '/staff', icon: <Users className="h-4 w-4" />, feature: 'staff' },
       { label: 'Documents', href: '/documents', icon: <FolderOpen className="h-4 w-4" />, feature: 'documents' },
     ],
@@ -86,6 +90,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'System',
     items: [
+      { label: 'Analytics', href: '/analytics', icon: <BarChart3 className="h-4 w-4" /> },
       { label: 'Approvals', href: '/approvals', icon: <ClipboardCheck className="h-4 w-4" /> },
       { label: 'Notifications', href: '/notifications', icon: <Bell className="h-4 w-4" /> },
       { label: 'Settings', href: '/settings', icon: <Settings className="h-4 w-4" /> },

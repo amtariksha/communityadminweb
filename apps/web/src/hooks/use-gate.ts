@@ -73,6 +73,28 @@ export interface GateStats {
   visitors_this_week: number;
 }
 
+export interface AnprLog {
+  id: string;
+  plate_number: string;
+  gate_id: string;
+  gate_name?: string;
+  direction: 'in' | 'out';
+  is_recognized: boolean;
+  image_url: string | null;
+  timestamp: string;
+  vehicle_owner?: string;
+  unit_number?: string;
+}
+
+export interface UnrecognizedVehicle {
+  id: string;
+  plate_number: string;
+  gate_name: string;
+  image_url: string | null;
+  timestamp: string;
+  occurrence_count: number;
+}
+
 // ---------------------------------------------------------------------------
 // Filter types
 // ---------------------------------------------------------------------------
@@ -101,6 +123,15 @@ export interface StaffLogFilters {
 export interface ParcelFilters {
   unit_id?: string;
   status?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AnprLogFilters {
+  gate_id?: string;
+  from_date?: string;
+  to_date?: string;
+  is_recognized?: boolean;
   page?: number;
   limit?: number;
 }
@@ -166,6 +197,9 @@ export const gateKeys = {
   staffLogList: (filters?: StaffLogFilters) => [...gateKeys.staffLogs(), 'list', filters] as const,
   parcels: () => [...gateKeys.all, 'parcels'] as const,
   parcelList: (filters?: ParcelFilters) => [...gateKeys.parcels(), 'list', filters] as const,
+  anpr: () => [...gateKeys.all, 'anpr'] as const,
+  anprLogs: (filters?: AnprLogFilters) => [...gateKeys.anpr(), 'logs', filters] as const,
+  unrecognizedVehicles: () => [...gateKeys.anpr(), 'unrecognized'] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -280,6 +314,49 @@ export function useParcels(filters?: ParcelFilters) {
       return api.get<PaginatedResponse<Parcel>>('/gate/parcels', {
         params: parcelFiltersToParams(filters),
       });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Queries — ANPR / Vehicles
+// ---------------------------------------------------------------------------
+
+function anprFiltersToParams(
+  filters?: AnprLogFilters,
+): Record<string, string> | undefined {
+  if (!filters) return undefined;
+
+  const params: Record<string, string> = {};
+  if (filters.gate_id) params.gate_id = filters.gate_id;
+  if (filters.from_date) params.from_date = filters.from_date;
+  if (filters.to_date) params.to_date = filters.to_date;
+  if (filters.is_recognized !== undefined) params.is_recognized = String(filters.is_recognized);
+  if (filters.page !== undefined) params.page = String(filters.page);
+  if (filters.limit !== undefined) params.limit = String(filters.limit);
+  return params;
+}
+
+export function useAnprLogs(filters?: AnprLogFilters) {
+  return useQuery({
+    queryKey: gateKeys.anprLogs(filters),
+    queryFn: function fetchAnprLogs() {
+      return api.get<PaginatedResponse<AnprLog>>('/gate/anpr/logs', {
+        params: anprFiltersToParams(filters),
+      });
+    },
+  });
+}
+
+export function useUnrecognizedVehicles() {
+  return useQuery({
+    queryKey: gateKeys.unrecognizedVehicles(),
+    queryFn: function fetchUnrecognized() {
+      return api
+        .get<{ data: UnrecognizedVehicle[] }>('/gate/anpr/unrecognized')
+        .then(function unwrap(res) {
+          return res.data;
+        });
     },
   });
 }

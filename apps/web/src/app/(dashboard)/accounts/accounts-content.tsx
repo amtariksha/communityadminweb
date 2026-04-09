@@ -2,7 +2,7 @@
 
 import { useState, useRef, type FormEvent, type ChangeEvent, type ReactNode } from 'react';
 import Link from 'next/link';
-import { ChevronRight, ChevronDown, Plus, BookOpen, Upload, Download, AlertCircle, CheckCircle2, Pencil } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, BookOpen, Upload, Download, AlertCircle, CheckCircle2, Pencil, FileUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
   TableBody,
@@ -43,7 +44,10 @@ import {
   useUpdateLedgerAccount,
   useSetOpeningBalance,
   useBulkImportBalances,
+  useTallyXmlImport,
+  useTallyCsvImport,
 } from '@/hooks';
+import type { TallyImportResult } from '@/hooks/use-tally-import';
 import type { AccountGroup, LedgerAccount, AccountType } from '@communityos/shared';
 
 // ---------------------------------------------------------------------------
@@ -237,6 +241,8 @@ export default function AccountsContent(): ReactNode {
   const updateAccount = useUpdateLedgerAccount();
   const setOpeningBalance = useSetOpeningBalance();
   const bulkImportBalances = useBulkImportBalances();
+  const tallyXmlImport = useTallyXmlImport();
+  const tallyCsvImport = useTallyCsvImport();
 
   const isLoading = groupsLoading || accountsLoading;
   const accounts = accountsResponse?.data ?? [];
@@ -278,6 +284,59 @@ export default function AccountsContent(): ReactNode {
   const [editAccountGroupId, setEditAccountGroupId] = useState('');
   const [editAccountOpeningBalance, setEditAccountOpeningBalance] = useState('0');
   const [editAccountBalanceType, setEditAccountBalanceType] = useState('debit');
+
+  // -- Tally import state --
+  const [tallyDialogOpen, setTallyDialogOpen] = useState(false);
+  const [tallyFormat, setTallyFormat] = useState<'xml' | 'csv'>('xml');
+  const [tallyContent, setTallyContent] = useState('');
+  const [tallyCsvType, setTallyCsvType] = useState<'trial_balance' | 'day_book' | 'ledger_report' | 'receipt_register' | 'payment_register'>('trial_balance');
+  const [tallyResult, setTallyResult] = useState<TallyImportResult | null>(null);
+  const [tallyStep, setTallyStep] = useState<'input' | 'preview' | 'done'>('input');
+
+  function resetTallyForm(): void {
+    setTallyContent('');
+    setTallyCsvType('trial_balance');
+    setTallyResult(null);
+    setTallyStep('input');
+    setTallyFormat('xml');
+  }
+
+  function handleTallyParse(): void {
+    if (!tallyContent.trim()) {
+      addToast({ title: 'Paste content to import', variant: 'destructive' });
+      return;
+    }
+
+    if (tallyFormat === 'xml') {
+      tallyXmlImport.mutate(
+        { xml_content: tallyContent, import_type: 'all' },
+        {
+          onSuccess(data) {
+            setTallyResult(data.data);
+            setTallyStep('preview');
+            addToast({ title: 'Tally XML parsed successfully', variant: 'success' });
+          },
+          onError(error) {
+            addToast({ title: 'Failed to parse Tally XML', description: error.message, variant: 'destructive' });
+          },
+        },
+      );
+    } else {
+      tallyCsvImport.mutate(
+        { csv_content: tallyContent, import_type: tallyCsvType },
+        {
+          onSuccess(data) {
+            setTallyResult(data.data);
+            setTallyStep('preview');
+            addToast({ title: 'Tally CSV parsed successfully', variant: 'success' });
+          },
+          onError(error) {
+            addToast({ title: 'Failed to parse Tally CSV', description: error.message, variant: 'destructive' });
+          },
+        },
+      );
+    }
+  }
 
   function resetGroupForm(): void {
     setGroupName('');
@@ -594,6 +653,10 @@ export default function AccountsContent(): ReactNode {
         }
         actions={
           <>
+            <Button variant="outline" onClick={() => { resetTallyForm(); setTallyDialogOpen(true); }}>
+              <FileUp className="mr-2 h-4 w-4" />
+              Import from Tally
+            </Button>
             <ExportButton
               data={accounts as unknown as Record<string, unknown>[]}
               filename={`accounts-${new Date().toISOString().split('T')[0]}`}
@@ -1106,6 +1169,155 @@ export default function AccountsContent(): ReactNode {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tally Import Dialog */}
+      <Dialog open={tallyDialogOpen} onOpenChange={setTallyDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Import from Tally</DialogTitle>
+            <DialogDescription>Import account groups, ledgers, and vouchers from Tally ERP</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {tallyStep === 'input' && (
+              <>
+                {/* Format selector */}
+                <div className="space-y-2">
+                  <Label>Format</Label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="tally-format"
+                        value="xml"
+                        checked={tallyFormat === 'xml'}
+                        onChange={() => setTallyFormat('xml')}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">XML</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="tally-format"
+                        value="csv"
+                        checked={tallyFormat === 'csv'}
+                        onChange={() => setTallyFormat('csv')}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">CSV</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* CSV report type */}
+                {tallyFormat === 'csv' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="tally-csv-type">Report Type</Label>
+                    <Select
+                      id="tally-csv-type"
+                      value={tallyCsvType}
+                      onChange={(e) => setTallyCsvType(e.target.value as typeof tallyCsvType)}
+                    >
+                      <option value="trial_balance">Trial Balance</option>
+                      <option value="day_book">Day Book</option>
+                      <option value="ledger_report">Ledger Report</option>
+                      <option value="receipt_register">Receipt Register</option>
+                      <option value="payment_register">Payment Register</option>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Content area */}
+                <div className="space-y-2">
+                  <Label htmlFor="tally-content">
+                    {tallyFormat === 'xml' ? 'Paste XML Content' : 'Paste CSV Content'}
+                  </Label>
+                  <Textarea
+                    id="tally-content"
+                    value={tallyContent}
+                    onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setTallyContent(e.target.value)}
+                    placeholder={tallyFormat === 'xml' ? '<ENVELOPE>...</ENVELOPE>' : 'Paste CSV data here...'}
+                    rows={10}
+                    className="font-mono text-xs"
+                  />
+                </div>
+              </>
+            )}
+
+            {tallyStep === 'preview' && tallyResult && (
+              <div className="space-y-4">
+                <div className="rounded-md border p-4 space-y-2">
+                  <h4 className="font-medium text-sm">Import Summary</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>Records Parsed:</div>
+                    <div className="font-medium">{tallyResult.records_parsed}</div>
+                    <div>Records Imported:</div>
+                    <div className="font-medium text-green-600">{tallyResult.records_imported}</div>
+                    <div>Records Skipped:</div>
+                    <div className="font-medium text-yellow-600">{tallyResult.records_skipped}</div>
+                    <div>Records Failed:</div>
+                    <div className="font-medium text-red-600">{tallyResult.records_failed}</div>
+                  </div>
+                  {Object.keys(tallyResult.summary).length > 0 && (
+                    <div className="mt-3 pt-3 border-t">
+                      <h5 className="text-xs font-medium text-muted-foreground mb-1">Breakdown</h5>
+                      {Object.entries(tallyResult.summary).map(([key, value]) => (
+                        <div key={key} className="flex justify-between text-xs">
+                          <span className="capitalize">{key.replace(/_/g, ' ')}</span>
+                          <span className="font-medium">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {tallyResult.errors.length > 0 && (
+                  <div className="rounded-md border border-red-200 bg-red-50 dark:bg-red-950/20 p-4 space-y-1">
+                    <h4 className="font-medium text-sm text-red-700 dark:text-red-400 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      Errors ({tallyResult.errors.length})
+                    </h4>
+                    <div className="max-h-32 overflow-y-auto space-y-0.5">
+                      {tallyResult.errors.map((err, i) => (
+                        <p key={i} className="text-xs text-red-600 dark:text-red-400">
+                          {err.row !== undefined && `Row ${err.row}: `}{err.message}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {tallyResult.records_imported > 0 && (
+                  <div className="rounded-md border border-green-200 bg-green-50 dark:bg-green-950/20 p-3 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <span className="text-sm text-green-700 dark:text-green-400">
+                      Successfully imported {tallyResult.records_imported} records
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <DialogClose>
+              <Button type="button" variant="outline">
+                {tallyStep === 'preview' ? 'Close' : 'Cancel'}
+              </Button>
+            </DialogClose>
+            {tallyStep === 'input' && (
+              <Button
+                onClick={handleTallyParse}
+                disabled={tallyXmlImport.isPending || tallyCsvImport.isPending}
+              >
+                {(tallyXmlImport.isPending || tallyCsvImport.isPending) ? 'Parsing...' : 'Parse & Import'}
+              </Button>
+            )}
+            {tallyStep === 'preview' && (
+              <Button variant="outline" onClick={() => { resetTallyForm(); }}>
+                Import Another
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

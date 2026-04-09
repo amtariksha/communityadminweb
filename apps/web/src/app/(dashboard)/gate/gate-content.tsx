@@ -11,6 +11,8 @@ import {
   LogOut,
   X,
   CheckCircle,
+  Car,
+  AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,19 +55,24 @@ import {
   useParcels,
   useCreateParcel,
   useCollectParcel,
+  useAnprLogs,
+  useUnrecognizedVehicles,
 } from '@/hooks';
 import type {
   Visitor,
   StaffLog,
   Parcel,
   GateStats,
+  AnprLog,
+  UnrecognizedVehicle,
   VisitorFilters,
   StaffLogFilters,
   ParcelFilters,
+  AnprLogFilters,
 } from '@/hooks/use-gate';
 import { formatDate } from '@/lib/utils';
 
-type TabKey = 'visitors' | 'staff' | 'parcels';
+type TabKey = 'visitors' | 'staff' | 'parcels' | 'vehicles';
 
 const VISITOR_STATUS_BADGE: Record<string, { label: string; variant: string; className?: string }> = {
   pending: { label: 'Pending', variant: 'warning' },
@@ -214,6 +221,12 @@ export default function GateContent(): ReactNode {
   const [collectParcelId, setCollectParcelId] = useState('');
   const [collectedBy, setCollectedBy] = useState('');
 
+  // Vehicle / ANPR state
+  const [anprGateFilter, setAnprGateFilter] = useState('');
+  const [anprFromDate, setAnprFromDate] = useState('');
+  const [anprToDate, setAnprToDate] = useState('');
+  const [anprRecognizedFilter, setAnprRecognizedFilter] = useState('');
+
   // Hooks
   const statsQuery = useGateStats();
   const stats: GateStats | undefined = statsQuery.data;
@@ -233,6 +246,17 @@ export default function GateContent(): ReactNode {
   };
   const parcelsQuery = useParcels(parcelFilters);
   const parcels: Parcel[] = parcelsQuery.data?.data ?? [];
+
+  const anprFilters: AnprLogFilters = {
+    gate_id: anprGateFilter || undefined,
+    from_date: anprFromDate || undefined,
+    to_date: anprToDate || undefined,
+    is_recognized: anprRecognizedFilter === '' ? undefined : anprRecognizedFilter === 'true',
+  };
+  const anprQuery = useAnprLogs(anprFilters);
+  const anprLogs: AnprLog[] = anprQuery.data?.data ?? [];
+  const unrecognizedQuery = useUnrecognizedVehicles();
+  const unrecognizedVehicles: UnrecognizedVehicle[] = unrecognizedQuery.data ?? [];
 
   // Mutations
   const createVisitor = useCreateVisitor();
@@ -955,6 +979,139 @@ export default function GateContent(): ReactNode {
   }
 
   // ---------------------------------------------------------------------------
+  // Vehicles / ANPR tab
+  // ---------------------------------------------------------------------------
+
+  function renderVehiclesTab(): ReactNode {
+    return (
+      <>
+        {/* Unrecognized vehicles alert */}
+        {unrecognizedVehicles.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                Unrecognized Vehicles ({unrecognizedVehicles.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {unrecognizedVehicles.map((vehicle) => (
+                  <div key={vehicle.id} className="rounded-md border p-3 space-y-1">
+                    <p className="font-mono font-bold text-sm">{vehicle.plate_number}</p>
+                    <p className="text-xs text-muted-foreground">{vehicle.gate_name}</p>
+                    <p className="text-xs text-muted-foreground">{formatDateTime(vehicle.timestamp)}</p>
+                    {vehicle.occurrence_count > 1 && (
+                      <Badge variant="warning" className="text-xs">
+                        Seen {vehicle.occurrence_count} times
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ANPR log table */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Car className="h-5 w-5" />
+                Vehicle Entry/Exit Log
+              </CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="date"
+                  value={anprFromDate}
+                  onChange={(e) => setAnprFromDate(e.target.value)}
+                  className="w-36"
+                  placeholder="From"
+                />
+                <Input
+                  type="date"
+                  value={anprToDate}
+                  onChange={(e) => setAnprToDate(e.target.value)}
+                  className="w-36"
+                  placeholder="To"
+                />
+                <Select
+                  value={anprRecognizedFilter}
+                  onChange={(e) => setAnprRecognizedFilter(e.target.value)}
+                  className="w-36"
+                >
+                  <option value="">All</option>
+                  <option value="true">Recognized</option>
+                  <option value="false">Unrecognized</option>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Plate Number</TableHead>
+                  <TableHead>Gate</TableHead>
+                  <TableHead>Direction</TableHead>
+                  <TableHead>Recognized</TableHead>
+                  <TableHead>Owner / Unit</TableHead>
+                  <TableHead>Timestamp</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {anprQuery.isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array.from({ length: 6 }).map((__, j) => (
+                        <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : anprLogs.length > 0 ? (
+                  anprLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-mono font-medium">{log.plate_number}</TableCell>
+                      <TableCell>{log.gate_name ?? '-'}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={log.direction === 'in' ? 'success' : 'secondary'}
+                          className="capitalize"
+                        >
+                          {log.direction === 'in' ? 'Entry' : 'Exit'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {log.is_recognized ? (
+                          <Badge variant="success">Yes</Badge>
+                        ) : (
+                          <Badge variant="destructive">No</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {log.vehicle_owner ?? '-'}
+                        {log.unit_number ? ` (${log.unit_number})` : ''}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{formatDateTime(log.timestamp)}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                      No vehicle logs found for the selected filters.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Main render
   // ---------------------------------------------------------------------------
 
@@ -962,6 +1119,7 @@ export default function GateContent(): ReactNode {
     { key: 'visitors', label: 'Visitors' },
     { key: 'staff', label: 'Staff Logs' },
     { key: 'parcels', label: 'Parcels' },
+    { key: 'vehicles', label: 'Vehicles' },
   ];
 
   return (
@@ -1038,6 +1196,7 @@ export default function GateContent(): ReactNode {
       {activeTab === 'visitors' && renderVisitorsTab()}
       {activeTab === 'staff' && renderStaffTab()}
       {activeTab === 'parcels' && renderParcelsTab()}
+      {activeTab === 'vehicles' && renderVehiclesTab()}
 
       {/* Collect parcel dialog (shared) */}
       <Dialog open={collectParcelOpen} onOpenChange={setCollectParcelOpen}>
