@@ -51,6 +51,9 @@ export function useUpdateFeatures() {
       queryClient.invalidateQueries({
         queryKey: tenantKeys.detail(variables.tenantId),
       });
+      queryClient.invalidateQueries({
+        queryKey: tenantKeys.lists(),
+      });
     },
   });
 }

@@ -113,6 +113,11 @@ const allModuleFeatures = [
   { key: 'payments', label: 'Payments' },
   { key: 'bank', label: 'Bank' },
   { key: 'reports', label: 'Reports' },
+  { key: 'gas', label: 'Gas Management' },
+  { key: 'marketplace', label: 'Marketplace' },
+  { key: 'analytics', label: 'Analytics' },
+  { key: 'approvals', label: 'Approvals' },
+  { key: 'notifications', label: 'Notifications' },
 ];
 
 // ---------------------------------------------------------------------------
