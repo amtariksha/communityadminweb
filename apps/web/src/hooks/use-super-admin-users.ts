@@ -23,6 +23,7 @@ export interface SuperAdminUser {
   is_super_admin: boolean;
   created_at: string;
   tenant_count: number;
+  tenant_roles: Array<{ tenant_name: string; role: string }>;
 }
 
 export interface UserRoleDetail {

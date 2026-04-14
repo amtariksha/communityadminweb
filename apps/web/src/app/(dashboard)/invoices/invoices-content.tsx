@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -149,6 +150,9 @@ export default function InvoicesContent(): ReactNode {
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [viewInvoiceId, setViewInvoiceId] = useState('');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelInvoiceId, setCancelInvoiceId] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
   const [page, setPage] = useState(1);
   const limit = 20;
 
@@ -318,9 +322,23 @@ export default function InvoicesContent(): ReactNode {
     );
   }
 
-  function handleCancel(invoiceId: string): void {
-    cancelInvoice.mutate(invoiceId, {
+  function openCancelDialog(invoiceId: string): void {
+    setCancelInvoiceId(invoiceId);
+    setCancelReason('');
+    setCancelDialogOpen(true);
+  }
+
+  function handleCancel(e: FormEvent): void {
+    e.preventDefault();
+    if (!cancelReason.trim()) {
+      addToast({ title: 'Cancellation reason is required', variant: 'destructive' });
+      return;
+    }
+    cancelInvoice.mutate({ id: cancelInvoiceId, reason: cancelReason.trim() }, {
       onSuccess() {
+        setCancelDialogOpen(false);
+        setCancelInvoiceId('');
+        setCancelReason('');
         addToast({ title: 'Invoice cancelled', variant: 'success' });
       },
       onError(error) {
@@ -720,8 +738,7 @@ export default function InvoicesContent(): ReactNode {
                           {(invoice.status === 'draft' || invoice.status === 'sent') && (
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => handleCancel(invoice.id)}
-                              disabled={cancelInvoice.isPending}
+                              onClick={() => openCancelDialog(invoice.id)}
                             >
                               <Ban className="mr-2 h-4 w-4" /> Cancel
                             </DropdownMenuItem>
@@ -773,6 +790,41 @@ export default function InvoicesContent(): ReactNode {
           )}
         </CardContent>
       </Card>
+
+      {/* Cancel Invoice Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleCancel}>
+            <DialogHeader>
+              <DialogTitle>Cancel Invoice</DialogTitle>
+              <DialogDescription>
+                Please provide a reason for cancelling this invoice
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="cancel-reason">Reason</Label>
+                <Textarea
+                  id="cancel-reason"
+                  placeholder="Reason for cancellation..."
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  required
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Close</Button>
+              </DialogClose>
+              <Button type="submit" variant="destructive" disabled={cancelInvoice.isPending}>
+                {cancelInvoice.isPending ? 'Cancelling...' : 'Cancel Invoice'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* View Invoice Dialog */}
       <Dialog

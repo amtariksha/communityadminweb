@@ -67,6 +67,7 @@ import {
 } from '@/hooks';
 import type { UnitDetailMember } from '@/hooks';
 import { cn, formatDate } from '@/lib/utils';
+import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -164,15 +165,15 @@ function MemberCard({
       <div className="space-y-1">
         <p className="text-sm font-medium">{member.name ?? 'Unknown'}</p>
         {member.phone && (
-          <p className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Phone className="h-3 w-3" />
-            {member.phone}
+          <p className="flex items-center gap-1 text-xs">
+            <Phone className="h-3 w-3 text-muted-foreground" />
+            <ClickablePhone phone={member.phone} />
           </p>
         )}
         {member.email && (
-          <p className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Mail className="h-3 w-3" />
-            {member.email}
+          <p className="flex items-center gap-1 text-xs">
+            <Mail className="h-3 w-3 text-muted-foreground" />
+            <ClickableEmail email={member.email} />
           </p>
         )}
         <p className="text-xs text-muted-foreground">
@@ -918,7 +919,7 @@ export default function UnitsContent(): ReactNode {
                         <div>
                           <div className="text-sm">{String((unit as Record<string, unknown>).owner_name)}</div>
                           {(unit as Record<string, unknown>).owner_phone && (
-                            <div className="text-xs text-muted-foreground">{String((unit as Record<string, unknown>).owner_phone)}</div>
+                            <div className="text-xs"><ClickablePhone phone={String((unit as Record<string, unknown>).owner_phone)} /></div>
                           )}
                         </div>
                       ) : (
@@ -930,7 +931,7 @@ export default function UnitsContent(): ReactNode {
                         <div>
                           <div className="text-sm">{String((unit as Record<string, unknown>).tenant_name)}</div>
                           {(unit as Record<string, unknown>).tenant_phone && (
-                            <div className="text-xs text-muted-foreground">{String((unit as Record<string, unknown>).tenant_phone)}</div>
+                            <div className="text-xs"><ClickablePhone phone={String((unit as Record<string, unknown>).tenant_phone)} /></div>
                           )}
                         </div>
                       ) : (unit as Record<string, unknown>).owner_name ? (

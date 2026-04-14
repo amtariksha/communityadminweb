@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import { type ReactNode } from 'react';
 import { QueryProvider } from '@/lib/query-provider';
 import { ThemeProvider } from '@/lib/theme-provider';
+import { HelpModeProvider } from '@/lib/help-mode-context';
 import { ToastProvider } from '@/components/ui/toast';
 import '@/styles/globals.css';
 
@@ -22,9 +23,11 @@ export default function RootLayout({ children }: RootLayoutProps): ReactNode {
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
         <ThemeProvider>
-          <QueryProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </QueryProvider>
+          <HelpModeProvider>
+            <QueryProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </QueryProvider>
+          </HelpModeProvider>
         </ThemeProvider>
       </body>
     </html>

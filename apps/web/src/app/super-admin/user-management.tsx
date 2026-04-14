@@ -70,7 +70,8 @@ function UserTableSkeleton(): ReactNode {
         <TableRow key={i}>
           <TableCell><Skeleton className="h-4 w-28" /></TableCell>
           <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-          <TableCell><Skeleton className="h-4 w-12 text-right" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
           <TableCell><Skeleton className="h-5 w-14" /></TableCell>
           <TableCell><Skeleton className="h-4 w-20" /></TableCell>
         </TableRow>
@@ -212,7 +213,8 @@ export default function UserManagement(): ReactNode {
               <TableRow>
                 <TableHead>Phone</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead className="text-right">Tenants</TableHead>
+                <TableHead>Society</TableHead>
+                <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Joined</TableHead>
               </TableRow>
@@ -222,7 +224,7 @@ export default function UserManagement(): ReactNode {
                 <UserTableSkeleton />
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     {searchQuery ? 'No users found' : 'No users yet'}
                   </TableCell>
                 </TableRow>
@@ -241,7 +243,18 @@ export default function UserManagement(): ReactNode {
                           <Badge variant="secondary" className="ml-2 text-xs">Super Admin</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">{user.tenant_count}</TableCell>
+                      <TableCell className="text-sm">
+                        {user.tenant_roles && user.tenant_roles.length > 0
+                          ? [...new Set(user.tenant_roles.map((tr) => tr.tenant_name))].join(', ')
+                          : <span className="text-muted-foreground">--</span>}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {user.tenant_roles && user.tenant_roles.length > 0
+                          ? [...new Set(user.tenant_roles.map((tr) => tr.role))].map((role) => (
+                              <Badge key={role} variant="outline" className="mr-1 mb-0.5 text-xs">{role}</Badge>
+                            ))
+                          : <span className="text-muted-foreground">--</span>}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={user.is_active ? 'success' : 'destructive'}>
                           {user.is_active ? 'Active' : 'Inactive'}

@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { useTenantMembers, useUpdateTenantMember, useRemoveTenantMember } from '@/hooks';
+import { ClickablePhone } from '@/components/ui/clickable-contact';
 import type { TenantMember } from '@/hooks';
 
 const ITEMS_PER_PAGE = 10;
@@ -185,7 +186,7 @@ export default function TenantMembers({ tenantId, onAddMember }: TenantMembersPr
           <TableBody>
             {members.map((member) => (
               <TableRow key={member.id}>
-                <TableCell className="font-mono text-sm">{member.phone}</TableCell>
+                <TableCell className="font-mono text-sm"><ClickablePhone phone={member.phone} /></TableCell>
                 <TableCell>{member.name ?? <span className="text-muted-foreground italic">No name</span>}</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">

@@ -46,7 +46,6 @@ import {
   useGates,
   useCreateGate,
   useUpdateGate,
-  useDeleteGate,
   useRbacPermissions,
   useUpdatePermission,
   useSeedPermissions,
@@ -158,7 +157,6 @@ export default function SettingsContent(): ReactNode {
   const gatesList: Gate[] = gatesQuery.data ?? [];
   const createGate = useCreateGate();
   const updateGateM = useUpdateGate();
-  const deleteGate = useDeleteGate();
 
   const permissionsQuery = useRbacPermissions();
   const permissions: RbacPermission[] = permissionsQuery.data ?? [];
@@ -531,14 +529,13 @@ export default function SettingsContent(): ReactNode {
 
     const payload = {
       name: amenityName.trim(),
-      type: amenityType,
+      amenity_type: amenityType,
       location: amenityLocation.trim() || null,
       capacity: amenityCapacity ? Number(amenityCapacity) : null,
       pricing_type: amenityPricingType,
-      price: amenityPrice ? Number(amenityPrice) : 0,
-      deposit: amenityDeposit ? Number(amenityDeposit) : 0,
+      price_per_unit: amenityPrice ? Number(amenityPrice) : 0,
+      deposit_amount: amenityDeposit ? Number(amenityDeposit) : 0,
       rules: amenityRules.trim() || null,
-      time_slots: amenityTimeSlots.trim() || null,
     };
 
     if (editingAmenityId) {
@@ -1441,6 +1438,13 @@ export default function SettingsContent(): ReactNode {
               ))}
             </div>
           ) : (
+            <>
+            <div className="mb-4 flex items-center gap-6 rounded-lg border bg-muted/50 px-4 py-3 text-sm">
+              <span className="font-medium">Legend:</span>
+              <span className="flex items-center gap-1"><span className="font-bold text-green-500">R</span> = Read (view data)</span>
+              <span className="flex items-center gap-1"><span className="font-bold text-blue-500">W</span> = Write (create &amp; edit)</span>
+              <span className="flex items-center gap-1"><span className="font-bold text-red-500">D</span> = Delete (remove data)</span>
+            </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -1465,7 +1469,7 @@ export default function SettingsContent(): ReactNode {
                           <TableCell key={resource} className="text-center">
                             <div className="flex items-center justify-center gap-2">
                               <label className="flex flex-col items-center gap-0.5 cursor-pointer" title="Read">
-                                <span className="text-[10px] text-muted-foreground">R</span>
+                                <span className="text-[10px] text-green-500 font-bold">R</span>
                                 <input
                                   type="checkbox"
                                   className="rounded border-input"
@@ -1474,7 +1478,7 @@ export default function SettingsContent(): ReactNode {
                                 />
                               </label>
                               <label className="flex flex-col items-center gap-0.5 cursor-pointer" title="Write">
-                                <span className="text-[10px] text-muted-foreground">W</span>
+                                <span className="text-[10px] text-blue-500 font-bold">W</span>
                                 <input
                                   type="checkbox"
                                   className="rounded border-input"
@@ -1483,7 +1487,7 @@ export default function SettingsContent(): ReactNode {
                                 />
                               </label>
                               <label className="flex flex-col items-center gap-0.5 cursor-pointer" title="Delete">
-                                <span className="text-[10px] text-muted-foreground">D</span>
+                                <span className="text-[10px] text-red-500 font-bold">D</span>
                                 <input
                                   type="checkbox"
                                   className="rounded border-input"
@@ -1500,6 +1504,7 @@ export default function SettingsContent(): ReactNode {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

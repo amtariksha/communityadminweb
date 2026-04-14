@@ -46,6 +46,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { useToast } from '@/components/ui/toast';
 import { formatDate } from '@/lib/utils';
+import { ClickablePhone } from '@/components/ui/clickable-contact';
 import {
   useStaffEmployees,
   useStaffShifts,
@@ -688,7 +689,7 @@ export default function StaffContent(): ReactNode {
                   employees.map((emp) => (
                     <TableRow key={emp.id}>
                       <TableCell className="font-medium">{emp.name}</TableCell>
-                      <TableCell>{emp.phone}</TableCell>
+                      <TableCell><ClickablePhone phone={emp.phone} /></TableCell>
                       <TableCell className="capitalize">{emp.staff_type}</TableCell>
                       <TableCell>{emp.designation ?? '-'}</TableCell>
                       <TableCell>{emp.joined_at ? formatDate(emp.joined_at) : '-'}</TableCell>

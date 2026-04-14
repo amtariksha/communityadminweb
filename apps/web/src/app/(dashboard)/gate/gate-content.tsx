@@ -57,6 +57,8 @@ import {
   useCollectParcel,
   useAnprLogs,
   useUnrecognizedVehicles,
+  useGates,
+  useUnits,
 } from '@/hooks';
 import type {
   Visitor,
@@ -70,6 +72,7 @@ import type {
   ParcelFilters,
   AnprLogFilters,
 } from '@/hooks/use-gate';
+import { UnitSearchSelect } from '@/components/ui/unit-search-select';
 import { formatDate } from '@/lib/utils';
 
 type TabKey = 'visitors' | 'staff' | 'parcels' | 'vehicles';
@@ -199,6 +202,7 @@ export default function GateContent(): ReactNode {
   const [visitorUnit, setVisitorUnit] = useState('');
   const [visitorPurpose, setVisitorPurpose] = useState('');
   const [visitorVehicle, setVisitorVehicle] = useState('');
+  const [selectedGateId, setSelectedGateId] = useState('');
 
   // Staff state
   const [staffCheckInOpen, setStaffCheckInOpen] = useState(false);
@@ -228,6 +232,10 @@ export default function GateContent(): ReactNode {
   const [anprRecognizedFilter, setAnprRecognizedFilter] = useState('');
 
   // Hooks
+  const gatesQuery = useGates();
+  const gates = gatesQuery.data ?? [];
+  const unitsQuery = useUnits({ limit: 500 });
+  const units = unitsQuery.data?.data ?? [];
   const statsQuery = useGateStats();
   const stats: GateStats | undefined = statsQuery.data;
 
@@ -279,6 +287,7 @@ export default function GateContent(): ReactNode {
     setVisitorUnit('');
     setVisitorPurpose('');
     setVisitorVehicle('');
+    setSelectedGateId('');
   }
 
   function handleAddVisitor(e: FormEvent): void {
@@ -290,6 +299,7 @@ export default function GateContent(): ReactNode {
         unit_id: visitorUnit,
         purpose: visitorPurpose,
         vehicle_number: visitorVehicle || null,
+        gate_id: selectedGateId || undefined,
       },
       {
         onSuccess() {
@@ -553,6 +563,23 @@ export default function GateContent(): ReactNode {
                       <DialogDescription>Register a new visitor entry</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
+                      {gates.length > 0 && (
+                        <div className="space-y-2">
+                          <Label htmlFor="visitor-gate">Gate</Label>
+                          <Select
+                            id="visitor-gate"
+                            value={selectedGateId}
+                            onChange={(e) => setSelectedGateId(e.target.value)}
+                          >
+                            <option value="">Select gate</option>
+                            {gates.map((g) => (
+                              <option key={g.id} value={g.id}>
+                                {g.name}{g.location ? ` (${g.location})` : ''}
+                              </option>
+                            ))}
+                          </Select>
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="visitor-name">Visitor Name</Label>
@@ -578,12 +605,11 @@ export default function GateContent(): ReactNode {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="visitor-unit">Unit</Label>
-                          <Input
-                            id="visitor-unit"
-                            placeholder="e.g., A-301"
-                            required
+                          <UnitSearchSelect
                             value={visitorUnit}
-                            onChange={(e) => setVisitorUnit(e.target.value)}
+                            onChange={setVisitorUnit}
+                            units={units}
+                            placeholder="Search unit..."
                           />
                         </div>
                         <div className="space-y-2">

@@ -30,6 +30,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
+import { UnitSearchSelect } from '@/components/ui/unit-search-select';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -256,19 +257,12 @@ export default function ReceiptsContent(): ReactNode {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="cn-unit">Unit</Label>
-                      <Select
-                        id="cn-unit"
-                        required
+                      <UnitSearchSelect
                         value={cnUnitId}
-                        onChange={(e) => setCnUnitId(e.target.value)}
-                      >
-                        <option value="">Select unit</option>
-                        {units.map((unit) => (
-                          <option key={unit.id} value={unit.id}>
-                            {unit.unit_number}
-                          </option>
-                        ))}
-                      </Select>
+                        onChange={setCnUnitId}
+                        units={units}
+                        placeholder="Search unit..."
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="cn-invoice">Invoice</Label>
@@ -342,19 +336,12 @@ export default function ReceiptsContent(): ReactNode {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="receipt-unit">Unit</Label>
-                      <Select
-                        id="receipt-unit"
-                        required
+                      <UnitSearchSelect
                         value={receiptUnitId}
-                        onChange={(e) => setReceiptUnitId(e.target.value)}
-                      >
-                        <option value="">Select unit</option>
-                        {units.map((unit) => (
-                          <option key={unit.id} value={unit.id}>
-                            {unit.unit_number}
-                          </option>
-                        ))}
-                      </Select>
+                        onChange={setReceiptUnitId}
+                        units={units}
+                        placeholder="Search unit..."
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="receipt-amount">Amount</Label>

@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { type ReactNode } from 'react';
-import { Menu, Moon, Sun, ChevronRight, Building2, Check } from 'lucide-react';
+import { Menu, Moon, Sun, ChevronRight, Building2, Check, HelpCircle } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getUser, getCurrentTenant, setCurrentTenant } from '@/lib/auth';
+import { useHelpMode } from '@/lib/help-mode-context';
+import { Tooltip } from '@/components/ui/tooltip';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -69,6 +71,7 @@ function handleSwitchTenant(tenantId: string): void {
 export function Header({ onMenuClick }: HeaderProps): ReactNode {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { isHelpMode, toggleHelpMode } = useHelpMode();
   const user = getUser();
   const breadcrumbs = getBreadcrumbs(pathname);
   const societies = user?.societies ?? [];
@@ -121,6 +124,17 @@ export function Header({ onMenuClick }: HeaderProps): ReactNode {
             </DropdownMenu>
           </div>
         )}
+
+        <Tooltip content="Toggle Help Mode" side="bottom">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleHelpMode}
+            aria-label="Toggle Help Mode"
+          >
+            <HelpCircle className={`h-5 w-5 ${isHelpMode ? 'text-orange-500' : ''}`} />
+          </Button>
+        </Tooltip>
 
         <Button
           variant="ghost"

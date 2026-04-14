@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
+import { UnitSearchSelect } from '@/components/ui/unit-search-select';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -405,12 +406,12 @@ function MetersTab({
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="meter-unit">Unit</Label>
-              <Select id="meter-unit" value={newUnitId} onChange={(e) => setNewUnitId(e.target.value)}>
-                <option value="">Select unit</option>
-                {units.map((u: { id: string; unit_number: string }) => (
-                  <option key={u.id} value={u.id}>{u.unit_number}</option>
-                ))}
-              </Select>
+              <UnitSearchSelect
+                value={newUnitId}
+                onChange={setNewUnitId}
+                units={units}
+                placeholder="Search unit..."
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="meter-type">Meter Type</Label>

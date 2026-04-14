@@ -75,27 +75,27 @@ export interface AmenityBookingFilters {
 
 interface CreateAmenityInput {
   name: string;
-  type: string;
+  amenity_type?: string;
   location?: string | null;
   capacity?: number | null;
-  pricing_type: string;
-  price?: number;
-  deposit?: number;
+  pricing_type?: string;
+  price_per_unit?: number;
+  deposit_amount?: number;
   rules?: string | null;
-  time_slots?: string | null;
+  description?: string | null;
 }
 
 interface UpdateAmenityInput {
   id: string;
   name?: string;
-  type?: string;
+  amenity_type?: string;
   location?: string | null;
   capacity?: number | null;
   pricing_type?: string;
-  price?: number;
-  deposit?: number;
+  price_per_unit?: number;
+  deposit_amount?: number;
   rules?: string | null;
-  time_slots?: string | null;
+  description?: string | null;
   is_active?: boolean;
 }
 

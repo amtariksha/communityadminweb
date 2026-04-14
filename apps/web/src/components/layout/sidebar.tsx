@@ -33,6 +33,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEnabledFeatures } from '@/hooks';
+import { useHelpMode } from '@/lib/help-mode-context';
+import { HELP_MODE_TEXT } from '@/lib/tooltip-content';
+import { Tooltip } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, getInitials } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { getUser, logout } from '@/lib/auth';
@@ -108,6 +111,7 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
   const user = getUser();
   const userName = user?.name ?? 'Admin User';
   const { data: enabledFeatures } = useEnabledFeatures();
+  const { isHelpMode } = useHelpMode();
 
   function isActive(href: string): boolean {
     if (href === '/') {
@@ -168,8 +172,10 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
                 {group.label}
               </p>
               <ul className="space-y-0.5">
-                {visibleItems.map((item) => (
-                  <li key={item.href}>
+                {visibleItems.map((item) => {
+                  const helpKey = `nav.${item.label.toLowerCase()}`;
+                  const helpText = HELP_MODE_TEXT[helpKey];
+                  const link = (
                     <Link
                       href={item.href}
                       onClick={onClose}
@@ -183,8 +189,19 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
                       {item.icon}
                       {item.label}
                     </Link>
-                  </li>
-                ))}
+                  );
+                  return (
+                    <li key={item.href}>
+                      {isHelpMode && helpText ? (
+                        <Tooltip content={helpText} side="right">
+                          {link}
+                        </Tooltip>
+                      ) : (
+                        link
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
             );

@@ -32,6 +32,7 @@ import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { useVendors, useVendor, useCreateVendor, useUpdateVendor, useDeactivateVendor, useServiceRatings, useTopRated, useVerifyRating } from '@/hooks';
+import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
 import type { ServiceRating, TopRatedProvider, RatingFilters } from '@/hooks/use-ratings';
 
 const ITEMS_PER_PAGE = 20;
@@ -532,8 +533,8 @@ export default function VendorsContent(): ReactNode {
                         <Badge variant="secondary">Inactive</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {vendor.phone ?? '-'}
+                    <TableCell>
+                      <ClickablePhone phone={vendor.phone} />
                     </TableCell>
                     <TableCell>
                       <Button
@@ -907,11 +908,11 @@ export default function VendorsContent(): ReactNode {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Phone</p>
-                  <p>{vendorDetail.phone ?? '-'}</p>
+                  <p><ClickablePhone phone={vendorDetail.phone} /></p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Email</p>
-                  <p>{vendorDetail.email ?? '-'}</p>
+                  <p><ClickableEmail email={vendorDetail.email} /></p>
                 </div>
               </div>
               {(vendorDetail.bank_name || vendorDetail.bank_account_number) && (

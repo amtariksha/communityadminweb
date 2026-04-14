@@ -354,7 +354,7 @@ export default function PurchasesContent(): ReactNode {
   function handleApprovePR(e: FormEvent): void {
     e.preventDefault();
     approvePR.mutate(
-      { id: selectedPRId, data: { remarks: approveRemarks || undefined } },
+      { id: selectedPRId, data: { level: 1, comments: approveRemarks || undefined } },
       {
         onSuccess() {
           setApproveDialogOpen(false);
@@ -372,7 +372,7 @@ export default function PurchasesContent(): ReactNode {
   function handleRejectPR(e: FormEvent): void {
     e.preventDefault();
     rejectPR.mutate(
-      { id: selectedPRId, data: { remarks: rejectRemarks } },
+      { id: selectedPRId, data: { level: 1, comments: rejectRemarks } },
       {
         onSuccess() {
           setRejectDialogOpen(false);

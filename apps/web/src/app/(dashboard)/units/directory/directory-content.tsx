@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import {
   Search,
   ChevronLeft,
@@ -8,6 +8,7 @@ import {
   Users,
   Phone,
   Mail,
+  Pencil,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,12 +25,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { useToast } from '@/components/ui/toast';
 import {
   useMemberDirectory,
   useBlocks,
+  useUpdateMemberDetail,
 } from '@/hooks';
 import { formatDate } from '@/lib/utils';
+import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
 
 const PAGE_SIZE = 20;
 
@@ -69,11 +82,22 @@ function TableSkeleton(): ReactNode {
 }
 
 export default function DirectoryContent(): ReactNode {
+  const { addToast } = useToast();
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [memberTypeFilter, setMemberTypeFilter] = useState('');
   const [blockFilter, setBlockFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Edit member state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editMemberId, setEditMemberId] = useState('');
+  const [editUnitId, setEditUnitId] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+
+  const updateMember = useUpdateMemberDetail();
 
   const blocksQuery = useBlocks();
   const blocks = blocksQuery.data ?? [];
@@ -101,6 +125,39 @@ export default function DirectoryContent(): ReactNode {
     setMemberTypeFilter('');
     setBlockFilter('');
     setCurrentPage(1);
+  }
+
+  function openEditDialog(member: { id: string; unit_id: string; name: string | null; phone: string | null; email: string | null }): void {
+    setEditMemberId(member.id);
+    setEditUnitId(member.unit_id);
+    setEditName(member.name ?? '');
+    setEditPhone(member.phone ?? '');
+    setEditEmail(member.email ?? '');
+    setEditDialogOpen(true);
+  }
+
+  function handleEditSubmit(e: FormEvent): void {
+    e.preventDefault();
+    if (!editMemberId || !editUnitId) return;
+
+    updateMember.mutate(
+      {
+        unitId: editUnitId,
+        memberId: editMemberId,
+        name: editName || undefined,
+        phone: editPhone || undefined,
+        email: editEmail || null,
+      },
+      {
+        onSuccess() {
+          setEditDialogOpen(false);
+          addToast({ title: 'Member updated successfully', variant: 'success' });
+        },
+        onError() {
+          addToast({ title: 'Failed to update member', variant: 'destructive' });
+        },
+      },
+    );
   }
 
   return (
@@ -206,6 +263,7 @@ export default function DirectoryContent(): ReactNode {
                 <TableHead>Email</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Since</TableHead>
+                <TableHead className="w-12">Edit</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -227,34 +285,36 @@ export default function DirectoryContent(): ReactNode {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {member.phone ? (
-                        <span className="flex items-center gap-1 text-sm">
-                          <Phone className="h-3 w-3 text-muted-foreground" />
-                          {member.phone}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      <span className="flex items-center gap-1">
+                        <Phone className="h-3 w-3 text-muted-foreground" />
+                        <ClickablePhone phone={member.phone} />
+                      </span>
                     </TableCell>
                     <TableCell>
-                      {member.email ? (
-                        <span className="flex items-center gap-1 text-sm">
-                          <Mail className="h-3 w-3 text-muted-foreground" />
-                          {member.email}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      <span className="flex items-center gap-1">
+                        <Mail className="h-3 w-3 text-muted-foreground" />
+                        <ClickableEmail email={member.email} />
+                      </span>
                     </TableCell>
                     <TableCell>{getMemberTypeBadge(member.member_type)}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(member.move_in_date)}
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => openEditDialog(member)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                     No members found
                   </TableCell>
                 </TableRow>
@@ -289,6 +349,58 @@ export default function DirectoryContent(): ReactNode {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleEditSubmit}>
+            <DialogHeader>
+              <DialogTitle>Edit Member</DialogTitle>
+              <DialogDescription>
+                Update member details
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-dir-name">Name</Label>
+                <Input
+                  id="edit-dir-name"
+                  placeholder="Full name"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-dir-phone">Phone</Label>
+                <Input
+                  id="edit-dir-phone"
+                  placeholder="10-digit phone"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-dir-email">Email</Label>
+                <Input
+                  id="edit-dir-email"
+                  type="email"
+                  placeholder="email@example.com"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={updateMember.isPending}>
+                {updateMember.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

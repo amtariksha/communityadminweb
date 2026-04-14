@@ -73,3 +73,42 @@ export const TOOLTIP = {
     features: 'Enable or disable optional modules for this society',
   },
 } as const;
+
+export const HELP_MODE_TEXT: Record<string, string> = {
+  // Sidebar
+  'nav.dashboard': 'Overview of your society finances and recent activity',
+  'nav.accounts': 'Chart of accounts — manage ledger accounts and account groups',
+  'nav.invoices': 'Generate, post, and manage member maintenance invoices',
+  'nav.receipts': 'Record payments received from members',
+  'nav.vendors': 'Manage vendors, suppliers, and service providers',
+  'nav.purchases': 'Purchase requests, vendor bills, and payments',
+  'nav.payments': 'Online payment collection via Razorpay',
+  'nav.bank': 'Bank accounts, transfers, reconciliation, and FDs',
+  'nav.reports': 'Financial and management reports',
+  'nav.units': 'Manage apartment units and assign members',
+  'nav.member directory': 'View all members across units with contact details',
+  'nav.gate': 'Visitor management, staff logs, and parcels',
+  'nav.utilities': 'Utility meters, readings, and bill generation',
+  'nav.parking': 'Parking slot allocation and vehicle management',
+  'nav.amenities': 'Amenity bookings and facility management',
+  'nav.tickets': 'Maintenance complaints and service requests',
+  'nav.announcements': 'Broadcast notices and circulars to members',
+  'nav.voting': 'Polls and resolutions for society decisions',
+  'nav.gas': 'Piped gas meter management and billing',
+  'nav.marketplace': 'Community marketplace for buying and selling',
+  'nav.staff': 'Society staff management, shifts, and attendance',
+  'nav.documents': 'Society document vault — bylaws, minutes, NOCs',
+  'nav.analytics': 'Detailed analytics and data insights',
+  'nav.approvals': 'Pending approval workflows and requests',
+  'nav.notifications': 'View and manage your notifications',
+  'nav.settings': 'Society settings, features, and configuration',
+  // Page actions
+  'action.export': 'Download this data as CSV/Excel file',
+  'action.add': 'Create a new record',
+  'action.generate': 'Auto-generate records based on rules',
+  'action.post': 'Post to the general ledger (makes it official)',
+  // Table headers
+  'header.status': 'Current state of this record',
+  'header.amount': 'Amount in Indian Rupees (₹)',
+  'header.dueDate': 'Payment due by this date',
+};
