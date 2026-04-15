@@ -66,7 +66,7 @@ export function ExportButton({ data, filename, columns }: ExportButtonProps): Re
           Export
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="z-50">
         <DropdownMenuItem onClick={exportCsv}>Download as CSV</DropdownMenuItem>
         <DropdownMenuItem onClick={exportExcel}>Download as Excel</DropdownMenuItem>
       </DropdownMenuContent>

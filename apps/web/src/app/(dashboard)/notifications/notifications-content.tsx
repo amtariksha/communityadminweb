@@ -46,11 +46,10 @@ const CHANNELS = [
 ] as const;
 
 const TARGET_AUDIENCES = [
-  { value: 'all_members', label: 'All Members' },
-  { value: 'owners_only', label: 'Owners Only' },
-  { value: 'tenants_only', label: 'Tenants Only' },
-  { value: 'committee_only', label: 'Committee Only' },
-  { value: 'staff_only', label: 'Staff Only' },
+  { value: 'all', label: 'All Members' },
+  { value: 'owners', label: 'Owners Only' },
+  { value: 'tenants', label: 'Tenants Only' },
+  { value: 'committee', label: 'Committee Only' },
 ] as const;
 
 function channelIcon(channel: string): ReactNode {
@@ -92,7 +91,7 @@ export default function NotificationsContent(): ReactNode {
   const [composeTitle, setComposeTitle] = useState('');
   const [composeBody, setComposeBody] = useState('');
   const [composeChannel, setComposeChannel] = useState('push');
-  const [composeAudience, setComposeAudience] = useState('all_members');
+  const [composeAudience, setComposeAudience] = useState('all');
 
   // Queries
   const templatesQuery = useNotificationTemplates();
@@ -134,7 +133,7 @@ export default function NotificationsContent(): ReactNode {
               setComposeTitle('');
               setComposeBody('');
               setComposeChannel('push');
-              setComposeAudience('all_members');
+              setComposeAudience('all');
             },
             onError(error) {
               addToast({

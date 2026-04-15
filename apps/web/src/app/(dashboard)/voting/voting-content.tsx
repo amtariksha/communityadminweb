@@ -192,8 +192,8 @@ export default function VotingContent(): ReactNode {
   const [createElOpen, setCreateElOpen] = useState(false);
   const [elTitle, setElTitle] = useState('');
   const [elDescription, setElDescription] = useState('');
-  const [elPositions, setElPositions] = useState<Array<{ name: string; seats: number }>>([
-    { name: '', seats: 1 },
+  const [elPositions, setElPositions] = useState<Array<{ title: string; seats: number }>>([
+    { title: '', seats: 1 },
   ]);
   const [elNomStart, setElNomStart] = useState('');
   const [elNomEnd, setElNomEnd] = useState('');
@@ -260,7 +260,8 @@ export default function VotingContent(): ReactNode {
       return;
     }
 
-    const options = newType === 'yes_no' ? ['Yes', 'No'] : filteredOptions;
+    const rawOptions = newType === 'yes_no' ? ['Yes', 'No'] : filteredOptions;
+    const options = rawOptions.map((label) => ({ label }));
 
     createMutation.mutate(
       {
@@ -387,7 +388,7 @@ export default function VotingContent(): ReactNode {
   function resetElForm(): void {
     setElTitle('');
     setElDescription('');
-    setElPositions([{ name: '', seats: 1 }]);
+    setElPositions([{ title: '', seats: 1 }]);
     setElNomStart('');
     setElNomEnd('');
     setElVoteStart('');
@@ -395,7 +396,7 @@ export default function VotingContent(): ReactNode {
   }
 
   function handleAddPosition(): void {
-    setElPositions([...elPositions, { name: '', seats: 1 }]);
+    setElPositions([...elPositions, { title: '', seats: 1 }]);
   }
 
   function handleRemovePosition(index: number): void {
@@ -403,7 +404,7 @@ export default function VotingContent(): ReactNode {
     setElPositions(elPositions.filter((_, i) => i !== index));
   }
 
-  function handlePositionChange(index: number, field: 'name' | 'seats', value: string): void {
+  function handlePositionChange(index: number, field: 'title' | 'seats', value: string): void {
     const updated = elPositions.map((pos, i) => {
       if (i !== index) return pos;
       if (field === 'seats') return { ...pos, seats: Number(value) || 1 };
@@ -417,7 +418,7 @@ export default function VotingContent(): ReactNode {
       addToast({ title: 'Election title is required', variant: 'destructive' });
       return;
     }
-    const validPositions = elPositions.filter((p) => p.name.trim() !== '');
+    const validPositions = elPositions.filter((p) => p.title.trim() !== '');
     if (validPositions.length === 0) {
       addToast({ title: 'At least one position is required', variant: 'destructive' });
       return;
@@ -427,7 +428,7 @@ export default function VotingContent(): ReactNode {
       {
         title: elTitle.trim(),
         description: elDescription.trim(),
-        positions: validPositions.map((p) => ({ name: p.name.trim(), seats: p.seats })),
+        positions: validPositions.map((p) => ({ title: p.title.trim(), seats: p.seats })),
         nomination_start: elNomStart,
         nomination_end: elNomEnd,
         voting_start: elVoteStart,
@@ -759,7 +760,7 @@ export default function VotingContent(): ReactNode {
                         <div className="space-y-0.5">
                           {el.positions.map((pos, i) => (
                             <div key={i} className="text-xs">
-                              {pos.name} <span className="text-muted-foreground">({pos.seats} seat{pos.seats > 1 ? 's' : ''})</span>
+                              {pos.title} <span className="text-muted-foreground">({pos.seats} seat{pos.seats > 1 ? 's' : ''})</span>
                             </div>
                           ))}
                         </div>
@@ -1062,7 +1063,7 @@ export default function VotingContent(): ReactNode {
               <div className="space-y-2">
                 {elPositions.map((pos, index) => (
                   <div key={index} className="flex items-center gap-2">
-                    <Input value={pos.name} onChange={(e) => handlePositionChange(index, 'name', e.target.value)} placeholder="Position name" className="flex-1" />
+                    <Input value={pos.title} onChange={(e) => handlePositionChange(index, 'title', e.target.value)} placeholder="Position title" className="flex-1" />
                     <Input type="number" min="1" value={String(pos.seats)} onChange={(e) => handlePositionChange(index, 'seats', e.target.value)} className="w-20" placeholder="Seats" />
                     {elPositions.length > 1 && (
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={() => handleRemovePosition(index)} type="button">

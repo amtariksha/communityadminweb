@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, type FormEvent, type ReactNode } from 'react';
-import { FileText, Plus, Send, Ban, Eye, MoreHorizontal, Download } from 'lucide-react';
+import { FileText, Plus, Send, Ban, Eye, MoreHorizontal, Download, Calculator } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +50,8 @@ import {
   usePostInvoices,
   useCancelInvoice,
   useDownloadInvoicePdf,
+  useCalculateLPI,
+  usePostLPI,
 } from '@/hooks';
 import type { InvoiceStatus, Invoice } from '@communityos/shared';
 
@@ -153,6 +155,8 @@ export default function InvoicesContent(): ReactNode {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelInvoiceId, setCancelInvoiceId] = useState('');
   const [cancelReason, setCancelReason] = useState('');
+  const [lpiDialogOpen, setLpiDialogOpen] = useState(false);
+  const [lpiPostDate, setLpiPostDate] = useState('');
   const [page, setPage] = useState(1);
   const limit = 20;
 
@@ -185,7 +189,10 @@ export default function InvoicesContent(): ReactNode {
   const postInvoices = usePostInvoices();
   const cancelInvoice = useCancelInvoice();
   const downloadPdf = useDownloadInvoicePdf();
+  const lpiQuery = useCalculateLPI();
+  const postLPI = usePostLPI();
   const { data: viewInvoiceData } = useInvoice(viewInvoiceId);
+  const lpiData = lpiQuery.data ?? [];
 
   const invoices = invoicesResponse?.data ?? [];
   const totalCount = invoicesResponse?.total ?? 0;
@@ -359,6 +366,13 @@ export default function InvoicesContent(): ReactNode {
         description="Generate and manage member invoices — billing rules, bulk generation, posting to GL"
         actions={
           <>
+            <Button
+              variant="outline"
+              onClick={() => setLpiDialogOpen(true)}
+            >
+              <Calculator className="mr-2 h-4 w-4" />
+              Calculate LPI
+            </Button>
             <ExportButton
               data={invoices as unknown as Record<string, unknown>[]}
               filename={`invoices-${new Date().toISOString().split('T')[0]}`}
@@ -967,6 +981,102 @@ export default function InvoicesContent(): ReactNode {
               <Download className="mr-2 h-4 w-4" />
               {downloadPdf.isPending ? 'Generating...' : 'Download PDF'}
             </Button>
+            <DialogClose>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* LPI Calculation Dialog */}
+      <Dialog open={lpiDialogOpen} onOpenChange={setLpiDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Late Payment Interest (LPI)</DialogTitle>
+            <DialogDescription>
+              Review calculated interest on overdue invoices and post to GL
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {lpiQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-3/4" />
+              </div>
+            ) : lpiData.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Invoice #</TableHead>
+                    <TableHead className="text-right">Principal</TableHead>
+                    <TableHead className="text-right">Days Overdue</TableHead>
+                    <TableHead className="text-right">LPI Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {lpiData.map((lpi, idx) => (
+                    <TableRow key={`${lpi.invoice_id}-${idx}`}>
+                      <TableCell>{lpi.unit_number}</TableCell>
+                      <TableCell className="font-mono text-xs">{lpi.invoice_number}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(lpi.principal)}</TableCell>
+                      <TableCell className="text-right">{lpi.days_overdue}</TableCell>
+                      <TableCell className="text-right font-medium">{formatCurrency(lpi.lpi_amount)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="py-8 text-center text-muted-foreground">
+                No overdue invoices with pending interest
+              </p>
+            )}
+
+            {lpiData.length > 0 && (
+              <div className="flex items-end gap-4 border-t pt-4">
+                <div className="space-y-2 flex-1">
+                  <Label htmlFor="lpi-post-date">Post As Of Date</Label>
+                  <Input
+                    id="lpi-post-date"
+                    type="date"
+                    value={lpiPostDate}
+                    onChange={(e) => setLpiPostDate(e.target.value)}
+                  />
+                </div>
+                <Button
+                  disabled={postLPI.isPending || !lpiPostDate}
+                  onClick={() => {
+                    postLPI.mutate(
+                      { as_of_date: lpiPostDate },
+                      {
+                        onSuccess(response) {
+                          addToast({
+                            title: 'LPI Posted',
+                            description: `${response.data.posted_count} entries posted, total interest: ${formatCurrency(response.data.total_interest)}`,
+                            variant: 'success',
+                          });
+                          setLpiDialogOpen(false);
+                          setLpiPostDate('');
+                        },
+                        onError(error) {
+                          addToast({
+                            title: 'Failed to post LPI',
+                            description: error.message,
+                            variant: 'destructive',
+                          });
+                        },
+                      },
+                    );
+                  }}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  {postLPI.isPending ? 'Posting...' : 'Post LPI'}
+                </Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
             <DialogClose>
               <Button variant="outline">Close</Button>
             </DialogClose>

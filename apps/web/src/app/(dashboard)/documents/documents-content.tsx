@@ -106,6 +106,7 @@ function TableSkeleton(): ReactNode {
 export default function DocumentsContent(): ReactNode {
   const { addToast } = useToast();
   const [activeCategoryId, setActiveCategoryId] = useState('');
+  const [showExpiringOnly, setShowExpiringOnly] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [page, setPage] = useState(1);
 
@@ -134,8 +135,11 @@ export default function DocumentsContent(): ReactNode {
   const deleteDocument = useDeleteDocument();
 
   const categories = categoriesQuery.data ?? [];
-  const documents = documentsQuery.data?.data ?? [];
-  const totalDocuments = documentsQuery.data?.total ?? 0;
+  const allDocuments = documentsQuery.data?.data ?? [];
+  const documents = showExpiringOnly
+    ? allDocuments.filter((doc) => expiringIds.has(doc.id))
+    : allDocuments;
+  const totalDocuments = showExpiringOnly ? documents.length : (documentsQuery.data?.total ?? 0);
   const totalPages = Math.max(1, Math.ceil(totalDocuments / ITEMS_PER_PAGE));
   const expiringDocs = expiringQuery.data ?? [];
   const expiringIds = new Set(expiringDocs.map((d) => d.id));
@@ -159,7 +163,8 @@ export default function DocumentsContent(): ReactNode {
         title: uploadTitle,
         description: uploadDescription || null,
         file_url: uploadFileUrl,
-        file_type: uploadFileType,
+        file_name: uploadTitle.trim() || 'document',
+        mime_type: uploadFileType === 'pdf' ? 'application/pdf' : `application/${uploadFileType}`,
         file_size: Number(uploadFileSize) || 0,
       },
       {
@@ -366,7 +371,39 @@ export default function DocumentsContent(): ReactNode {
 
       <Card>
         <CardContent className="pt-6">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <Select
+                value={activeCategoryId}
+                onChange={(e) => {
+                  setActiveCategoryId(e.target.value);
+                  setPage(1);
+                }}
+                className="w-48"
+              >
+                <option value="">All Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                variant={showExpiringOnly ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setShowExpiringOnly(!showExpiringOnly);
+                  setPage(1);
+                }}
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                {showExpiringOnly ? 'Showing Expiring' : 'Expiring Soon'}
+                {expiringCount > 0 && (
+                  <Badge variant="secondary" className="ml-2">{expiringCount}</Badge>
+                )}
+              </Button>
+            </div>
+            <div className="flex items-center justify-between">
             <div className="flex gap-1 overflow-x-auto border-b">
               <button
                 type="button"
@@ -425,6 +462,7 @@ export default function DocumentsContent(): ReactNode {
               </Button>
             </div>
           </div>
+          </div>
 
           {viewMode === 'list' ? (
             <Table>
@@ -476,6 +514,21 @@ export default function DocumentsContent(): ReactNode {
                           <Button
                             variant="ghost"
                             size="icon"
+                            title="Download"
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = doc.file_url;
+                              link.download = doc.title;
+                              link.target = '_blank';
+                              link.click();
+                            }}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="View"
                             onClick={() => window.open(doc.file_url, '_blank')}
                           >
                             <Eye className="h-4 w-4" />
@@ -483,6 +536,7 @@ export default function DocumentsContent(): ReactNode {
                           <Button
                             variant="ghost"
                             size="icon"
+                            title="Delete"
                             onClick={() => handleDeleteDocument(doc.id)}
                             disabled={deleteDocument.isPending}
                           >

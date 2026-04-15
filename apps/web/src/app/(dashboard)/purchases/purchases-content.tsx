@@ -265,6 +265,19 @@ export default function PurchasesContent(): ReactNode {
   const [billLineDescription, setBillLineDescription] = useState('');
   const [billLineAmount, setBillLineAmount] = useState('');
   const [billLineGstRate, setBillLineGstRate] = useState('');
+  const [billExpenseAccountId, setBillExpenseAccountId] = useState('');
+  const [billPayableAccountId, setBillPayableAccountId] = useState('');
+
+  // Convert PR form state
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [convertPRId, setConvertPRId] = useState('');
+  const [convertVendorId, setConvertVendorId] = useState('');
+  const [convertBillNumber, setConvertBillNumber] = useState('');
+  const [convertBillDate, setConvertBillDate] = useState('');
+  const [convertDueDate, setConvertDueDate] = useState('');
+  const [convertTotalAmount, setConvertTotalAmount] = useState('');
+  const [convertExpenseAccountId, setConvertExpenseAccountId] = useState('');
+  const [convertPayableAccountId, setConvertPayableAccountId] = useState('');
 
   // Payment form state
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -387,15 +400,44 @@ export default function PurchasesContent(): ReactNode {
     );
   }
 
-  function handleConvertPR(id: string): void {
-    convertPR.mutate(id, {
-      onSuccess() {
-        addToast({ title: 'Purchase request converted to bill', variant: 'success' });
+  function openConvertDialog(pr: PRRow): void {
+    setConvertPRId(pr.id);
+    setConvertVendorId(pr.vendor_id ?? '');
+    setConvertBillNumber('');
+    setConvertBillDate('');
+    setConvertDueDate('');
+    setConvertTotalAmount(String(pr.estimated_amount ?? ''));
+    setConvertExpenseAccountId('');
+    setConvertPayableAccountId('');
+    setConvertDialogOpen(true);
+  }
+
+  function handleConvertPR(e: FormEvent): void {
+    e.preventDefault();
+    convertPR.mutate(
+      {
+        id: convertPRId,
+        data: {
+          vendor_id: convertVendorId,
+          bill_number: convertBillNumber || undefined,
+          bill_date: convertBillDate,
+          due_date: convertDueDate,
+          total_amount: Number(convertTotalAmount),
+          expense_account_id: convertExpenseAccountId,
+          payable_account_id: convertPayableAccountId,
+        },
       },
-      onError(error) {
-        addToast({ title: 'Failed to convert', description: error.message, variant: 'destructive' });
+      {
+        onSuccess() {
+          setConvertDialogOpen(false);
+          setConvertPRId('');
+          addToast({ title: 'Purchase request converted to bill', variant: 'success' });
+        },
+        onError(error) {
+          addToast({ title: 'Failed to convert', description: error.message, variant: 'destructive' });
+        },
       },
-    });
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -411,6 +453,8 @@ export default function PurchasesContent(): ReactNode {
     setBillLineDescription('');
     setBillLineAmount('');
     setBillLineGstRate('');
+    setBillExpenseAccountId('');
+    setBillPayableAccountId('');
   }
 
   function handleCreateBill(e: FormEvent): void {
@@ -422,6 +466,8 @@ export default function PurchasesContent(): ReactNode {
         bill_date: billDate,
         due_date: billDueDate,
         total_amount: Number(billLineAmount),
+        expense_account_id: billExpenseAccountId,
+        payable_account_id: billPayableAccountId,
         narration: billNarration || undefined,
         lines: [
           {
@@ -719,8 +765,7 @@ export default function PurchasesContent(): ReactNode {
                               size="sm"
                               className="h-8 p-1 text-xs"
                               title="Convert to Bill"
-                              disabled={convertPR.isPending}
-                              onClick={() => handleConvertPR(pr.id)}
+                              onClick={() => openConvertDialog(pr)}
                             >
                               <ArrowRightLeft className="mr-1 h-3 w-3" />
                               Convert
@@ -963,6 +1008,40 @@ export default function PurchasesContent(): ReactNode {
                               value={billLineGstRate}
                               onChange={(e) => setBillLineGstRate(e.target.value)}
                             />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="bill-expense-account">Expense Account</Label>
+                            <Select
+                              id="bill-expense-account"
+                              required
+                              value={billExpenseAccountId}
+                              onChange={(e) => setBillExpenseAccountId(e.target.value)}
+                            >
+                              <option value="">Select expense account</option>
+                              {accounts.map((a) => (
+                                <option key={a.id} value={a.id}>
+                                  {a.code} - {a.name}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="bill-payable-account">Payable Account</Label>
+                            <Select
+                              id="bill-payable-account"
+                              required
+                              value={billPayableAccountId}
+                              onChange={(e) => setBillPayableAccountId(e.target.value)}
+                            >
+                              <option value="">Select payable account</option>
+                              {accounts.map((a) => (
+                                <option key={a.id} value={a.id}>
+                                  {a.code} - {a.name}
+                                </option>
+                              ))}
+                            </Select>
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -1245,6 +1324,122 @@ export default function PurchasesContent(): ReactNode {
               </DialogClose>
               <Button type="submit" disabled={recordPayment.isPending}>
                 {recordPayment.isPending ? 'Recording...' : 'Record Payment'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Convert PR to Bill Dialog                                            */}
+      {/* ------------------------------------------------------------------- */}
+      <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleConvertPR}>
+            <DialogHeader>
+              <DialogTitle>Convert PR to Bill</DialogTitle>
+              <DialogDescription>Fill in bill details to convert this purchase request</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="convert-vendor">Vendor</Label>
+                <Select
+                  id="convert-vendor"
+                  required
+                  value={convertVendorId}
+                  onChange={(e) => setConvertVendorId(e.target.value)}
+                >
+                  <option value="">Select vendor</option>
+                  {vendors.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="convert-bill-number">Bill Number (optional)</Label>
+                <Input
+                  id="convert-bill-number"
+                  placeholder="Vendor invoice number"
+                  value={convertBillNumber}
+                  onChange={(e) => setConvertBillNumber(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="convert-bill-date">Bill Date</Label>
+                  <Input
+                    id="convert-bill-date"
+                    type="date"
+                    required
+                    value={convertBillDate}
+                    onChange={(e) => setConvertBillDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="convert-due-date">Due Date</Label>
+                  <Input
+                    id="convert-due-date"
+                    type="date"
+                    required
+                    value={convertDueDate}
+                    onChange={(e) => setConvertDueDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="convert-total">Total Amount</Label>
+                <Input
+                  id="convert-total"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  placeholder="0.00"
+                  value={convertTotalAmount}
+                  onChange={(e) => setConvertTotalAmount(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="convert-expense-account">Expense Account</Label>
+                  <Select
+                    id="convert-expense-account"
+                    required
+                    value={convertExpenseAccountId}
+                    onChange={(e) => setConvertExpenseAccountId(e.target.value)}
+                  >
+                    <option value="">Select expense account</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.code} - {a.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="convert-payable-account">Payable Account</Label>
+                  <Select
+                    id="convert-payable-account"
+                    required
+                    value={convertPayableAccountId}
+                    onChange={(e) => setConvertPayableAccountId(e.target.value)}
+                  >
+                    <option value="">Select payable account</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.code} - {a.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={convertPR.isPending}>
+                {convertPR.isPending ? 'Converting...' : 'Convert to Bill'}
               </Button>
             </DialogFooter>
           </form>

@@ -50,6 +50,7 @@ import {
   useRegisterVehicle,
   useUpdateVehicle,
   useRemoveVehicle,
+  useUnitMembers,
 } from '@/hooks';
 import { useUnits } from '@/hooks';
 import type { ParkingSlot, Vehicle, ParkingSublet } from '@/hooks/use-parking';
@@ -583,6 +584,8 @@ function VehiclesTab(): ReactNode {
   });
   const unitsQuery = useUnits();
   const slotsQuery = useSlots({ status: 'vacant' });
+  const unitMembersQuery = useUnitMembers(newUnitId);
+  const unitMembers = unitMembersQuery.data ?? [];
   const registerMutation = useRegisterVehicle();
   const removeMutation = useRemoveVehicle();
 
@@ -797,7 +800,10 @@ function VehiclesTab(): ReactNode {
               <Select
                 id="vehicle-unit"
                 value={newUnitId}
-                onChange={(e) => setNewUnitId(e.target.value)}
+                onChange={(e) => {
+                  setNewUnitId(e.target.value);
+                  setNewMemberId('');
+                }}
               >
                 <option value="">Select unit...</option>
                 {units.map((unit) => (
@@ -808,13 +814,24 @@ function VehiclesTab(): ReactNode {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="vehicle-member">Member ID</Label>
-              <Input
+              <Label htmlFor="vehicle-member">Member</Label>
+              <Select
                 id="vehicle-member"
                 value={newMemberId}
                 onChange={(e) => setNewMemberId(e.target.value)}
-                placeholder="Member ID"
-              />
+                disabled={!newUnitId}
+              >
+                <option value="">{newUnitId ? 'Select member...' : 'Select a unit first'}</option>
+                {unitMembers.map((member) => {
+                  const m = member as Record<string, unknown>;
+                  const label = (m.name ?? m.full_name ?? m.member_type ?? member.id.slice(0, 8)) as string;
+                  return (
+                    <option key={member.id} value={member.id}>
+                      {label} ({member.member_type})
+                    </option>
+                  );
+                })}
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="vehicle-slot">Parking Slot (optional)</Label>

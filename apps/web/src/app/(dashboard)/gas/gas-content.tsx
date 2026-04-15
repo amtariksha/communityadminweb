@@ -193,7 +193,7 @@ function PlansTab(): ReactNode {
       {
         name: planName.trim(),
         amount: Number(planAmount),
-        unit_quantity: Number(planQuantity),
+        gas_units: Number(planQuantity),
       },
       {
         onSuccess() {
@@ -250,7 +250,7 @@ function PlansTab(): ReactNode {
                 <TableRow key={plan.id}>
                   <TableCell className="font-medium">{plan.name}</TableCell>
                   <TableCell>{formatCurrency(plan.amount)}</TableCell>
-                  <TableCell>{plan.unit_quantity}</TableCell>
+                  <TableCell>{plan.gas_units}</TableCell>
                   <TableCell>
                     <Badge variant={plan.is_active ? 'success' : 'secondary'}>
                       {plan.is_active ? 'Active' : 'Inactive'}

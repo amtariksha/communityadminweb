@@ -435,8 +435,8 @@ export default function StaffContent(): ReactNode {
       {
         staff_id: leaveStaffId,
         leave_type: leaveType,
-        from_date: leaveFrom,
-        to_date: leaveTo,
+        start_date: leaveFrom,
+        end_date: leaveTo,
         reason: leaveReason || undefined,
       },
       {

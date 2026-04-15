@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
-export interface GasPlan { id: string; name: string; amount: number; unit_quantity: number; is_active: boolean; created_at: string }
+export interface GasPlan { id: string; name: string; amount: number; gas_units: number; is_active: boolean; created_at: string }
 export interface GasWallet { id: string; unit_id: string; unit_number: string; balance: number; total_recharged: number; total_consumed: number }
 export interface GasTransaction { id: string; unit_id: string; unit_number: string; type: string; amount: number; quantity: number; plan_name: string | null; notes: string | null; created_at: string }
 export interface GasStats { total_plans: number; active_wallets: number; total_recharged: number; total_consumed: number }
@@ -30,6 +30,6 @@ export function useGasTransactions(filters?: { unit_id?: string; type?: string; 
 }
 export function useGasStats() { return useQuery({ queryKey: gasKeys.stats(), queryFn: () => api.get<{ data: GasStats }>('/gas/stats').then(r => r.data) }); }
 
-export function useCreateGasPlan() { const qc = useQueryClient(); return useMutation({ mutationFn: (input: { name: string; amount: number; unit_quantity: number }) => api.post('/gas/plans', input), onSuccess: () => qc.invalidateQueries({ queryKey: gasKeys.plans() }) }); }
+export function useCreateGasPlan() { const qc = useQueryClient(); return useMutation({ mutationFn: (input: { name: string; amount: number; gas_units: number }) => api.post('/gas/plans', input), onSuccess: () => qc.invalidateQueries({ queryKey: gasKeys.plans() }) }); }
 export function useRechargeWallet() { const qc = useQueryClient(); return useMutation({ mutationFn: (input: { unit_id: string; amount: number; plan_id?: string }) => api.post('/gas/recharge', input), onSuccess: () => { qc.invalidateQueries({ queryKey: gasKeys.wallets() }); qc.invalidateQueries({ queryKey: gasKeys.transactions() }); qc.invalidateQueries({ queryKey: gasKeys.stats() }); } }); }
 export function useDispenseGas() { const qc = useQueryClient(); return useMutation({ mutationFn: (input: { unit_id: string; quantity: number }) => api.post('/gas/dispense', input), onSuccess: () => { qc.invalidateQueries({ queryKey: gasKeys.wallets() }); qc.invalidateQueries({ queryKey: gasKeys.transactions() }); qc.invalidateQueries({ queryKey: gasKeys.stats() }); } }); }

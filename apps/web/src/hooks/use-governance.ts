@@ -29,7 +29,7 @@ export interface Election {
   id: string;
   title: string;
   description: string;
-  positions: Array<{ name: string; seats: number }>;
+  positions: Array<{ title: string; seats: number }>;
   nomination_start: string;
   nomination_end: string;
   voting_start: string;
@@ -64,7 +64,7 @@ interface CreateResolutionInput {
 interface CreateElectionInput {
   title: string;
   description: string;
-  positions: Array<{ name: string; seats: number }>;
+  positions: Array<{ title: string; seats: number }>;
   nomination_start: string;
   nomination_end: string;
   voting_start: string;

@@ -67,7 +67,7 @@ interface CreatePollInput {
   title: string;
   description?: string | null;
   type: string;
-  options: string[];
+  options: Array<{ label: string }>;
   voting_start: string;
   voting_end: string;
   who_can_vote: string;

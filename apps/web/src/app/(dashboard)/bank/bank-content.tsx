@@ -11,6 +11,7 @@ import {
   ChevronRight,
   RefreshCw,
   Calendar,
+  CreditCard,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,7 +57,10 @@ import {
   useCreateFD,
   useMatureFD,
   useRenewFD,
+  useLedgerAccounts,
+  useCheques,
 } from '@/hooks';
+import type { Cheque } from '@/hooks';
 
 // API responses may include computed/joined fields beyond the base shared types
 interface BankAccountRow {
@@ -74,8 +78,8 @@ interface BankAccountRow {
 
 interface BankTransferRow {
   id: string;
-  from_bank_account_id: string;
-  to_bank_account_id: string;
+  from_account_id: string;
+  to_account_id: string;
   from_account_name?: string;
   to_account_name?: string;
   amount: number;
@@ -103,7 +107,7 @@ interface FixedDepositRow {
 
 const ITEMS_PER_PAGE = 20;
 
-type ActiveTab = 'accounts' | 'transfers' | 'reconciliation' | 'fixed-deposits';
+type ActiveTab = 'accounts' | 'transfers' | 'reconciliation' | 'fixed-deposits' | 'cheques';
 
 // ---------------------------------------------------------------------------
 // Skeleton components
@@ -236,6 +240,7 @@ export default function BankContent(): ReactNode {
   const [fdStartDate, setFdStartDate] = useState('');
   const [fdMaturityDate, setFdMaturityDate] = useState('');
   const [fdMaturityAmount, setFdMaturityAmount] = useState('');
+  const [fdLedgerAccountId, setFdLedgerAccountId] = useState('');
   const [renewDialogOpen, setRenewDialogOpen] = useState(false);
   const [selectedFDId, setSelectedFDId] = useState('');
   const [renewRate, setRenewRate] = useState('');
@@ -253,6 +258,10 @@ export default function BankContent(): ReactNode {
   const reconQuery = useReconciliation(reconAccountId, reconStartDate, reconEndDate);
   const brsSummaryQuery = useBRSSummary(reconAccountId);
   const fdQuery = useFixedDeposits();
+  const ledgerAccountsQuery = useLedgerAccounts({ limit: 500 });
+  const ledgerAccounts = ledgerAccountsQuery.data?.data ?? [];
+  const chequesQuery = useCheques();
+  const cheques = (chequesQuery.data?.data ?? []) as Cheque[];
 
   // Mutations
   const createAccount = useCreateBankAccount();
@@ -325,8 +334,8 @@ export default function BankContent(): ReactNode {
     e.preventDefault();
     createTransfer.mutate(
       {
-        from_bank_account_id: transferFromId,
-        to_bank_account_id: transferToId,
+        from_account_id: transferFromId,
+        to_account_id: transferToId,
         amount: Number(transferAmount),
         transfer_date: transferDate,
         reference_number: transferReference || null,
@@ -386,6 +395,7 @@ export default function BankContent(): ReactNode {
     setFdStartDate('');
     setFdMaturityDate('');
     setFdMaturityAmount('');
+    setFdLedgerAccountId('');
   }
 
   function handleCreateFD(e: FormEvent): void {
@@ -399,6 +409,7 @@ export default function BankContent(): ReactNode {
         start_date: fdStartDate,
         maturity_date: fdMaturityDate,
         maturity_amount: Number(fdMaturityAmount),
+        ledger_account_id: fdLedgerAccountId || undefined,
       },
       {
         onSuccess() {
@@ -460,6 +471,7 @@ export default function BankContent(): ReactNode {
     { key: 'transfers', label: 'Transfers', icon: <ArrowRightLeft className="mr-2 inline-block h-4 w-4" /> },
     { key: 'reconciliation', label: 'Reconciliation', icon: <FileCheck className="mr-2 inline-block h-4 w-4" /> },
     { key: 'fixed-deposits', label: 'Fixed Deposits', icon: <PiggyBank className="mr-2 inline-block h-4 w-4" /> },
+    { key: 'cheques', label: 'Cheques', icon: <CreditCard className="mr-2 inline-block h-4 w-4" /> },
   ];
 
   return (
@@ -800,10 +812,10 @@ export default function BankContent(): ReactNode {
                         {formatDate(String(xfer.transfer_date))}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {xfer.from_account_name ?? xfer.from_bank_account_id?.slice(0, 8) ?? '-'}
+                        {xfer.from_account_name ?? xfer.from_account_id?.slice(0, 8) ?? '-'}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {xfer.to_account_name ?? xfer.to_bank_account_id?.slice(0, 8) ?? '-'}
+                        {xfer.to_account_name ?? xfer.to_account_id?.slice(0, 8) ?? '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(xfer.amount)}
@@ -1130,6 +1142,21 @@ export default function BankContent(): ReactNode {
                           onChange={(e) => setFdMaturityAmount(e.target.value)}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fd-ledger-account">FD Ledger Account</Label>
+                        <Select
+                          id="fd-ledger-account"
+                          value={fdLedgerAccountId}
+                          onChange={(e) => setFdLedgerAccountId(e.target.value)}
+                        >
+                          <option value="">Select ledger account (optional)</option>
+                          {ledgerAccounts.map((account) => (
+                            <option key={account.id} value={account.id}>
+                              {account.code} - {account.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
                     </div>
                     <DialogFooter>
                       <DialogClose>
@@ -1259,6 +1286,92 @@ export default function BankContent(): ReactNode {
                 <PiggyBank className="mb-4 h-12 w-12 text-muted-foreground" />
                 <p className="text-lg font-medium">No fixed deposits</p>
                 <p className="text-sm text-muted-foreground">Create a fixed deposit to track investments</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Cheques Tab                                                          */}
+      {/* ------------------------------------------------------------------- */}
+      {activeTab === 'cheques' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Cheque Management</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {chequesQuery.isLoading ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cheque #</TableHead>
+                    <TableHead>Payee</TableHead>
+                    <TableHead>Bank</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Issue Date</TableHead>
+                    <TableHead>Clearing Date</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array.from({ length: 7 }).map((__, j) => (
+                        <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : cheques.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cheque #</TableHead>
+                    <TableHead>Payee</TableHead>
+                    <TableHead>Bank</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Issue Date</TableHead>
+                    <TableHead>Clearing Date</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cheques.map((cheque) => (
+                    <TableRow key={cheque.id}>
+                      <TableCell className="font-mono text-xs">{cheque.cheque_number}</TableCell>
+                      <TableCell className="font-medium">{cheque.payee}</TableCell>
+                      <TableCell className="text-muted-foreground">{cheque.bank_name}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(cheque.amount)}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(cheque.issue_date)}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {cheque.clearing_date ? formatDate(cheque.clearing_date) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            cheque.status === 'cleared'
+                              ? 'success'
+                              : cheque.status === 'bounced'
+                                ? 'destructive'
+                                : cheque.status === 'cancelled'
+                                  ? 'secondary'
+                                  : 'warning'
+                          }
+                        >
+                          {cheque.status.charAt(0).toUpperCase() + cheque.status.slice(1)}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <CreditCard className="mb-4 h-12 w-12 text-muted-foreground" />
+                <p className="text-lg font-medium">No cheques found</p>
+                <p className="text-sm text-muted-foreground">Issue a cheque to see it here</p>
               </div>
             )}
           </CardContent>

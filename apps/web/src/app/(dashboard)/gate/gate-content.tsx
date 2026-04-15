@@ -40,6 +40,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { ExportButton } from '@/components/ui/export-button';
 import { useToast } from '@/components/ui/toast';
 import {
   useGateStats,
@@ -316,7 +317,7 @@ export default function GateContent(): ReactNode {
 
   function handleCheckIn(visitorId: string): void {
     checkInVisitor.mutate(
-      { visitor_id: visitorId },
+      visitorId,
       {
         onSuccess() {
           addToast({ title: 'Visitor checked in', variant: 'success' });
@@ -330,7 +331,7 @@ export default function GateContent(): ReactNode {
 
   function handleCheckOut(visitorId: string): void {
     checkOutVisitor.mutate(
-      { visitor_id: visitorId },
+      visitorId,
       {
         onSuccess() {
           addToast({ title: 'Visitor checked out', variant: 'success' });
@@ -344,7 +345,7 @@ export default function GateContent(): ReactNode {
 
   function handleCancelVisitor(visitorId: string): void {
     cancelVisitor.mutate(
-      { visitor_id: visitorId },
+      visitorId,
       {
         onSuccess() {
           addToast({ title: 'Visitor cancelled', variant: 'success' });
@@ -368,7 +369,7 @@ export default function GateContent(): ReactNode {
     e.preventDefault();
     staffCheckIn.mutate(
       {
-        name: staffName,
+        staff_name: staffName,
         staff_type: staffType,
         phone: staffPhone,
         unit_id: staffUnit || null,
@@ -889,12 +890,11 @@ export default function GateContent(): ReactNode {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="parcel-unit">Unit</Label>
-                          <Input
-                            id="parcel-unit"
-                            placeholder="e.g., A-301"
-                            required
+                          <UnitSearchSelect
                             value={parcelUnit}
-                            onChange={(e) => setParcelUnit(e.target.value)}
+                            onChange={setParcelUnit}
+                            units={units}
+                            placeholder="Search unit..."
                           />
                         </div>
                         <div className="space-y-2">
@@ -1154,6 +1154,21 @@ export default function GateContent(): ReactNode {
         breadcrumbs={[{ label: 'Gate' }]}
         title="Gate Management"
         description="Gate visitor management — check-in/out, parcels, staff logs"
+        actions={
+          <ExportButton
+            data={visitors as unknown as Record<string, unknown>[]}
+            filename={`gate-visitors-${new Date().toISOString().split('T')[0]}`}
+            columns={[
+              { key: 'name', label: 'Visitor Name' },
+              { key: 'phone', label: 'Phone' },
+              { key: 'purpose', label: 'Purpose' },
+              { key: 'unit_number', label: 'Unit' },
+              { key: 'status', label: 'Status' },
+              { key: 'check_in_time', label: 'Check In' },
+              { key: 'check_out_time', label: 'Check Out' },
+            ]}
+          />
+        }
       />
 
       {/* Stats cards */}
