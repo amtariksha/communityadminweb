@@ -632,3 +632,61 @@ export {
 export type {
   MarketplaceListing,
 } from './use-marketplace';
+
+// Audit Trail
+export {
+  auditKeys,
+  useAuditLog,
+  useEntityHistory,
+} from './use-audit';
+export type {
+  AuditEntry,
+  AuditFilters,
+} from './use-audit';
+
+// Asset Management
+export {
+  assetKeys,
+  useAssets,
+  useAsset,
+  useAssetDashboard,
+  useAMCs,
+  useExpiringAMCs,
+  useServiceLogs,
+  useCreateAsset,
+  useUpdateAsset,
+  useCreateAMC,
+  useUpdateAMC,
+  useLogService,
+} from './use-assets';
+export type {
+  Asset,
+  AMCContract,
+  ServiceLog,
+  AssetDashboard,
+  AssetFilters,
+  AMCFilters,
+} from './use-assets';
+
+// CCTV Cameras
+export {
+  cameraKeys,
+  useCameras,
+  useCreateCamera,
+  useUpdateCamera,
+  useDeleteCamera,
+} from './use-cameras';
+export type {
+  Camera,
+} from './use-cameras';
+
+// Tally Export
+export {
+  tallyExportKeys,
+  useTallyExportPreview,
+  useTallyExport,
+} from './use-tally-export';
+export type {
+  TallyExportOptions,
+  TallyExportPreview,
+} from './use-tally-export';
