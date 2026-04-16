@@ -100,14 +100,14 @@ const DialogContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>
   return (
     <dialog
       ref={dialogRef}
-      className="fixed inset-0 z-50 m-auto max-h-[85vh] rounded-lg border bg-background p-0 shadow-lg backdrop:bg-black/50 open:flex open:flex-col"
+      className="fixed inset-0 z-50 m-auto max-h-[85vh] overflow-visible rounded-lg border bg-background p-0 shadow-lg backdrop:bg-black/50 open:flex open:flex-col"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           setOpen(false);
         }
       }}
     >
-      <div ref={ref} className={cn('w-full max-w-lg p-6', className)} {...props}>
+      <div ref={ref} className={cn('w-full max-w-lg overflow-visible p-6', className)} {...props}>
         {children}
       </div>
     </dialog>

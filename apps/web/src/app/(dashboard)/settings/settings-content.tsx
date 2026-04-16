@@ -165,7 +165,7 @@ export default function SettingsContent(): ReactNode {
 
   // Amenity queries/mutations
   const amenitiesQuery = useAmenities();
-  const amenitiesList: Amenity[] = amenitiesQuery.data ?? [];
+  const amenitiesList: Amenity[] = amenitiesQuery.data?.data ?? [];
   const createAmenityM = useCreateAmenity();
   const updateAmenityM = useUpdateAmenity();
 

@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { getToken, getCurrentTenant } from '@/lib/auth';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -114,13 +115,25 @@ export function useTallyCsvImport() {
 export function useDownloadInvoicePdf() {
   return useMutation({
     mutationFn: async function downloadPdf(invoiceId: string) {
-      const response = await api.get(`/invoices/${invoiceId}/pdf`, {
-        responseType: 'blob',
-      });
-      // Create download link
-      const blob = new Blob([response as unknown as BlobPart], {
-        type: 'application/pdf',
-      });
+      const baseUrl =
+        process.env.NEXT_PUBLIC_API_URL ??
+        (typeof window !== 'undefined' && window.location.hostname === 'communityos.eassy.life'
+          ? 'https://community.eassy.life'
+          : 'http://localhost:4000');
+
+      const token = getToken();
+      const tenantId = getCurrentTenant();
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (tenantId) headers['x-tenant-id'] = tenantId;
+
+      const response = await fetch(`${baseUrl}/invoices/${invoiceId}/pdf`, { headers });
+
+      if (!response.ok) {
+        throw new Error('Failed to download PDF');
+      }
+
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

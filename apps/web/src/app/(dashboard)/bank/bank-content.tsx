@@ -59,6 +59,7 @@ import {
   useRenewFD,
   useLedgerAccounts,
   useCheques,
+  useIssueCheque,
 } from '@/hooks';
 import type { Cheque } from '@/hooks';
 
@@ -247,6 +248,16 @@ export default function BankContent(): ReactNode {
   const [renewMaturityDate, setRenewMaturityDate] = useState('');
   const [renewMaturityAmount, setRenewMaturityAmount] = useState('');
 
+  // Issue Cheque state
+  const [issueChequeOpen, setIssueChequeOpen] = useState(false);
+  const [chequeBankAccountId, setChequeBankAccountId] = useState('');
+  const [chequeNumber, setChequeNumber] = useState('');
+  const [chequePayee, setChequePayee] = useState('');
+  const [chequeAmount, setChequeAmount] = useState('');
+  const [chequeDate, setChequeDate] = useState('');
+  const [chequePayeeLedgerId, setChequePayeeLedgerId] = useState('');
+  const [chequeNotes, setChequeNotes] = useState('');
+
   // Data queries
   const accountsQuery = useBankAccounts();
   const transfersQuery = useBankTransfers({
@@ -270,6 +281,7 @@ export default function BankContent(): ReactNode {
   const createFD = useCreateFD();
   const matureFD = useMatureFD();
   const renewFD = useRenewFD();
+  const issueCheque = useIssueCheque();
 
   // Derived data
   const bankAccounts = (accountsQuery.data ?? []) as unknown as BankAccountRow[];
@@ -457,6 +469,45 @@ export default function BankContent(): ReactNode {
         },
         onError(error) {
           addToast({ title: 'Failed to renew FD', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Issue Cheque handler
+  // ---------------------------------------------------------------------------
+
+  function resetChequeForm(): void {
+    setChequeBankAccountId('');
+    setChequeNumber('');
+    setChequePayee('');
+    setChequeAmount('');
+    setChequeDate('');
+    setChequePayeeLedgerId('');
+    setChequeNotes('');
+  }
+
+  function handleIssueCheque(e: FormEvent): void {
+    e.preventDefault();
+    issueCheque.mutate(
+      {
+        bank_account_id: chequeBankAccountId,
+        cheque_number: chequeNumber,
+        payee: chequePayee,
+        amount: Number(chequeAmount),
+        issue_date: chequeDate,
+        payee_ledger_account_id: chequePayeeLedgerId,
+        notes: chequeNotes || undefined,
+      },
+      {
+        onSuccess() {
+          setIssueChequeOpen(false);
+          resetChequeForm();
+          addToast({ title: 'Cheque issued', variant: 'success' });
+        },
+        onError(error) {
+          addToast({ title: 'Failed to issue cheque', description: error.message, variant: 'destructive' });
         },
       },
     );
@@ -1298,7 +1349,13 @@ export default function BankContent(): ReactNode {
       {activeTab === 'cheques' && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Cheque Management</CardTitle>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="text-lg">Cheque Management</CardTitle>
+              <Button onClick={() => setIssueChequeOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Issue Cheque
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {chequesQuery.isLoading ? (
@@ -1476,6 +1533,116 @@ export default function BankContent(): ReactNode {
               </DialogClose>
               <Button type="submit" disabled={renewFD.isPending}>
                 {renewFD.isPending ? 'Renewing...' : 'Renew FD'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Issue Cheque Dialog                                                   */}
+      {/* ------------------------------------------------------------------- */}
+      <Dialog open={issueChequeOpen} onOpenChange={setIssueChequeOpen}>
+        <DialogContent>
+          <form onSubmit={handleIssueCheque}>
+            <DialogHeader>
+              <DialogTitle>Issue Cheque</DialogTitle>
+              <DialogDescription>Record a new cheque payment</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="cheque-bank">Bank Account</Label>
+                <Select
+                  id="cheque-bank"
+                  required
+                  value={chequeBankAccountId}
+                  onChange={(e) => setChequeBankAccountId(e.target.value)}
+                >
+                  <option value="">Select bank account</option>
+                  {bankAccounts.map((ba) => (
+                    <option key={ba.id} value={ba.id}>
+                      {ba.bank_name} - {ba.account_number}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cheque-number">Cheque Number</Label>
+                  <Input
+                    id="cheque-number"
+                    required
+                    placeholder="e.g. 000123"
+                    value={chequeNumber}
+                    onChange={(e) => setChequeNumber(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cheque-date">Issue Date</Label>
+                  <Input
+                    id="cheque-date"
+                    type="date"
+                    required
+                    value={chequeDate}
+                    onChange={(e) => setChequeDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cheque-payee">Payee</Label>
+                <Input
+                  id="cheque-payee"
+                  required
+                  placeholder="Payee name"
+                  value={chequePayee}
+                  onChange={(e) => setChequePayee(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cheque-amount">Amount</Label>
+                <Input
+                  id="cheque-amount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  placeholder="0.00"
+                  value={chequeAmount}
+                  onChange={(e) => setChequeAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cheque-ledger">Payee Ledger Account</Label>
+                <Select
+                  id="cheque-ledger"
+                  required
+                  value={chequePayeeLedgerId}
+                  onChange={(e) => setChequePayeeLedgerId(e.target.value)}
+                >
+                  <option value="">Select ledger account</option>
+                  {ledgerAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.code} - {account.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cheque-notes">Notes (optional)</Label>
+                <Input
+                  id="cheque-notes"
+                  placeholder="Optional notes"
+                  value={chequeNotes}
+                  onChange={(e) => setChequeNotes(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={issueCheque.isPending}>
+                {issueCheque.isPending ? 'Issuing...' : 'Issue Cheque'}
               </Button>
             </DialogFooter>
           </form>

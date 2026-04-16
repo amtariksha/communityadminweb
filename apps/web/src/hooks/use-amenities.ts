@@ -152,11 +152,7 @@ export function useAmenities() {
   return useQuery({
     queryKey: amenityKeys.list(),
     queryFn: function fetchAmenities() {
-      return api
-        .get<{ data: Amenity[] }>('/amenities')
-        .then(function unwrap(res) {
-          return res.data;
-        });
+      return api.get<{ data: Amenity[] }>('/amenities');
     },
   });
 }
