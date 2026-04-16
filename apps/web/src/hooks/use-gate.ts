@@ -148,6 +148,7 @@ interface CreateVisitorInput {
   vehicle_number?: string;
   pre_approved?: boolean;
   expected_at?: string;
+  gate_id?: string;
 }
 
 interface WalkInVisitorInput {

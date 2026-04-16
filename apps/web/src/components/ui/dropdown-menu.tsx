@@ -29,7 +29,11 @@ interface DropdownMenuProps {
 function DropdownMenu({ children }: DropdownMenuProps): ReactNode {
   const [open, setOpen] = useState(false);
 
-  return <DropdownContext.Provider value={{ open, setOpen }}>{children}</DropdownContext.Provider>;
+  return (
+    <DropdownContext.Provider value={{ open, setOpen }}>
+      <div className="relative inline-block">{children}</div>
+    </DropdownContext.Provider>
+  );
 }
 
 interface DropdownMenuTriggerProps {

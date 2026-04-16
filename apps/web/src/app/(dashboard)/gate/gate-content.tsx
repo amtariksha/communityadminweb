@@ -295,8 +295,8 @@ export default function GateContent(): ReactNode {
     e.preventDefault();
     createVisitor.mutate(
       {
-        name: visitorName,
-        phone: visitorPhone,
+        visitor_name: visitorName,
+        visitor_phone: visitorPhone,
         unit_id: visitorUnit,
         purpose: visitorPurpose,
         vehicle_number: visitorVehicle || null,
@@ -390,7 +390,7 @@ export default function GateContent(): ReactNode {
 
   function handleStaffCheckOut(logId: string): void {
     staffCheckOut.mutate(
-      { log_id: logId },
+      logId,
       {
         onSuccess() {
           addToast({ title: 'Staff checked out', variant: 'success' });
@@ -414,7 +414,7 @@ export default function GateContent(): ReactNode {
     createParcel.mutate(
       {
         unit_id: parcelUnit,
-        courier: parcelCourier,
+        courier_name: parcelCourier,
         tracking_number: parcelTracking || null,
         description: parcelDescription || null,
       },
@@ -441,7 +441,7 @@ export default function GateContent(): ReactNode {
     e.preventDefault();
     collectParcel.mutate(
       {
-        parcel_id: collectParcelId,
+        id: collectParcelId,
         collected_by: collectedBy,
       },
       {
@@ -762,11 +762,11 @@ export default function GateContent(): ReactNode {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="staff-unit">Unit (optional)</Label>
-                        <Input
-                          id="staff-unit"
-                          placeholder="e.g., A-301"
+                        <UnitSearchSelect
                           value={staffUnit}
-                          onChange={(e) => setStaffUnit(e.target.value)}
+                          onChange={setStaffUnit}
+                          units={units}
+                          placeholder="Search unit..."
                         />
                       </div>
                     </div>

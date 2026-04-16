@@ -52,6 +52,8 @@ import {
   useDownloadInvoicePdf,
   useCalculateLPI,
   usePostLPI,
+  useDefaulters,
+  useUnits,
 } from '@/hooks';
 import type { InvoiceStatus, Invoice } from '@communityos/shared';
 
@@ -157,6 +159,8 @@ export default function InvoicesContent(): ReactNode {
   const [cancelReason, setCancelReason] = useState('');
   const [lpiDialogOpen, setLpiDialogOpen] = useState(false);
   const [lpiPostDate, setLpiPostDate] = useState('');
+  const [defaultersDialogOpen, setDefaultersDialogOpen] = useState(false);
+  const [unitFilter, setUnitFilter] = useState('');
   const [page, setPage] = useState(1);
   const limit = 20;
 
@@ -177,6 +181,7 @@ export default function InvoicesContent(): ReactNode {
   const statusFilter = activeTab === 'all' ? undefined : activeTab;
   const { data: invoicesResponse, isLoading } = useInvoices({
     status: statusFilter,
+    unit_id: unitFilter || undefined,
     page,
     limit,
   });
@@ -191,8 +196,12 @@ export default function InvoicesContent(): ReactNode {
   const downloadPdf = useDownloadInvoicePdf();
   const lpiQuery = useCalculateLPI();
   const postLPI = usePostLPI();
+  const defaultersQuery = useDefaulters();
+  const unitsQuery = useUnits({ limit: 500 });
   const { data: viewInvoiceData } = useInvoice(viewInvoiceId);
   const lpiData = lpiQuery.data ?? [];
+  const defaulters = defaultersQuery.data?.data ?? [];
+  const units = unitsQuery.data?.data ?? [];
 
   const invoices = invoicesResponse?.data ?? [];
   const totalCount = invoicesResponse?.total ?? 0;
@@ -366,6 +375,13 @@ export default function InvoicesContent(): ReactNode {
         description="Generate and manage member invoices — billing rules, bulk generation, posting to GL"
         actions={
           <>
+            <Button
+              variant="outline"
+              onClick={() => setDefaultersDialogOpen(true)}
+            >
+              <Ban className="mr-2 h-4 w-4" />
+              Defaulters
+            </Button>
             <Button
               variant="outline"
               onClick={() => setLpiDialogOpen(true)}
@@ -632,25 +648,44 @@ export default function InvoicesContent(): ReactNode {
 
       <Card>
         <CardContent className="pt-6">
-          <div className="mb-4 flex gap-1 border-b">
-            {tabs.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-                  activeTab === tab.value
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-                onClick={() => {
-                  setActiveTab(tab.value);
-                  setSelectedIds(new Set());
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex gap-1 border-b">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+                    activeTab === tab.value
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                  onClick={() => {
+                    setActiveTab(tab.value);
+                    setSelectedIds(new Set());
+                    setPage(1);
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Select
+                value={unitFilter}
+                onChange={(e) => {
+                  setUnitFilter(e.target.value);
                   setPage(1);
                 }}
+                className="w-48"
               >
-                {tab.label}
-              </button>
-            ))}
+                <option value="">All Units</option>
+                {units.map((unit) => (
+                  <option key={unit.id} value={unit.id}>
+                    {unit.unit_number}{unit.block ? ` (${unit.block})` : ''}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
 
           <Table>

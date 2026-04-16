@@ -537,18 +537,44 @@ export default function VendorsContent(): ReactNode {
                       <ClickablePhone phone={vendor.phone} />
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRowClick(vendor.id);
-                        }}
-                        title="Edit vendor"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedVendorId(vendor.id);
+                            setEditName(vendor.name);
+                            setEditPan(vendor.pan ?? '');
+                            setEditGstin(vendor.gstin ?? '');
+                            setEditBankName('');
+                            setEditBankAccount('');
+                            setEditBankIfsc('');
+                            setEditPhone(vendor.phone ?? '');
+                            setEditEmail(vendor.email ?? '');
+                            setEditDialogOpen(true);
+                          }}
+                          title="Edit vendor"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        {vendor.is_active && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeactivateVendor(vendor.id);
+                            }}
+                            title="Deactivate vendor"
+                            disabled={deactivateVendor.isPending}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
