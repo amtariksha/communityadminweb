@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, useEffect, type FormEvent, type ReactNode } from 'react';
 import { Plus, Users, Search, ChevronLeft, ChevronRight, XCircle, Pencil, Star, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -138,6 +138,21 @@ export default function VendorsContent(): ReactNode {
   const totalVendors = vendorsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalVendors / ITEMS_PER_PAGE));
   const vendorDetail = vendorDetailQuery.data;
+
+  // Sync edit form with full vendor detail when dialog is open and data loads
+  // This ensures bank fields (absent from list data) are populated once detail arrives
+  useEffect(() => {
+    if (editDialogOpen && vendorDetail) {
+      setEditName(vendorDetail.name);
+      setEditPan(vendorDetail.pan ?? '');
+      setEditGstin(vendorDetail.gstin ?? '');
+      setEditBankName(vendorDetail.bank_name ?? '');
+      setEditBankAccount(vendorDetail.bank_account_number ?? '');
+      setEditBankIfsc(vendorDetail.bank_ifsc ?? '');
+      setEditPhone(vendorDetail.phone ?? '');
+      setEditEmail(vendorDetail.email ?? '');
+    }
+  }, [vendorDetail, editDialogOpen]);
 
   function resetForm(): void {
     setFormName('');

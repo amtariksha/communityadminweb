@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import {
   AlertCircle,
   Clock,
@@ -12,6 +12,8 @@ import {
   Eye,
   Send,
   MoreHorizontal,
+  UserCheck,
+  Timer,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,12 +59,23 @@ import {
   useCreateTicket,
   useUpdateTicket,
   useAddTicketComment,
+  useBulkCloseTickets,
+  useBulkReassignTickets,
 } from '@/hooks';
 import type { Ticket, TicketComment } from '@/hooks';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Returns true when the ticket's SLA deadline has passed. */
+function isSlaOverdue(ticket: Ticket): boolean {
+  const slaHours = (ticket as unknown as { sla_hours?: number }).sla_hours;
+  if (!slaHours || ticket.status === 'closed' || ticket.status === 'resolved') return false;
+  const deadline = new Date(ticket.created_at);
+  deadline.setHours(deadline.getHours() + slaHours);
+  return new Date() > deadline;
+}
 
 function getPriorityBadgeVariant(
   priority: string,
@@ -165,6 +178,16 @@ export default function TicketsContent(): ReactNode {
   const createMutation = useCreateTicket();
   const updateMutation = useUpdateTicket();
   const commentMutation = useAddTicketComment();
+  const bulkCloseMutation = useBulkCloseTickets();
+  const bulkReassignMutation = useBulkReassignTickets();
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkReassignOpen, setBulkReassignOpen] = useState(false);
+  const [bulkAssignee, setBulkAssignee] = useState('');
+
+  // Clear selection when page/filters change
+  useEffect(() => { setSelectedIds(new Set()); }, [currentPage, statusFilter, priorityFilter, categoryFilter]);
 
   const tickets = ticketsQuery.data?.data ?? [];
   const total = ticketsQuery.data?.total ?? 0;
@@ -259,6 +282,60 @@ export default function TicketsContent(): ReactNode {
     setPriorityFilter('');
     setCategoryFilter('');
     setCurrentPage(1);
+  }
+
+  function toggleTicketSelection(id: string): void {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(): void {
+    if (selectedIds.size === tickets.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(tickets.map((t) => t.id)));
+    }
+  }
+
+  function handleBulkClose(): void {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    bulkCloseMutation.mutate(
+      { ticket_ids: ids },
+      {
+        onSuccess(result) {
+          const closed = result.data?.data?.closed ?? ids.length;
+          addToast({ title: `${closed} ticket(s) closed`, variant: 'success' });
+          setSelectedIds(new Set());
+        },
+        onError(error) {
+          addToast({ title: 'Bulk close failed', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
+  }
+
+  function handleBulkReassign(): void {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0 || !bulkAssignee.trim()) return;
+    bulkReassignMutation.mutate(
+      { ticket_ids: ids, assigned_to: bulkAssignee.trim() },
+      {
+        onSuccess() {
+          addToast({ title: `${ids.length} ticket(s) reassigned`, variant: 'success' });
+          setSelectedIds(new Set());
+          setBulkReassignOpen(false);
+          setBulkAssignee('');
+        },
+        onError(error) {
+          addToast({ title: 'Bulk reassign failed', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
   }
 
   return (
@@ -416,13 +493,46 @@ export default function TicketsContent(): ReactNode {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>All Tickets</CardTitle>
-            <p className="text-sm text-muted-foreground">{total} total</p>
+            <div className="flex items-center gap-2">
+              {selectedIds.size > 0 && (
+                <>
+                  <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleBulkClose}
+                    disabled={bulkCloseMutation.isPending}
+                  >
+                    <XCircle className="mr-1 h-4 w-4" />
+                    Bulk Close
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setBulkReassignOpen(true)}
+                  >
+                    <UserCheck className="mr-1 h-4 w-4" />
+                    Bulk Reassign
+                  </Button>
+                </>
+              )}
+              <p className="text-sm text-muted-foreground">{total} total</p>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 cursor-pointer rounded border-input"
+                    checked={tickets.length > 0 && selectedIds.size === tickets.length}
+                    onChange={toggleSelectAll}
+                    aria-label="Select all tickets"
+                  />
+                </TableHead>
                 <TableHead>Ticket #</TableHead>
                 <TableHead>Subject</TableHead>
                 <TableHead>Category</TableHead>
@@ -436,6 +546,7 @@ export default function TicketsContent(): ReactNode {
               {ticketsQuery.isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
@@ -448,11 +559,25 @@ export default function TicketsContent(): ReactNode {
               ) : tickets.length > 0 ? (
                 tickets.map((ticket) => (
                   <TableRow key={ticket.id} className="cursor-pointer" onClick={() => handleViewTicket(ticket)}>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 cursor-pointer rounded border-input"
+                        checked={selectedIds.has(ticket.id)}
+                        onChange={() => toggleTicketSelection(ticket.id)}
+                        aria-label={`Select ticket ${ticket.ticket_number}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-mono text-xs">
                       {ticket.ticket_number}
                     </TableCell>
-                    <TableCell className="font-medium max-w-[200px] truncate">
-                      {ticket.subject}
+                    <TableCell className="font-medium max-w-[200px]">
+                      <div className="flex items-center gap-1.5 truncate">
+                        {isSlaOverdue(ticket) && (
+                          <Timer className="h-3.5 w-3.5 shrink-0 text-destructive" title="SLA overdue" />
+                        )}
+                        <span className="truncate">{ticket.subject}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="capitalize">
                       {ticket.category}
@@ -463,9 +588,14 @@ export default function TicketsContent(): ReactNode {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(ticket.status)}>
-                        {formatStatus(ticket.status)}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Badge variant={getStatusBadgeVariant(ticket.status)}>
+                          {formatStatus(ticket.status)}
+                        </Badge>
+                        {isSlaOverdue(ticket) && (
+                          <Badge variant="destructive" className="text-xs px-1 py-0">SLA</Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(ticket.created_at)}
@@ -508,7 +638,7 @@ export default function TicketsContent(): ReactNode {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                     No tickets found
                   </TableCell>
                 </TableRow>
@@ -753,6 +883,40 @@ export default function TicketsContent(): ReactNode {
             <DialogClose>
               <Button variant="outline">Close</Button>
             </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Reassign Dialog */}
+      <Dialog open={bulkReassignOpen} onOpenChange={setBulkReassignOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Reassign Tickets</DialogTitle>
+            <DialogDescription>
+              Assign {selectedIds.size} selected ticket(s) to a staff member.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="bulk-assignee">Assign To (User ID)</Label>
+              <Input
+                id="bulk-assignee"
+                placeholder="Enter staff user ID"
+                value={bulkAssignee}
+                onChange={(e) => setBulkAssignee(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              onClick={handleBulkReassign}
+              disabled={bulkReassignMutation.isPending || !bulkAssignee.trim()}
+            >
+              {bulkReassignMutation.isPending ? 'Reassigning...' : 'Reassign'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

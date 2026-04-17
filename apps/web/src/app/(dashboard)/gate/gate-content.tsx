@@ -598,8 +598,11 @@ export default function GateContent(): ReactNode {
                             id="visitor-phone"
                             placeholder="10-digit number"
                             required
+                            inputMode="tel"
+                            pattern="[0-9]*"
+                            maxLength={10}
                             value={visitorPhone}
-                            onChange={(e) => setVisitorPhone(e.target.value)}
+                            onChange={(e) => setVisitorPhone(e.target.value.replace(/\D/g, ''))}
                           />
                         </div>
                       </div>
@@ -756,8 +759,11 @@ export default function GateContent(): ReactNode {
                           id="staff-phone"
                           placeholder="10-digit number"
                           required
+                          inputMode="tel"
+                          pattern="[0-9]*"
+                          maxLength={10}
                           value={staffPhone}
-                          onChange={(e) => setStaffPhone(e.target.value)}
+                          onChange={(e) => setStaffPhone(e.target.value.replace(/\D/g, ''))}
                         />
                       </div>
                       <div className="space-y-2">

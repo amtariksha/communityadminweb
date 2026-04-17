@@ -14,6 +14,7 @@ import {
   FileText,
   Send,
   Ban,
+  ClipboardList,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,7 @@ import {
   useElections,
   useCreateElection,
   useCloseElection,
+  useRecordMinutes,
 } from '@/hooks';
 import type { Poll } from '@/hooks/use-voting';
 import type { Resolution, Election } from '@/hooks/use-governance';
@@ -200,6 +202,11 @@ export default function VotingContent(): ReactNode {
   const [elVoteStart, setElVoteStart] = useState('');
   const [elVoteEnd, setElVoteEnd] = useState('');
 
+  // -- Record Minutes state --
+  const [recordMinutesOpen, setRecordMinutesOpen] = useState(false);
+  const [recordMinutesResId, setRecordMinutesResId] = useState('');
+  const [recordMinutesText, setRecordMinutesText] = useState('');
+
   // -- Queries --
   const pollsQuery = usePolls(statusFilter || undefined);
   const activeQuery = useActivePolls();
@@ -213,6 +220,7 @@ export default function VotingContent(): ReactNode {
   const createResMutation = useCreateResolution();
   const proposeResMutation = useProposeResolution();
   const withdrawResMutation = useWithdrawResolution();
+  const recordMinutesMutation = useRecordMinutes();
   const createElMutation = useCreateElection();
   const closeElMutation = useCloseElection();
 
@@ -379,6 +387,33 @@ export default function VotingContent(): ReactNode {
         addToast({ title: 'Failed to withdraw', description: error.message, variant: 'destructive' });
       },
     });
+  }
+
+  function handleOpenRecordMinutes(res: Resolution): void {
+    setRecordMinutesResId(res.id);
+    setRecordMinutesText('');
+    setRecordMinutesOpen(true);
+  }
+
+  function handleRecordMinutes(): void {
+    if (!recordMinutesText.trim()) {
+      addToast({ title: 'Minutes text is required', variant: 'destructive' });
+      return;
+    }
+    recordMinutesMutation.mutate(
+      { id: recordMinutesResId, minutes: recordMinutesText.trim() },
+      {
+        onSuccess() {
+          addToast({ title: 'Minutes recorded', variant: 'success' });
+          setRecordMinutesOpen(false);
+          setRecordMinutesText('');
+          setRecordMinutesResId('');
+        },
+        onError(error) {
+          addToast({ title: 'Failed to record minutes', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -688,6 +723,17 @@ export default function VotingContent(): ReactNode {
                               disabled={withdrawResMutation.isPending}
                             >
                               <Ban className="h-4 w-4 text-red-500" />
+                            </Button>
+                          )}
+                          {res.status === 'passed' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleOpenRecordMinutes(res)}
+                              title="Record Minutes"
+                            >
+                              <ClipboardList className="h-4 w-4 text-green-600" />
                             </Button>
                           )}
                         </div>
@@ -1103,6 +1149,36 @@ export default function VotingContent(): ReactNode {
             <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
             <Button onClick={handleCreateElection} disabled={createElMutation.isPending}>
               {createElMutation.isPending ? 'Creating...' : 'Create Election'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ================================================================= */}
+      {/* Record Minutes dialog                                             */}
+      {/* ================================================================= */}
+      <Dialog open={recordMinutesOpen} onOpenChange={setRecordMinutesOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Record Minutes</DialogTitle>
+            <DialogDescription>Record the official meeting minutes for this passed resolution</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="minutes-text">Minutes</Label>
+              <Textarea
+                id="minutes-text"
+                value={recordMinutesText}
+                onChange={(e) => setRecordMinutesText(e.target.value)}
+                placeholder="Enter the official minutes of the meeting..."
+                rows={6}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+            <Button onClick={handleRecordMinutes} disabled={recordMinutesMutation.isPending}>
+              {recordMinutesMutation.isPending ? 'Saving...' : 'Save Minutes'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -73,7 +73,7 @@ const tabs: Array<{ label: string; value: TabFilter }> = [
 
 function getStatusBadgeVariant(
   status: InvoiceStatus,
-): 'success' | 'warning' | 'destructive' | 'secondary' | 'default' {
+): 'success' | 'warning' | 'destructive' | 'secondary' {
   switch (status) {
     case 'paid':
       return 'success';
@@ -83,9 +83,8 @@ function getStatusBadgeVariant(
     case 'cancelled':
       return 'destructive';
     case 'draft':
-      return 'secondary';
     case 'sent':
-      return 'default';
+      return 'secondary';
   }
 }
 

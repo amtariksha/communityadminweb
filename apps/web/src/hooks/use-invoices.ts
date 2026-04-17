@@ -94,7 +94,7 @@ export const invoiceKeys = {
   detail: (id: string) => [...invoiceKeys.details(), id] as const,
   rules: () => [...invoiceKeys.all, 'rules'] as const,
   defaulters: () => [...invoiceKeys.all, 'defaulters'] as const,
-  lpi: () => [...invoiceKeys.all, 'lpi'] as const,
+  lpi: (asOfDate: string) => [...invoiceKeys.all, 'lpi', asOfDate] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -169,12 +169,13 @@ export function useDefaulters() {
   });
 }
 
-export function useCalculateLPI() {
+export function useCalculateLPI(asOfDate?: string) {
+  const date = asOfDate ?? new Date().toISOString().slice(0, 10);
   return useQuery({
-    queryKey: invoiceKeys.lpi(),
+    queryKey: invoiceKeys.lpi(date),
     queryFn: function fetchLpi() {
       return api
-        .get<{ data: LpiCalculation[] }>('/invoices/lpi')
+        .get<{ data: LpiCalculation[] }>(`/invoices/lpi?as_of_date=${date}`)
         .then(function unwrap(res) {
           return res.data;
         });

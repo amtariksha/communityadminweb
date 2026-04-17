@@ -149,7 +149,7 @@ export default function DashboardContent(): ReactNode {
       status: 'completed',
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-   .slice(0, 8);
+   .slice(0, 10);
 
   return (
     <div className="space-y-6">
