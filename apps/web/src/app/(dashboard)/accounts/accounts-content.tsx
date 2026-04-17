@@ -632,7 +632,15 @@ export default function AccountsContent(): ReactNode {
       const parsed = lines.slice(1).map(function parseRow(line) {
         const cols = line.split(',').map((c) => c.trim());
         const code = cols[codeIdx] ?? '';
-        const matchedAccount = accounts.find((a) => a.code === code);
+        // Match is case-insensitive + trim + matches by code or name to
+        // tolerate CSVs exported from Tally (which uses names) as well as
+        // code-based imports.
+        const needle = code.toLowerCase().trim();
+        const matchedAccount = accounts.find(
+          (a) =>
+            a.code?.toLowerCase().trim() === needle ||
+            a.name?.toLowerCase().trim() === needle,
+        );
 
         return {
           account_code: code,

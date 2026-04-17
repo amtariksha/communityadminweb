@@ -667,15 +667,36 @@ export default function ReportsContent(): ReactNode {
               <CardContent>
                 <div className="flex flex-wrap items-end gap-4">
                   {selectedCard.needsAsOfDate && (
-                    <div className="space-y-2">
-                      <Label htmlFor="as-of-date">As of Date</Label>
-                      <Input
-                        id="as-of-date"
-                        type="date"
-                        value={asOfDate}
-                        onChange={(e) => setAsOfDate(e.target.value)}
-                      />
-                    </div>
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="as-of-date">As of Date</Label>
+                        <Input
+                          id="as-of-date"
+                          type="date"
+                          value={asOfDate}
+                          onChange={(e) => setAsOfDate(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAsOfDate('2026-03-31')}
+                        >
+                          <Calendar className="mr-1 h-3 w-3" />
+                          Year End
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setAsOfDate(new Date().toISOString().split('T')[0])
+                          }
+                        >
+                          Today
+                        </Button>
+                      </div>
+                    </>
                   )}
                   {selectedCard.needsDateRange && (
                     <>

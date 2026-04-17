@@ -826,9 +826,7 @@ export default function StaffContent(): ReactNode {
                           </p>
                         </div>
                       </div>
-                      <Badge variant={shift.is_active ? 'success' : 'secondary'}>
-                        {shift.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
+                      <Badge variant="success">Active</Badge>
                     </div>
                   ))}
                 </div>
@@ -896,7 +894,7 @@ export default function StaffContent(): ReactNode {
                             onChange={(e) => setAssignShiftId(e.target.value)}
                           >
                             <option value="">Select shift...</option>
-                            {shifts.filter((s) => s.is_active).map((shift) => (
+                            {shifts.map((shift) => (
                               <option key={shift.id} value={shift.id}>{shift.name} ({shift.start_time} - {shift.end_time})</option>
                             ))}
                           </Select>
@@ -1044,7 +1042,7 @@ export default function StaffContent(): ReactNode {
                             onChange={(e) => setClockInShiftId(e.target.value)}
                           >
                             <option value="">Select shift...</option>
-                            {shifts.filter((s) => s.is_active).map((shift) => (
+                            {shifts.map((shift) => (
                               <option key={shift.id} value={shift.id}>{shift.name}</option>
                             ))}
                           </Select>

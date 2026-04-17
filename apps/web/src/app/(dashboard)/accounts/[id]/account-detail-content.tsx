@@ -157,7 +157,8 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="h-8 w-36"
+                  onKeyDown={(e) => e.preventDefault()}
+                  className="h-8 w-36 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                 />
               </div>
               <div className="space-y-1">
@@ -167,7 +168,8 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="h-8 w-36"
+                  onKeyDown={(e) => e.preventDefault()}
+                  className="h-8 w-36 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                 />
               </div>
             </div>

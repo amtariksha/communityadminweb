@@ -37,7 +37,9 @@ export interface Shift {
   name: string;
   start_time: string;
   end_time: string;
-  is_active: boolean;
+  // NOTE: `is_active` column does not exist on staff_shifts table; backend
+  // never returns it. Kept optional for forward-compat if added later.
+  is_active?: boolean;
   created_at: string;
 }
 
