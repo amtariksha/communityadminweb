@@ -314,23 +314,33 @@ export default function GateContent(): ReactNode {
 
   function handleAddVisitor(e: FormEvent): void {
     e.preventDefault();
+    if (!visitorUnit) {
+      addToast({ title: 'Please select a unit', variant: 'destructive' });
+      return;
+    }
+    const payload: Record<string, unknown> = {
+      unit_id: visitorUnit,
+      visitor_name: visitorName.trim(),
+    };
+    if (visitorPhone.trim()) payload.visitor_phone = visitorPhone.trim();
+    if (visitorPurpose.trim()) payload.purpose = visitorPurpose.trim();
+    if (visitorVehicle.trim()) payload.vehicle_number = visitorVehicle.trim();
+    if (selectedGateId) payload.gate_id = selectedGateId;
+
     createVisitor.mutate(
-      {
-        visitor_name: visitorName,
-        visitor_phone: visitorPhone,
-        unit_id: visitorUnit,
-        purpose: visitorPurpose,
-        vehicle_number: visitorVehicle || null,
-        gate_id: selectedGateId || undefined,
-      },
+      payload as Parameters<typeof createVisitor.mutate>[0],
       {
         onSuccess() {
           setAddVisitorOpen(false);
           resetVisitorForm();
           addToast({ title: 'Visitor added successfully', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to add visitor', variant: 'destructive' });
+        onError(err) {
+          addToast({
+            title: 'Failed to add visitor',
+            description: (err as Error).message,
+            variant: 'destructive',
+          });
         },
       },
     );
@@ -388,22 +398,28 @@ export default function GateContent(): ReactNode {
 
   function handleStaffCheckIn(e: FormEvent): void {
     e.preventDefault();
+    const payload: Record<string, unknown> = {
+      staff_name: staffName.trim(),
+      staff_type: staffType,
+    };
+    if (staffPhone.trim()) payload.phone = staffPhone.trim();
+    if (staffUnit) payload.unit_id = staffUnit;
+    if (staffNotes.trim()) payload.notes = staffNotes.trim();
+
     staffCheckIn.mutate(
-      {
-        staff_name: staffName,
-        staff_type: staffType,
-        phone: staffPhone,
-        unit_id: staffUnit || null,
-        notes: staffNotes || null,
-      },
+      payload as Parameters<typeof staffCheckIn.mutate>[0],
       {
         onSuccess() {
           setStaffCheckInOpen(false);
           resetStaffForm();
           addToast({ title: 'Staff checked in', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to check in staff', variant: 'destructive' });
+        onError(err) {
+          addToast({
+            title: 'Failed to check in staff',
+            description: (err as Error).message,
+            variant: 'destructive',
+          });
         },
       },
     );
@@ -432,21 +448,33 @@ export default function GateContent(): ReactNode {
 
   function handleLogParcel(e: FormEvent): void {
     e.preventDefault();
+    if (!parcelUnit) {
+      addToast({ title: 'Please select a unit', variant: 'destructive' });
+      return;
+    }
+    // Only include fields the user actually filled. Empty strings on UUID /
+    // optional text fields cause a 400 on the backend.
+    const payload: Record<string, unknown> = {
+      unit_id: parcelUnit,
+    };
+    if (parcelCourier.trim()) payload.courier_name = parcelCourier.trim();
+    if (parcelTracking.trim()) payload.tracking_number = parcelTracking.trim();
+    if (parcelDescription.trim()) payload.description = parcelDescription.trim();
+
     createParcel.mutate(
-      {
-        unit_id: parcelUnit,
-        courier_name: parcelCourier,
-        tracking_number: parcelTracking || null,
-        description: parcelDescription || null,
-      },
+      payload as Parameters<typeof createParcel.mutate>[0],
       {
         onSuccess() {
           setLogParcelOpen(false);
           resetParcelForm();
           addToast({ title: 'Parcel logged successfully', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to log parcel', variant: 'destructive' });
+        onError(err) {
+          addToast({
+            title: 'Failed to log parcel',
+            description: (err as Error).message,
+            variant: 'destructive',
+          });
         },
       },
     );

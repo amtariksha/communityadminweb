@@ -89,11 +89,13 @@ function amenityTypeIcon(type: string): string {
   }
 }
 
-function formatAmenityType(type: string): string {
+function formatAmenityType(type: string | null | undefined): string {
+  if (!type) return '—';
   return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatPricingType(type: string): string {
+function formatPricingType(type: string | null | undefined): string {
+  if (!type) return '—';
   return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -114,7 +116,8 @@ function bookingStatusVariant(
   }
 }
 
-function formatBookingStatus(status: string): string {
+function formatBookingStatus(status: string | null | undefined): string {
+  if (!status) return '—';
   return status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
