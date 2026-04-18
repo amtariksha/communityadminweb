@@ -73,10 +73,14 @@ import type {
   ParcelFilters,
   AnprLogFilters,
 } from '@/hooks/use-gate';
+import {
+  useRegularVisitors,
+  useDeactivateRegularVisitor,
+} from '@/hooks/use-regular-visitors';
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
 import { formatDate } from '@/lib/utils';
 
-type TabKey = 'visitors' | 'staff' | 'parcels' | 'vehicles';
+type TabKey = 'visitors' | 'staff' | 'regulars' | 'parcels' | 'vehicles';
 
 const VISITOR_STATUS_BADGE: Record<string, { label: string; variant: string; className?: string }> = {
   pending: { label: 'Pending', variant: 'warning' },
@@ -957,6 +961,10 @@ export default function GateContent(): ReactNode {
     );
   }
 
+  function renderRegularsTab(): ReactNode {
+    return <RegisteredRegularsDirectory />;
+  }
+
   function renderParcelsTab(): ReactNode {
     return (
       <Card>
@@ -1246,6 +1254,7 @@ export default function GateContent(): ReactNode {
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'visitors', label: 'Visitors' },
     { key: 'staff', label: 'Staff Logs' },
+    { key: 'regulars', label: 'Registered Regulars' },
     { key: 'parcels', label: 'Parcels' },
     { key: 'vehicles', label: 'Vehicles' },
   ];
@@ -1338,6 +1347,7 @@ export default function GateContent(): ReactNode {
       {/* Tab content */}
       {activeTab === 'visitors' && renderVisitorsTab()}
       {activeTab === 'staff' && renderStaffTab()}
+      {activeTab === 'regulars' && renderRegularsTab()}
       {activeTab === 'parcels' && renderParcelsTab()}
       {activeTab === 'vehicles' && renderVehiclesTab()}
 
@@ -1373,5 +1383,149 @@ export default function GateContent(): ReactNode {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Registered Regulars directory tab
+// ---------------------------------------------------------------------------
+// Read-only admin view of every regular visitor a resident has registered
+// for their unit. Admins can deactivate abusive entries but can't create or
+// edit (those are resident-owned).
+
+function RegisteredRegularsDirectory(): ReactNode {
+  const { addToast } = useToast();
+  const [q, setQ] = useState('');
+  const [visitorTypeFilter, setVisitorTypeFilter] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'active' | 'inactive' | 'all'>('active');
+
+  const query = useRegularVisitors({
+    q: q || undefined,
+    visitor_type: visitorTypeFilter || undefined,
+    is_active: activeFilter === 'all' ? undefined : activeFilter === 'active',
+    limit: 100,
+  });
+  const regulars = query.data?.data ?? [];
+  const deactivate = useDeactivateRegularVisitor();
+
+  function handleDeactivate(id: string, name: string): void {
+    if (!window.confirm(`Deactivate ${name}? The gate will no longer recognise them.`)) return;
+    deactivate.mutate(id, {
+      onSuccess() {
+        addToast({ title: `${name} deactivated`, variant: 'success' });
+      },
+      onError(err) {
+        addToast({
+          title: 'Failed to deactivate',
+          description: err.message,
+          variant: 'destructive',
+        });
+      },
+    });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle>Registered Regulars</CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Search by name or phone"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="w-56"
+            />
+            <Select
+              value={visitorTypeFilter}
+              onChange={(e) => setVisitorTypeFilter(e.target.value)}
+              className="w-40"
+            >
+              <option value="">All types</option>
+              <option value="maid">Maid</option>
+              <option value="cook">Cook</option>
+              <option value="driver">Driver</option>
+              <option value="nanny">Nanny</option>
+              <option value="tutor">Tutor</option>
+              <option value="gardener">Gardener</option>
+              <option value="plumber">Plumber</option>
+              <option value="electrician">Electrician</option>
+              <option value="therapist">Therapist</option>
+              <option value="other">Other</option>
+            </Select>
+            <Select
+              value={activeFilter}
+              onChange={(e) => setActiveFilter(e.target.value as 'active' | 'inactive' | 'all')}
+              className="w-36"
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="all">All</option>
+            </Select>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {query.isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : regulars.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Unit</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Last Seen</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-28">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {regulars.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.name}</TableCell>
+                  <TableCell className="capitalize">{r.visitor_type}</TableCell>
+                  <TableCell>{r.unit_number ?? r.unit_id}</TableCell>
+                  <TableCell>{r.phone ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.last_seen_at ? formatDate(r.last_seen_at) : '—'}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={r.is_active ? 'success' : 'secondary'}>
+                      {r.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {r.is_active && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeactivate(r.id, r.name)}
+                        disabled={deactivate.isPending}
+                      >
+                        Deactivate
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <div className="flex flex-col items-center py-12">
+            <Users className="mb-4 h-12 w-12 text-muted-foreground" />
+            <p className="text-lg font-medium">No registered regulars</p>
+            <p className="text-sm text-muted-foreground">
+              Residents haven&apos;t registered any regulars yet.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
