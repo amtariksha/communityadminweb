@@ -48,9 +48,13 @@ const TABS: { key: SettingsTab; label: string; icon: typeof HardDrive }[] = [
 // Config key mapping
 // ---------------------------------------------------------------------------
 
+// NOTE: Only `otp` is correctly wired to its backend platform_config key
+// (`otp_provider`). The other tabs (storage/payments/push/email) currently
+// point at legacy keys that don't match the backend schema — they are
+// tracked for a follow-up rewrite and kept as-is to avoid scope creep.
 const TAB_CONFIG_KEYS: Record<SettingsTab, string> = {
   storage: 'storage',
-  otp: 'otp_messaging',
+  otp: 'otp_provider',
   payments: 'payments',
   push: 'push_notifications',
   email: 'email',
@@ -260,91 +264,185 @@ function OtpSection({
   onSave: (value: Record<string, unknown>) => void;
   isPending: boolean;
 }): ReactNode {
-  const [defaultChannel, setDefaultChannel] = useState(
-    (config.default_channel as string) ?? 'whatsapp',
+  // Nested config shape matches the backend's `platform_config.otp_provider`
+  // value. Legacy `whatsapp` key is accepted as an alias for `whatsapp_cloud`.
+  const waCfg = ((config.whatsapp_cloud as Record<string, unknown>) ??
+    (config.whatsapp as Record<string, unknown>) ?? {}) as Record<string, unknown>;
+  const msg91Cfg = (config.msg91 as Record<string, unknown>) ?? {};
+  const twoFactorCfg = (config['2factor'] as Record<string, unknown>) ?? {};
+
+  const [primaryChannel, setPrimaryChannel] = useState(
+    (config.primary as string) ?? 'whatsapp',
   );
+  const [smsProvider, setSmsProvider] = useState(
+    (config.sms_provider as string) ?? '2factor',
+  );
+
+  // WhatsApp Cloud fields
   const [waPhoneNumberId, setWaPhoneNumberId] = useState(
-    (config.whatsapp_phone_number_id as string) ?? '',
+    (waCfg.phoneNumberId as string) ?? '',
   );
   const [waAccessToken, setWaAccessToken] = useState('');
   const [waTemplateName, setWaTemplateName] = useState(
-    (config.whatsapp_template_name as string) ?? '',
+    (waCfg.templateName as string) ?? 'otp_verification',
   );
-  const [smsAuthKey, setSmsAuthKey] = useState('');
-  const [smsTemplateId, setSmsTemplateId] = useState(
-    (config.sms_template_id as string) ?? '',
+
+  // MSG91 fields
+  const [msg91AuthKey, setMsg91AuthKey] = useState('');
+  const [msg91TemplateId, setMsg91TemplateId] = useState(
+    (msg91Cfg.templateId as string) ?? '',
   );
+
+  // 2Factor.in fields
+  const [tfApiKeyHeader, setTfApiKeyHeader] = useState('');
+  const [tfBaseUrl, setTfBaseUrl] = useState(
+    (twoFactorCfg.baseUrl as string) ?? 'https://2factor.in/API/V1',
+  );
+  const [tfApiKey, setTfApiKey] = useState('');
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <Label>Default Channel</Label>
-        <Select value={defaultChannel} onChange={(e) => setDefaultChannel(e.target.value)}>
-          <option value="whatsapp">WhatsApp</option>
-          <option value="sms">SMS</option>
-        </Select>
+      {/* --- Channel selection --- */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Primary Channel</Label>
+          <Select
+            value={primaryChannel}
+            onChange={(e) => setPrimaryChannel(e.target.value)}
+          >
+            <option value="whatsapp">WhatsApp</option>
+            <option value="sms">SMS</option>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            First channel tried on /auth/send-otp. Falls back to the other on failure.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label>SMS Provider</Label>
+          <Select
+            value={smsProvider}
+            onChange={(e) => setSmsProvider(e.target.value)}
+          >
+            <option value="2factor">2Factor.in</option>
+            <option value="msg91">MSG91</option>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Which adapter handles SMS sends. Fallback applies if the preferred
+            provider isn't configured.
+          </p>
+        </div>
       </div>
 
       <Separator />
 
+      {/* --- WhatsApp Cloud --- */}
       <h4 className="text-sm font-semibold">WhatsApp (Meta Cloud API)</h4>
       <div className="space-y-2">
         <Label>Phone Number ID</Label>
         <Input
           value={waPhoneNumberId}
           onChange={(e) => setWaPhoneNumberId(e.target.value)}
-          placeholder="Phone Number ID from Meta"
+          placeholder="e.g. 123456789012345"
         />
       </div>
       <MaskedInput
         label="Access Token"
         value={waAccessToken}
-        maskedDisplay={maskValue(config.whatsapp_access_token)}
+        maskedDisplay={maskValue(waCfg.accessToken)}
         onChange={setWaAccessToken}
         type="password"
-        placeholder="Meta access token"
+        placeholder="Meta access token (leave blank to keep existing)"
       />
       <div className="space-y-2">
         <Label>Template Name</Label>
         <Input
           value={waTemplateName}
           onChange={(e) => setWaTemplateName(e.target.value)}
-          placeholder="otp_template"
+          placeholder="otp_verification"
         />
       </div>
 
       <Separator />
 
-      <h4 className="text-sm font-semibold">SMS (MSG91)</h4>
+      {/* --- 2Factor.in --- */}
+      <h4 className="text-sm font-semibold">2Factor.in (SMS OTP)</h4>
+      <MaskedInput
+        label="API Key Header"
+        value={tfApiKeyHeader}
+        maskedDisplay={maskValue(twoFactorCfg.apiKeyHeader)}
+        onChange={setTfApiKeyHeader}
+        type="password"
+        placeholder="api-key header value (leave blank to keep existing)"
+      />
+      <div className="space-y-2">
+        <Label>Base URL</Label>
+        <Input
+          value={tfBaseUrl}
+          onChange={(e) => setTfBaseUrl(e.target.value)}
+          placeholder="https://2factor.in/API/V1"
+        />
+      </div>
+      <MaskedInput
+        label="Account API Key"
+        value={tfApiKey}
+        maskedDisplay={maskValue(twoFactorCfg.apiKey)}
+        onChange={setTfApiKey}
+        type="password"
+        placeholder="per-account key in URL path (leave blank to keep existing)"
+      />
+
+      <Separator />
+
+      {/* --- MSG91 --- */}
+      <h4 className="text-sm font-semibold">MSG91 (SMS OTP — fallback)</h4>
       <MaskedInput
         label="Auth Key"
-        value={smsAuthKey}
-        maskedDisplay={maskValue(config.sms_auth_key)}
-        onChange={setSmsAuthKey}
+        value={msg91AuthKey}
+        maskedDisplay={maskValue(msg91Cfg.authKey)}
+        onChange={setMsg91AuthKey}
         type="password"
-        placeholder="MSG91 Auth Key"
+        placeholder="MSG91 auth key (leave blank to keep existing)"
       />
       <div className="space-y-2">
         <Label>Template ID</Label>
         <Input
-          value={smsTemplateId}
-          onChange={(e) => setSmsTemplateId(e.target.value)}
-          placeholder="MSG91 Template ID"
+          value={msg91TemplateId}
+          onChange={(e) => setMsg91TemplateId(e.target.value)}
+          placeholder="MSG91 template ID"
         />
       </div>
 
       <SaveButton
         isPending={isPending}
         onClick={() => {
-          const value: Record<string, unknown> = {
-            default_channel: defaultChannel,
-            whatsapp_phone_number_id: waPhoneNumberId,
-            whatsapp_template_name: waTemplateName,
-            sms_template_id: smsTemplateId,
+          // Build nested payload. Secret fields are only written when the
+          // admin has typed a new value — blank input preserves existing.
+          const whatsappCloud: Record<string, unknown> = {
+            phoneNumberId: waPhoneNumberId,
+            templateName: waTemplateName,
           };
-          if (waAccessToken) value.whatsapp_access_token = waAccessToken;
-          if (smsAuthKey) value.sms_auth_key = smsAuthKey;
-          onSave(value);
+          if (waAccessToken) whatsappCloud.accessToken = waAccessToken;
+          else if (waCfg.accessToken) whatsappCloud.accessToken = waCfg.accessToken;
+
+          const msg91: Record<string, unknown> = { templateId: msg91TemplateId };
+          if (msg91AuthKey) msg91.authKey = msg91AuthKey;
+          else if (msg91Cfg.authKey) msg91.authKey = msg91Cfg.authKey;
+          if (msg91Cfg.otpLength) msg91.otpLength = msg91Cfg.otpLength;
+
+          const twoFactor: Record<string, unknown> = { baseUrl: tfBaseUrl };
+          if (tfApiKeyHeader) twoFactor.apiKeyHeader = tfApiKeyHeader;
+          else if (twoFactorCfg.apiKeyHeader)
+            twoFactor.apiKeyHeader = twoFactorCfg.apiKeyHeader;
+          if (tfApiKey) twoFactor.apiKey = tfApiKey;
+          else if (twoFactorCfg.apiKey) twoFactor.apiKey = twoFactorCfg.apiKey;
+
+          onSave({
+            primary: primaryChannel,
+            sms_provider: smsProvider,
+            whatsapp_cloud: whatsappCloud,
+            msg91,
+            '2factor': twoFactor,
+          });
         }}
       />
     </div>
