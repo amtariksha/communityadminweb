@@ -193,6 +193,13 @@ export default function SuperAdminContent(): ReactNode {
   const [editPlan, setEditPlan] = useState('');
   const [editFeatures, setEditFeatures] = useState<Record<string, boolean>>({});
 
+  // Society Information (super-admin-only edit — tenant admins see read-only
+  // fields on /settings; this is the only place to change them)
+  const [editSocietyName, setEditSocietyName] = useState('');
+  const [editSocietyAddress, setEditSocietyAddress] = useState('');
+  const [editSocietyCity, setEditSocietyCity] = useState('');
+  const [editSocietyState, setEditSocietyState] = useState('');
+
   // Feature toggles dialog
   const [featuresDialogOpen, setFeaturesDialogOpen] = useState(false);
   const [featuresTenantId, setFeaturesTenantId] = useState('');
@@ -235,6 +242,16 @@ export default function SuperAdminContent(): ReactNode {
     if (settingsJson) {
       setEditFeatures(settingsJson);
     }
+    setEditSocietyName(tenantDetail.name ?? '');
+    setEditSocietyAddress(
+      (tenantDetail as unknown as { address?: string | null }).address ?? '',
+    );
+    setEditSocietyCity(
+      (tenantDetail as unknown as { city?: string | null }).city ?? '',
+    );
+    setEditSocietyState(
+      (tenantDetail as unknown as { state?: string | null }).state ?? '',
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -304,6 +321,37 @@ export default function SuperAdminContent(): ReactNode {
     );
   }
 
+  function handleUpdateSocietyInfo(e: FormEvent): void {
+    e.preventDefault();
+    if (!editSocietyName.trim()) {
+      addToast({ title: 'Society name is required', variant: 'destructive' });
+      return;
+    }
+    // Zod schema rejects null for string fields — omit blanks rather than
+    // sending null so optional address/city/state just stay unchanged.
+    const data: {
+      name?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+    } = { name: editSocietyName.trim() };
+    if (editSocietyAddress.trim()) data.address = editSocietyAddress.trim();
+    if (editSocietyCity.trim()) data.city = editSocietyCity.trim();
+    if (editSocietyState.trim()) data.state = editSocietyState.trim();
+
+    updateTenant.mutate(
+      { id: selectedTenantId, data },
+      {
+        onSuccess() {
+          addToast({ title: 'Society information updated', variant: 'success' });
+        },
+        onError(error) {
+          addToast({ title: 'Failed to update society', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
+  }
+
   function handleSaveFeatures(): void {
     updateSettings.mutate(
       { tenant_id: selectedTenantId, settings: editFeatures as Record<string, boolean> },
@@ -324,6 +372,10 @@ export default function SuperAdminContent(): ReactNode {
     setEditPlan('');
     setEditPricePerUnit('');
     setEditFeatures({});
+    setEditSocietyName('');
+    setEditSocietyAddress('');
+    setEditSocietyCity('');
+    setEditSocietyState('');
   }
 
   function handleOpenFeaturesDialog(tenant: TenantRow): void {
@@ -773,6 +825,55 @@ export default function SuperAdminContent(): ReactNode {
             </div>
           ) : tenantDetail ? (
             <div className="space-y-6 py-4">
+              {/* Society Information — super-admin-only editor. Tenant admins
+                  see a read-only copy on /settings and are pointed here. */}
+              <form onSubmit={handleUpdateSocietyInfo} className="space-y-4">
+                <h3 className="text-sm font-semibold">Society Information</h3>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-society-name">Society Name</Label>
+                  <Input
+                    id="edit-society-name"
+                    required
+                    value={editSocietyName}
+                    onChange={(e) => setEditSocietyName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-society-address">Address</Label>
+                  <Input
+                    id="edit-society-address"
+                    value={editSocietyAddress}
+                    onChange={(e) => setEditSocietyAddress(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-society-city">City</Label>
+                    <Input
+                      id="edit-society-city"
+                      value={editSocietyCity}
+                      onChange={(e) => setEditSocietyCity(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-society-state">State</Label>
+                    <Input
+                      id="edit-society-state"
+                      value={editSocietyState}
+                      onChange={(e) => setEditSocietyState(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button type="submit" size="sm" disabled={updateTenant.isPending}>
+                    <Save className="mr-2 h-4 w-4" />
+                    {updateTenant.isPending ? 'Saving...' : 'Update Society Info'}
+                  </Button>
+                </div>
+              </form>
+
+              <Separator />
+
               <form onSubmit={handleUpdateTenant} className="space-y-4">
                 <h3 className="text-sm font-semibold">Pricing</h3>
                 <div className="grid grid-cols-2 gap-4">

@@ -31,7 +31,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, financialDateBounds } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
   DropdownMenu,
@@ -147,6 +147,9 @@ function TableRowsSkeleton(): ReactNode {
 
 export default function InvoicesContent(): ReactNode {
   const { addToast } = useToast();
+  // Clamp all date inputs to prev-FY-start → next-month-end. Prevents
+  // accidental back-dating (beyond last FY) and forward-dating.
+  const dateBounds = useMemo(() => financialDateBounds(), []);
 
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -574,6 +577,8 @@ export default function InvoicesContent(): ReactNode {
                       <Input
                         id="billing-date"
                         type="date"
+                        min={dateBounds.min}
+                        max={dateBounds.max}
                         value={billingDate}
                         onChange={(e) => setBillingDate(e.target.value)}
                         required
@@ -1074,6 +1079,8 @@ export default function InvoicesContent(): ReactNode {
                   <Input
                     id="lpi-post-date"
                     type="date"
+                    min={dateBounds.min}
+                    max={dateBounds.max}
                     value={lpiPostDate}
                     onChange={(e) => setLpiPostDate(e.target.value)}
                   />

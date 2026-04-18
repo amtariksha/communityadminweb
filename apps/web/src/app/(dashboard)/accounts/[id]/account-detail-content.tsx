@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, type ReactNode } from 'react';
+import { use, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/layout/page-header';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, financialDateBounds } from '@/lib/utils';
 import { useLedgerAccount, useGeneralLedgerReport, useAccountGroups } from '@/hooks';
 
 function getDefaultDateRange(): { startDate: string; endDate: string } {
@@ -67,6 +67,7 @@ interface AccountDetailPageProps {
 export default function AccountDetailContent({ params }: AccountDetailPageProps): ReactNode {
   const { id } = use(params);
   const defaults = getDefaultDateRange();
+  const dateBounds = useMemo(() => financialDateBounds(), []);
   const [startDate, setStartDate] = useState(defaults.startDate);
   const [endDate, setEndDate] = useState(defaults.endDate);
 
@@ -155,6 +156,8 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
                 <Input
                   id="start-date"
                   type="date"
+                  min={dateBounds.min}
+                  max={dateBounds.max}
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   onKeyDown={(e) => e.preventDefault()}
@@ -166,6 +169,8 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
                 <Input
                   id="end-date"
                   type="date"
+                  min={dateBounds.min}
+                  max={dateBounds.max}
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   onKeyDown={(e) => e.preventDefault()}

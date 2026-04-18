@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, useMemo, type FormEvent, type ReactNode } from 'react';
 import { Plus, Receipt, IndianRupee, CreditCard, Banknote, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, financialDateBounds } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
   useReceipts,
@@ -118,6 +118,8 @@ function TableSkeleton(): ReactNode {
 
 export default function ReceiptsContent(): ReactNode {
   const { addToast } = useToast();
+  // Clamp date inputs to prev FY start → next month end.
+  const dateBounds = useMemo(() => financialDateBounds(), []);
   const [page, setPage] = useState(1);
   const [modeFilter, setModeFilter] = useState('');
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
@@ -386,6 +388,8 @@ export default function ReceiptsContent(): ReactNode {
                       <Input
                         id="receipt-date"
                         type="date"
+                        min={dateBounds.min}
+                        max={dateBounds.max}
                         required
                         value={receiptDate}
                         onChange={(e) => setReceiptDate(e.target.value)}

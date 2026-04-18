@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import {
   IndianRupee,
   CheckCircle2,
@@ -40,7 +40,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { TOOLTIP } from '@/lib/tooltip-content';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, financialDateBounds } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
   usePayments,
@@ -104,6 +104,8 @@ function StatCardSkeleton(): ReactNode {
 
 export default function PaymentsContent(): ReactNode {
   const { addToast } = useToast();
+  // Clamp date filters to prev FY start → next month end.
+  const dateBounds = useMemo(() => financialDateBounds(), []);
   const PAGE_SIZE = 20;
 
   // Filters
@@ -303,6 +305,8 @@ export default function PaymentsContent(): ReactNode {
               <Input
                 id="payment-start"
                 type="date"
+                min={dateBounds.min}
+                max={dateBounds.max}
                 value={startDate}
                 onChange={(e) => {
                   setStartDate(e.target.value);
@@ -315,6 +319,8 @@ export default function PaymentsContent(): ReactNode {
               <Input
                 id="payment-end"
                 type="date"
+                min={dateBounds.min}
+                max={dateBounds.max}
                 value={endDate}
                 onChange={(e) => {
                   setEndDate(e.target.value);

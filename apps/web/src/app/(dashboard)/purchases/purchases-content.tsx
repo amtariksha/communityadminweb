@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, useMemo, type FormEvent, type ReactNode } from 'react';
 import {
   Plus,
   ShoppingCart,
@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, financialDateBounds } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
   usePurchaseRequests,
@@ -225,6 +225,8 @@ function BillTableSkeleton(): ReactNode {
 
 export default function PurchasesContent(): ReactNode {
   const { addToast } = useToast();
+  // Clamp date inputs to prev FY start → next month end.
+  const dateBounds = useMemo(() => financialDateBounds(), []);
   const [activeTab, setActiveTab] = useState<ActiveTab>('requests');
 
   // Purchase Request state
@@ -939,6 +941,8 @@ export default function PurchasesContent(): ReactNode {
                             <Input
                               id="bill-date"
                               type="date"
+                              min={dateBounds.min}
+                              max={dateBounds.max}
                               required
                               value={billDate}
                               onChange={(e) => setBillDate(e.target.value)}
@@ -949,6 +953,8 @@ export default function PurchasesContent(): ReactNode {
                             <Input
                               id="bill-due-date"
                               type="date"
+                              min={dateBounds.min}
+                              max={dateBounds.max}
                               required
                               value={billDueDate}
                               onChange={(e) => setBillDueDate(e.target.value)}
@@ -1272,6 +1278,8 @@ export default function PurchasesContent(): ReactNode {
                   <Input
                     id="pay-date"
                     type="date"
+                    min={dateBounds.min}
+                    max={dateBounds.max}
                     required
                     value={paymentDate}
                     onChange={(e) => setPaymentDate(e.target.value)}
@@ -1370,6 +1378,8 @@ export default function PurchasesContent(): ReactNode {
                   <Input
                     id="convert-bill-date"
                     type="date"
+                    min={dateBounds.min}
+                    max={dateBounds.max}
                     required
                     value={convertBillDate}
                     onChange={(e) => setConvertBillDate(e.target.value)}
@@ -1380,6 +1390,8 @@ export default function PurchasesContent(): ReactNode {
                   <Input
                     id="convert-due-date"
                     type="date"
+                    min={dateBounds.min}
+                    max={dateBounds.max}
                     required
                     value={convertDueDate}
                     onChange={(e) => setConvertDueDate(e.target.value)}

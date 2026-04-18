@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, type FormEvent, type ChangeEvent, type ReactNode } from 'react';
+import { useState, useMemo, useRef, type FormEvent, type ChangeEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ChevronRight, ChevronDown, Plus, BookOpen, Upload, Download, AlertCircle, CheckCircle2, Pencil, FileUp, FileDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +32,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, financialDateBounds } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
   useAccountGroups,
@@ -232,6 +232,8 @@ function TreeSkeleton(): ReactNode {
 
 export default function AccountsContent(): ReactNode {
   const { addToast } = useToast();
+  // Clamp date inputs to prev FY start → next month end.
+  const dateBounds = useMemo(() => financialDateBounds(), []);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
 
@@ -1388,6 +1390,8 @@ export default function AccountsContent(): ReactNode {
                 <Input
                   id="export-from"
                   type="date"
+                  min={dateBounds.min}
+                  max={dateBounds.max}
                   value={exportFromDate}
                   onChange={(e) => setExportFromDate(e.target.value)}
                   required
@@ -1398,6 +1402,8 @@ export default function AccountsContent(): ReactNode {
                 <Input
                   id="export-to"
                   type="date"
+                  min={dateBounds.min}
+                  max={dateBounds.max}
                   value={exportToDate}
                   onChange={(e) => setExportToDate(e.target.value)}
                   required
