@@ -30,7 +30,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
-import { getCurrentTenant } from '@/lib/auth';
+import { getCurrentTenant, getUser } from '@/lib/auth';
 import {
   useTenant,
   useUpdateTenant,
@@ -52,6 +52,7 @@ import {
   useAmenities,
   useCreateAmenity,
   useUpdateAmenity,
+  useLedgerAccounts,
 } from '@/hooks';
 import type { Gate, RbacPermission } from '@/hooks/use-staff';
 import type { Amenity } from '@/hooks/use-amenities';
@@ -88,11 +89,16 @@ const featureToggles: FeatureToggle[] = [
 export default function SettingsContent(): ReactNode {
   const { addToast } = useToast();
   const currentTenantId = getCurrentTenant() ?? '';
+  const currentUser = getUser();
+  const isSuperAdmin = currentUser?.isSuperAdmin === true;
 
   // Data queries
   const tenantQuery = useTenant(currentTenantId);
   const rulesQuery = useInvoiceRules();
   const fyQuery = useFinancialYears();
+  // Ledger accounts for the billing-rule "Ledger Account" dropdown.
+  const ledgerAccountsQuery = useLedgerAccounts();
+  const ledgerAccounts = ledgerAccountsQuery.data?.data ?? [];
 
   // Mutations
   const updateTenant = useUpdateTenant();
@@ -406,8 +412,40 @@ export default function SettingsContent(): ReactNode {
   // Permission handlers
   // ---------------------------------------------------------------------------
 
-  const RBAC_RESOURCES = ['finance', 'gate', 'tickets', 'units', 'staff', 'announcements', 'documents', 'reports', 'settings'];
-  const RBAC_ROLES = ['community_admin', 'committee_member', 'resident', 'security_guard', 'accountant'];
+  // Keep this list aligned with DEFAULT_MATRIX in apps/api/src/modules/rbac/rbac.service.ts.
+  // Expand as new modules ship so super/community admins can tune access.
+  const RBAC_RESOURCES = [
+    'finance',
+    'invoices',
+    'receipts',
+    'bank',
+    'purchases',
+    'vendors',
+    'gate',
+    'visitors',
+    'tickets',
+    'amenities',
+    'units',
+    'members',
+    'staff',
+    'announcements',
+    'documents',
+    'utilities',
+    'voting',
+    'compliance',
+    'reports',
+    'analytics',
+    'settings',
+  ];
+  const RBAC_ROLES = [
+    'community_admin',
+    'accountant',
+    'committee_member',
+    'auditor',
+    'security_guard',
+    'owner',
+    'tenant_resident',
+  ];
 
   function getPermission(role: string, resource: string): { can_read: boolean; can_write: boolean; can_delete: boolean } {
     const key = `${role}:${resource}`;
@@ -604,6 +642,8 @@ export default function SettingsContent(): ReactNode {
 
       {/* ------------------------------------------------------------------- */}
       {/* Society Info Section                                                 */}
+      {/* Editable only by super admin. Others see read-only fields and a     */}
+      {/* hint directing them to the super-admin dashboard for changes.       */}
       {/* ------------------------------------------------------------------- */}
       <Card>
         <CardHeader>
@@ -628,6 +668,8 @@ export default function SettingsContent(): ReactNode {
                   required
                   value={societyName}
                   onChange={(e) => setSocietyName(e.target.value)}
+                  readOnly={!isSuperAdmin}
+                  disabled={!isSuperAdmin}
                 />
               </div>
               <div className="space-y-2">
@@ -636,6 +678,8 @@ export default function SettingsContent(): ReactNode {
                   id="society-address"
                   value={societyAddress}
                   onChange={(e) => setSocietyAddress(e.target.value)}
+                  readOnly={!isSuperAdmin}
+                  disabled={!isSuperAdmin}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -645,6 +689,8 @@ export default function SettingsContent(): ReactNode {
                     id="society-city"
                     value={societyCity}
                     onChange={(e) => setSocietyCity(e.target.value)}
+                    readOnly={!isSuperAdmin}
+                    disabled={!isSuperAdmin}
                   />
                 </div>
                 <div className="space-y-2">
@@ -653,15 +699,24 @@ export default function SettingsContent(): ReactNode {
                     id="society-state"
                     value={societyState}
                     onChange={(e) => setSocietyState(e.target.value)}
+                    readOnly={!isSuperAdmin}
+                    disabled={!isSuperAdmin}
                   />
                 </div>
               </div>
-              <div className="flex justify-end">
-                <Button type="submit" disabled={updateTenant.isPending}>
-                  <Save className="mr-2 h-4 w-4" />
-                  {updateTenant.isPending ? 'Saving...' : 'Save Society Info'}
-                </Button>
-              </div>
+              {isSuperAdmin ? (
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={updateTenant.isPending}>
+                    <Save className="mr-2 h-4 w-4" />
+                    {updateTenant.isPending ? 'Saving...' : 'Save Society Info'}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Society details can only be changed by a super admin. Contact
+                  support if any of the values above are incorrect.
+                </p>
+              )}
             </form>
           )}
         </CardContent>
@@ -703,14 +758,26 @@ export default function SettingsContent(): ReactNode {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="rule-account">Ledger Account ID</Label>
-                      <Input
+                      <Label htmlFor="rule-account">Ledger Account</Label>
+                      <Select
                         id="rule-account"
                         required
-                        placeholder="Ledger account ID"
                         value={ruleLedgerAccountId}
                         onChange={(e) => setRuleLedgerAccountId(e.target.value)}
-                      />
+                      >
+                        <option value="">Select an account…</option>
+                        {ledgerAccounts.map((acc) => (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.code ? `${acc.code} — ${acc.name}` : acc.name}
+                          </option>
+                        ))}
+                      </Select>
+                      {ledgerAccounts.length === 0 && !ledgerAccountsQuery.isLoading && (
+                        <p className="text-xs text-muted-foreground">
+                          No ledger accounts exist yet. Create them under
+                          Accounts before defining a billing rule.
+                        </p>
+                      )}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">

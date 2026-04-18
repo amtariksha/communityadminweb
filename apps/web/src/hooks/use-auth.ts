@@ -6,6 +6,7 @@ import {
   getToken,
   getUser,
   setToken,
+  setRefreshToken,
   setUser,
   setCurrentTenant,
 } from '@/lib/auth';
@@ -137,6 +138,9 @@ export function useVerifyOtp() {
     },
     onSuccess: function persistSession(data) {
       setToken(data.access_token);
+      if (data.refresh_token) {
+        setRefreshToken(data.refresh_token);
+      }
 
       // Map API response to the User shape stored in localStorage
       const user: User = {
@@ -168,6 +172,9 @@ export function useRefreshToken() {
     },
     onSuccess: function persistToken(data) {
       setToken(data.access_token);
+      if (data.refresh_token) {
+        setRefreshToken(data.refresh_token);
+      }
     },
   });
 }

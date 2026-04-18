@@ -1,4 +1,11 @@
-import { getToken, getCurrentTenant, logout } from '@/lib/auth';
+import {
+  getToken,
+  setToken,
+  getRefreshToken,
+  setRefreshToken,
+  getCurrentTenant,
+  logout,
+} from '@/lib/auth';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ??
@@ -46,10 +53,9 @@ async function request<T>(
   });
 
   if (response.status === 401) {
-    // Try to refresh the token once before logging out
-    const refreshToken = typeof window !== 'undefined'
-      ? localStorage.getItem('refresh_token')
-      : null;
+    // Try to refresh the token once before logging out. Uses namespaced
+    // localStorage keys via auth.ts helpers so there's one source of truth.
+    const refreshToken = getRefreshToken();
 
     if (refreshToken && !path.includes('/auth/')) {
       try {
@@ -62,10 +68,10 @@ async function request<T>(
         if (refreshResponse.ok) {
           const data = await refreshResponse.json();
           const newToken = data.access_token ?? data.token;
-          if (newToken && typeof window !== 'undefined') {
-            localStorage.setItem('token', newToken);
+          if (newToken) {
+            setToken(newToken);
             if (data.refresh_token) {
-              localStorage.setItem('refresh_token', data.refresh_token);
+              setRefreshToken(data.refresh_token);
             }
             // Retry the original request with the new token
             headers['Authorization'] = `Bearer ${newToken}`;

@@ -179,7 +179,9 @@ function TreeNodeView({ node, depth, onEditGroup, onEditAccount }: TreeNodeViewP
                 <span className="text-sm">{account.name}</span>
                 <span className="text-xs text-muted-foreground">({account.code})</span>
                 <span className="ml-auto text-sm font-medium">
-                  {formatCurrency(account.opening_balance)}
+                  {formatCurrency(
+                    account.current_balance ?? account.opening_balance,
+                  )}
                 </span>
                 <Badge variant="outline" className="text-xs">
                   {account.balance_type === 'debit' ? 'Dr' : 'Cr'}

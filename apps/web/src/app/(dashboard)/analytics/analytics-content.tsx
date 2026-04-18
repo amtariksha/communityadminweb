@@ -30,6 +30,7 @@ import {
   useBenchmark,
   useAnomalies,
   useMaintenancePredictions,
+  pillarScore,
 } from '@/hooks/use-analytics';
 
 // ---------------------------------------------------------------------------
@@ -116,9 +117,9 @@ export default function AnalyticsContent(): ReactNode {
           ))
         ) : (
           <>
-            <HealthCard label="Financial" score={health?.financial ?? 0} />
-            <HealthCard label="Operational" score={health?.operational ?? 0} />
-            <HealthCard label="Compliance" score={health?.compliance ?? 0} />
+            <HealthCard label="Financial" score={pillarScore(health?.financial)} />
+            <HealthCard label="Operational" score={pillarScore(health?.operational)} />
+            <HealthCard label="Compliance" score={pillarScore(health?.compliance)} />
             <HealthCard label="Overall" score={health?.overall ?? 0} />
           </>
         )}

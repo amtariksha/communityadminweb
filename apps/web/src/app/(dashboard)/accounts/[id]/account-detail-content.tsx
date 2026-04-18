@@ -194,7 +194,7 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
                 report.transactions.map((txn, index) => (
                   <TableRow key={index}>
                     <TableCell className="text-muted-foreground">
-                      {formatDate(txn.date)}
+                      {formatDate(txn.entry_date)}
                     </TableCell>
                     <TableCell>
                       <span className="font-mono text-xs">{txn.entry_number}</span>

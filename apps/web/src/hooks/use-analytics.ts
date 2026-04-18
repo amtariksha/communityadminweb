@@ -3,12 +3,31 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
+// The backend returns nested breakdown objects per pillar. `overall` is a
+// simple number; each of financial/operational/compliance is an object whose
+// `score` field is what the UI cards display.
+export interface HealthPillarBreakdown {
+  score: number;
+  [key: string]: unknown;
+}
+
 export interface HealthScore {
-  financial: number;
-  operational: number;
-  compliance: number;
+  financial: HealthPillarBreakdown;
+  operational: HealthPillarBreakdown;
+  compliance: HealthPillarBreakdown;
   overall: number;
-  details: Record<string, unknown>;
+  details?: Record<string, unknown>;
+}
+
+/** Safely pull a pillar's numeric score out of the nested response. */
+export function pillarScore(
+  pillar: HealthPillarBreakdown | number | undefined,
+): number {
+  if (typeof pillar === 'number') return pillar;
+  if (pillar && typeof pillar === 'object' && typeof pillar.score === 'number') {
+    return pillar.score;
+  }
+  return 0;
 }
 
 export interface HealthScoreTrend {

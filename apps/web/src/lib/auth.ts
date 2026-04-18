@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'communityos_token';
+const REFRESH_TOKEN_KEY = 'communityos_refresh_token';
 const TENANT_KEY = 'communityos_tenant';
 const USER_KEY = 'communityos_user';
 
@@ -33,6 +34,21 @@ export function setToken(token: string): void {
 export function clearToken(): void {
   if (!isBrowser()) return;
   localStorage.removeItem(TOKEN_KEY);
+}
+
+export function getRefreshToken(): string | null {
+  if (!isBrowser()) return null;
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function setRefreshToken(token: string): void {
+  if (!isBrowser()) return;
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+}
+
+export function clearRefreshToken(): void {
+  if (!isBrowser()) return;
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 export function getCurrentTenant(): string | null {
@@ -70,8 +86,10 @@ export function logout(): void {
   if (!isBrowser()) return;
   // Clear all auth-related storage
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(TENANT_KEY);
   localStorage.removeItem(USER_KEY);
+  // Legacy key from earlier builds — clear too so stale values don't leak
   localStorage.removeItem('refresh_token');
   // Force full page navigation to clear any cached state
   window.location.replace('/login');

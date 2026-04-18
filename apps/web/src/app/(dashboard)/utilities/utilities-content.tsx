@@ -265,6 +265,10 @@ function MetersTab({
   const [newUnitId, setNewUnitId] = useState('');
   const [newMeterType, setNewMeterType] = useState<'water' | 'electricity' | 'gas'>('water');
   const [newMeterNumber, setNewMeterNumber] = useState('');
+  // Common society meters (borewell, common area lighting, gas manifold etc.)
+  // are NOT attached to a unit. When this flag is on, unit selection is
+  // hidden and backend creates the meter with unit_id = NULL, is_common=true.
+  const [newIsCommon, setNewIsCommon] = useState(false);
 
   const metersQuery = useMeters({
     meter_type: meterTypeFilter || undefined,
@@ -277,19 +281,32 @@ function MetersTab({
   const units = unitsQuery.data?.data ?? [];
 
   function handleCreate(): void {
-    if (!newUnitId || !newMeterNumber.trim()) {
-      addToast({ title: 'Unit and meter number are required', variant: 'destructive' });
+    if (!newMeterNumber.trim()) {
+      addToast({ title: 'Meter number is required', variant: 'destructive' });
+      return;
+    }
+    if (!newIsCommon && !newUnitId) {
+      addToast({
+        title: 'Select a unit or mark the meter as a common society meter',
+        variant: 'destructive',
+      });
       return;
     }
 
     createMutation.mutate(
-      { unit_id: newUnitId, meter_type: newMeterType, meter_number: newMeterNumber.trim() },
+      {
+        unit_id: newIsCommon ? null : newUnitId,
+        is_common: newIsCommon,
+        meter_type: newMeterType,
+        meter_number: newMeterNumber.trim(),
+      },
       {
         onSuccess() {
           addToast({ title: 'Meter created', variant: 'success' });
           setCreateOpen(false);
           setNewUnitId('');
           setNewMeterNumber('');
+          setNewIsCommon(false);
         },
         onError(error) {
           addToast({ title: 'Failed to create meter', description: error.message, variant: 'destructive' });
@@ -361,7 +378,13 @@ function MetersTab({
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-xs">{meter.meter_number}</TableCell>
-                  <TableCell>{meter.unit_number ?? meter.unit_id}</TableCell>
+                  <TableCell>
+                    {meter.is_common ? (
+                      <Badge variant="secondary">Common</Badge>
+                    ) : (
+                      (meter.unit_number ?? meter.unit_id ?? '—')
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={meter.is_active ? 'success' : 'secondary'}>
                       {meter.is_active ? 'Active' : 'Inactive'}
@@ -404,15 +427,39 @@ function MetersTab({
             <DialogDescription>Register a new utility meter for a unit</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="meter-unit">Unit</Label>
-              <UnitSearchSelect
-                value={newUnitId}
-                onChange={setNewUnitId}
-                units={units}
-                placeholder="Search unit..."
+            {/* Scope toggle: per-unit vs society-wide */}
+            <div className="flex items-center gap-3 rounded-md border p-3">
+              <input
+                type="checkbox"
+                id="meter-is-common"
+                checked={newIsCommon}
+                onChange={(e) => {
+                  setNewIsCommon(e.target.checked);
+                  if (e.target.checked) setNewUnitId('');
+                }}
+                className="rounded border-input"
               />
+              <div>
+                <Label htmlFor="meter-is-common" className="mb-0 cursor-pointer">
+                  Common society meter
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Shared meter (borewell pump, common lighting, gas manifold) — not tied to a unit.
+                </p>
+              </div>
             </div>
+
+            {!newIsCommon && (
+              <div className="space-y-2">
+                <Label htmlFor="meter-unit">Unit</Label>
+                <UnitSearchSelect
+                  value={newUnitId}
+                  onChange={setNewUnitId}
+                  units={units}
+                  placeholder="Search unit..."
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="meter-type">Meter Type</Label>
               <Select id="meter-type" value={newMeterType} onChange={(e) => setNewMeterType(e.target.value as 'water' | 'electricity' | 'gas')}>
@@ -425,6 +472,15 @@ function MetersTab({
               <Label htmlFor="meter-number">Meter Number</Label>
               <Input id="meter-number" placeholder="e.g. WM-101" value={newMeterNumber} onChange={(e) => setNewMeterNumber(e.target.value)} />
             </div>
+            {newMeterType === 'gas' && (
+              <p className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">
+                For gas pricing plans &amp; wallet recharges, use the{' '}
+                <a href="/gas" className="font-medium text-primary underline-offset-2 hover:underline">
+                  Gas Management
+                </a>{' '}
+                page. Utility slabs here are used as fallback when no matching plan is configured.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <DialogClose><Button variant="outline">Cancel</Button></DialogClose>

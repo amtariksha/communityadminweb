@@ -15,7 +15,9 @@ interface PaginatedResponse<T> {
 export interface Meter {
   id: string;
   tenant_id: string;
-  unit_id: string;
+  /** NULL when is_common=true (society-wide meter). */
+  unit_id: string | null;
+  is_common: boolean;
   meter_type: 'water' | 'electricity' | 'gas';
   meter_number: string;
   is_active: boolean;
@@ -99,7 +101,8 @@ export interface BillFilters {
 // ---------------------------------------------------------------------------
 
 interface CreateMeterInput {
-  unit_id: string;
+  unit_id: string | null;
+  is_common?: boolean;
   meter_type: 'water' | 'electricity' | 'gas';
   meter_number: string;
 }

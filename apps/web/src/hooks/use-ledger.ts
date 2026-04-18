@@ -75,7 +75,7 @@ interface IncomeExpenditureReport {
 }
 
 interface GeneralLedgerTransaction {
-  date: string;
+  entry_date: string;
   entry_number: string;
   narration: string;
   debit: number;
