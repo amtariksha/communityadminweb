@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, type FormEvent, type ReactNode } from 'react';
+import Link from 'next/link';
 import { FileText, Plus, Send, Ban, Eye, MoreHorizontal, Download, Calculator } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1000,6 +1001,59 @@ export default function InvoicesContent(): ReactNode {
                     : '—'}
                 </span>
               </div>
+
+              {/* Receipts that allocated against this invoice */}
+              {(() => {
+                const receipts = (viewInvoiceData as unknown as {
+                  receipts?: Array<{
+                    id: string;
+                    receipt_number: string;
+                    receipt_date: string;
+                    amount: number;
+                    mode: string;
+                  }>;
+                }).receipts ?? [];
+                if (receipts.length === 0) return null;
+                return (
+                  <>
+                    <Separator />
+                    <div>
+                      <h4 className="mb-2 text-sm font-semibold">Payments Received</h4>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Receipt #</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Mode</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {receipts.map((r) => (
+                            <TableRow key={r.id}>
+                              <TableCell>
+                                <Link
+                                  href={`/receipts?highlight=${r.id}`}
+                                  className="font-mono text-primary underline-offset-2 hover:underline"
+                                >
+                                  {r.receipt_number}
+                                </Link>
+                              </TableCell>
+                              <TableCell>{formatDate(r.receipt_date)}</TableCell>
+                              <TableCell className="capitalize">
+                                {r.mode.replace(/_/g, ' ')}
+                              </TableCell>
+                              <TableCell className="text-right font-medium text-green-600">
+                                {formatCurrency(Number(r.amount))}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           ) : (
             <div className="space-y-4 py-4">

@@ -1085,6 +1085,7 @@ export default function PurchasesContent(): ReactNode {
                   <TableHead className="text-right">GST</TableHead>
                   <TableHead className="text-right">TDS</TableHead>
                   <TableHead className="text-right">Net Payable</TableHead>
+                  <TableHead>Payments</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-28">Actions</TableHead>
                 </TableRow>
@@ -1113,6 +1114,52 @@ export default function PurchasesContent(): ReactNode {
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(bill.net_payable ?? bill.total_amount)}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const payments =
+                            ((bill as unknown) as {
+                              payments_summary?: Array<{
+                                id: string;
+                                payment_date: string;
+                                amount: number;
+                                payment_mode: string;
+                                reference_number: string | null;
+                              }>;
+                            }).payments_summary ?? [];
+                          if (payments.length === 0) {
+                            return (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            );
+                          }
+                          return (
+                            <div className="flex flex-col gap-0.5 text-xs">
+                              {payments.slice(0, 3).map((p) => (
+                                <span
+                                  key={p.id}
+                                  className="text-muted-foreground"
+                                  title={`${p.payment_mode.replace(/_/g, ' ')}${
+                                    p.reference_number
+                                      ? ` · ${p.reference_number}`
+                                      : ''
+                                  }`}
+                                >
+                                  <span className="font-medium text-foreground">
+                                    {formatCurrency(Number(p.amount))}
+                                  </span>
+                                  <span className="ml-1">
+                                    · {formatDate(p.payment_date)}
+                                  </span>
+                                </span>
+                              ))}
+                              {payments.length > 3 && (
+                                <span className="text-muted-foreground">
+                                  +{payments.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Badge variant={getBillStatusVariant(bill.status)}>

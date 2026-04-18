@@ -135,6 +135,11 @@ export default function SettingsContent(): ReactNode {
   // Feature toggles
   const [features, setFeatures] = useState<Record<string, boolean>>({});
 
+  // Purchase Request approval config (stored inside tenant.settings_json)
+  const [prApprovalLevels, setPrApprovalLevels] = useState<number>(1);
+  const [prApprovalRoles, setPrApprovalRoles] = useState<string>('community_admin');
+  const [prApprovalThreshold, setPrApprovalThreshold] = useState<string>('0');
+
   // Gate dialog state
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
   const [editingGateId, setEditingGateId] = useState('');
@@ -187,9 +192,18 @@ export default function SettingsContent(): ReactNode {
       setSocietyCity(tenant.city ?? '');
       setSocietyState(tenant.state ?? '');
 
-      const settingsJson = tenant.settings_json as Record<string, boolean> | undefined;
+      const settingsJson = tenant.settings_json as Record<string, unknown> | undefined;
       if (settingsJson) {
-        setFeatures(settingsJson);
+        setFeatures(settingsJson as Record<string, boolean>);
+        if (typeof settingsJson.pr_approval_levels === 'number') {
+          setPrApprovalLevels(settingsJson.pr_approval_levels);
+        }
+        if (Array.isArray(settingsJson.pr_approval_roles)) {
+          setPrApprovalRoles((settingsJson.pr_approval_roles as string[]).join(', '));
+        }
+        if (typeof settingsJson.pr_approval_threshold === 'number') {
+          setPrApprovalThreshold(String(settingsJson.pr_approval_threshold));
+        }
       }
     }
   }, [tenant]);
@@ -337,6 +351,42 @@ export default function SettingsContent(): ReactNode {
         },
         onError(error) {
           addToast({ title: 'Failed to save settings', description: error.message, variant: 'destructive' });
+        },
+      },
+    );
+  }
+
+  function handleSavePrApproval(): void {
+    const roles = prApprovalRoles
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const threshold = Number(prApprovalThreshold) || 0;
+    const levels = Math.max(0, Math.min(5, Math.floor(prApprovalLevels)));
+
+    // Merge into existing settings (don't clobber feature toggles)
+    const merged = {
+      ...(features as Record<string, unknown>),
+      pr_approval_levels: levels,
+      pr_approval_roles: roles,
+      pr_approval_threshold: threshold,
+    };
+
+    updateSettings.mutate(
+      { tenant_id: currentTenantId, settings: merged as Record<string, boolean> },
+      {
+        onSuccess() {
+          addToast({
+            title: 'Purchase approval rules saved',
+            variant: 'success',
+          });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to save approval rules',
+            description: error.message,
+            variant: 'destructive',
+          });
         },
       },
     );
@@ -719,6 +769,84 @@ export default function SettingsContent(): ReactNode {
               )}
             </form>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Purchase Request Approval Configuration                             */}
+      {/* ------------------------------------------------------------------- */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Purchase Request Approvals</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Control how purchase requests are approved before becoming vendor
+              bills. Set <span className="font-medium">Approval Levels</span> to
+              <code className="mx-1 rounded bg-muted px-1">0</code> to
+              auto-approve all requests. Set an{' '}
+              <span className="font-medium">Auto-Approve Threshold</span> so
+              small purchases don&apos;t need signatures — only requests above
+              the threshold go through the approval flow.
+            </p>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="pr-levels">Approval Levels</Label>
+                <Input
+                  id="pr-levels"
+                  type="number"
+                  min="0"
+                  max="5"
+                  value={prApprovalLevels}
+                  onChange={(e) => setPrApprovalLevels(Number(e.target.value))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  0 = no approval needed · 1–5 = sequential approvals
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pr-threshold">Auto-Approve Threshold (₹)</Label>
+                <Input
+                  id="pr-threshold"
+                  type="number"
+                  min="0"
+                  step="100"
+                  value={prApprovalThreshold}
+                  onChange={(e) => setPrApprovalThreshold(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  0 = disabled · above this, approvals required
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pr-roles">Approver Roles</Label>
+                <Input
+                  id="pr-roles"
+                  placeholder="community_admin, committee_member"
+                  value={prApprovalRoles}
+                  onChange={(e) => setPrApprovalRoles(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Comma-separated. Level 1 uses the first role, level 2 the
+                  second, etc.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                onClick={handleSavePrApproval}
+                disabled={updateSettings.isPending}
+                size="sm"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {updateSettings.isPending
+                  ? 'Saving...'
+                  : 'Save Approval Rules'}
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

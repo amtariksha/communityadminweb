@@ -65,7 +65,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'Finance',
     items: [
-      { label: 'Accounts', href: '/accounts', icon: <BookOpen className="h-4 w-4" />, feature: 'invoices' },
+      { label: 'Accounts', href: '/accounts', icon: <BookOpen className="h-4 w-4" />, feature: 'accounts' },
       { label: 'Invoices', href: '/invoices', icon: <FileText className="h-4 w-4" />, feature: 'invoices' },
       { label: 'Receipts', href: '/receipts', icon: <Receipt className="h-4 w-4" />, feature: 'receipts' },
       { label: 'Vendors', href: '/vendors', icon: <Users className="h-4 w-4" />, feature: 'vendors' },

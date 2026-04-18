@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, type FormEvent, type ReactNode } from 'react';
+import Link from 'next/link';
 import { Plus, Receipt, IndianRupee, CreditCard, Banknote, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -487,6 +488,7 @@ export default function ReceiptsContent(): ReactNode {
                 <TableHead>Payment Mode</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Reference</TableHead>
+                <TableHead>Allocated To</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -525,6 +527,35 @@ export default function ReceiptsContent(): ReactNode {
                       <span className="font-mono text-xs text-muted-foreground">
                         {receipt.reference_number ?? '-'}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const allocs =
+                          ((receipt as unknown) as {
+                            allocated_invoices?: Array<{
+                              invoice_id: string;
+                              invoice_number: string;
+                              amount: number;
+                            }>;
+                          }).allocated_invoices ?? [];
+                        if (allocs.length === 0) {
+                          return <span className="text-xs text-muted-foreground">—</span>;
+                        }
+                        return (
+                          <div className="flex flex-wrap gap-1 text-xs">
+                            {allocs.map((a) => (
+                              <Link
+                                key={a.invoice_id}
+                                href={`/invoices?view=${a.invoice_id}`}
+                                className="font-mono text-primary underline-offset-2 hover:underline"
+                                title={`Allocated ${formatCurrency(Number(a.amount))}`}
+                              >
+                                {a.invoice_number}
+                              </Link>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                   </TableRow>
                 ))
