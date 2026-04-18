@@ -61,12 +61,28 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
 ) {
   const [open, setOpen] = useState(false);
   const [style, setStyle] = useState<React.CSSProperties>({});
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const options = extractOptions(children);
   const selected = options.find((o) => String(o.value) === String(value ?? ''));
   const displayLabel = selected?.label ?? (placeholder as string | undefined) ?? '';
   const isEmpty = !selected;
+
+  // Find the nearest <dialog> ancestor. When a native <dialog> is shown via
+  // showModal(), it lives in the browser's "top layer" which sits above ALL
+  // z-indexed content — including portals to document.body. Portaling the
+  // dropdown into the dialog itself puts it inside the same top layer so
+  // options appear in front of the modal.
+  function findDialogAncestor(el: Element | null): HTMLElement | null {
+    let cur: Element | null = el;
+    while (cur && cur !== document.body) {
+      if (cur.tagName === 'DIALOG') return cur as HTMLElement;
+      cur = cur.parentElement;
+    }
+    return null;
+  }
 
   const openDropdown = useCallback(() => {
     if (disabled) return;
@@ -76,6 +92,10 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
     const dropdownMaxH = 280;
     const spaceBelow = window.innerHeight - rect.bottom;
     const showAbove = spaceBelow < Math.min(options.length * 36 + 8, dropdownMaxH) && rect.top > spaceBelow;
+
+    setPortalTarget(
+      findDialogAncestor(triggerRef.current) ?? document.body,
+    );
 
     setStyle({
       position: 'fixed',
@@ -116,13 +136,15 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
     [onChange],
   );
 
-  // Close on click outside
+  // Close on click outside (check both trigger and portaled dropdown so that
+  // clicks on dropdown chrome — scrollbar, padding — don't close prematurely).
   useEffect(() => {
     if (!open) return;
     const onMouseDown = (e: MouseEvent) => {
-      if (!triggerRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      if (dropdownRef.current?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', onMouseDown);
     return () => document.removeEventListener('mousedown', onMouseDown);
@@ -229,11 +251,15 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
         />
       </div>
 
-      {/* Portal dropdown — renders at document.body, never clipped */}
+      {/* Portal dropdown — renders into the nearest <dialog> ancestor (so it
+          shares the modal's top-layer) or into document.body otherwise. This
+          prevents the dropdown from being hidden behind native showModal()
+          dialogs, which render in a top layer that sits above all z-index. */}
       {open &&
         typeof document !== 'undefined' &&
         createPortal(
           <div
+            ref={dropdownRef}
             role="listbox"
             style={style}
             className="rounded-md border bg-popover text-popover-foreground shadow-md"
@@ -268,7 +294,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
               )}
             </div>
           </div>,
-          document.body,
+          portalTarget ?? document.body,
         )}
     </>
   );
