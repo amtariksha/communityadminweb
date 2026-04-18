@@ -212,6 +212,7 @@ export default function GateContent(): ReactNode {
   const [staffPhone, setStaffPhone] = useState('');
   const [staffUnit, setStaffUnit] = useState('');
   const [staffNotes, setStaffNotes] = useState('');
+  const [staffSuggestionOpen, setStaffSuggestionOpen] = useState(false);
 
   // Parcel state
   const [parcelStatusFilter, setParcelStatusFilter] = useState('');
@@ -249,6 +250,26 @@ export default function GateContent(): ReactNode {
   const staffFilters: StaffLogFilters = {};
   const staffQuery = useStaffLogs(staffFilters);
   const staffLogs: StaffLog[] = staffQuery.data?.data ?? [];
+
+  // Distinct previously-logged staff members (by name + phone + type). Used by
+  // the check-in dialog to let guards pick a regular (maid, cook, driver)
+  // without retyping their details. Free-entry is still supported — the
+  // suggestion list is only a convenience.
+  const knownStaff = (() => {
+    const seen = new Set<string>();
+    const out: Array<{ staff_name: string; staff_type: string; phone: string | null }> = [];
+    for (const log of staffLogs) {
+      const key = `${log.staff_name.toLowerCase().trim()}|${(log.phone ?? '').trim()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        staff_name: log.staff_name,
+        staff_type: log.staff_type,
+        phone: log.phone,
+      });
+    }
+    return out;
+  })();
 
   const parcelFilters: ParcelFilters = {
     status: parcelStatusFilter || undefined,
@@ -722,15 +743,62 @@ export default function GateContent(): ReactNode {
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                      <div className="relative space-y-2">
                         <Label htmlFor="staff-name">Staff Name</Label>
                         <Input
                           id="staff-name"
-                          placeholder="Full name"
+                          placeholder="Type to search or add new"
                           required
                           value={staffName}
-                          onChange={(e) => setStaffName(e.target.value)}
+                          onChange={(e) => {
+                            setStaffName(e.target.value);
+                            setStaffSuggestionOpen(true);
+                          }}
+                          onFocus={() => setStaffSuggestionOpen(true)}
+                          onBlur={() => {
+                            // Delay so click-on-suggestion can fire first
+                            setTimeout(() => setStaffSuggestionOpen(false), 150);
+                          }}
+                          autoComplete="off"
                         />
+                        {staffSuggestionOpen && staffName.length > 0 && (() => {
+                          const q = staffName.toLowerCase();
+                          const matches = knownStaff
+                            .filter(
+                              (s) =>
+                                s.staff_name.toLowerCase().includes(q) ||
+                                (s.phone ?? '').includes(q),
+                            )
+                            .slice(0, 8);
+                          if (matches.length === 0) return null;
+                          return (
+                            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-auto rounded-md border bg-card text-card-foreground shadow-lg">
+                              <div className="border-b bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
+                                Previously entered — click to autofill
+                              </div>
+                              {matches.map((s, i) => (
+                                <button
+                                  key={`${s.staff_name}-${s.phone}-${i}`}
+                                  type="button"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    setStaffName(s.staff_name);
+                                    setStaffType(s.staff_type);
+                                    setStaffPhone(s.phone ?? '');
+                                    setStaffSuggestionOpen(false);
+                                  }}
+                                >
+                                  <div className="font-medium">{s.staff_name}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {s.staff_type}
+                                    {s.phone ? ` · ${s.phone}` : ''}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="staff-type">Type</Label>
