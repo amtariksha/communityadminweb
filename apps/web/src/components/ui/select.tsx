@@ -262,7 +262,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
             ref={dropdownRef}
             role="listbox"
             style={style}
-            className="rounded-md border bg-popover text-popover-foreground shadow-md"
+            className="rounded-md border bg-card text-card-foreground shadow-md"
           >
             <div className="max-h-[280px] overflow-y-auto p-1">
               {options.map((opt) => (
