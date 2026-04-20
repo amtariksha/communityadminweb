@@ -5,6 +5,13 @@ export interface TenantSettings {
   gate_module?: boolean;
   helpdesk_module?: boolean;
   digital_voting?: boolean;
+  // Community-admin toggles. Keep in sync with apps/api
+  // tenantSettingsSchema and admin-web featureToggles — if a key is
+  // missing from the backend Zod schema, Zod will strip it on save
+  // and the UI will reset it on reload.
+  visitor_management?: boolean;
+  maintenance_requests?: boolean;
+  parking_management?: boolean;
 }
 
 export interface Tenant {

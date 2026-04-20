@@ -116,13 +116,17 @@ export default function SettingsContent(): ReactNode {
   const [societyCity, setSocietyCity] = useState('');
   const [societyState, setSocietyState] = useState('');
 
-  // Rule dialog state
+  // Rule dialog state — mirrors the Invoices page form so the two
+  // rule-creation surfaces stay consistent (same fields, same payload
+  // shape, same charge-type modes).
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState('');
   const [ruleName, setRuleName] = useState('');
   const [ruleLedgerAccountId, setRuleLedgerAccountId] = useState('');
   const [ruleFrequency, setRuleFrequency] = useState('monthly');
-  const [ruleAmount, setRuleAmount] = useState('');
+  const [ruleChargeType, setRuleChargeType] = useState<'flat' | 'area_based'>('flat');
+  const [ruleFlatAmount, setRuleFlatAmount] = useState('');
+  const [ruleRatePerSqft, setRuleRatePerSqft] = useState('');
   const [ruleIsGstApplicable, setRuleIsGstApplicable] = useState(false);
   const [ruleGstRate, setRuleGstRate] = useState('');
 
@@ -244,7 +248,9 @@ export default function SettingsContent(): ReactNode {
     setRuleName('');
     setRuleLedgerAccountId('');
     setRuleFrequency('monthly');
-    setRuleAmount('');
+    setRuleChargeType('flat');
+    setRuleFlatAmount('');
+    setRuleRatePerSqft('');
     setRuleIsGstApplicable(false);
     setRuleGstRate('');
   }
@@ -255,6 +261,8 @@ export default function SettingsContent(): ReactNode {
     ledger_account_id?: string;
     frequency: string;
     amount: number;
+    charge_type?: 'flat' | 'area_based' | 'hybrid';
+    is_per_sqft?: boolean;
     is_gst_applicable?: boolean;
     gst_rate?: number;
   }): void {
@@ -262,7 +270,13 @@ export default function SettingsContent(): ReactNode {
     setRuleName(rule.name);
     setRuleLedgerAccountId(rule.ledger_account_id ?? '');
     setRuleFrequency(rule.frequency);
-    setRuleAmount(String(rule.amount));
+    // Derive the UI mode from whichever signal the API row carries. Old
+    // rows without charge_type fall back to is_per_sqft.
+    const isPerSqft =
+      rule.charge_type === 'area_based' || rule.is_per_sqft === true;
+    setRuleChargeType(isPerSqft ? 'area_based' : 'flat');
+    setRuleFlatAmount(isPerSqft ? '' : String(rule.amount));
+    setRuleRatePerSqft(isPerSqft ? String(rule.amount) : '');
     setRuleIsGstApplicable(rule.is_gst_applicable ?? false);
     setRuleGstRate(rule.gst_rate ? String(rule.gst_rate) : '');
     setRuleDialogOpen(true);
@@ -271,19 +285,46 @@ export default function SettingsContent(): ReactNode {
   function handleSaveRule(e: FormEvent): void {
     e.preventDefault();
 
+    // Build the payload the same way the Invoices page does so both
+    // surfaces produce rules the backend can interpret consistently.
+    // flat       → amount (backend: is_per_sqft = false)
+    // area_based → rate_per_sqft (backend: is_per_sqft = true, ×area_sqft)
+    type RuleData = {
+      name: string;
+      ledger_account_id: string;
+      frequency: string;
+      charge_type: 'flat' | 'area_based';
+      amount?: number;
+      flat_amount?: number;
+      rate_per_sqft?: number;
+      is_gst_applicable?: boolean;
+      gst_rule?: 'none' | 'full';
+      gst_rate?: number;
+    };
+    const data: RuleData = {
+      name: ruleName,
+      ledger_account_id: ruleLedgerAccountId,
+      frequency: ruleFrequency,
+      charge_type: ruleChargeType,
+    };
+    if (ruleChargeType === 'flat') {
+      const amt = Number(ruleFlatAmount) || 0;
+      data.amount = amt;
+      data.flat_amount = amt;
+    } else {
+      const rate = Number(ruleRatePerSqft) || 0;
+      data.amount = rate;
+      data.rate_per_sqft = rate;
+    }
+    if (ruleIsGstApplicable) {
+      data.is_gst_applicable = true;
+      data.gst_rule = 'full';
+      data.gst_rate = ruleGstRate ? Number(ruleGstRate) : 0;
+    }
+
     if (editingRuleId) {
       updateRule.mutate(
-        {
-          id: editingRuleId,
-          data: {
-            name: ruleName,
-            ledger_account_id: ruleLedgerAccountId,
-            frequency: ruleFrequency,
-            amount: Number(ruleAmount),
-            is_gst_applicable: ruleIsGstApplicable,
-            gst_rate: ruleIsGstApplicable && ruleGstRate ? Number(ruleGstRate) : undefined,
-          },
-        },
+        { id: editingRuleId, data },
         {
           onSuccess() {
             setRuleDialogOpen(false);
@@ -296,26 +337,16 @@ export default function SettingsContent(): ReactNode {
         },
       );
     } else {
-      createRule.mutate(
-        {
-          name: ruleName,
-          ledger_account_id: ruleLedgerAccountId,
-          frequency: ruleFrequency,
-          amount: Number(ruleAmount),
-          is_gst_applicable: ruleIsGstApplicable,
-          gst_rate: ruleIsGstApplicable && ruleGstRate ? Number(ruleGstRate) : undefined,
+      createRule.mutate(data, {
+        onSuccess() {
+          setRuleDialogOpen(false);
+          resetRuleForm();
+          addToast({ title: 'Billing rule created', variant: 'success' });
         },
-        {
-          onSuccess() {
-            setRuleDialogOpen(false);
-            resetRuleForm();
-            addToast({ title: 'Billing rule created', variant: 'success' });
-          },
-          onError(error) {
-            addToast({ title: 'Failed to create rule', description: error.message, variant: 'destructive' });
-          },
+        onError(error) {
+          addToast({ title: 'Failed to create rule', description: error.message, variant: 'destructive' });
         },
-      );
+      });
     }
   }
 
@@ -923,19 +954,55 @@ export default function SettingsContent(): ReactNode {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="rule-amount">Amount</Label>
+                        <Label htmlFor="rule-charge-type">Charge Type</Label>
+                        <Select
+                          id="rule-charge-type"
+                          value={ruleChargeType}
+                          onChange={(e) =>
+                            setRuleChargeType(e.target.value as 'flat' | 'area_based')
+                          }
+                          required
+                        >
+                          <option value="flat">Flat Amount</option>
+                          <option value="area_based">Per Sq Ft</option>
+                        </Select>
+                      </div>
+                    </div>
+                    {ruleChargeType === 'flat' ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="rule-flat-amount">Amount (₹)</Label>
                         <Input
-                          id="rule-amount"
+                          id="rule-flat-amount"
                           type="number"
                           min="0"
                           step="0.01"
                           required
-                          placeholder="0.00"
-                          value={ruleAmount}
-                          onChange={(e) => setRuleAmount(e.target.value)}
+                          placeholder="3000"
+                          value={ruleFlatAmount}
+                          onChange={(e) => setRuleFlatAmount(e.target.value)}
                         />
+                        <p className="text-xs text-muted-foreground">
+                          One fixed amount billed per unit regardless of size.
+                        </p>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label htmlFor="rule-rate-per-sqft">Rate per Sq Ft (₹)</Label>
+                        <Input
+                          id="rule-rate-per-sqft"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          required
+                          placeholder="2.50"
+                          value={ruleRatePerSqft}
+                          onChange={(e) => setRuleRatePerSqft(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Invoice = rate × unit.area_sqft. Example: 2.50 × 1,200 sqft = ₹3,000.
+                        </p>
+                      </div>
+                    )}
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
