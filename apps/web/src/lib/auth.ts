@@ -73,6 +73,15 @@ export function getUser(): User | null {
   try {
     return JSON.parse(raw) as User;
   } catch {
+    // QA #41 — a legacy / corrupted payload was wedging the app into
+    // a "logged out but wrong-user" state because every read returned
+    // null but setUser kept writing back the same bad shape. Remove
+    // the bad key so the next mount takes the unauthenticated path.
+    try {
+      localStorage.removeItem(USER_KEY);
+    } catch {
+      /* quota or private-mode browser — best effort */
+    }
     return null;
   }
 }

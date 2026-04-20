@@ -44,7 +44,11 @@ export default function SelectTenantContent(): ReactNode {
 
   function handleSelect(tenantId: string): void {
     setCurrentTenant(tenantId);
-    router.push('/');
+    // QA #51 — full-page reload guarantees every React Query cache, every
+    // RSC segment cache, and every prefetched route is rebuilt against
+    // the new tenant. router.push keeps the in-memory cache which can
+    // flash the previous society's data before the new queries resolve.
+    window.location.href = '/';
   }
 
   return (
