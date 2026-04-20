@@ -462,11 +462,17 @@ function PaymentsSection({
   onSave: (value: Record<string, unknown>) => void;
   isPending: boolean;
 }): ReactNode {
-  const [keyId, setKeyId] = useState((config.razorpay_key_id as string) ?? '');
+  // Keys mirror backend PlatformConfigService fallback for
+  // `payment_provider`: { keyId, keySecret, webhookSecret,
+  // platformFeePercent }. Before this alignment the UI saved
+  // `razorpay_key_id` / `razorpay_key_secret` and the backend never
+  // read them — the Razorpay tab looked editable but had no runtime
+  // effect. See PaymentService.resolvePaymentConfig().
+  const [keyId, setKeyId] = useState((config.keyId as string) ?? '');
   const [keySecret, setKeySecret] = useState('');
   const [webhookSecret, setWebhookSecret] = useState('');
   const [platformFee, setPlatformFee] = useState(
-    String(config.platform_fee_percent ?? ''),
+    String(config.platformFeePercent ?? ''),
   );
 
   return (
@@ -483,7 +489,7 @@ function PaymentsSection({
       <MaskedInput
         label="Key Secret"
         value={keySecret}
-        maskedDisplay={maskValue(config.razorpay_key_secret)}
+        maskedDisplay={maskValue(config.keySecret)}
         onChange={setKeySecret}
         type="password"
         placeholder="Razorpay secret"
@@ -491,7 +497,7 @@ function PaymentsSection({
       <MaskedInput
         label="Webhook Secret"
         value={webhookSecret}
-        maskedDisplay={maskValue(config.razorpay_webhook_secret)}
+        maskedDisplay={maskValue(config.webhookSecret)}
         onChange={setWebhookSecret}
         type="password"
         placeholder="Webhook signing secret"
@@ -513,11 +519,11 @@ function PaymentsSection({
         isPending={isPending}
         onClick={() => {
           const value: Record<string, unknown> = {
-            razorpay_key_id: keyId,
-            platform_fee_percent: platformFee ? Number(platformFee) : undefined,
+            keyId,
+            platformFeePercent: platformFee ? Number(platformFee) : undefined,
           };
-          if (keySecret) value.razorpay_key_secret = keySecret;
-          if (webhookSecret) value.razorpay_webhook_secret = webhookSecret;
+          if (keySecret) value.keySecret = keySecret;
+          if (webhookSecret) value.webhookSecret = webhookSecret;
           onSave(value);
         }}
       />
