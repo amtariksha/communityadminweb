@@ -191,7 +191,13 @@ export default function InvoicesContent(): ReactNode {
   const [ruleGstRate, setRuleGstRate] = useState('');
 
   const statusFilter = activeTab === 'all' ? undefined : activeTab;
-  const { data: invoicesResponse, isLoading } = useInvoices({
+  const {
+    data: invoicesResponse,
+    isLoading,
+    isError,
+    error: invoicesError,
+    refetch: refetchInvoices,
+  } = useInvoices({
     status: statusFilter,
     unit_id: unitFilter || undefined,
     page,
@@ -658,6 +664,20 @@ export default function InvoicesContent(): ReactNode {
           </>
         }
       />
+
+      {/* QA #37 — explicit pagination/query error banner so users don't
+          stare at an empty table wondering if it really has no data. */}
+      {isError && (
+        <div className="flex items-center justify-between gap-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm">
+          <div className="text-destructive">
+            <strong>Couldn&apos;t load invoices.</strong>{' '}
+            {invoicesError instanceof Error ? invoicesError.message : 'Please try again.'}
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => refetchInvoices()}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-4">
         {isLoading ? (

@@ -69,6 +69,10 @@ interface UpdateTenantInput extends Partial<CreateTenantInput> {
 interface UpdateTenantSettingsInput {
   tenant_id: string;
   settings: TenantSettings;
+  // QA #28 — optimistic lock. When present, the backend refuses the
+  // write with 409 if the tenant's row_version has moved since read.
+  // Callers that don't care about concurrency can omit this.
+  expected_row_version?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -187,10 +191,20 @@ export function useTenantSettings() {
 
   return useMutation({
     mutationFn: function updateTenantSettings(input: UpdateTenantSettingsInput) {
-      return api.patch<Tenant>(
-        `/tenants/${input.tenant_id}/settings`,
-        input.settings,
-      );
+      // Merge the optimistic-lock version field into the payload if
+      // the caller supplied one. Backend endpoint /tenants/:id/settings
+      // returns 409 on row_version mismatch; the caller's onError sees
+      // the rewritten message.
+      const body: Record<string, unknown> = { ...input.settings };
+      if (input.expected_row_version !== undefined) {
+        body.expected_row_version = input.expected_row_version;
+      }
+      return api
+        .patch<{ data: Tenant } | Tenant>(
+          `/tenants/${input.tenant_id}/settings`,
+          body,
+        )
+        .then((res) => ('data' in res ? res.data : res));
     },
     onSuccess: function invalidate(_data, variables) {
       queryClient.invalidateQueries({

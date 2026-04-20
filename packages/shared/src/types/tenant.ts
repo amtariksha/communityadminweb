@@ -25,6 +25,13 @@ export interface Tenant {
   subscription_plan: string;
   price_per_unit: number;
   is_active: boolean;
+  /**
+   * QA #28 — Optimistic lock counter. Backend auto-increments on every
+   * UPDATE (migration 047 trigger). Admin-web should echo it back on
+   * PATCH /tenants/:id/settings as `expected_row_version` to detect
+   * concurrent modifications; server replies 409 on mismatch.
+   */
+  row_version?: number;
   created_at: Date;
   updated_at: Date;
 }

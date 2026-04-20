@@ -374,14 +374,33 @@ export default function SettingsContent(): ReactNode {
   }
 
   function handleSaveFeatures(): void {
+    // QA #28 — echo back the row_version we read with the tenant so the
+    // backend can 409 if another admin wrote between our read and write.
+    const expectedVersion = tenantQuery.data?.row_version;
     updateSettings.mutate(
-      { tenant_id: currentTenantId, settings: features as Record<string, boolean> },
+      {
+        tenant_id: currentTenantId,
+        settings: features as Record<string, boolean>,
+        expected_row_version: expectedVersion,
+      },
       {
         onSuccess() {
           addToast({ title: 'Feature settings saved', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to save settings', description: error.message, variant: 'destructive' });
+          // Detect stale-row 409s so the user knows to refresh rather
+          // than wondering why their click failed.
+          const msg = error.message ?? '';
+          const isConflict =
+            msg.toLowerCase().includes('modified by another user') ||
+            msg.toLowerCase().includes('conflict');
+          addToast({
+            title: isConflict ? 'Settings were just changed by someone else' : 'Failed to save settings',
+            description: isConflict
+              ? 'Reload the page to see the latest values, then try again.'
+              : msg,
+            variant: 'destructive',
+          });
         },
       },
     );
@@ -403,8 +422,13 @@ export default function SettingsContent(): ReactNode {
       pr_approval_threshold: threshold,
     };
 
+    const expectedVersion = tenantQuery.data?.row_version;
     updateSettings.mutate(
-      { tenant_id: currentTenantId, settings: merged as Record<string, boolean> },
+      {
+        tenant_id: currentTenantId,
+        settings: merged as Record<string, boolean>,
+        expected_row_version: expectedVersion,
+      },
       {
         onSuccess() {
           addToast({
@@ -413,9 +437,17 @@ export default function SettingsContent(): ReactNode {
           });
         },
         onError(error) {
+          const msg = error.message ?? '';
+          const isConflict =
+            msg.toLowerCase().includes('modified by another user') ||
+            msg.toLowerCase().includes('conflict');
           addToast({
-            title: 'Failed to save approval rules',
-            description: error.message,
+            title: isConflict
+              ? 'Rules were just changed by someone else'
+              : 'Failed to save approval rules',
+            description: isConflict
+              ? 'Reload the page to see the latest values, then try again.'
+              : msg,
             variant: 'destructive',
           });
         },

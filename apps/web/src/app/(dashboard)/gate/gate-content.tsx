@@ -723,14 +723,19 @@ export default function GateContent(): ReactNode {
                 <VisitorTableSkeleton />
               ) : (
                 visitors.map((visitor) => (
+                  // QA #23 — API returns visitor_name / visitor_phone /
+                  // checked_in_at. Old code read .name / .phone /
+                  // .check_in_time, which were all undefined, so every
+                  // populated cell visually shifted left by the unfilled
+                  // ones.
                   <TableRow key={visitor.id}>
-                    <TableCell className="font-medium">{visitor.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{visitor.phone}</TableCell>
+                    <TableCell className="font-medium">{visitor.visitor_name ?? '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{visitor.visitor_phone ?? '—'}</TableCell>
                     <TableCell>{visitor.unit_number ?? visitor.unit_id}</TableCell>
-                    <TableCell>{visitor.purpose}</TableCell>
+                    <TableCell>{visitor.purpose ?? '—'}</TableCell>
                     <TableCell className="text-muted-foreground">{visitor.vehicle_number ?? '-'}</TableCell>
                     <TableCell>{renderVisitorStatusBadge(visitor.status)}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatTime(visitor.check_in_time)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatTime(visitor.checked_in_at)}</TableCell>
                     <TableCell>{renderVisitorActions(visitor)}</TableCell>
                   </TableRow>
                 ))
