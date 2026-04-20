@@ -17,11 +17,17 @@ export interface Document {
   title: string;
   description: string | null;
   file_url: string;
-  file_type: string;
+  // The API stores file_name + mime_type; file_type is derived client-side.
+  // Kept optional so legacy callers (and admin-web code still referencing it)
+  // don't crash on the absence of this synthetic field.
+  file_type?: string;
+  file_name: string;
   file_size: number;
-  access_level: DocumentAccessLevel;
+  mime_type: string;
+  access_level?: DocumentAccessLevel;
   uploaded_by: string;
-  is_active: boolean;
+  is_archived?: boolean;
+  is_active?: boolean;
   created_at: Date;
   updated_at: Date;
 }

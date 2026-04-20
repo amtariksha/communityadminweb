@@ -76,6 +76,27 @@ function getFileIcon(fileType: string): ReactNode {
   }
 }
 
+/**
+ * Derive a short file-type string (pdf, docx, jpg, …) from the stored
+ * document row. The API returns `file_name` + `mime_type` but not a
+ * discrete `file_type` field, and referencing `doc.file_type` directly
+ * crashed the page with "Cannot read properties of undefined (reading
+ * 'toUpperCase')". Prefer the extension on the file name, fall back
+ * to the MIME subtype, then 'file' as a last resort.
+ */
+function getFileType(doc: SocietyDocument): string {
+  const name = doc.file_name ?? '';
+  const dot = name.lastIndexOf('.');
+  if (dot > -1 && dot < name.length - 1) {
+    return name.slice(dot + 1).toLowerCase();
+  }
+  const mime = doc.mime_type ?? '';
+  if (mime.includes('/')) {
+    return mime.split('/')[1]?.toLowerCase() ?? 'file';
+  }
+  return 'file';
+}
+
 function isExpiringSoon(doc: SocietyDocument, expiringIds: Set<string>): boolean {
   return expiringIds.has(doc.id);
 }
@@ -483,11 +504,13 @@ export default function DocumentsContent(): ReactNode {
                 {documentsQuery.isLoading ? (
                   <TableSkeleton />
                 ) : (
-                  documents.map((doc) => (
+                  documents.map((doc) => {
+                    const fileType = getFileType(doc);
+                    return (
                     <TableRow key={doc.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          {getFileIcon(doc.file_type)}
+                          {getFileIcon(fileType)}
                           <div>
                             <span className="font-medium">{doc.title}</span>
                             {doc.description && (
@@ -497,7 +520,7 @@ export default function DocumentsContent(): ReactNode {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{doc.file_type.toUpperCase()}</Badge>
+                        <Badge variant="outline">{fileType.toUpperCase()}</Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {formatFileSize(doc.file_size)}
@@ -548,7 +571,8 @@ export default function DocumentsContent(): ReactNode {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -568,17 +592,19 @@ export default function DocumentsContent(): ReactNode {
                 </div>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {documents.map((doc) => (
+                  {documents.map((doc) => {
+                    const fileType = getFileType(doc);
+                    return (
                     <Card key={doc.id} className="cursor-pointer transition-shadow hover:shadow-md">
                       <CardContent className="p-4">
                         <div className="mb-3 flex items-start justify-between">
-                          {getFileIcon(doc.file_type)}
+                          {getFileIcon(fileType)}
                           <div className="flex gap-1">
                             {isExpiringSoon(doc, expiringIds) && (
                               <Badge variant="warning" className="text-xs">Expiring</Badge>
                             )}
                             <Badge variant="outline" className="text-xs">
-                              {doc.file_type.toUpperCase()}
+                              {fileType.toUpperCase()}
                             </Badge>
                           </div>
                         </div>
@@ -588,7 +614,8 @@ export default function DocumentsContent(): ReactNode {
                         </p>
                       </CardContent>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </>
