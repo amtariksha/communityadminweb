@@ -63,6 +63,10 @@ export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return '—';
   const parsed = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(parsed.getTime())) return '—';
+  // QA #22 — backend occasionally sends Unix epoch 0 when a date
+  // field is null but typed as string. Treat "before 1970-02-01" as
+  // "no real date" and render the em-dash fallback.
+  if (parsed.getTime() < 24 * 60 * 60 * 1000 * 31) return '—';
   return parsed.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',

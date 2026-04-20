@@ -755,7 +755,10 @@ export default function SuperAdminContent(): ReactNode {
                           e.stopPropagation();
                           setCurrentTenant(t.id);
                           localStorage.setItem('communityos_sa_tenant_name', t.name);
-                          router.push('/');
+                          // QA #51 — full page navigation (not router.push)
+                          // so React Query cache is dropped and no stale
+                          // tenant data flashes into the dashboard view.
+                          window.location.href = '/';
                         }}
                       >
                         <ExternalLink className="h-3.5 w-3.5" />

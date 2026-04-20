@@ -28,8 +28,17 @@ interface TrialBalanceRow {
   account_name: string;
   account_code: string;
   group_name: string;
-  debit: number;
-  credit: number;
+  // Backend returns movement sums (total_debit / total_credit) plus the
+  // closing_balance derived from them. The legacy fields `debit`/`credit`
+  // appeared in an earlier shape; keep them optional so the type covers
+  // both server versions while a rolling deploy is in flight.
+  debit?: number;
+  credit?: number;
+  total_debit?: number;
+  total_credit?: number;
+  closing_balance?: number;
+  opening_balance?: number;
+  balance_type?: string;
 }
 
 interface TrialBalanceReport {

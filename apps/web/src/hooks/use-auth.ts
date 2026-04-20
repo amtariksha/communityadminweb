@@ -189,7 +189,11 @@ export function useSwitchTenant() {
     onSuccess: function persistTenant(data, variables) {
       setToken(data.token);
       setCurrentTenant(variables.tenant_id);
-      queryClient.invalidateQueries();
+      // QA #51 — invalidate would leave old data visible while
+      // refetching (the "flash"). clear() drops cached results so
+      // consumers render loading states until new data arrives,
+      // preventing any cross-tenant display leak.
+      queryClient.clear();
     },
   });
 }

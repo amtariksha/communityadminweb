@@ -91,13 +91,14 @@ export function useDashboardData() {
 
           // Defaulters — use the list endpoint, not /summary
           api
-            .get<{ data: unknown[]; total: number }>('/invoices/defaulters')
+            .get<{ data: Array<Record<string, unknown>>; total: number }>(
+              '/invoices/defaulters',
+            )
             .then((res) => ({
               total_defaulters: res.total ?? 0,
               total_overdue_amount: Array.isArray(res.data)
-                ? res.data.reduce(
-                    (sum: number, d: Record<string, unknown>) =>
-                      sum + (Number(d.total_due) || 0),
+                ? res.data.reduce<number>(
+                    (sum, d) => sum + (Number(d.total_due) || 0),
                     0,
                   )
                 : 0,
@@ -106,20 +107,21 @@ export function useDashboardData() {
 
           // Trial balance
           api
-            .get<{ data: unknown[] }>('/ledger/reports/trial-balance', {
-              params: { as_of_date: today },
-            })
+            .get<{ data: Array<Record<string, unknown>> }>(
+              '/ledger/reports/trial-balance',
+              {
+                params: { as_of_date: today },
+              },
+            )
             .then((res) => {
               const rows = Array.isArray(res.data) ? res.data : [];
               return {
-                total_debit: rows.reduce(
-                  (s: number, r: Record<string, unknown>) =>
-                    s + (Number(r.total_debit) || 0),
+                total_debit: rows.reduce<number>(
+                  (s, r) => s + (Number(r.total_debit) || 0),
                   0,
                 ),
-                total_credit: rows.reduce(
-                  (s: number, r: Record<string, unknown>) =>
-                    s + (Number(r.total_credit) || 0),
+                total_credit: rows.reduce<number>(
+                  (s, r) => s + (Number(r.total_credit) || 0),
                   0,
                 ),
               };

@@ -770,12 +770,33 @@ function ReadingsTab(): ReactNode {
       {
         onSuccess(res) {
           const result = res.data;
+          // QA #50 — when rows are skipped, show the per-row reasons
+          // in the toast description so the user can fix the CSV and
+          // retry. The backend now returns structured
+          // {row, meter_number, error} objects.
+          const description =
+            result.errors && result.errors.length > 0
+              ? result.errors
+                  .slice(0, 5)
+                  .map(
+                    (e) => `Row ${e.row} (${e.meter_number}): ${e.error}`,
+                  )
+                  .join('\n') +
+                (result.errors.length > 5
+                  ? `\n…and ${result.errors.length - 5} more`
+                  : '')
+              : undefined;
           addToast({
             title: `Bulk upload: ${result.submitted} submitted, ${result.skipped} skipped`,
+            description,
             variant: result.skipped > 0 ? 'warning' : 'success',
           });
-          setBulkOpen(false);
-          setBulkCsv('');
+          // Keep the dialog open when rows were skipped so the user
+          // can correct and resubmit without re-uploading everything.
+          if (result.skipped === 0) {
+            setBulkOpen(false);
+            setBulkCsv('');
+          }
         },
         onError(error) {
           addToast({ title: 'Bulk upload failed', description: error.message, variant: 'destructive' });

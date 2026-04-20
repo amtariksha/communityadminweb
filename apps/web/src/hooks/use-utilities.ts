@@ -320,13 +320,28 @@ export function useSubmitReading() {
   });
 }
 
+/**
+ * Bulk meter-reading submission. QA #50 — the backend now returns
+ * structured per-row errors (row number + meter_number + error text)
+ * so the UI can highlight the exact CSV row that failed.
+ */
+export interface BulkReadingError {
+  row: number;
+  meter_number: string;
+  error: string;
+}
+
 export function useSubmitBulkReadings() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: function submitBulkReadings(input: BulkReadingsInput) {
       return api.post<{
-        data: { submitted: number; skipped: number; errors: string[] };
+        data: {
+          submitted: number;
+          skipped: number;
+          errors: BulkReadingError[];
+        };
       }>('/utilities/readings/bulk', input);
     },
     onSuccess: function invalidate() {
