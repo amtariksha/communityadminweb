@@ -153,7 +153,10 @@ export function useCreateTenant() {
 
   return useMutation({
     mutationFn: function createTenant(input: CreateTenantInput) {
-      return api.post<Tenant>('/tenants', input);
+      // Backend now wraps in `{ data }` for M8 envelope consistency.
+      return api
+        .post<{ data: Tenant }>('/tenants', input)
+        .then((res) => res.data);
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: tenantKeys.all });
