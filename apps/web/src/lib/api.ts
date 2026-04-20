@@ -18,6 +18,57 @@ interface ApiRequestOptions {
   params?: Record<string, string>;
 }
 
+// ---------------------------------------------------------------------------
+// Token refresh coordination
+// ---------------------------------------------------------------------------
+//
+// When an idle SPA resumes and sends several requests in parallel, every
+// one of them hits a 401 at once. Without coordination each request
+// fires its own POST /auth/refresh, the first one rotates the refresh
+// token, and the rest 401 with the now-invalid old refresh → user
+// gets bounced to /login despite a valid session.
+//
+// The singleflight promise below ensures at most one refresh is in
+// flight at any time. All 401-ers await the same promise.
+
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+
+  const currentRefresh = getRefreshToken();
+  if (!currentRefresh) return null;
+
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: currentRefresh }),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as {
+        access_token?: string;
+        token?: string;
+        refresh_token?: string;
+      };
+      const newAccess = data.access_token ?? data.token ?? null;
+      if (!newAccess) return null;
+      setToken(newAccess);
+      if (data.refresh_token) setRefreshToken(data.refresh_token);
+      return newAccess;
+    } catch {
+      return null;
+    } finally {
+      // Reset the gate so the *next* 401 after the next expiry can
+      // start a fresh refresh cycle.
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -52,42 +103,43 @@ async function request<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  if (response.status === 401) {
-    // Try to refresh the token once before logging out. Uses namespaced
-    // localStorage keys via auth.ts helpers so there's one source of truth.
-    const refreshToken = getRefreshToken();
+  if (response.status === 401 && !path.includes('/auth/')) {
+    // Single-flight refresh — every parallel 401 awaits the same
+    // in-flight /auth/refresh so they don't stomp on each other's
+    // refresh tokens. Null => refresh failed → drop to logout.
+    const newAccess = await refreshAccessToken();
+    if (newAccess) {
+      headers['Authorization'] = `Bearer ${newAccess}`;
+      const retryResponse = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
 
-    if (refreshToken && !path.includes('/auth/')) {
-      try {
-        const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: refreshToken }),
-        });
+      // Retry succeeded → normal response flow.
+      if (retryResponse.ok) {
+        if (retryResponse.status === 204) return undefined as T;
+        return retryResponse.json() as Promise<T>;
+      }
 
-        if (refreshResponse.ok) {
-          const data = await refreshResponse.json();
-          const newToken = data.access_token ?? data.token;
-          if (newToken) {
-            setToken(newToken);
-            if (data.refresh_token) {
-              setRefreshToken(data.refresh_token);
-            }
-            // Retry the original request with the new token
-            headers['Authorization'] = `Bearer ${newToken}`;
-            const retryResponse = await fetch(url, {
-              method,
-              headers,
-              body: body ? JSON.stringify(body) : undefined,
-            });
-            if (retryResponse.ok) {
-              if (retryResponse.status === 204) return undefined as T;
-              return retryResponse.json() as Promise<T>;
-            }
-          }
+      // Retry still 401 means the refresh didn't actually give us a
+      // valid session (role revoked, user deactivated, etc.). Fall
+      // through to the logout path below.
+      if (retryResponse.status !== 401) {
+        // Non-auth error on the retry (5xx, 409, 400 …). Surface it
+        // instead of logging the user out — they're authenticated
+        // fine, the request itself just failed.
+        const err = await retryResponse
+          .json()
+          .catch(() => ({ message: 'Request failed' }));
+        let message = err.message ?? `Request failed with status ${retryResponse.status}`;
+        if (err.errors && typeof err.errors === 'object') {
+          const fieldErrors = Object.entries(err.errors as Record<string, string[]>)
+            .map(([field, messages]) => `${field}: ${(messages as string[]).join(', ')}`)
+            .join('; ');
+          message = fieldErrors || message;
         }
-      } catch {
-        // Refresh failed — fall through to logout
+        throw new Error(message);
       }
     }
 
