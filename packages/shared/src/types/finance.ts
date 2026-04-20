@@ -62,6 +62,8 @@ export interface JournalLine {
 
 export type InvoiceFrequency = 'monthly' | 'quarterly' | 'half_yearly' | 'yearly' | 'one_time';
 
+export type InvoiceChargeType = 'flat' | 'area_based' | 'hybrid';
+
 export interface InvoiceRule {
   id: string;
   tenant_id: string;
@@ -69,6 +71,8 @@ export interface InvoiceRule {
   ledger_account_id: string;
   frequency: InvoiceFrequency;
   amount: number;
+  charge_type: InvoiceChargeType;
+  is_per_sqft: boolean;
   is_gst_applicable: boolean;
   gst_rate: number;
   is_active: boolean;

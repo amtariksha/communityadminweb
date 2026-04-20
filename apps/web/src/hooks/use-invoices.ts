@@ -54,12 +54,16 @@ interface CreateInvoiceRuleInput {
   name: string;
   ledger_account_id: string;
   frequency: string;
-  amount: number;
-  charge_type?: string;
+  // Backend accepts any one of amount | flat_amount | rate_per_sqft and
+  // normalizes via: resolvedAmount = amount ?? flat_amount ?? rate_per_sqft ?? 0.
+  // We send whichever matches the selected charge_type, so all three are
+  // optional at the type level.
+  amount?: number;
+  charge_type?: 'flat' | 'area_based' | 'hybrid';
   flat_amount?: number;
   rate_per_sqft?: number;
   fixed_addon?: number;
-  gst_rule?: string;
+  gst_rule?: 'none' | 'full' | 'above_limit';
   is_gst_applicable?: boolean;
   gst_rate?: number;
 }
