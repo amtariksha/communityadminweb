@@ -136,15 +136,18 @@ export default function DocumentsContent(): ReactNode {
 
   const categories = categoriesQuery.data ?? [];
   const allDocuments = documentsQuery.data?.data ?? [];
+  // Derive expiring set FIRST — the `documents` filter below depends on it.
+  // Previously these were declared after the filter, which threw a
+  // ReferenceError (TDZ) on every render and crashed the page.
+  const expiringDocs = expiringQuery.data ?? [];
+  const expiringIds = new Set(expiringDocs.map((d) => d.id));
+  const expiredCount = expiringDocs.filter(() => false).length; // API returns expiring, not expired
+  const expiringCount = expiringDocs.length;
   const documents = showExpiringOnly
     ? allDocuments.filter((doc) => expiringIds.has(doc.id))
     : allDocuments;
   const totalDocuments = showExpiringOnly ? documents.length : (documentsQuery.data?.total ?? 0);
   const totalPages = Math.max(1, Math.ceil(totalDocuments / ITEMS_PER_PAGE));
-  const expiringDocs = expiringQuery.data ?? [];
-  const expiringIds = new Set(expiringDocs.map((d) => d.id));
-  const expiredCount = expiringDocs.filter(() => false).length; // API returns expiring, not expired
-  const expiringCount = expiringDocs.length;
 
   function resetUploadForm(): void {
     setUploadTitle('');

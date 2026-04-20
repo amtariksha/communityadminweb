@@ -172,11 +172,20 @@ export default function InvoicesContent(): ReactNode {
   const [billingDate, setBillingDate] = useState('');
 
   // Form state for create rule
+  //
+  // The backend supports two charge modes end-to-end:
+  //   flat        — one fixed amount per unit
+  //   area_based  — amount × unit.area_sqft (per-sqft pricing)
+  //
+  // (A third "hybrid" mode is in the Zod enum but the DB column required
+  // to store the flat add-on was never added, so it's not wired. Can be
+  // enabled later via migration + calculateBaseAmount update.)
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
   const [ruleName, setRuleName] = useState('');
   const [ruleLedgerAccountId, setRuleLedgerAccountId] = useState('');
-  const [ruleChargeType, setRuleChargeType] = useState('flat');
-  const [ruleAmount, setRuleAmount] = useState('');
+  const [ruleChargeType, setRuleChargeType] = useState<'flat' | 'area_based'>('flat');
+  const [ruleFlatAmount, setRuleFlatAmount] = useState('');
+  const [ruleRatePerSqft, setRuleRatePerSqft] = useState('');
   const [ruleFrequency, setRuleFrequency] = useState('monthly');
   const [ruleGstApplicable, setRuleGstApplicable] = useState(false);
   const [ruleGstRate, setRuleGstRate] = useState('');
@@ -244,7 +253,8 @@ export default function InvoicesContent(): ReactNode {
     setRuleName('');
     setRuleLedgerAccountId('');
     setRuleChargeType('flat');
-    setRuleAmount('');
+    setRuleFlatAmount('');
+    setRuleRatePerSqft('');
     setRuleFrequency('monthly');
     setRuleGstApplicable(false);
     setRuleGstRate('');
@@ -253,23 +263,46 @@ export default function InvoicesContent(): ReactNode {
   function handleCreateRule(e: FormEvent): void {
     e.preventDefault();
 
-    const amount = Number(ruleAmount);
-    const payload: {
+    // Build the payload by charge_type so the backend applies the right
+    // calculation at invoice-generation time:
+    //   flat        → amount (backend: is_per_sqft=false)
+    //   area_based  → rate_per_sqft (backend: is_per_sqft=true, amount × unit.area_sqft)
+    //
+    // Previously this form silently dropped charge_type, so every rule was
+    // stored as flat regardless of the dropdown selection. QA-reported.
+    type RulePayload = {
       name: string;
       ledger_account_id: string;
       frequency: string;
-      amount: number;
-      is_gst_applicable?: boolean;
+      charge_type: 'flat' | 'area_based';
+      amount?: number;
+      flat_amount?: number;
+      rate_per_sqft?: number;
+      gst_rule?: 'none' | 'full';
       gst_rate?: number;
-    } = {
+      is_gst_applicable?: boolean;
+    };
+
+    const payload: RulePayload = {
       name: ruleName,
       ledger_account_id: ruleLedgerAccountId,
       frequency: ruleFrequency,
-      amount,
+      charge_type: ruleChargeType,
     };
+
+    if (ruleChargeType === 'flat') {
+      const amt = Number(ruleFlatAmount) || 0;
+      payload.amount = amt;
+      payload.flat_amount = amt;
+    } else {
+      const rate = Number(ruleRatePerSqft) || 0;
+      payload.amount = rate;
+      payload.rate_per_sqft = rate;
+    }
 
     if (ruleGstApplicable) {
       payload.is_gst_applicable = true;
+      payload.gst_rule = 'full';
       payload.gst_rate = Number(ruleGstRate) || 0;
     }
 
@@ -444,11 +477,17 @@ export default function InvoicesContent(): ReactNode {
                           className="flex-1"
                         >
                           <option value="">Select billing rule</option>
-                          {rules?.map((rule) => (
-                            <option key={rule.id} value={rule.id}>
-                              {rule.name} ({formatCurrency(rule.amount)})
-                            </option>
-                          ))}
+                          {rules?.map((rule) => {
+                            const isPerSqft = rule.is_per_sqft || rule.charge_type === 'area_based';
+                            const label = isPerSqft
+                              ? `${rule.name} (${formatCurrency(rule.amount)}/sqft)`
+                              : `${rule.name} (${formatCurrency(rule.amount)} flat)`;
+                            return (
+                              <option key={rule.id} value={rule.id}>
+                                {label}
+                              </option>
+                            );
+                          })}
                         </Select>
                         <Dialog open={ruleDialogOpen} onOpenChange={setRuleDialogOpen}>
                           <DialogTrigger>
@@ -489,39 +528,58 @@ export default function InvoicesContent(): ReactNode {
                                     ))}
                                   </Select>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="rule-charge-type" className="flex items-center gap-1">
+                                    Charge Type
+                                    <HelpTooltip text="Flat = one fixed amount per unit. Per Sq Ft = amount multiplied by unit's area_sqft at invoice generation." />
+                                  </Label>
+                                  <Select
+                                    id="rule-charge-type"
+                                    value={ruleChargeType}
+                                    onChange={(e) => setRuleChargeType(e.target.value as 'flat' | 'area_based')}
+                                    required
+                                  >
+                                    <option value="flat">Flat Amount (one fixed fee per unit)</option>
+                                    <option value="area_based">Per Sq Ft (rate × unit area)</option>
+                                  </Select>
+                                  <p className="text-xs text-muted-foreground">
+                                    {ruleChargeType === 'flat'
+                                      ? 'Every unit billed the same amount regardless of size.'
+                                      : 'Invoice amount = rate × unit.area_sqft. Units without area_sqft will bill zero.'}
+                                  </p>
+                                </div>
+                                {ruleChargeType === 'flat' ? (
                                   <div className="space-y-2">
-                                    <Label htmlFor="rule-charge-type" className="flex items-center gap-1">
-                                      Charge Type
-                                      <HelpTooltip text="Flat = fixed amount per unit. Per Sq Ft = rate multiplied by unit area in sq ft." />
-                                    </Label>
-                                    <Select
-                                      id="rule-charge-type"
-                                      value={ruleChargeType}
-                                      onChange={(e) => setRuleChargeType(e.target.value)}
-                                      required
-                                    >
-                                      <option value="flat">Flat Amount</option>
-                                      <option value="area_based">Per Sq Ft</option>
-                                    </Select>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label htmlFor="rule-amount">
-                                      {ruleChargeType === 'area_based' ? 'Rate per sqft' : 'Amount'}
-                                    </Label>
+                                    <Label htmlFor="rule-flat-amount">Amount (₹)</Label>
                                     <Input
-                                      id="rule-amount"
+                                      id="rule-flat-amount"
                                       type="number"
-                                      placeholder="0"
+                                      placeholder="3000"
                                       min="0.01"
                                       step="0.01"
-                                      title="Amount must be greater than zero"
-                                      value={ruleAmount}
-                                      onChange={(e) => setRuleAmount(e.target.value)}
+                                      value={ruleFlatAmount}
+                                      onChange={(e) => setRuleFlatAmount(e.target.value)}
                                       required
                                     />
                                   </div>
-                                </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <Label htmlFor="rule-rate-per-sqft">Rate per Sq Ft (₹)</Label>
+                                    <Input
+                                      id="rule-rate-per-sqft"
+                                      type="number"
+                                      placeholder="2.5"
+                                      min="0.01"
+                                      step="0.01"
+                                      value={ruleRatePerSqft}
+                                      onChange={(e) => setRuleRatePerSqft(e.target.value)}
+                                      required
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                      Example: rate = ₹2.5, unit = 1,200 sqft → invoice = ₹3,000
+                                    </p>
+                                  </div>
+                                )}
                                 <div className="space-y-2">
                                   <Label htmlFor="rule-frequency">Frequency</Label>
                                   <Select
