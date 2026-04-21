@@ -9,6 +9,7 @@ import {
   Phone,
   Mail,
   Pencil,
+  CalendarClock,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,8 @@ import {
 } from '@/hooks';
 import { formatDate } from '@/lib/utils';
 import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
+import { RenewLeaseDialog } from './renew-lease-dialog';
+import type { DirectoryMember } from '@/hooks';
 
 const PAGE_SIZE = 20;
 
@@ -96,6 +99,9 @@ export default function DirectoryContent(): ReactNode {
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
+
+  // Renew-lease dialog state — opens per tenant row.
+  const [renewTarget, setRenewTarget] = useState<DirectoryMember | null>(null);
 
   const updateMember = useUpdateMemberDetail();
 
@@ -301,14 +307,31 @@ export default function DirectoryContent(): ReactNode {
                       {formatDate(member.move_in_date)}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        onClick={() => openEditDialog(member)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          title="Edit"
+                          onClick={() => openEditDialog(member)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        {/* Renew Lease — only for primary tenant members.
+                            Family members inherit the lease via the unit,
+                            so renewing one's row doesn't make sense. */}
+                        {member.member_type === 'tenant' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            title="Renew lease"
+                            onClick={() => setRenewTarget(member)}
+                          >
+                            <CalendarClock className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -401,6 +424,22 @@ export default function DirectoryContent(): ReactNode {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Renew Lease Dialog — only mounted when a target is set so
+          the file input resets cleanly between invocations. */}
+      {renewTarget && (
+        <RenewLeaseDialog
+          open={renewTarget !== null}
+          onClose={() => setRenewTarget(null)}
+          unitId={renewTarget.unit_id}
+          unitLabel={
+            renewTarget.block
+              ? `${renewTarget.block}-${renewTarget.unit_number}`
+              : renewTarget.unit_number
+          }
+          tenantName={renewTarget.name}
+        />
+      )}
     </div>
   );
 }
