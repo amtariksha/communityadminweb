@@ -17,7 +17,16 @@ export interface Staff {
   tenant_id: string;
   name: string;
   phone: string;
-  staff_type: 'security' | 'housekeeping' | 'maintenance' | 'gardener' | 'driver' | 'other';
+  // Must match society_staff.staff_type CHECK (migration 018).
+  staff_type:
+    | 'security_guard'
+    | 'watchman'
+    | 'housekeeping'
+    | 'gardener'
+    | 'plumber'
+    | 'electrician'
+    | 'manager'
+    | 'other';
   designation: string | null;
   id_proof_type: string | null;
   id_proof_number: string | null;

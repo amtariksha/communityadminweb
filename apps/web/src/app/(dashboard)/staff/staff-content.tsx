@@ -78,12 +78,17 @@ import type {
 
 type TabKey = 'employees' | 'shifts' | 'attendance' | 'leaves';
 
+// Values MUST match the society_staff.staff_type CHECK constraint
+// (migration 018). Mismatches 400 with a raw pg CheckViolation that
+// leaks "Failing row contains …" to the user.
 const STAFF_TYPE_OPTIONS = [
-  { value: 'security', label: 'Security' },
+  { value: 'security_guard', label: 'Security Guard' },
+  { value: 'watchman', label: 'Watchman' },
   { value: 'housekeeping', label: 'Housekeeping' },
-  { value: 'maintenance', label: 'Maintenance' },
   { value: 'gardener', label: 'Gardener' },
-  { value: 'driver', label: 'Driver' },
+  { value: 'plumber', label: 'Plumber' },
+  { value: 'electrician', label: 'Electrician' },
+  { value: 'manager', label: 'Manager' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -146,7 +151,7 @@ export default function StaffContent(): ReactNode {
   const [editingEmployeeId, setEditingEmployeeId] = useState('');
   const [empName, setEmpName] = useState('');
   const [empPhone, setEmpPhone] = useState('');
-  const [empType, setEmpType] = useState('security');
+  const [empType, setEmpType] = useState('security_guard');
   const [empDesignation, setEmpDesignation] = useState('');
   const [empAddress, setEmpAddress] = useState('');
   const [empEmergencyContact, setEmpEmergencyContact] = useState('');
@@ -237,7 +242,7 @@ export default function StaffContent(): ReactNode {
     setEditingEmployeeId('');
     setEmpName('');
     setEmpPhone('');
-    setEmpType('security');
+    setEmpType('security_guard');
     setEmpDesignation('');
     setEmpAddress('');
     setEmpEmergencyContact('');
