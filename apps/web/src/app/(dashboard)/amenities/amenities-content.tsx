@@ -264,12 +264,12 @@ function AmenitiesTab({ createOpen, setCreateOpen }: AmenitiesTabProps): ReactNo
     createMutation.mutate(
       {
         name: formName.trim(),
-        type: formType,
+        amenity_type: formType,
         location: formLocation.trim() || null,
         capacity: formCapacity ? Number(formCapacity) : null,
         pricing_type: formPricingType,
-        price: formPrice ? Number(formPrice) : undefined,
-        deposit: formDeposit ? Number(formDeposit) : undefined,
+        price_per_unit: formPrice ? Number(formPrice) : undefined,
+        deposit_amount: formDeposit ? Number(formDeposit) : undefined,
         rules: formRules.trim() || null,
       },
       {
@@ -299,12 +299,12 @@ function AmenitiesTab({ createOpen, setCreateOpen }: AmenitiesTabProps): ReactNo
       {
         id: editingAmenity.id,
         name: formName.trim(),
-        type: formType,
+        amenity_type: formType,
         location: formLocation.trim() || null,
         capacity: formCapacity ? Number(formCapacity) : null,
         pricing_type: formPricingType,
-        price: formPrice ? Number(formPrice) : undefined,
-        deposit: formDeposit ? Number(formDeposit) : undefined,
+        price_per_unit: formPrice ? Number(formPrice) : undefined,
+        deposit_amount: formDeposit ? Number(formDeposit) : undefined,
         rules: formRules.trim() || null,
       },
       {

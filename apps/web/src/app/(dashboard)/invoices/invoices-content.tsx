@@ -32,7 +32,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
-import { formatCurrency, formatDate, financialDateBounds } from '@/lib/utils';
+import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
   DropdownMenu,
@@ -645,7 +645,7 @@ export default function InvoicesContent(): ReactNode {
                         min={dateBounds.min}
                         max={dateBounds.max}
                         value={billingDate}
-                        onChange={(e) => setBillingDate(e.target.value)}
+                        onChange={(e) => setBillingDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
                         required
                       />
                     </div>
@@ -1214,7 +1214,7 @@ export default function InvoicesContent(): ReactNode {
                     min={dateBounds.min}
                     max={dateBounds.max}
                     value={lpiPostDate}
-                    onChange={(e) => setLpiPostDate(e.target.value)}
+                    onChange={(e) => setLpiPostDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
                   />
                 </div>
                 <Button

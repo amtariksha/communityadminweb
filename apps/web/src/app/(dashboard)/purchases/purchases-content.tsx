@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
-import { formatCurrency, formatDate, financialDateBounds } from '@/lib/utils';
+import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
   usePurchaseRequests,
@@ -945,7 +945,7 @@ export default function PurchasesContent(): ReactNode {
                               max={dateBounds.max}
                               required
                               value={billDate}
-                              onChange={(e) => setBillDate(e.target.value)}
+                              onChange={(e) => setBillDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
                             />
                           </div>
                           <div className="space-y-2">
@@ -957,7 +957,7 @@ export default function PurchasesContent(): ReactNode {
                               max={dateBounds.max}
                               required
                               value={billDueDate}
-                              onChange={(e) => setBillDueDate(e.target.value)}
+                              onChange={(e) => setBillDueDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
                             />
                           </div>
                         </div>
@@ -1329,7 +1329,7 @@ export default function PurchasesContent(): ReactNode {
                     max={dateBounds.max}
                     required
                     value={paymentDate}
-                    onChange={(e) => setPaymentDate(e.target.value)}
+                    onChange={(e) => setPaymentDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
                   />
                 </div>
               </div>
@@ -1429,7 +1429,7 @@ export default function PurchasesContent(): ReactNode {
                     max={dateBounds.max}
                     required
                     value={convertBillDate}
-                    onChange={(e) => setConvertBillDate(e.target.value)}
+                    onChange={(e) => setConvertBillDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -1441,7 +1441,7 @@ export default function PurchasesContent(): ReactNode {
                     max={dateBounds.max}
                     required
                     value={convertDueDate}
-                    onChange={(e) => setConvertDueDate(e.target.value)}
+                    onChange={(e) => setConvertDueDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
                   />
                 </div>
               </div>

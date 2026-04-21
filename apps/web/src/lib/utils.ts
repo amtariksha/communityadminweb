@@ -59,6 +59,24 @@ export function financialDateBounds(now = new Date()): {
   return { min, max };
 }
 
+/**
+ * Clamp a YYYY-MM-DD string to [min, max] (both YYYY-MM-DD).
+ *
+ * HTML5 `<input type="date">` enforces min/max on the native picker
+ * and on form submission in modern browsers, but users can still
+ * paste / type a value outside the range. Call this from every date
+ * input's onChange to guarantee state is always within bounds.
+ *
+ * Returns the input unchanged if empty or not a valid YYYY-MM-DD.
+ */
+export function clampDateString(value: string, min: string, max: string): string {
+  if (!value) return value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+}
+
 export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return '—';
   const parsed = date instanceof Date ? date : new Date(date);

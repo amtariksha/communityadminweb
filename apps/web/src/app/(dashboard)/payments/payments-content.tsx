@@ -40,7 +40,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { TOOLTIP } from '@/lib/tooltip-content';
-import { formatCurrency, formatDate, financialDateBounds } from '@/lib/utils';
+import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
   usePayments,
@@ -309,7 +309,7 @@ export default function PaymentsContent(): ReactNode {
                 max={dateBounds.max}
                 value={startDate}
                 onChange={(e) => {
-                  setStartDate(e.target.value);
+                  setStartDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max));
                   setCurrentPage(1);
                 }}
               />
@@ -323,7 +323,7 @@ export default function PaymentsContent(): ReactNode {
                 max={dateBounds.max}
                 value={endDate}
                 onChange={(e) => {
-                  setEndDate(e.target.value);
+                  setEndDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max));
                   setCurrentPage(1);
                 }}
               />

@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/layout/page-header';
-import { formatCurrency, formatDate, financialDateBounds } from '@/lib/utils';
+import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useLedgerAccount, useGeneralLedgerReport, useAccountGroups } from '@/hooks';
 
 function getDefaultDateRange(): { startDate: string; endDate: string } {
@@ -159,7 +159,7 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
                   min={dateBounds.min}
                   max={dateBounds.max}
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => setStartDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
                   onKeyDown={(e) => e.preventDefault()}
                   className="h-8 w-36 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                 />
@@ -172,7 +172,7 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
                   min={dateBounds.min}
                   max={dateBounds.max}
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => setEndDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
                   onKeyDown={(e) => e.preventDefault()}
                   className="h-8 w-36 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                 />

@@ -32,7 +32,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
-import { formatCurrency, formatDate, financialDateBounds } from '@/lib/utils';
+import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
   useReceipts,
@@ -393,7 +393,7 @@ export default function ReceiptsContent(): ReactNode {
                         max={dateBounds.max}
                         required
                         value={receiptDate}
-                        onChange={(e) => setReceiptDate(e.target.value)}
+                        onChange={(e) => setReceiptDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
                       />
                     </div>
                   </div>

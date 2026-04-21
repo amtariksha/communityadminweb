@@ -197,7 +197,10 @@ export function useTenantSettings() {
       // the rewritten message.
       const body: Record<string, unknown> = { ...input.settings };
       if (input.expected_row_version !== undefined) {
-        body.expected_row_version = input.expected_row_version;
+        // Backend stores row_version as BIGINT; pg serializes BIGINT as
+        // a string so the value round-tripped from GET /tenants is "3"
+        // (not 3). Cast back to a plain number so Zod accepts it.
+        body.expected_row_version = Number(input.expected_row_version);
       }
       return api
         .patch<{ data: Tenant } | Tenant>(
