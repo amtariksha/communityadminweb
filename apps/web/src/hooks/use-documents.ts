@@ -182,47 +182,54 @@ export function useUploadDocument() {
 }
 
 /**
- * Two-step real file upload:
- *   1. Ask the API for a presigned S3 POST (returns { url, fields, fileUrl }).
- *   2. POST the actual file multipart/form-data to `url` using the returned
- *      `fields` plus the file under the `file` key. S3 enforces
- *      content-length-range + content-type server-side, so oversized
- *      or wrong-MIME uploads get rejected without us seeing the byte.
+ * Three-step direct-to-object-store upload (eassylife pattern).
  *
- * Returns the fileUrl the document DB row should reference.
+ *   1. Backend signs a time-boxed PUT URL with its secret creds.
+ *   2. Browser PUTs the file bytes directly to the object store. Bytes
+ *      never touch our API — keeps server memory + bandwidth free.
+ *   3. Caller persists the returned fileUrl into its domain table
+ *      (e.g. POST /documents) — Step 3 happens in the consuming page,
+ *      not here.
+ *
+ * Why PUT (not presigned-POST): E2E Networks blocks bucket-level CORS
+ * config via the S3 API, so we can't get multipart preflight to pass.
+ * A pre-signed PUT with a single `Content-Type` header is a simple
+ * request and goes through without a preflight in current browsers.
+ *
+ * Returns the public fileUrl — the caller persists this on its own
+ * domain record.
  */
 export function useUploadFileToS3() {
   return useMutation({
     mutationFn: async function uploadFile(input: {
       file: File;
-      maxSizeBytes?: number;
     }): Promise<{ fileUrl: string; key: string }> {
+      // Step 1 — request the permission slip.
       const presign = await api.post<{
-        data: {
-          url: string;
-          fields: Record<string, string>;
-          key: string;
-          fileUrl: string;
-          maxSizeBytes: number;
-        };
-      }>('/upload/presigned-post', {
+        data: { uploadUrl: string; fileUrl: string; key: string };
+      }>('/upload/presigned-url', {
         fileName: input.file.name,
         contentType: input.file.type || 'application/octet-stream',
-        maxSizeBytes: input.maxSizeBytes ?? 25 * 1024 * 1024,
       });
-      const { url, fields, key, fileUrl } = presign.data;
+      const { uploadUrl, fileUrl, key } = presign.data;
 
-      const form = new FormData();
-      for (const [k, v] of Object.entries(fields)) form.append(k, v);
-      form.append('file', input.file);
-
-      const res = await fetch(url, { method: 'POST', body: form });
+      // Step 2 — ship the bytes straight to the object store.
+      // Do NOT attach Authorization here; the signature is in the URL
+      // query string. Content-Type must match what was signed.
+      const res = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': input.file.type || 'application/octet-stream',
+        },
+        body: input.file,
+      });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(
           `Upload failed (${res.status}): ${text.slice(0, 300) || 'unknown error'}`,
         );
       }
+
       return { fileUrl, key };
     },
   });
