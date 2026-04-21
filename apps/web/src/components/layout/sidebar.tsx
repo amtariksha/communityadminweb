@@ -41,7 +41,8 @@ import { HELP_MODE_TEXT } from '@/lib/tooltip-content';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, getInitials } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { getUser, logout } from '@/lib/auth';
+import { getUser, getCurrentTenant, logout } from '@/lib/auth';
+import { getSidebarAllowlist } from '@/lib/admin-roles';
 
 interface NavItem {
   label: string;
@@ -119,6 +120,16 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
   const { data: enabledFeatures } = useEnabledFeatures();
   const { isHelpMode } = useHelpMode();
 
+  // Role-based sidebar gating: supervisor roles see only a curated
+  // subset of the full nav. Broader admin roles see everything.
+  // Resolved against the CURRENT tenant's role (the one the user
+  // picked on /select-tenant) so a user who's community_admin at one
+  // society and security_supervisor at another gets the right view
+  // per society.
+  const currentTenantId = getCurrentTenant();
+  const currentRole = user?.societies.find((s) => s.id === currentTenantId)?.role;
+  const roleAllowlist = getSidebarAllowlist(currentRole);
+
   function isActive(href: string): boolean {
     if (href === '/') {
       return pathname === '/';
@@ -141,6 +152,12 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
     if (!item.feature) return true;
     if (!enabledFeatures) return true;
     return enabledFeatures.includes(item.feature);
+  }
+
+  function isRoleVisible(item: NavItem): boolean {
+    // null allowlist = broader admin role, show everything.
+    if (!roleAllowlist) return true;
+    return roleAllowlist.has(item.label);
   }
 
   return (
@@ -170,7 +187,9 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           {navGroups.map((group) => {
-            const visibleItems = group.items.filter(isFeatureVisible);
+            const visibleItems = group.items
+              .filter(isFeatureVisible)
+              .filter(isRoleVisible);
             if (visibleItems.length === 0) return null;
             return (
             <div key={group.label} className="mb-4">

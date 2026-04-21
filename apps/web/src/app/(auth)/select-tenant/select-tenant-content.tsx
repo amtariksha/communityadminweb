@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getUser, isAuthenticated, setCurrentTenant, logout } from '@/lib/auth';
+import { getAdminSocieties } from '@/lib/admin-roles';
 import type { User } from '@/lib/auth';
 
 function formatRole(role: string): string {
@@ -37,8 +38,13 @@ export default function SelectTenantContent(): ReactNode {
     );
   }
 
-  if (user.societies.length === 0) {
-    router.replace('/no-access');
+  // Filter to admin-eligible societies only — pure-resident roles
+  // belong on the Flutter app.
+  const adminSocieties = getAdminSocieties(user);
+
+  if (adminSocieties.length === 0) {
+    const reason = user.societies.length === 0 ? 'none' : 'resident';
+    router.replace(`/no-access?reason=${reason}`);
     return null;
   }
 
@@ -60,7 +66,7 @@ export default function SelectTenantContent(): ReactNode {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {user.societies.map((society) => (
+        {adminSocieties.map((society) => (
           <button
             key={society.id}
             type="button"

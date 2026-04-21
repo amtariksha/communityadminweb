@@ -95,6 +95,10 @@ interface AssignUserRoleInput {
   // Required for resident roles (owner / tenant_resident / *_family).
   // Backend rejects with 400 if a resident role arrives without one.
   unit_id?: string;
+  // ISO timestamp, optional. Non-resident roles only — backend rejects
+  // expires_at on resident roles since resident expiry inherits from
+  // units.lease_end_date.
+  expires_at?: string;
 }
 
 interface RemoveUserRoleInput {
@@ -171,6 +175,7 @@ export function useAssignUserRole() {
           tenant_id: input.tenant_id,
           role: input.role,
           ...(input.unit_id ? { unit_id: input.unit_id } : {}),
+          ...(input.expires_at ? { expires_at: input.expires_at } : {}),
         },
       );
     },

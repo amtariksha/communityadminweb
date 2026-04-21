@@ -101,6 +101,11 @@ export default function UserManagement(): ReactNode {
   const [newRoleTenantId, setNewRoleTenantId] = useState('');
   const [newRoleSlug, setNewRoleSlug] = useState('');
   const [newRoleUnitId, setNewRoleUnitId] = useState('');
+  // Optional ISO date (yyyy-mm-dd). Blank = no expiry. Only meaningful
+  // for non-resident roles — resident expiry inherits from the unit's
+  // lease_end_date at the backend, so we hide this input when a
+  // resident role is selected.
+  const [newRoleExpiresAt, setNewRoleExpiresAt] = useState('');
 
   // Add member dialog
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
@@ -156,6 +161,7 @@ export default function UserManagement(): ReactNode {
     setNewRoleTenantId('');
     setNewRoleSlug('');
     setNewRoleUnitId('');
+    setNewRoleExpiresAt('');
   }
 
   function handleAssignRole(): void {
@@ -169,24 +175,35 @@ export default function UserManagement(): ReactNode {
       return;
     }
 
+    // ISO date → ISO timestamp at end-of-day IST (= 18:30 UTC the day
+    // before) so an expiry date of 2026-12-31 means "access works
+    // through the whole of Dec 31 in the society's local time."
+    const expiresAtIso = !isResidentRole && newRoleExpiresAt
+      ? new Date(`${newRoleExpiresAt}T23:59:59+05:30`).toISOString()
+      : undefined;
+
     assignRole.mutate(
       {
         user_id: selectedUser.id,
         tenant_id: newRoleTenantId,
         role: newRoleSlug,
         ...(isResidentRole ? { unit_id: newRoleUnitId } : {}),
+        ...(expiresAtIso ? { expires_at: expiresAtIso } : {}),
       },
       {
         onSuccess() {
           addToast({
             title: isResidentRole
               ? 'Role assigned — member added to directory'
-              : 'Role assigned',
+              : expiresAtIso
+                ? `Role assigned — expires ${newRoleExpiresAt}`
+                : 'Role assigned',
             variant: 'success',
           });
           setNewRoleTenantId('');
           setNewRoleSlug('');
           setNewRoleUnitId('');
+          setNewRoleExpiresAt('');
         },
         onError(error) {
           addToast({ title: 'Failed to assign role', description: error.message, variant: 'destructive' });
@@ -468,6 +485,28 @@ export default function UserManagement(): ReactNode {
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   Residents must be linked to a unit so they appear in the tenant&apos;s Member Directory.
+                </p>
+              </div>
+            )}
+            {/* Expiry date — optional. Only offered for non-resident
+                roles (e.g. security_supervisor from an external agency
+                with a fixed contract). Resident expiry inherits from
+                units.lease_end_date at the backend. */}
+            {!isResidentRole && newRoleSlug && (
+              <div className="space-y-1">
+                <Label htmlFor="role-expires-at" className="text-xs">
+                  Access expires on <span className="text-muted-foreground">(optional)</span>
+                </Label>
+                <input
+                  id="role-expires-at"
+                  type="date"
+                  value={newRoleExpiresAt}
+                  onChange={(e) => setNewRoleExpiresAt(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  min={new Date().toISOString().slice(0, 10)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave blank for no expiry. On expiry the role auto-suspends when the tenant&apos;s enforcement mode is hybrid or filter-only.
                 </p>
               </div>
             )}

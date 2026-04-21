@@ -201,6 +201,20 @@ export type { SuperAdminUser, UserRoleDetail } from './use-super-admin-users';
 // Platform-level config (read-only for tenant users)
 export { useTaxRates } from './use-tax-rates';
 
+// Role delegation (per-tenant supervisor-role toggles + expiry enforcement)
+export {
+  roleDelegationKeys,
+  useRoleDelegation,
+  useUpdateRoleDelegation,
+} from './use-role-delegation';
+export type {
+  RoleDelegation,
+  RoleDelegationUpdate,
+  SecuritySupervisorPermissions,
+  FacilitySupervisorPermissions,
+  ExpiryEnforcement,
+} from './use-role-delegation';
+
 // Tenant Members (Super Admin)
 export {
   tenantMemberKeys,

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/components/ui/toast';
 import { useSendOtp, useVerifyOtp } from '@/hooks';
 import { getUser, setCurrentTenant } from '@/lib/auth';
+import { getAdminSocieties } from '@/lib/admin-roles';
 
 type LoginStep = 'phone' | 'otp';
 
@@ -57,13 +58,20 @@ export default function LoginContent(): ReactNode {
 
           if (user.isSuperAdmin) {
             router.push('/super-admin');
-          } else if (user.societies.length === 0) {
-            router.push('/no-access');
-          } else if (user.societies.length === 1) {
-            setCurrentTenant(user.societies[0].id);
-            router.push('/');
           } else {
-            router.push('/select-tenant');
+            // Admin panel is restricted to admin-eligible roles only.
+            // Pure residents (owner, tenant_resident, etc.) land on
+            // /no-access with a pointer to the Flutter app.
+            const adminSocieties = getAdminSocieties(user);
+            if (adminSocieties.length === 0) {
+              const reason = user.societies.length === 0 ? 'none' : 'resident';
+              router.push(`/no-access?reason=${reason}`);
+            } else if (adminSocieties.length === 1) {
+              setCurrentTenant(adminSocieties[0].id);
+              router.push('/');
+            } else {
+              router.push('/select-tenant');
+            }
           }
         },
         onError(error) {

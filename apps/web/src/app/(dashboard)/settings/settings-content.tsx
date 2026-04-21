@@ -57,6 +57,7 @@ import {
 } from '@/hooks';
 import type { Gate, RbacPermission } from '@/hooks/use-staff';
 import type { Amenity } from '@/hooks/use-amenities';
+import { RoleDelegationCard } from './role-delegation-card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1799,6 +1800,11 @@ export default function SettingsContent(): ReactNode {
           )}
         </CardContent>
       </Card>
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Access & Roles — supervisor toggles + expiry enforcement             */}
+      {/* ------------------------------------------------------------------- */}
+      <RoleDelegationCard />
     </div>
   );
 }
