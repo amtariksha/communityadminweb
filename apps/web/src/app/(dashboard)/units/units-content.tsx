@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, type FormEvent, type ReactNode } from 'react';
+import { useRef, useState, useCallback, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus,
@@ -16,6 +16,7 @@ import {
   Users,
   Clock,
   Phone,
+  Sparkles,
   Mail,
   Upload,
   Download,
@@ -66,6 +67,7 @@ import {
   useBulkImportMembers,
 } from '@/hooks';
 import type { UnitDetailMember } from '@/hooks';
+import { useOcrIdDocument } from '@/hooks/use-ocr';
 import { cn, formatDate } from '@/lib/utils';
 import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
 
@@ -269,6 +271,14 @@ export default function UnitsContent(): ReactNode {
   const [addMemberType, setAddMemberType] = useState('owner_family');
   const [addMemberParentId, setAddMemberParentId] = useState('');
   const [addMemberMoveIn, setAddMemberMoveIn] = useState('');
+  // ID scan (Aadhaar / PAN / Passport / Voter / DL). Auto-fills Name;
+  // other fields (document_number, DOB, gender) are surfaced in a
+  // toast for the admin to record manually — the lightweight
+  // add-member endpoint doesn't currently persist them.
+  const idFileInputRef = useRef<HTMLInputElement | null>(null);
+  const ocrIdDoc = useOcrIdDocument();
+  const [idScanSummary, setIdScanSummary] = useState<string | null>(null);
+  const MAX_OCR_BYTES = 10 * 1024 * 1024;
 
   // Queries
   const blocksQuery = useBlocks();
@@ -565,6 +575,52 @@ export default function UnitsContent(): ReactNode {
     setAddMemberPhone('');
     setAddMemberMoveIn('');
     setAddMemberOpen(true);
+  }
+
+  async function handleScanIdDocument(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > MAX_OCR_BYTES) {
+      addToast({
+        title: 'Photo too large',
+        description: `Max ${MAX_OCR_BYTES / (1024 * 1024)} MiB for AI scanning.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      const result = await ocrIdDoc.mutateAsync(file);
+      if (result.name) setAddMemberName(result.name);
+      // Compose a summary of everything else so the admin can record
+      // what didn't auto-fill. document_number for Aadhaar comes pre-
+      // masked from the backend (middle 8 digits hidden).
+      const parts: string[] = [];
+      if (result.document_type && result.document_type !== 'unknown') {
+        parts.push(result.document_type.toUpperCase());
+      }
+      if (result.document_number) parts.push(`#${result.document_number}`);
+      if (result.date_of_birth) parts.push(`DOB ${result.date_of_birth}`);
+      if (result.gender) parts.push(result.gender);
+      setIdScanSummary(parts.length > 0 ? parts.join(' · ') : null);
+      addToast({
+        title: result.name ? `Scanned: ${result.name}` : 'Could not read name — review manually',
+        description:
+          parts.length > 0
+            ? `Also extracted: ${parts.join(', ')} (${Math.round((result.confidence ?? 0) * 100)}% confidence)`
+            : `Confidence ${Math.round((result.confidence ?? 0) * 100)}%`,
+        variant: result.name ? 'success' : 'default',
+      });
+    } catch (err) {
+      addToast({
+        title: 'AI extraction failed',
+        description:
+          (err as Error).message ?? 'Please enter the details manually.',
+        variant: 'destructive',
+      });
+    }
   }
 
   function handleAddMember(e: FormEvent): void {
@@ -1546,6 +1602,40 @@ export default function UnitsContent(): ReactNode {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              <div className="rounded-md border border-dashed border-muted-foreground/30 bg-muted/20 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 text-sm">
+                    <div className="flex items-center gap-2 font-medium">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      Scan ID card with AI
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Aadhaar / PAN / Passport / Voter / DL. Name auto-fills; other fields surface in a toast.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={ocrIdDoc.isPending}
+                    onClick={() => idFileInputRef.current?.click()}
+                  >
+                    {ocrIdDoc.isPending ? 'Reading…' : 'Upload'}
+                  </Button>
+                  <input
+                    ref={idFileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleScanIdDocument}
+                  />
+                </div>
+                {idScanSummary && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Also extracted: <span className="font-mono">{idScanSummary}</span>
+                  </p>
+                )}
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="add-m-name">Name</Label>
                 <Input

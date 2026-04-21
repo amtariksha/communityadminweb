@@ -227,6 +227,7 @@ export {
   useCreateParcel,
   useCollectParcel,
   useAnprLogs,
+  useAnprScan,
   useUnrecognizedVehicles,
 } from './use-gate';
 export type {

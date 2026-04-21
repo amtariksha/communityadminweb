@@ -349,6 +349,59 @@ export function useAnprLogs(filters?: AnprLogFilters) {
   });
 }
 
+/**
+ * Admin-panel manual plate scan for testing ANPR quality without a
+ * Flutter guard device. Reads the image, base64-encodes it, hits the
+ * /gate/anpr/scan endpoint, and returns the plate. The scan also logs
+ * into `vehicle_logs` server-side so it appears in the useAnprLogs
+ * list right after.
+ */
+export function useAnprScan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async function scanPlate(input: {
+      file: File;
+      direction: 'entry' | 'exit';
+      gate_id?: string;
+    }): Promise<{
+      plate_number: string;
+      confidence: number;
+      is_recognized: boolean;
+      matched_vehicle_id: string | null;
+      vehicle_log_id: string;
+    }> {
+      const image = await fileToBase64(input.file);
+      const res = await api.post<{
+        data: {
+          plate_number: string;
+          confidence: number;
+          is_recognized: boolean;
+          matched_vehicle_id: string | null;
+          vehicle_log_id: string;
+        };
+      }>('/gate/anpr/scan', {
+        image_base64: image,
+        mime_type: input.file.type || 'image/jpeg',
+        direction: input.direction,
+        ...(input.gate_id ? { gate_id: input.gate_id } : {}),
+      });
+      return res.data;
+    },
+    onSuccess: function invalidate() {
+      // Refresh the Vehicle Logs table so the just-scanned row shows up.
+      queryClient.invalidateQueries({ queryKey: gateKeys.anprLogs() });
+    },
+  });
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  const buf = await file.arrayBuffer();
+  let binary = '';
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
 export function useUnrecognizedVehicles() {
   return useQuery({
     queryKey: gateKeys.unrecognizedVehicles(),

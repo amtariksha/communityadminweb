@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
   Plus,
   Droplets,
@@ -13,7 +13,9 @@ import {
   ToggleRight,
   Trash2,
   Pencil,
+  Camera,
 } from 'lucide-react';
+import { useOcrMeterReading } from '@/hooks/use-ocr';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -692,6 +694,12 @@ function ReadingsTab(): ReactNode {
   const { addToast } = useToast();
   const [selectedMeterId, setSelectedMeterId] = useState('');
   const [readingValue, setReadingValue] = useState('');
+  // AI scan state — reuses the shared useOcrMeterReading hook.
+  const meterFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [meterScanConfidence, setMeterScanConfidence] = useState<number | null>(null);
+  const [meterScanUnit, setMeterScanUnit] = useState<string | null>(null);
+  const ocrMeter = useOcrMeterReading();
+  const MAX_OCR_BYTES = 10 * 1024 * 1024;
   const [readingDate, setReadingDate] = useState(today());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkCsv, setBulkCsv] = useState('');
@@ -703,6 +711,44 @@ function ReadingsTab(): ReactNode {
 
   const meters = metersQuery.data ?? [];
   const readings = readingsQuery.data?.data ?? [];
+
+  async function handleScanMeter(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > MAX_OCR_BYTES) {
+      addToast({
+        title: 'Photo too large',
+        description: `Max ${MAX_OCR_BYTES / (1024 * 1024)} MiB for AI reading.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      const result = await ocrMeter.mutateAsync(file);
+      if (result.reading_value != null) {
+        setReadingValue(String(result.reading_value));
+      }
+      setMeterScanConfidence(result.confidence);
+      setMeterScanUnit(result.unit);
+      addToast({
+        title: result.reading_value != null
+          ? `Read: ${result.reading_value}${result.unit ? ` ${result.unit}` : ''}`
+          : 'Could not read the meter — enter manually',
+        description: `Confidence ${Math.round((result.confidence ?? 0) * 100)}%. Double-check the value.`,
+        variant: result.reading_value != null ? 'success' : 'destructive',
+      });
+    } catch (err) {
+      addToast({
+        title: 'AI reading failed',
+        description:
+          (err as Error).message ?? 'Please enter the reading manually.',
+        variant: 'destructive',
+      });
+    }
+  }
 
   function handleSubmitReading(): void {
     if (!selectedMeterId || !readingValue) {
@@ -834,7 +880,38 @@ function ReadingsTab(): ReactNode {
             </div>
             <div className="space-y-2 w-32">
               <Label>Reading Value</Label>
-              <Input type="number" value={readingValue} onChange={(e) => setReadingValue(e.target.value)} placeholder="e.g. 1250" />
+              <div className="flex items-center gap-1">
+                <Input type="number" value={readingValue} onChange={(e) => setReadingValue(e.target.value)} placeholder="e.g. 1250" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Photograph the meter (AI-read)"
+                  disabled={ocrMeter.isPending}
+                  onClick={() => meterFileInputRef.current?.click()}
+                >
+                  <Camera className="h-4 w-4" />
+                </Button>
+                <input
+                  ref={meterFileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleScanMeter}
+                />
+              </div>
+              {meterScanConfidence != null && (
+                <p className="text-xs text-muted-foreground">
+                  {ocrMeter.isPending ? 'Reading…' : (
+                    <>
+                      {meterScanUnit && <span>{meterScanUnit} · </span>}
+                      <span className={meterScanConfidence >= 0.7 ? 'text-success' : 'text-warning'}>
+                        {Math.round(meterScanConfidence * 100)}% confident
+                      </span>
+                    </>
+                  )}
+                </p>
+              )}
             </div>
             <div className="space-y-2 w-40">
               <Label>Date</Label>

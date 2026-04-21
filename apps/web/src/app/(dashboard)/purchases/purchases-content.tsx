@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, type FormEvent, type ReactNode } from 'react';
+import { useRef, useState, useMemo, type FormEvent, type ReactNode } from 'react';
 import {
   Plus,
   ShoppingCart,
@@ -13,6 +13,7 @@ import {
   ArrowRightLeft,
   CreditCard,
   Clock,
+  Sparkles,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ import {
   useLedgerAccounts,
   useBankAccounts,
 } from '@/hooks';
+import { useOcrInvoice } from '@/hooks/use-ocr';
 
 // API responses may include joined fields beyond the base shared types
 interface PRRow {
@@ -269,6 +271,13 @@ export default function PurchasesContent(): ReactNode {
   const [billLineGstRate, setBillLineGstRate] = useState('');
   const [billExpenseAccountId, setBillExpenseAccountId] = useState('');
   const [billPayableAccountId, setBillPayableAccountId] = useState('');
+  // AI scan — populates the fields above from a vendor invoice photo/PDF.
+  // 10 MiB cap keeps us well under Gemini's ~20 MiB base64 limit.
+  const billFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [billScanConfidence, setBillScanConfidence] = useState<number | null>(null);
+  const [billScanVendorName, setBillScanVendorName] = useState<string | null>(null);
+  const ocrInvoice = useOcrInvoice();
+  const MAX_OCR_BYTES = 10 * 1024 * 1024;
 
   // Convert PR form state
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
@@ -457,6 +466,81 @@ export default function PurchasesContent(): ReactNode {
     setBillLineGstRate('');
     setBillExpenseAccountId('');
     setBillPayableAccountId('');
+    setBillScanConfidence(null);
+    setBillScanVendorName(null);
+  }
+
+  async function handleScanInvoice(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const file = event.target.files?.[0];
+    event.target.value = ''; // allow re-selecting the same file later
+    if (!file) return;
+    if (file.size > MAX_OCR_BYTES) {
+      addToast({
+        title: 'File too large',
+        description: `Max ${MAX_OCR_BYTES / (1024 * 1024)} MiB for AI scanning.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      const result = await ocrInvoice.mutateAsync(file);
+      // Match a known vendor by GSTIN first (most reliable), then by
+      // name contains match. If neither hits, leave blank + surface the
+      // extracted vendor name so the user can create or pick manually.
+      const byGstin = result.vendor_gstin
+        ? vendors.find((v) => (v.gstin ?? '').toLowerCase() === result.vendor_gstin!.toLowerCase())
+        : undefined;
+      const byName =
+        !byGstin && result.vendor_name
+          ? vendors.find((v) => v.name.toLowerCase().includes(result.vendor_name!.toLowerCase()))
+          : undefined;
+      const matchedVendor = byGstin ?? byName;
+      if (matchedVendor) setBillVendorId(matchedVendor.id);
+      setBillScanVendorName(result.vendor_name ?? null);
+
+      if (result.invoice_date) {
+        setBillDate(clampDateString(result.invoice_date, dateBounds.min, dateBounds.max));
+      }
+      if (result.due_date) {
+        setBillDueDate(clampDateString(result.due_date, dateBounds.min, dateBounds.max));
+      }
+      if (result.total_amount != null) {
+        setBillLineAmount(String(result.total_amount));
+      }
+      // Best-effort description: first line item, else invoice_number
+      if (result.line_items?.length > 0 && result.line_items[0].description) {
+        setBillLineDescription(result.line_items[0].description);
+      } else if (result.invoice_number) {
+        setBillLineDescription(`Invoice ${result.invoice_number}`);
+      }
+      // GST rate lifted from the first line item if present
+      if (
+        result.line_items?.length > 0 &&
+        result.line_items[0].gst_rate != null
+      ) {
+        setBillLineGstRate(String(result.line_items[0].gst_rate));
+      }
+      setBillScanConfidence(result.confidence);
+
+      addToast({
+        title: matchedVendor
+          ? `Extracted — vendor matched to ${matchedVendor.name}`
+          : result.vendor_name
+            ? `Extracted — vendor "${result.vendor_name}" not in list, pick manually`
+            : 'Extracted — review fields before saving',
+        description: `Confidence ${Math.round((result.confidence ?? 0) * 100)}%. Verify every field; AI can miss values.`,
+        variant: matchedVendor ? 'success' : 'default',
+      });
+    } catch (err) {
+      addToast({
+        title: 'AI extraction failed',
+        description:
+          (err as Error).message ?? 'Please fill the form manually.',
+        variant: 'destructive',
+      });
+    }
   }
 
   function handleCreateBill(e: FormEvent): void {
@@ -921,6 +1005,48 @@ export default function PurchasesContent(): ReactNode {
                         <DialogDescription>Record a new vendor bill directly</DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
+                        <div className="rounded-md border border-dashed border-muted-foreground/30 bg-muted/20 p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex-1 text-sm">
+                              <div className="flex items-center gap-2 font-medium">
+                                <Sparkles className="h-4 w-4 text-primary" />
+                                Scan invoice with AI
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Upload a vendor invoice (PDF / image). Gemini will pre-fill the fields below. Always review before saving.
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={ocrInvoice.isPending}
+                              onClick={() => billFileInputRef.current?.click()}
+                            >
+                              {ocrInvoice.isPending ? 'Extracting…' : 'Upload'}
+                            </Button>
+                            <input
+                              ref={billFileInputRef}
+                              type="file"
+                              className="hidden"
+                              accept="application/pdf,image/jpeg,image/png,image/webp"
+                              onChange={handleScanInvoice}
+                            />
+                          </div>
+                          {billScanConfidence != null && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              Last scan confidence:{' '}
+                              <span className={billScanConfidence >= 0.7 ? 'text-success font-medium' : 'text-warning font-medium'}>
+                                {Math.round(billScanConfidence * 100)}%
+                              </span>
+                              {billScanVendorName && !billVendorId && (
+                                <span className="ml-2">
+                                  Vendor read as <strong>{billScanVendorName}</strong> — not in your list, pick manually below.
+                                </span>
+                              )}
+                            </p>
+                          )}
+                        </div>
                         <div className="space-y-2">
                           <Label htmlFor="bill-vendor">Vendor</Label>
                           <Select

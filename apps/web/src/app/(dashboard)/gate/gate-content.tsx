@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
   Users,
   UserCheck,
@@ -12,6 +12,7 @@ import {
   X,
   CheckCircle,
   Car,
+  Sparkles,
   AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,6 +58,7 @@ import {
   useCreateParcel,
   useCollectParcel,
   useAnprLogs,
+  useAnprScan,
   useUnrecognizedVehicles,
   useGates,
   useUnits,
@@ -289,6 +291,47 @@ export default function GateContent(): ReactNode {
   };
   const anprQuery = useAnprLogs(anprFilters);
   const anprLogs: AnprLog[] = anprQuery.data?.data ?? [];
+
+  // Admin-panel manual ANPR scan (for test / demo; guards use Flutter in prod).
+  const anprScan = useAnprScan();
+  const anprFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [anprScanDirection, setAnprScanDirection] = useState<'entry' | 'exit'>('entry');
+  const MAX_OCR_BYTES = 10 * 1024 * 1024;
+
+  async function handleAnprScan(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > MAX_OCR_BYTES) {
+      addToast({
+        title: 'Photo too large',
+        description: `Max ${MAX_OCR_BYTES / (1024 * 1024)} MiB for AI scanning.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      const result = await anprScan.mutateAsync({
+        file,
+        direction: anprScanDirection,
+      });
+      addToast({
+        title: result.plate_number === 'NOT_FOUND'
+          ? 'No plate found in image'
+          : `Plate: ${result.plate_number}`,
+        description: `${result.is_recognized ? '✓ Matched a registered vehicle' : 'Unrecognized'} · ${Math.round(result.confidence * 100)}% confidence · logged as ${anprScanDirection}`,
+        variant: result.plate_number === 'NOT_FOUND' ? 'destructive' : result.is_recognized ? 'success' : 'default',
+      });
+    } catch (err) {
+      addToast({
+        title: 'Scan failed',
+        description: (err as Error).message ?? 'Check your Gemini API key and try again.',
+        variant: 'destructive',
+      });
+    }
+  }
   const unrecognizedQuery = useUnrecognizedVehicles();
   const unrecognizedVehicles: UnrecognizedVehicle[] = unrecognizedQuery.data ?? [];
 
@@ -923,20 +966,24 @@ export default function GateContent(): ReactNode {
                 <StaffTableSkeleton />
               ) : (
                 staffLogs.map((log) => (
+                  // Same class of QA #23 fix we did for gate visitors —
+                  // API returns staff_name / check_in_at / check_out_at,
+                  // old UI read .name / .check_in_time / .check_out_time
+                  // (all undefined, cells shifted left).
                   <TableRow key={log.id}>
-                    <TableCell className="font-medium">{log.name}</TableCell>
+                    <TableCell className="font-medium">{log.staff_name}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">{log.staff_type}</Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{log.phone}</TableCell>
                     <TableCell>{log.unit_number ?? log.unit_id ?? '-'}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatTime(log.check_in_time)}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatTime(log.check_out_time)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatTime(log.check_in_at)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatTime(log.check_out_at)}</TableCell>
                     <TableCell className="max-w-[150px] truncate text-muted-foreground">
                       {log.notes ?? '-'}
                     </TableCell>
                     <TableCell>
-                      {!log.check_out_time && (
+                      {!log.check_out_at && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -1153,6 +1200,44 @@ export default function GateContent(): ReactNode {
             </CardContent>
           </Card>
         )}
+
+        {/* Admin-panel manual ANPR scan — guards use Flutter in prod; this
+            is the admin's way to test Gemini plate recognition quality. */}
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-3 py-4">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <div className="flex-1 min-w-[220px]">
+              <p className="text-sm font-medium">Test ANPR with AI</p>
+              <p className="text-xs text-muted-foreground">
+                Upload a photo of a vehicle plate. Will run Gemini, log the scan, and refresh the table below.
+              </p>
+            </div>
+            <Select
+              value={anprScanDirection}
+              onChange={(e) => setAnprScanDirection(e.target.value as 'entry' | 'exit')}
+              className="w-28"
+            >
+              <option value="entry">Entry</option>
+              <option value="exit">Exit</option>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={anprScan.isPending}
+              onClick={() => anprFileInputRef.current?.click()}
+            >
+              {anprScan.isPending ? 'Scanning…' : 'Upload plate photo'}
+            </Button>
+            <input
+              ref={anprFileInputRef}
+              type="file"
+              className="hidden"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAnprScan}
+            />
+          </CardContent>
+        </Card>
 
         {/* ANPR log table */}
         <Card>
