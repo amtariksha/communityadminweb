@@ -181,6 +181,53 @@ export function useUploadDocument() {
   });
 }
 
+/**
+ * Two-step real file upload:
+ *   1. Ask the API for a presigned S3 POST (returns { url, fields, fileUrl }).
+ *   2. POST the actual file multipart/form-data to `url` using the returned
+ *      `fields` plus the file under the `file` key. S3 enforces
+ *      content-length-range + content-type server-side, so oversized
+ *      or wrong-MIME uploads get rejected without us seeing the byte.
+ *
+ * Returns the fileUrl the document DB row should reference.
+ */
+export function useUploadFileToS3() {
+  return useMutation({
+    mutationFn: async function uploadFile(input: {
+      file: File;
+      maxSizeBytes?: number;
+    }): Promise<{ fileUrl: string; key: string }> {
+      const presign = await api.post<{
+        data: {
+          url: string;
+          fields: Record<string, string>;
+          key: string;
+          fileUrl: string;
+          maxSizeBytes: number;
+        };
+      }>('/upload/presigned-post', {
+        fileName: input.file.name,
+        contentType: input.file.type || 'application/octet-stream',
+        maxSizeBytes: input.maxSizeBytes ?? 25 * 1024 * 1024,
+      });
+      const { url, fields, key, fileUrl } = presign.data;
+
+      const form = new FormData();
+      for (const [k, v] of Object.entries(fields)) form.append(k, v);
+      form.append('file', input.file);
+
+      const res = await fetch(url, { method: 'POST', body: form });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(
+          `Upload failed (${res.status}): ${text.slice(0, 300) || 'unknown error'}`,
+        );
+      }
+      return { fileUrl, key };
+    },
+  });
+}
+
 export function useUpdateDocument() {
   const queryClient = useQueryClient();
 

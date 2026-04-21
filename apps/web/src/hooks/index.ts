@@ -151,6 +151,7 @@ export {
   useDocuments,
   useDocument,
   useUploadDocument,
+  useUploadFileToS3,
   useUpdateDocument,
   useDeleteDocument,
   useExpiringDocuments,

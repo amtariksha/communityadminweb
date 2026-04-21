@@ -50,6 +50,7 @@ import {
   useDocuments,
   useExpiringDocuments,
   useUploadDocument,
+  useUploadFileToS3,
   useCreateCategory,
   useDeleteDocument,
 } from '@/hooks';
@@ -131,14 +132,15 @@ export default function DocumentsContent(): ReactNode {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [page, setPage] = useState(1);
 
-  // Upload dialog
+  // Upload dialog — the file itself is picked via a File input, uploaded
+  // to S3 via presigned POST, and THEN a DB row is created referencing
+  // the returned fileUrl. No more "paste a URL" (which trusted any
+  // external host and produced broken https://drrs/… rows).
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadCategoryId, setUploadCategoryId] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
-  const [uploadFileUrl, setUploadFileUrl] = useState('');
-  const [uploadFileType, setUploadFileType] = useState('pdf');
-  const [uploadFileSize, setUploadFileSize] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   // Category dialog
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -152,6 +154,7 @@ export default function DocumentsContent(): ReactNode {
   });
   const expiringQuery = useExpiringDocuments(30);
   const uploadDocument = useUploadDocument();
+  const uploadFileToS3 = useUploadFileToS3();
   const createCategory = useCreateCategory();
   const deleteDocument = useDeleteDocument();
 
@@ -174,22 +177,42 @@ export default function DocumentsContent(): ReactNode {
     setUploadTitle('');
     setUploadCategoryId('');
     setUploadDescription('');
-    setUploadFileUrl('');
-    setUploadFileType('pdf');
-    setUploadFileSize('');
+    setUploadFile(null);
   }
 
-  function handleUploadDocument(e: FormEvent): void {
+  async function handleUploadDocument(e: FormEvent): Promise<void> {
     e.preventDefault();
+    if (!uploadFile) {
+      addToast({ title: 'Please choose a file', variant: 'destructive' });
+      return;
+    }
+
+    // 1. Ask the API for a presigned S3 POST, then POST the file bytes
+    //    directly to S3. S3 enforces the content-length-range from the
+    //    policy condition — oversized files get a 400 from S3 itself.
+    let fileUrl: string;
+    try {
+      const res = await uploadFileToS3.mutateAsync({ file: uploadFile });
+      fileUrl = res.fileUrl;
+    } catch (err) {
+      addToast({
+        title: 'Upload failed',
+        description: (err as Error).message ?? 'Could not upload file',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 2. Create the document row pointing at the freshly uploaded file.
     uploadDocument.mutate(
       {
         category_id: uploadCategoryId,
-        title: uploadTitle,
+        title: uploadTitle || uploadFile.name,
         description: uploadDescription || null,
-        file_url: uploadFileUrl,
-        file_name: uploadTitle.trim() || 'document',
-        mime_type: uploadFileType === 'pdf' ? 'application/pdf' : `application/${uploadFileType}`,
-        file_size: Number(uploadFileSize) || 0,
+        file_url: fileUrl,
+        file_name: uploadFile.name,
+        mime_type: uploadFile.type || 'application/octet-stream',
+        file_size: uploadFile.size,
       },
       {
         onSuccess() {
@@ -197,8 +220,12 @@ export default function DocumentsContent(): ReactNode {
           resetUploadForm();
           addToast({ title: 'Document uploaded successfully', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to upload document', variant: 'destructive' });
+        onError(error) {
+          addToast({
+            title: 'Failed to save document',
+            description: error.message,
+            variant: 'destructive',
+          });
         },
       },
     );
@@ -327,49 +354,51 @@ export default function DocumentsContent(): ReactNode {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="upload-file-url">File URL</Label>
+                      <Label htmlFor="upload-file">File</Label>
                       <Input
-                        id="upload-file-url"
-                        placeholder="https://storage.example.com/file.pdf"
+                        id="upload-file"
+                        type="file"
                         required
-                        value={uploadFileUrl}
-                        onChange={(e) => setUploadFileUrl(e.target.value)}
+                        accept="application/pdf,image/jpeg,image/png,image/webp,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] ?? null;
+                          setUploadFile(f);
+                          if (f && !uploadTitle) setUploadTitle(f.name);
+                        }}
                       />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="upload-file-type">File Type</Label>
-                        <Select
-                          id="upload-file-type"
-                          value={uploadFileType}
-                          onChange={(e) => setUploadFileType(e.target.value)}
-                        >
-                          <option value="pdf">PDF</option>
-                          <option value="doc">DOC</option>
-                          <option value="docx">DOCX</option>
-                          <option value="jpg">JPG</option>
-                          <option value="png">PNG</option>
-                          <option value="other">Other</option>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="upload-file-size">File Size (bytes)</Label>
-                        <Input
-                          id="upload-file-size"
-                          type="number"
-                          placeholder="e.g., 2048000"
-                          value={uploadFileSize}
-                          onChange={(e) => setUploadFileSize(e.target.value)}
-                        />
-                      </div>
+                      {uploadFile && (
+                        <p className="text-xs text-muted-foreground">
+                          {uploadFile.name} — {(uploadFile.size / 1024).toFixed(1)} KB
+                          {uploadFile.size > 25 * 1024 * 1024 && (
+                            <span className="ml-2 font-medium text-destructive">
+                              exceeds 25 MB limit
+                            </span>
+                          )}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Accepted: PDF, JPG, PNG, CSV, XLS/XLSX. Max 25 MB.
+                      </p>
                     </div>
                   </div>
                   <DialogFooter>
                     <DialogClose>
                       <Button type="button" variant="outline">Cancel</Button>
                     </DialogClose>
-                    <Button type="submit" disabled={uploadDocument.isPending}>
-                      {uploadDocument.isPending ? 'Uploading...' : 'Upload'}
+                    <Button
+                      type="submit"
+                      disabled={
+                        !uploadFile ||
+                        uploadFile.size > 25 * 1024 * 1024 ||
+                        uploadFileToS3.isPending ||
+                        uploadDocument.isPending
+                      }
+                    >
+                      {uploadFileToS3.isPending
+                        ? 'Uploading to storage...'
+                        : uploadDocument.isPending
+                          ? 'Saving...'
+                          : 'Upload'}
                     </Button>
                   </DialogFooter>
                 </form>
