@@ -193,9 +193,13 @@ export {
   useSuperAdminUsers,
   useSuperAdminUserRoles,
   useAssignUserRole,
+  useSuperAdminUnitsForTenant,
   useRemoveUserRole,
 } from './use-super-admin-users';
 export type { SuperAdminUser, UserRoleDetail } from './use-super-admin-users';
+
+// Platform-level config (read-only for tenant users)
+export { useTaxRates } from './use-tax-rates';
 
 // Tenant Members (Super Admin)
 export {

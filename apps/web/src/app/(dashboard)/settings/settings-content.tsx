@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { GstRateSelect } from '@/components/ui/gst-rate-select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -1047,16 +1048,12 @@ export default function SettingsContent(): ReactNode {
                     </div>
                     {ruleIsGstApplicable && (
                       <div className="space-y-2">
-                        <Label htmlFor="rule-gst-rate">GST Rate (%)</Label>
-                        <Input
+                        <Label htmlFor="rule-gst-rate">GST Rate</Label>
+                        <GstRateSelect
                           id="rule-gst-rate"
-                          type="number"
-                          min="0"
-                          max="28"
-                          step="0.01"
-                          placeholder="e.g., 18"
-                          value={ruleGstRate}
-                          onChange={(e) => setRuleGstRate(e.target.value)}
+                          allowNone={false}
+                          value={ruleGstRate ? Number(ruleGstRate) : null}
+                          onChange={(v) => setRuleGstRate(v == null ? '' : String(v))}
                         />
                       </div>
                     )}

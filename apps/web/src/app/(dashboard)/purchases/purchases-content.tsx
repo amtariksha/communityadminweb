@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { GstRateSelect } from '@/components/ui/gst-rate-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -1129,16 +1130,12 @@ export default function PurchasesContent(): ReactNode {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="bill-line-gst">GST Rate (%)</Label>
-                            <Input
+                            <Label htmlFor="bill-line-gst">GST Rate</Label>
+                            <GstRateSelect
                               id="bill-line-gst"
-                              type="number"
-                              min="0"
-                              max="28"
-                              step="0.01"
-                              placeholder="e.g., 18"
-                              value={billLineGstRate}
-                              onChange={(e) => setBillLineGstRate(e.target.value)}
+                              allowNone
+                              value={billLineGstRate ? Number(billLineGstRate) : null}
+                              onChange={(v) => setBillLineGstRate(v == null ? '' : String(v))}
                             />
                           </div>
                         </div>

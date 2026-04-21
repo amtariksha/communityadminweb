@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { GstRateSelect } from '@/components/ui/gst-rate-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -612,14 +613,13 @@ export default function InvoicesContent(): ReactNode {
                                 </div>
                                 {ruleGstApplicable && (
                                   <div className="space-y-2">
-                                    <Label htmlFor="rule-gst-rate">GST Rate (%)</Label>
-                                    <Input
+                                    <Label htmlFor="rule-gst-rate">GST Rate</Label>
+                                    <GstRateSelect
                                       id="rule-gst-rate"
-                                      type="number"
-                                      placeholder="18"
-                                      value={ruleGstRate}
-                                      onChange={(e) => setRuleGstRate(e.target.value)}
                                       required
+                                      allowNone={false}
+                                      value={ruleGstRate ? Number(ruleGstRate) : null}
+                                      onChange={(v) => setRuleGstRate(v == null ? '' : String(v))}
                                     />
                                   </div>
                                 )}

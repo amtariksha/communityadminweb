@@ -2,6 +2,49 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { getToken } from '@/lib/auth';
+
+interface SuperAdminUnit {
+  id: string;
+  unit_number: string;
+  block: string | null;
+  floor: number | null;
+}
+
+/**
+ * Fetch units for an arbitrary tenant using an x-tenant-id header
+ * override. Used by the super-admin user-management dialog when
+ * assigning a resident-type role — we need to show the tenant's
+ * units to pick one. The regular `useUnits` pulls tenant from
+ * localStorage which is wrong for cross-tenant super-admin flows.
+ */
+export function useSuperAdminUnitsForTenant(tenantId: string | null) {
+  return useQuery({
+    queryKey: ['super-admin-units', tenantId],
+    enabled: !!tenantId,
+    queryFn: async function fetchUnits(): Promise<SuperAdminUnit[]> {
+      const token = getToken();
+      const base =
+        process.env.NEXT_PUBLIC_API_URL ??
+        (typeof window !== 'undefined' && window.location.hostname === 'communityos.eassy.life'
+          ? 'https://community.eassy.life'
+          : 'http://localhost:4000');
+      const res = await fetch(`${base}/units?limit=500`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
+        },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Failed to fetch units' }));
+        throw new Error(err.message ?? 'Failed to fetch units');
+      }
+      const payload = (await res.json()) as { data: SuperAdminUnit[] };
+      return payload.data ?? [];
+    },
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Response types
@@ -49,6 +92,9 @@ interface AssignUserRoleInput {
   user_id: string;
   tenant_id: string;
   role: string;
+  // Required for resident roles (owner / tenant_resident / *_family).
+  // Backend rejects with 400 if a resident role arrives without one.
+  unit_id?: string;
 }
 
 interface RemoveUserRoleInput {
@@ -121,7 +167,11 @@ export function useAssignUserRole() {
     mutationFn: function assignRole(input: AssignUserRoleInput) {
       return api.post<{ message: string }>(
         `/super-admin/users/${input.user_id}/roles`,
-        { tenant_id: input.tenant_id, role: input.role },
+        {
+          tenant_id: input.tenant_id,
+          role: input.role,
+          ...(input.unit_id ? { unit_id: input.unit_id } : {}),
+        },
       );
     },
     onSuccess: function invalidate(_data, variables) {

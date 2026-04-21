@@ -39,6 +39,7 @@ import {
   useSuperAdminUserRoles,
   useAssignUserRole,
   useRemoveUserRole,
+  useSuperAdminUnitsForTenant,
   useTenants,
 } from '@/hooks';
 import type { SuperAdminUser } from '@/hooks';
@@ -99,6 +100,7 @@ export default function UserManagement(): ReactNode {
   // Add role form
   const [newRoleTenantId, setNewRoleTenantId] = useState('');
   const [newRoleSlug, setNewRoleSlug] = useState('');
+  const [newRoleUnitId, setNewRoleUnitId] = useState('');
 
   // Add member dialog
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
@@ -111,6 +113,9 @@ export default function UserManagement(): ReactNode {
   });
   const userRolesQuery = useSuperAdminUserRoles(selectedUser?.id ?? '');
   const tenantsQuery = useTenants({ limit: 100 });
+  // Units for the currently-selected tenant — only fetched when the
+  // resident-role branch is active. Disabled otherwise.
+  const unitsQuery = useSuperAdminUnitsForTenant(newRoleTenantId || null);
 
   // Mutations
   const assignRole = useAssignUserRole();
@@ -132,23 +137,56 @@ export default function UserManagement(): ReactNode {
     setPage(1);
   }
 
+  // Roles that imply physical residence — backend also keeps this list
+  // server-side. Must agree, otherwise assignment 400s with
+  // "unit_id required for resident roles".
+  const RESIDENT_ROLE_SLUGS = new Set([
+    'owner',
+    'tenant_resident',
+    'tenant',
+    'owner_family',
+    'family_member',
+    'tenant_family',
+  ]);
+  const isResidentRole = RESIDENT_ROLE_SLUGS.has(newRoleSlug);
+
   function openRoleDialog(user: SuperAdminUser): void {
     setSelectedUser(user);
     setRoleDialogOpen(true);
     setNewRoleTenantId('');
     setNewRoleSlug('');
+    setNewRoleUnitId('');
   }
 
   function handleAssignRole(): void {
     if (!selectedUser || !newRoleTenantId || !newRoleSlug) return;
+    if (isResidentRole && !newRoleUnitId) {
+      addToast({
+        title: 'Unit is required',
+        description: 'Resident roles must be linked to a specific unit so they appear in the Member Directory.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     assignRole.mutate(
-      { user_id: selectedUser.id, tenant_id: newRoleTenantId, role: newRoleSlug },
+      {
+        user_id: selectedUser.id,
+        tenant_id: newRoleTenantId,
+        role: newRoleSlug,
+        ...(isResidentRole ? { unit_id: newRoleUnitId } : {}),
+      },
       {
         onSuccess() {
-          addToast({ title: 'Role assigned', variant: 'success' });
+          addToast({
+            title: isResidentRole
+              ? 'Role assigned — member added to directory'
+              : 'Role assigned',
+            variant: 'success',
+          });
           setNewRoleTenantId('');
           setNewRoleSlug('');
+          setNewRoleUnitId('');
         },
         onError(error) {
           addToast({ title: 'Failed to assign role', description: error.message, variant: 'destructive' });
@@ -401,10 +439,47 @@ export default function UserManagement(): ReactNode {
                 </Select>
               </div>
             </div>
+            {/* Unit picker — only shown for resident roles. Backend
+                rejects resident-role assignments without a unit_id,
+                so we require it here too and explain why. */}
+            {isResidentRole && (
+              <div className="space-y-1">
+                <Label htmlFor="role-unit" className="text-xs">
+                  Unit <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  id="role-unit"
+                  value={newRoleUnitId}
+                  onChange={(e) => setNewRoleUnitId(e.target.value)}
+                  disabled={!newRoleTenantId || unitsQuery.isLoading}
+                >
+                  <option value="">
+                    {!newRoleTenantId
+                      ? 'Pick a tenant first…'
+                      : unitsQuery.isLoading
+                        ? 'Loading units…'
+                        : `Select unit… (${unitsQuery.data?.length ?? 0} available)`}
+                  </option>
+                  {(unitsQuery.data ?? []).map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.block ? `${u.block}-` : ''}{u.unit_number}
+                    </option>
+                  ))}
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Residents must be linked to a unit so they appear in the tenant&apos;s Member Directory.
+                </p>
+              </div>
+            )}
             <Button
               size="sm"
               onClick={handleAssignRole}
-              disabled={!newRoleTenantId || !newRoleSlug || assignRole.isPending}
+              disabled={
+                !newRoleTenantId ||
+                !newRoleSlug ||
+                (isResidentRole && !newRoleUnitId) ||
+                assignRole.isPending
+              }
             >
               {assignRole.isPending ? 'Assigning...' : 'Assign Role'}
             </Button>
