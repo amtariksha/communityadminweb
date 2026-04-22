@@ -12,6 +12,20 @@ export interface TenantSettings {
   visitor_management?: boolean;
   maintenance_requests?: boolean;
   parking_management?: boolean;
+
+  // Batch 15 — automated monthly report email digest. Fires via the
+  // backend's BullMQ cron and is enforced per tenant by
+  // ScheduledReportsService. Keep in sync with
+  // communityos/packages/shared/src/types/tenant.ts.
+  scheduled_reports?: {
+    enabled?: boolean;
+    reports?: Array<
+      'trial_balance' | 'income_expenditure' | 'defaulters' | 'collection_summary'
+    >;
+    recipients?: string[];
+    day_of_month?: number;
+    time_of_day?: string;
+  };
 }
 
 export interface Tenant {
