@@ -275,6 +275,21 @@ export default function DirectoryContent(): ReactNode {
             <TableBody>
               {directoryQuery.isLoading ? (
                 <TableSkeleton />
+              ) : directoryQuery.isError ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-8 text-center text-destructive">
+                    Failed to load member directory —{' '}
+                    {(directoryQuery.error as Error)?.message ?? 'unknown error'}.{' '}
+                    <Button
+                      size="sm"
+                      variant="link"
+                      className="px-1 text-destructive underline"
+                      onClick={() => directoryQuery.refetch()}
+                    >
+                      Retry
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ) : members.length > 0 ? (
                 members.map((member) => (
                   <TableRow key={member.id}>

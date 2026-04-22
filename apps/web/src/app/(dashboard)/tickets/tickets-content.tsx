@@ -556,6 +556,21 @@ export default function TicketsContent(): ReactNode {
                     <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                   </TableRow>
                 ))
+              ) : ticketsQuery.isError ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-8 text-center text-destructive">
+                    Failed to load tickets —{' '}
+                    {(ticketsQuery.error as Error)?.message ?? 'unknown error'}.{' '}
+                    <Button
+                      size="sm"
+                      variant="link"
+                      className="px-1 text-destructive underline"
+                      onClick={() => ticketsQuery.refetch()}
+                    >
+                      Retry
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ) : tickets.length > 0 ? (
                 tickets.map((ticket) => (
                   <TableRow key={ticket.id} className="cursor-pointer" onClick={() => handleViewTicket(ticket)}>

@@ -370,6 +370,21 @@ function MetersTab({
                   ))}
                 </TableRow>
               ))
+            ) : metersQuery.isError ? (
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-destructive">
+                  Failed to load meters —{' '}
+                  {(metersQuery.error as Error)?.message ?? 'unknown error'}.{' '}
+                  <Button
+                    size="sm"
+                    variant="link"
+                    className="px-1 text-destructive underline"
+                    onClick={() => metersQuery.refetch()}
+                  >
+                    Retry
+                  </Button>
+                </TableCell>
+              </TableRow>
             ) : meters.length > 0 ? (
               meters.map((meter) => (
                 <TableRow key={meter.id}>

@@ -690,6 +690,21 @@ export default function StaffContent(): ReactNode {
               <TableBody>
                 {employeesQuery.isLoading ? (
                   <TableSkeleton cols={7} />
+                ) : employeesQuery.isError ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-8 text-center text-destructive">
+                      Failed to load employees —{' '}
+                      {(employeesQuery.error as Error)?.message ?? 'unknown error'}.{' '}
+                      <Button
+                        size="sm"
+                        variant="link"
+                        className="px-1 text-destructive underline"
+                        onClick={() => employeesQuery.refetch()}
+                      >
+                        Retry
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ) : employees.length > 0 ? (
                   employees.map((emp) => (
                     <TableRow key={emp.id}>
