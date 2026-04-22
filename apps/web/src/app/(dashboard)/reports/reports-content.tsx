@@ -137,7 +137,20 @@ function TrialBalanceView({ asOfDate }: { asOfDate: string }): ReactNode {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-muted-foreground">As of {formatDate(data.as_of_date)}</p>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">As of {formatDate(data.as_of_date)}</p>
+        <ExportButton
+          data={data.rows as unknown as Record<string, unknown>[]}
+          filename={`trial-balance-${data.as_of_date}`}
+          columns={[
+            { key: 'account_code', label: 'Code' },
+            { key: 'account_name', label: 'Account' },
+            { key: 'group_name', label: 'Group' },
+            { key: 'debit', label: 'Debit' },
+            { key: 'credit', label: 'Credit' },
+          ]}
+        />
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
@@ -185,9 +198,42 @@ function BalanceSheetView({ asOfDate }: { asOfDate: string }): ReactNode {
   const assetRows = data.assets ?? [];
   const liabilityRows = data.liabilities ?? [];
 
+  // Flatten for export: each row labelled with its side (Asset / Liability)
+  // and group so the exported CSV reads independently of the page layout.
+  const exportRows = [
+    ...assetRows.flatMap((s) =>
+      s.accounts.map((acc) => ({
+        side: 'Asset',
+        group: s.group,
+        account: acc.account_name,
+        balance: acc.balance,
+      })),
+    ),
+    ...liabilityRows.flatMap((s) =>
+      s.accounts.map((acc) => ({
+        side: 'Liability',
+        group: s.group,
+        account: acc.account_name,
+        balance: acc.balance,
+      })),
+    ),
+  ];
+
   return (
     <div>
-      <p className="mb-4 text-sm text-muted-foreground">As of {formatDate(data.as_of_date)}</p>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">As of {formatDate(data.as_of_date)}</p>
+        <ExportButton
+          data={exportRows as unknown as Record<string, unknown>[]}
+          filename={`balance-sheet-${data.as_of_date}`}
+          columns={[
+            { key: 'side', label: 'Side' },
+            { key: 'group', label: 'Group' },
+            { key: 'account', label: 'Account' },
+            { key: 'balance', label: 'Balance' },
+          ]}
+        />
+      </div>
       <div className="grid gap-6 md:grid-cols-2">
         <div>
           <h3 className="mb-3 text-lg font-semibold">Assets</h3>
@@ -277,11 +323,38 @@ function IncomeExpenditureView({ startDate, endDate }: { startDate: string; endD
   const expenditureRows = data.expenditure ?? [];
   const isSurplus = (data.surplus_or_deficit ?? 0) >= 0;
 
+  const exportRows = [
+    ...incomeRows.map((r) => ({
+      type: 'Income',
+      code: r.account_code,
+      account: r.account_name,
+      amount: r.amount,
+    })),
+    ...expenditureRows.map((r) => ({
+      type: 'Expenditure',
+      code: r.account_code,
+      account: r.account_name,
+      amount: r.amount,
+    })),
+  ];
+
   return (
     <div>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Period: {formatDate(data.start_date)} to {formatDate(data.end_date)}
-      </p>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Period: {formatDate(data.start_date)} to {formatDate(data.end_date)}
+        </p>
+        <ExportButton
+          data={exportRows as unknown as Record<string, unknown>[]}
+          filename={`income-expenditure-${data.start_date}-to-${data.end_date}`}
+          columns={[
+            { key: 'type', label: 'Type' },
+            { key: 'code', label: 'Code' },
+            { key: 'account', label: 'Account' },
+            { key: 'amount', label: 'Amount' },
+          ]}
+        />
+      </div>
       <div className="grid gap-6 md:grid-cols-2">
         <div>
           <h3 className="mb-3 text-lg font-semibold text-success">Income</h3>
@@ -374,9 +447,23 @@ function GeneralLedgerView({
             {formatDate(data.start_date)} to {formatDate(data.end_date)}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-sm text-muted-foreground">Opening Balance</p>
-          <p className="font-semibold">{formatCurrency(data.opening_balance)}</p>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-sm text-muted-foreground">Opening Balance</p>
+            <p className="font-semibold">{formatCurrency(data.opening_balance)}</p>
+          </div>
+          <ExportButton
+            data={data.transactions as unknown as Record<string, unknown>[]}
+            filename={`general-ledger-${data.account_name.replace(/\s+/g, '-')}-${data.start_date}-to-${data.end_date}`}
+            columns={[
+              { key: 'date', label: 'Date' },
+              { key: 'entry_number', label: 'Entry #' },
+              { key: 'narration', label: 'Narration' },
+              { key: 'debit', label: 'Debit' },
+              { key: 'credit', label: 'Credit' },
+              { key: 'running_balance', label: 'Balance' },
+            ]}
+          />
         </div>
       </div>
       <Table>
@@ -431,9 +518,23 @@ function DefaultersView(): ReactNode {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{data.length} defaulting units</p>
-        <p className="font-semibold text-destructive">
-          Total Overdue: {formatCurrency(totalOverdue)}
-        </p>
+        <div className="flex items-center gap-4">
+          <p className="font-semibold text-destructive">
+            Total Overdue: {formatCurrency(totalOverdue)}
+          </p>
+          <ExportButton
+            data={data as unknown as Record<string, unknown>[]}
+            filename={`defaulters-${new Date().toISOString().split('T')[0]}`}
+            columns={[
+              { key: 'unit_number', label: 'Unit' },
+              { key: 'block', label: 'Block' },
+              { key: 'member_name', label: 'Member' },
+              { key: 'total_overdue', label: 'Overdue Amount' },
+              { key: 'overdue_months', label: 'Overdue Months' },
+              { key: 'oldest_due_date', label: 'Oldest Due Date' },
+            ]}
+          />
+        </div>
       </div>
       <Table>
         <TableHeader>
@@ -487,6 +588,21 @@ function VendorAgingView(): ReactNode {
 
   return (
     <div>
+      <div className="mb-4 flex items-center justify-end">
+        <ExportButton
+          data={data as unknown as Record<string, unknown>[]}
+          filename={`vendor-aging-${new Date().toISOString().split('T')[0]}`}
+          columns={[
+            { key: 'vendor_name', label: 'Vendor' },
+            { key: 'current', label: 'Current' },
+            { key: 'days_30', label: '1-30 Days' },
+            { key: 'days_60', label: '31-60 Days' },
+            { key: 'days_90', label: '61-90 Days' },
+            { key: 'over_90', label: '90+ Days' },
+            { key: 'total', label: 'Total' },
+          ]}
+        />
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
