@@ -69,6 +69,28 @@ async function refreshAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
+// QA #18 / #31 / #47 — for mutation methods the server opts specific
+// handlers into the IdempotencyInterceptor (see apps/api/src/common/
+// interceptors/idempotency.interceptor.ts). When the client sends an
+// Idempotency-Key on a decorated route, a double-submit (double-click,
+// flaky-network retry, webhook replay) replays the cached response
+// instead of running the handler twice — so no duplicate receipts /
+// ledger postings / approve+post loops.
+//
+// Non-annotated routes ignore the header, so it's safe to always send.
+// crypto.randomUUID() is in all evergreen browsers the admin panel
+// supports (Chrome 92+, Safari 15.4+, Firefox 95+).
+const MUTATION_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
+
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback for older browsers / SSR — random, but collision chance is
+  // fine given the (tenant_id, endpoint, key) composite.
+  return `idem-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -89,6 +111,12 @@ async function request<T>(
 
   if (tenantId) {
     headers['x-tenant-id'] = tenantId;
+  }
+
+  // Auto-attach an idempotency key on mutations unless the caller already
+  // set one (e.g. for a retry-with-the-same-key flow).
+  if (MUTATION_METHODS.has(method.toUpperCase()) && !headers['Idempotency-Key']) {
+    headers['Idempotency-Key'] = generateIdempotencyKey();
   }
 
   let url = `${API_BASE_URL}${path}`;
