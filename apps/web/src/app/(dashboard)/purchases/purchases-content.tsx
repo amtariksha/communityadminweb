@@ -1178,6 +1178,7 @@ export default function PurchasesContent(): ReactNode {
                           <Textarea
                             id="bill-narration"
                             placeholder="Optional notes..."
+                            maxLength={500}
                             value={billNarration}
                             onChange={(e) => setBillNarration(e.target.value)}
                           />

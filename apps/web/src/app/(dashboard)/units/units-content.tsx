@@ -52,6 +52,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { useToast } from '@/components/ui/toast';
+import { normalizePhone, validateName } from '@/lib/validation';
 import {
   useUnits,
   useUnitStats,
@@ -484,12 +485,21 @@ export default function UnitsContent(): ReactNode {
 
   function handleEditMember(e: FormEvent): void {
     e.preventDefault();
+    const phone = normalizePhone(editMemberPhone);
+    if (!phone.ok) {
+      addToast({
+        title: 'Invalid phone number',
+        description: phone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
     updateMemberDetail.mutate(
       {
         unitId: detailUnitId,
         memberId: editMemberId,
         name: editMemberName || undefined,
-        phone: editMemberPhone || undefined,
+        phone: phone.value || undefined,
         email: editMemberEmail || null,
       },
       {
@@ -520,11 +530,32 @@ export default function UnitsContent(): ReactNode {
 
   function handleTransferOwnership(e: FormEvent): void {
     e.preventDefault();
+    // QA #86 — normalize phone to canonical +91XXXXXXXXXX before send
+    // so the API accepts the same value whether tester typed 10 digits
+    // or prefixed +91.
+    const phone = normalizePhone(transferPhone);
+    if (!phone.ok || !phone.value) {
+      addToast({
+        title: 'Invalid phone number',
+        description: phone.ok ? 'Phone is required.' : phone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+    const name = validateName(transferName);
+    if (!name.ok) {
+      addToast({
+        title: 'Invalid name',
+        description: name.error,
+        variant: 'destructive',
+      });
+      return;
+    }
     transferOwnership.mutate(
       {
         unitId: detailUnitId,
-        name: transferName,
-        phone: transferPhone,
+        name: name.value,
+        phone: phone.value,
         email: transferEmail || undefined,
         move_in_date: transferMoveIn || undefined,
       },
@@ -625,11 +656,29 @@ export default function UnitsContent(): ReactNode {
 
   function handleAddMember(e: FormEvent): void {
     e.preventDefault();
+    const phone = normalizePhone(addMemberPhone);
+    if (!phone.ok) {
+      addToast({
+        title: 'Invalid phone number',
+        description: phone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+    const name = validateName(addMemberName);
+    if (!name.ok) {
+      addToast({
+        title: 'Invalid name',
+        description: name.error,
+        variant: 'destructive',
+      });
+      return;
+    }
     addMember.mutate(
       {
         unit_id: detailUnitId,
-        name: addMemberName,
-        phone: addMemberPhone,
+        name: name.value,
+        phone: phone.value || undefined,
         member_type: addMemberType,
         move_in_date: addMemberMoveIn,
         ...(addMemberParentId ? { parent_member_id: addMemberParentId } : {}),
@@ -1462,7 +1511,8 @@ export default function UnitsContent(): ReactNode {
                   id="edit-m-phone"
                   value={editMemberPhone}
                   onChange={(e) => setEditMemberPhone(e.target.value)}
-                  maxLength={10}
+                  placeholder="10-digit mobile (optional +91 prefix)"
+                  maxLength={13}
                 />
               </div>
               <div className="space-y-2">
@@ -1515,8 +1565,8 @@ export default function UnitsContent(): ReactNode {
                 <Input
                   id="transfer-phone"
                   required
-                  placeholder="10-digit mobile"
-                  maxLength={10}
+                  placeholder="10-digit mobile (optional +91 prefix)"
+                  maxLength={13}
                   value={transferPhone}
                   onChange={(e) => setTransferPhone(e.target.value)}
                 />
@@ -1651,8 +1701,8 @@ export default function UnitsContent(): ReactNode {
                 <Input
                   id="add-m-phone"
                   required
-                  placeholder="10-digit mobile"
-                  maxLength={10}
+                  placeholder="10-digit mobile (optional +91 prefix)"
+                  maxLength={13}
                   value={addMemberPhone}
                   onChange={(e) => setAddMemberPhone(e.target.value)}
                 />

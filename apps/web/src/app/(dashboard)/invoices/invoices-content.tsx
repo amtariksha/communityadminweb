@@ -563,7 +563,9 @@ export default function InvoicesContent(): ReactNode {
                                       type="number"
                                       placeholder="3000"
                                       min="0.01"
+                                      max="10000000"
                                       step="0.01"
+                                      title="Amount must be greater than zero (max ₹1 crore)"
                                       value={ruleFlatAmount}
                                       onChange={(e) => setRuleFlatAmount(e.target.value)}
                                       required

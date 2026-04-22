@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { formatDate } from '@/lib/utils';
+import { checkUploadFile } from '@/lib/validation';
 import { useToast } from '@/components/ui/toast';
 import {
   useDocumentCategories,
@@ -184,6 +185,19 @@ export default function DocumentsContent(): ReactNode {
     e.preventDefault();
     if (!uploadFile) {
       addToast({ title: 'Please choose a file', variant: 'destructive' });
+      return;
+    }
+
+    // QA #25 / #45 — catch oversized / wrong-type uploads before the S3
+    // round-trip so users see a clear inline error instead of a generic
+    // network failure minutes later.
+    const fileCheck = checkUploadFile(uploadFile);
+    if (!fileCheck.ok) {
+      addToast({
+        title: 'File rejected',
+        description: fileCheck.error,
+        variant: 'destructive',
+      });
       return;
     }
 

@@ -354,8 +354,9 @@ export default function ReceiptsContent(): ReactNode {
                         placeholder="0.00"
                         required
                         min="0.01"
+                        max="10000000"
                         step="0.01"
-                        title="Amount must be greater than zero"
+                        title="Amount must be greater than zero (max ₹1 crore)"
                         value={receiptAmount}
                         onChange={(e) => setReceiptAmount(e.target.value)}
                       />
