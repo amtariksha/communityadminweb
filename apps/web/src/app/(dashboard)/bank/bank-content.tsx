@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Calendar,
   CreditCard,
+  FileUp,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,7 @@ import {
   useIssueCheque,
 } from '@/hooks';
 import type { Cheque } from '@/hooks';
+import { StatementImportTab } from './statement-import-tab';
 
 // API responses may include computed/joined fields beyond the base shared types
 interface BankAccountRow {
@@ -108,7 +110,13 @@ interface FixedDepositRow {
 
 const ITEMS_PER_PAGE = 20;
 
-type ActiveTab = 'accounts' | 'transfers' | 'reconciliation' | 'fixed-deposits' | 'cheques';
+type ActiveTab =
+  | 'accounts'
+  | 'transfers'
+  | 'reconciliation'
+  | 'statement-import'
+  | 'fixed-deposits'
+  | 'cheques';
 
 // ---------------------------------------------------------------------------
 // Skeleton components
@@ -521,6 +529,7 @@ export default function BankContent(): ReactNode {
     { key: 'accounts', label: 'Accounts', icon: <Landmark className="mr-2 inline-block h-4 w-4" /> },
     { key: 'transfers', label: 'Transfers', icon: <ArrowRightLeft className="mr-2 inline-block h-4 w-4" /> },
     { key: 'reconciliation', label: 'Reconciliation', icon: <FileCheck className="mr-2 inline-block h-4 w-4" /> },
+    { key: 'statement-import', label: 'Statement Import', icon: <FileUp className="mr-2 inline-block h-4 w-4" /> },
     { key: 'fixed-deposits', label: 'Fixed Deposits', icon: <PiggyBank className="mr-2 inline-block h-4 w-4" /> },
     { key: 'cheques', label: 'Cheques', icon: <CreditCard className="mr-2 inline-block h-4 w-4" /> },
   ];
@@ -1080,6 +1089,11 @@ export default function BankContent(): ReactNode {
           )}
         </div>
       )}
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Statement Import Tab (Batch 11)                                      */}
+      {/* ------------------------------------------------------------------- */}
+      {activeTab === 'statement-import' && <StatementImportTab />}
 
       {/* ------------------------------------------------------------------- */}
       {/* Fixed Deposits Tab                                                   */}
