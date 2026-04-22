@@ -1,6 +1,25 @@
 import type { User } from './auth';
 
 /**
+ * SECURITY STANCE — QA #53 (localStorage role tampering) / #57 (JWT in
+ * localStorage):
+ *
+ * `User.role` and `User.societies[].role` are read from localStorage and
+ * used ONLY to shape the UI (sidebar visibility, landing page, button
+ * enablement). They are NEVER trusted for authorization. The server
+ * re-derives the user's roles from the JWT payload it signed at login
+ * (see roles.guard.ts + auth.service.ts#buildAuthResponse), so editing
+ * localStorage to claim `role: 'super_admin'` shows the menus but every
+ * protected endpoint still 403s.
+ *
+ * JWTs live in localStorage today because the admin-web runs on a
+ * different origin (Vercel) from the api (EC2 behind api.eassy.life),
+ * and httpOnly cookies require a shared parent domain + CORS credentials
+ * plumbing. That migration is tracked as follow-up but is intentionally
+ * out-of-scope for the Batch 6 security pass.
+ *
+ * ---
+ *
  * Role slugs that are eligible to log in to the admin panel.
  *
  * Pure resident roles (owner, tenant_resident, *_family, member) are
