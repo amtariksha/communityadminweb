@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { Download, ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { Download, ChevronDown, ChevronRight, Search, History } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { useAuditLog } from '@/hooks/use-audit';
 import type { AuditEntry, AuditFilters } from '@/hooks/use-audit';
+import { EntityHistoryModal } from './entity-history-modal';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -88,9 +89,10 @@ function getActionBadgeVariant(action: string): 'success' | 'default' | 'destruc
 
 interface ExpandableRowProps {
   entry: AuditEntry;
+  onViewHistory: (entity_type: string, entity_id: string) => void;
 }
 
-function ExpandableRow({ entry }: ExpandableRowProps): ReactNode {
+function ExpandableRow({ entry, onViewHistory }: ExpandableRowProps): ReactNode {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -118,10 +120,24 @@ function ExpandableRow({ entry }: ExpandableRowProps): ReactNode {
         <TableCell className="text-sm capitalize">{entry.entity_type.replace(/_/g, ' ')}</TableCell>
         <TableCell className="text-sm font-mono text-xs">{entry.entity_id}</TableCell>
         <TableCell className="text-xs text-muted-foreground">{entry.ip_address}</TableCell>
+        <TableCell>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            title="View full history of this entity"
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewHistory(entry.entity_type, entry.entity_id);
+            }}
+          >
+            <History className="h-3.5 w-3.5" />
+          </Button>
+        </TableCell>
       </TableRow>
       {expanded && (
         <TableRow>
-          <TableCell colSpan={7} className="bg-muted/30 p-4">
+          <TableCell colSpan={8} className="bg-muted/30 p-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <p className="mb-1 text-xs font-semibold text-muted-foreground">Old Data</p>
@@ -154,6 +170,11 @@ export default function AuditContent(): ReactNode {
   const [toDate, setToDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
+  // Batch 12 — drilldown modal target. Open when set, dismissed by the
+  // modal itself.
+  const [historyTarget, setHistoryTarget] = useState<
+    { type: string; id: string } | null
+  >(null);
 
   const filters: AuditFilters = {
     ...(entityType ? { entity_type: entityType } : {}),
@@ -288,11 +309,16 @@ export default function AuditContent(): ReactNode {
                   <TableHead>Entity Type</TableHead>
                   <TableHead>Entity ID</TableHead>
                   <TableHead>IP Address</TableHead>
+                  <TableHead className="w-16">History</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredEntries.map((entry) => (
-                  <ExpandableRow key={entry.id} entry={entry} />
+                  <ExpandableRow
+                    key={entry.id}
+                    entry={entry}
+                    onViewHistory={(type, id) => setHistoryTarget({ type, id })}
+                  />
                 ))}
               </TableBody>
             </Table>
@@ -328,6 +354,15 @@ export default function AuditContent(): ReactNode {
             </Button>
           </div>
         </div>
+      )}
+
+      {historyTarget && (
+        <EntityHistoryModal
+          open
+          onClose={() => setHistoryTarget(null)}
+          entityType={historyTarget.type}
+          entityId={historyTarget.id}
+        />
       )}
     </div>
   );
