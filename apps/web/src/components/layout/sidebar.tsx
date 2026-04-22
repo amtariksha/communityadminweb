@@ -74,6 +74,7 @@ const navGroups: NavGroup[] = [
       { label: 'Payments', href: '/payments', icon: <IndianRupee className="h-4 w-4" />, feature: 'payments' },
       { label: 'Bank', href: '/bank', icon: <Landmark className="h-4 w-4" />, feature: 'bank' },
       { label: 'Reports', href: '/reports', icon: <BarChart3 className="h-4 w-4" />, feature: 'reports' },
+      { label: 'Tax & Compliance', href: '/tax', icon: <Receipt className="h-4 w-4" />, feature: 'reports' },
     ],
   },
   {
