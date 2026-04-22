@@ -60,6 +60,12 @@ export interface DirectoryMember {
   member_type: string;
   move_in_date: string;
   is_primary_contact: boolean;
+  // Derived from members.lease_end_date. Null for owner / owner_family
+  // (ownership doesn't expire) and for societies that don't track
+  // leases. When set and in the past, the resident is blocked from
+  // the Flutter app — community admin can override via the edit
+  // dialog in Member Directory.
+  lease_end_date: string | null;
 }
 
 interface PaginatedResponse<T> {

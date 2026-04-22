@@ -96,9 +96,13 @@ export default function DirectoryContent(): ReactNode {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editMemberId, setEditMemberId] = useState('');
   const [editUnitId, setEditUnitId] = useState('');
+  const [editMemberType, setEditMemberType] = useState<string>('');
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  // Access-expiry override (QA #2 follow-up). Only surfaced for
+  // lease-bound member types — for owners it doesn't apply.
+  const [editLeaseEndDate, setEditLeaseEndDate] = useState('');
 
   // Renew-lease dialog state — opens per tenant row.
   const [renewTarget, setRenewTarget] = useState<DirectoryMember | null>(null);
@@ -133,18 +137,33 @@ export default function DirectoryContent(): ReactNode {
     setCurrentPage(1);
   }
 
-  function openEditDialog(member: { id: string; unit_id: string; name: string | null; phone: string | null; email: string | null }): void {
+  function openEditDialog(member: DirectoryMember): void {
     setEditMemberId(member.id);
     setEditUnitId(member.unit_id);
+    setEditMemberType(member.member_type);
     setEditName(member.name ?? '');
     setEditPhone(member.phone ?? '');
     setEditEmail(member.email ?? '');
+    // Pre-fill with the current backend value so the admin sees what
+    // they're about to change. ISO yyyy-mm-dd is the shape expected
+    // by <input type="date" /> natively.
+    setEditLeaseEndDate(
+      member.lease_end_date ? member.lease_end_date.slice(0, 10) : '',
+    );
     setEditDialogOpen(true);
   }
 
   function handleEditSubmit(e: FormEvent): void {
     e.preventDefault();
     if (!editMemberId || !editUnitId) return;
+
+    // Only send lease_end_date if it changed semantics. Empty string on
+    // a lease-bound role clears expiry (overrides to "no expiry"); on
+    // an owner-type it is no-op.
+    const isLeaseBound =
+      editMemberType === 'tenant' ||
+      editMemberType === 'tenant_family' ||
+      editMemberType === 'family_member';
 
     updateMember.mutate(
       {
@@ -153,6 +172,9 @@ export default function DirectoryContent(): ReactNode {
         name: editName || undefined,
         phone: editPhone || undefined,
         email: editEmail || null,
+        ...(isLeaseBound
+          ? { lease_end_date: editLeaseEndDate || null }
+          : {}),
       },
       {
         onSuccess() {
@@ -427,6 +449,37 @@ export default function DirectoryContent(): ReactNode {
                   onChange={(e) => setEditEmail(e.target.value)}
                 />
               </div>
+              {/*
+                Lease-end / access-expiry override. Only lease-bound
+                member types (tenant / tenant_family / family_member)
+                see this — owners' access is tied to ownership, not a
+                date. Setting a future date restores access when a
+                tenant sees "access expired" on the Flutter app.
+                Clearing it (setting empty + save) removes any expiry.
+              */}
+              {(editMemberType === 'tenant' ||
+                editMemberType === 'tenant_family' ||
+                editMemberType === 'family_member') && (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-dir-lease-end">
+                    Access expires on{' '}
+                    <span className="text-muted-foreground">(override)</span>
+                  </Label>
+                  <Input
+                    id="edit-dir-lease-end"
+                    type="date"
+                    value={editLeaseEndDate}
+                    onChange={(e) => setEditLeaseEndDate(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave blank to remove any expiry. Setting a future
+                    date immediately restores access on the resident
+                    app — no approval needed. For a full lease
+                    renewal with fresh agreement upload, use the
+                    calendar-clock icon on the row instead.
+                  </p>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <DialogClose>
