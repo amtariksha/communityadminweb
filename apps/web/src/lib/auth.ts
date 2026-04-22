@@ -91,7 +91,7 @@ export function setUser(user: User): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
-export function logout(): void {
+export function logout(options: { reason?: 'session_expired' | 'manual' } = {}): void {
   if (!isBrowser()) return;
   // Clear all auth-related storage
   localStorage.removeItem(TOKEN_KEY);
@@ -100,8 +100,16 @@ export function logout(): void {
   localStorage.removeItem(USER_KEY);
   // Legacy key from earlier builds — clear too so stale values don't leak
   localStorage.removeItem('refresh_token');
-  // Force full page navigation to clear any cached state
-  window.location.replace('/login');
+  // QA #48 — surface why the session ended. Previously the api
+  // interceptor called logout() on a 401 and the user landed on
+  // /login with no feedback; on slow connections the replace fired
+  // before the dashboard finished unmounting and the screen went
+  // blank. The login page reads ?reason=session_expired and shows
+  // a toast so the user knows to log in again instead of assuming
+  // the app crashed.
+  const target =
+    options.reason === 'session_expired' ? '/login?reason=session_expired' : '/login';
+  window.location.replace(target);
 }
 
 export function isAuthenticated(): boolean {

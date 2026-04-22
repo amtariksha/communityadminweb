@@ -826,6 +826,29 @@ export default function PlatformSettings(): ReactNode {
     );
   }
 
+  // QA #84 — platform-config fetch failures previously fell through to
+  // the tabbed form with every section reading from an empty configMap
+  // (no loader, no error, just blank inputs). Testers reported the page
+  // as "blank". Show an explicit error + retry instead.
+  if (configQuery.isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Platform Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-destructive">
+            Failed to load platform configuration.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {(configQuery.error as Error)?.message ?? 'Unknown error'}
+          </p>
+          <Button onClick={() => configQuery.refetch()}>Retry</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Tab navigation */}

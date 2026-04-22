@@ -99,18 +99,33 @@ const PARCEL_STATUS_BADGE: Record<string, { label: string; variant: string }> = 
   returned: { label: 'Returned', variant: 'secondary' },
 };
 
+// QA #75 — pin gate logs to Asia/Kolkata. Backend returns UTC timestamps;
+// without an explicit timeZone the browser falls back to its own, and
+// admins tunnelling in from a non-IST laptop saw check-in times shifted
+// by 5:30 (or more). Guards + residents always operate in IST.
+const IST_TZ = 'Asia/Kolkata';
+
 function formatTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleTimeString('en-IN', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: IST_TZ,
   });
 }
 
 function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '-';
   const d = new Date(dateStr);
-  return `${d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} ${d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`;
+  return `${d.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    timeZone: IST_TZ,
+  })} ${d.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: IST_TZ,
+  })}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1123,7 +1138,7 @@ export default function GateContent(): ReactNode {
                 parcels.map((parcel) => (
                   <TableRow key={parcel.id}>
                     <TableCell className="font-medium">{parcel.unit_number ?? parcel.unit_id}</TableCell>
-                    <TableCell>{parcel.courier}</TableCell>
+                    <TableCell>{parcel.courier_name ?? '-'}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {parcel.tracking_number ?? '-'}
                     </TableCell>

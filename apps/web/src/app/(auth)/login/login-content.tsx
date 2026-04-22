@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,10 +15,27 @@ type LoginStep = 'phone' | 'otp';
 
 export default function LoginContent(): ReactNode {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { addToast } = useToast();
   const [step, setStep] = useState<LoginStep>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
+
+  // QA #48 — when the api interceptor logs the user out on a 401 it
+  // redirects to /login?reason=session_expired. Previously the user
+  // landed on a bare login form with no indication the session ended;
+  // they assumed the app had frozen and reloaded, which wiped the
+  // phone-number input. Surface the reason once on mount.
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'session_expired') {
+      addToast({
+        title: 'Session expired',
+        description: 'You were signed out for security. Please sign in again.',
+        variant: 'destructive',
+      });
+    }
+  }, [searchParams, addToast]);
 
   const sendOtp = useSendOtp();
   const verifyOtp = useVerifyOtp();

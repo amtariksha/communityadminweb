@@ -143,7 +143,7 @@ async function request<T>(
       }
     }
 
-    logout();
+    logout({ reason: 'session_expired' });
     throw new Error('Session expired. Please log in again.');
   }
 

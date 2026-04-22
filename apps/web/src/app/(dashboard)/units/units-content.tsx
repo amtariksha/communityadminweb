@@ -74,7 +74,14 @@ import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contac
 
 const ITEMS_PER_PAGE = 20;
 
-function getUnitTypeLabel(type: string): string {
+function getUnitTypeLabel(type: string | null | undefined): string {
+  // QA #70 — the units table stores the legacy column name `type` with
+  // values `residential` / `commercial` / `parking` (see unit.service.ts
+  // unitTypeMap). The admin-create form sends `flat` / `shop` / `office`
+  // which get mapped server-side on write, so we accept both shapes on
+  // read. Without the legacy cases the badge rendered blank for every
+  // unit already in prod (#70).
+  if (!type) return 'Unit';
   switch (type) {
     case 'flat':
       return 'Flat';
@@ -86,6 +93,10 @@ function getUnitTypeLabel(type: string): string {
       return 'Parking';
     case 'other':
       return 'Other';
+    case 'residential':
+      return 'Residential';
+    case 'commercial':
+      return 'Commercial';
     default:
       return type;
   }
