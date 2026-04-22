@@ -49,6 +49,7 @@ import {
   useInitiateRefund,
 } from '@/hooks';
 import type { Payment } from '@/hooks';
+import { AutopayTab } from './autopay-tab';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -107,6 +108,11 @@ export default function PaymentsContent(): ReactNode {
   // Clamp date filters to prev FY start → next month end.
   const dateBounds = useMemo(() => financialDateBounds(), []);
   const PAGE_SIZE = 20;
+
+  // Tab selection — Batch 10 added the Autopay tab to the page so
+  // community admins can observe + act on UPI auto-debit mandates
+  // without leaving the payments module.
+  const [activeTab, setActiveTab] = useState<'payments' | 'autopay'>('payments');
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('');
@@ -181,23 +187,58 @@ export default function PaymentsContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Payments' }]}
         title="Payments"
-        description="Online payment collection via Razorpay — orders, settlements, refunds"
+        description="Online payment collection via Razorpay — orders, settlements, refunds, and autopay mandates"
         actions={
-          <ExportButton
-            data={payments as unknown as Record<string, unknown>[]}
-            filename={`payments-${new Date().toISOString().split('T')[0]}`}
-            columns={[
-              { key: 'order_id', label: 'Order ID' },
-              { key: 'unit_number', label: 'Unit' },
-              { key: 'amount', label: 'Amount' },
-              { key: 'status', label: 'Status' },
-              { key: 'method', label: 'Method' },
-              { key: 'created_at', label: 'Date' },
-            ]}
-          />
+          activeTab === 'payments' ? (
+            <ExportButton
+              data={payments as unknown as Record<string, unknown>[]}
+              filename={`payments-${new Date().toISOString().split('T')[0]}`}
+              columns={[
+                { key: 'order_id', label: 'Order ID' },
+                { key: 'unit_number', label: 'Unit' },
+                { key: 'amount', label: 'Amount' },
+                { key: 'status', label: 'Status' },
+                { key: 'method', label: 'Method' },
+                { key: 'created_at', label: 'Date' },
+              ]}
+            />
+          ) : null
         }
       />
 
+      {/* Tab switcher — Transactions | Autopay (Batch 10). Lightweight
+          tab-strip; matches the pattern used elsewhere (bank page).
+          Keeps the existing Transactions UI intact — just conditionally
+          rendered below. */}
+      <div className="border-b">
+        <nav className="flex gap-6" aria-label="Tabs">
+          {(
+            [
+              { key: 'payments', label: 'Transactions' },
+              { key: 'autopay', label: 'Autopay Mandates' },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setActiveTab(t.key)}
+              className={
+                'border-b-2 px-1 py-3 text-sm font-medium transition-colors ' +
+                (activeTab === t.key
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground')
+              }
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {activeTab === 'autopay' && <AutopayTab />}
+
+      {activeTab === 'payments' && (
+        <>
       {/* Stat cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statsQuery.isLoading ? (
@@ -444,6 +485,8 @@ export default function PaymentsContent(): ReactNode {
           )}
         </CardContent>
       </Card>
+        </>
+      )}
 
       {/* Payment detail dialog */}
       <Dialog open={detailOpen} onOpenChange={(open) => { setDetailOpen(open); if (!open) setSelectedPaymentId(''); }}>
