@@ -13,6 +13,12 @@ export interface TenantSettings {
   maintenance_requests?: boolean;
   parking_management?: boolean;
 
+  // Batch 14 — purchase-request approval configuration. Keep in sync
+  // with communityos/packages/shared/src/types/tenant.ts.
+  pr_approval_levels?: number;
+  pr_approval_roles?: string[];
+  pr_approval_threshold?: number;
+
   // Batch 15 — automated monthly report email digest. Fires via the
   // backend's BullMQ cron and is enforced per tenant by
   // ScheduledReportsService. Keep in sync with
