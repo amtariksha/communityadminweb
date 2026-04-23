@@ -47,8 +47,12 @@ import {
   useBulkImportBalances,
   useTallyXmlImport,
   useTallyCsvImport,
+  useTallyCommitImport,
 } from '@/hooks';
-import type { TallyImportResult } from '@/hooks/use-tally-import';
+import type {
+  TallyImportParseResult,
+  TallyCommitResult,
+} from '@/hooks/use-tally-import';
 import { useTallyExportPreview, useTallyExport } from '@/hooks/use-tally-export';
 import type { TallyExportOptions } from '@/hooks/use-tally-export';
 import type { AccountGroup, LedgerAccount, AccountType } from '@communityos/shared';
@@ -250,6 +254,7 @@ export default function AccountsContent(): ReactNode {
   const bulkImportBalances = useBulkImportBalances();
   const tallyXmlImport = useTallyXmlImport();
   const tallyCsvImport = useTallyCsvImport();
+  const tallyCommitImport = useTallyCommitImport();
 
   const isLoading = groupsLoading || accountsLoading;
   const accounts = accountsResponse?.data ?? [];
@@ -297,7 +302,15 @@ export default function AccountsContent(): ReactNode {
   const [tallyFormat, setTallyFormat] = useState<'xml' | 'csv'>('xml');
   const [tallyContent, setTallyContent] = useState('');
   const [tallyCsvType, setTallyCsvType] = useState<'trial_balance' | 'day_book' | 'ledger_report' | 'receipt_register' | 'payment_register'>('trial_balance');
-  const [tallyResult, setTallyResult] = useState<TallyImportResult | null>(null);
+  // Parse response (import_id + records_parsed) — shown on the
+  // preview step so the admin can review before committing.
+  const [tallyParseResult, setTallyParseResult] =
+    useState<TallyImportParseResult | null>(null);
+  // Commit response (records_imported / skipped / errors) — shown on
+  // the done step. Tracked separately so the preview step doesn't try
+  // to render fields that don't exist until the commit fires.
+  const [tallyCommitResult, setTallyCommitResult] =
+    useState<TallyCommitResult | null>(null);
   const [tallyStep, setTallyStep] = useState<'input' | 'preview' | 'done'>('input');
 
   // -- Tally export state --
@@ -340,7 +353,8 @@ export default function AccountsContent(): ReactNode {
   function resetTallyForm(): void {
     setTallyContent('');
     setTallyCsvType('trial_balance');
-    setTallyResult(null);
+    setTallyParseResult(null);
+    setTallyCommitResult(null);
     setTallyStep('input');
     setTallyFormat('xml');
   }
@@ -356,7 +370,8 @@ export default function AccountsContent(): ReactNode {
         { xml_content: tallyContent, import_type: 'all' },
         {
           onSuccess(data) {
-            setTallyResult(data.data);
+            setTallyParseResult(data.data);
+            setTallyCommitResult(null);
             setTallyStep('preview');
             addToast({ title: 'Tally XML parsed successfully', variant: 'success' });
           },
@@ -370,7 +385,8 @@ export default function AccountsContent(): ReactNode {
         { csv_content: tallyContent, import_type: tallyCsvType },
         {
           onSuccess(data) {
-            setTallyResult(data.data);
+            setTallyParseResult(data.data);
+            setTallyCommitResult(null);
             setTallyStep('preview');
             addToast({ title: 'Tally CSV parsed successfully', variant: 'success' });
           },
@@ -380,6 +396,46 @@ export default function AccountsContent(): ReactNode {
         },
       );
     }
+  }
+
+  /**
+   * Commit the parsed import — writes the staged records to the DB.
+   * Called from the Commit button on the preview step. The preview
+   * step is a dry-run; nothing actually changes until this fires.
+   */
+  function handleTallyCommit(): void {
+    if (!tallyParseResult?.import_id) {
+      addToast({
+        title: 'Nothing to commit',
+        description: 'Parse a file first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    tallyCommitImport.mutate(
+      { import_id: tallyParseResult.import_id },
+      {
+        onSuccess(data) {
+          setTallyCommitResult(data.data);
+          setTallyStep('done');
+          addToast({
+            title: `Imported ${data.data.records_imported} records`,
+            description:
+              (data.data.errors?.length ?? 0) > 0
+                ? `${data.data.errors!.length} rows had errors — see details.`
+                : undefined,
+            variant: 'success',
+          });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to commit import',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
   }
 
   function resetGroupForm(): void {
@@ -1302,52 +1358,69 @@ export default function AccountsContent(): ReactNode {
               </>
             )}
 
-            {tallyStep === 'preview' && tallyResult && (
+            {/* Preview step — shows parse result + a Commit button.
+                Nothing is in the DB yet. */}
+            {tallyStep === 'preview' && tallyParseResult && (
               <div className="space-y-4">
                 <div className="rounded-md border p-4 space-y-2">
-                  <h4 className="font-medium text-sm">Import Summary</h4>
+                  <h4 className="font-medium text-sm">Parse Summary</h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>Records Parsed:</div>
-                    <div className="font-medium">{tallyResult.records_parsed}</div>
-                    <div>Records Imported:</div>
-                    <div className="font-medium text-green-600">{tallyResult.records_imported}</div>
-                    <div>Records Skipped:</div>
-                    <div className="font-medium text-yellow-600">{tallyResult.records_skipped}</div>
-                    <div>Records Failed:</div>
-                    <div className="font-medium text-red-600">{tallyResult.records_failed}</div>
+                    <div className="font-medium">{tallyParseResult.records_parsed}</div>
                   </div>
-                  {Object.keys(tallyResult.summary).length > 0 && (
-                    <div className="mt-3 pt-3 border-t">
-                      <h5 className="text-xs font-medium text-muted-foreground mb-1">Breakdown</h5>
-                      {Object.entries(tallyResult.summary).map(([key, value]) => (
-                        <div key={key} className="flex justify-between text-xs">
-                          <span className="capitalize">{key.replace(/_/g, ' ')}</span>
-                          <span className="font-medium">{value}</span>
-                        </div>
-                      ))}
-                    </div>
+                  {tallyParseResult.message && (
+                    <p className="text-xs text-muted-foreground pt-2 border-t">
+                      {tallyParseResult.message}
+                    </p>
                   )}
                 </div>
-                {tallyResult.errors.length > 0 && (
+                <div className="rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/20 p-3 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                  <div className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
+                    <p className="font-medium">Ready to import</p>
+                    <p>
+                      {tallyParseResult.records_parsed} records have been parsed but
+                      NOT yet saved. Click <strong>Import</strong> below to commit
+                      them to your ledger. The operation cannot be undone.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Done step — shows the real commit result. `summary` is
+                always defensively unwrapped; `errors` too. */}
+            {tallyStep === 'done' && tallyCommitResult && (
+              <div className="space-y-4">
+                <div className="rounded-md border p-4 space-y-2">
+                  <h4 className="font-medium text-sm">Import Result</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>Records Imported:</div>
+                    <div className="font-medium text-green-600">{tallyCommitResult.records_imported}</div>
+                    <div>Records Skipped:</div>
+                    <div className="font-medium text-yellow-600">{tallyCommitResult.records_skipped}</div>
+                  </div>
+                </div>
+                {(tallyCommitResult.errors?.length ?? 0) > 0 && (
                   <div className="rounded-md border border-red-200 bg-red-50 dark:bg-red-950/20 p-4 space-y-1">
                     <h4 className="font-medium text-sm text-red-700 dark:text-red-400 flex items-center gap-1">
                       <AlertCircle className="h-4 w-4" />
-                      Errors ({tallyResult.errors.length})
+                      Errors ({tallyCommitResult.errors!.length})
                     </h4>
                     <div className="max-h-32 overflow-y-auto space-y-0.5">
-                      {tallyResult.errors.map((err, i) => (
+                      {(tallyCommitResult.errors ?? []).map((err, i) => (
                         <p key={i} className="text-xs text-red-600 dark:text-red-400">
-                          {err.row !== undefined && `Row ${err.row}: `}{err.message}
+                          {err}
                         </p>
                       ))}
                     </div>
                   </div>
                 )}
-                {tallyResult.records_imported > 0 && (
+                {tallyCommitResult.records_imported > 0 && (
                   <div className="rounded-md border border-green-200 bg-green-50 dark:bg-green-950/20 p-3 flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                     <span className="text-sm text-green-700 dark:text-green-400">
-                      Successfully imported {tallyResult.records_imported} records
+                      Successfully imported {tallyCommitResult.records_imported} records.
                     </span>
                   </div>
                 )}
@@ -1357,7 +1430,7 @@ export default function AccountsContent(): ReactNode {
           <DialogFooter>
             <DialogClose>
               <Button type="button" variant="outline">
-                {tallyStep === 'preview' ? 'Close' : 'Cancel'}
+                {tallyStep === 'done' ? 'Close' : 'Cancel'}
               </Button>
             </DialogClose>
             {tallyStep === 'input' && (
@@ -1365,10 +1438,30 @@ export default function AccountsContent(): ReactNode {
                 onClick={handleTallyParse}
                 disabled={tallyXmlImport.isPending || tallyCsvImport.isPending}
               >
-                {(tallyXmlImport.isPending || tallyCsvImport.isPending) ? 'Parsing...' : 'Parse & Import'}
+                {(tallyXmlImport.isPending || tallyCsvImport.isPending) ? 'Parsing...' : 'Parse'}
               </Button>
             )}
             {tallyStep === 'preview' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setTallyParseResult(null);
+                    setTallyStep('input');
+                  }}
+                  disabled={tallyCommitImport.isPending}
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={handleTallyCommit}
+                  disabled={tallyCommitImport.isPending}
+                >
+                  {tallyCommitImport.isPending ? 'Importing...' : 'Import'}
+                </Button>
+              </>
+            )}
+            {tallyStep === 'done' && (
               <Button variant="outline" onClick={() => { resetTallyForm(); }}>
                 Import Another
               </Button>
