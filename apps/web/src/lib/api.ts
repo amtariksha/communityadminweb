@@ -6,6 +6,8 @@ import {
   getCurrentTenant,
   logout,
 } from '@/lib/auth';
+import { ApiError } from '@/lib/api-error';
+import type { ApiErrorEnvelope } from '@communityos/shared';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ??
@@ -91,6 +93,26 @@ function generateIdempotencyKey(): string {
   return `idem-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/**
+ * Parse the response body into a typed `ApiError`. The server emits
+ * `ApiErrorEnvelope` for every 4xx/5xx; we defensively fall back to
+ * a synthesized envelope if the body isn't JSON (e.g. a proxy
+ * returning an HTML error page).
+ */
+async function buildApiError(response: Response): Promise<ApiError> {
+  const fallback: ApiErrorEnvelope = {
+    statusCode: response.status,
+    message: `Request failed with status ${response.status}`,
+    error: 'Error',
+    request_id: 'unparsed-body',
+    timestamp: new Date().toISOString(),
+  };
+  const envelope = (await response.json().catch(() => fallback)) as
+    | ApiErrorEnvelope
+    | undefined;
+  return new ApiError(response.status, envelope ?? fallback);
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -155,40 +177,26 @@ async function request<T>(
       // through to the logout path below.
       if (retryResponse.status !== 401) {
         // Non-auth error on the retry (5xx, 409, 400 …). Surface it
-        // instead of logging the user out — they're authenticated
-        // fine, the request itself just failed.
-        const err = await retryResponse
-          .json()
-          .catch(() => ({ message: 'Request failed' }));
-        let message = err.message ?? `Request failed with status ${retryResponse.status}`;
-        if (err.errors && typeof err.errors === 'object') {
-          const fieldErrors = Object.entries(err.errors as Record<string, string[]>)
-            .map(([field, messages]) => `${field}: ${(messages as string[]).join(', ')}`)
-            .join('; ');
-          message = fieldErrors || message;
-        }
-        throw new Error(message);
+        // as an ApiError so consumers can read `.userMessage`,
+        // `.fieldErrors`, `.code` instead of parsing a flat string.
+        throw await buildApiError(retryResponse);
       }
     }
 
     logout({ reason: 'session_expired' });
-    throw new Error('Session expired. Please log in again.');
+    // Construct a synthetic 401 envelope so consumers can still do
+    // `instanceof ApiError` uniformly.
+    throw new ApiError(401, {
+      statusCode: 401,
+      message: 'Session expired. Please log in again.',
+      error: 'UnauthorizedException',
+      request_id: 'session-expired-client',
+      timestamp: new Date().toISOString(),
+    });
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed' }));
-
-    // Build a user-friendly error message that includes field-level validation errors
-    let message = error.message ?? `Request failed with status ${response.status}`;
-
-    if (error.errors && typeof error.errors === 'object') {
-      const fieldErrors = Object.entries(error.errors as Record<string, string[]>)
-        .map(([field, messages]) => `${field}: ${(messages as string[]).join(', ')}`)
-        .join('; ');
-      message = fieldErrors || message;
-    }
-
-    throw new Error(message);
+    throw await buildApiError(response);
   }
 
   if (response.status === 204) {

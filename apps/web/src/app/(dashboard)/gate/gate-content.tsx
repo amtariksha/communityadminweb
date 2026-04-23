@@ -43,6 +43,8 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
+import { FormFieldError } from '@/components/ui/form-field-error';
 import {
   useGateStats,
   useVisitors,
@@ -81,6 +83,7 @@ import {
 } from '@/hooks/use-regular-visitors';
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
 import { formatDate } from '@/lib/utils';
+import { normalizePhone } from '@/lib/validation';
 
 type TabKey = 'visitors' | 'staff' | 'regulars' | 'parcels' | 'vehicles';
 
@@ -380,11 +383,22 @@ export default function GateContent(): ReactNode {
       addToast({ title: 'Please select a unit', variant: 'destructive' });
       return;
     }
+    // Visitor phone is optional, but validate when present so we don't
+    // write 0000000000 junk that can't be reached for re-entry.
+    const phone = normalizePhone(visitorPhone);
+    if (!phone.ok) {
+      addToast({
+        title: 'Invalid visitor phone',
+        description: phone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
     const payload: Record<string, unknown> = {
       unit_id: visitorUnit,
       visitor_name: visitorName.trim(),
     };
-    if (visitorPhone.trim()) payload.visitor_phone = visitorPhone.trim();
+    if (phone.value) payload.visitor_phone = phone.value;
     if (visitorPurpose.trim()) payload.purpose = visitorPurpose.trim();
     if (visitorVehicle.trim()) payload.vehicle_number = visitorVehicle.trim();
     if (selectedGateId) payload.gate_id = selectedGateId;
@@ -415,8 +429,8 @@ export default function GateContent(): ReactNode {
         onSuccess() {
           addToast({ title: 'Visitor checked in', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to check in visitor', variant: 'destructive' });
+        onError(error) {
+          addToast({ title: 'Failed to check in visitor', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -429,8 +443,8 @@ export default function GateContent(): ReactNode {
         onSuccess() {
           addToast({ title: 'Visitor checked out', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to check out visitor', variant: 'destructive' });
+        onError(error) {
+          addToast({ title: 'Failed to check out visitor', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -443,8 +457,8 @@ export default function GateContent(): ReactNode {
         onSuccess() {
           addToast({ title: 'Visitor cancelled', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to cancel visitor', variant: 'destructive' });
+        onError(error) {
+          addToast({ title: 'Failed to cancel visitor', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -460,11 +474,20 @@ export default function GateContent(): ReactNode {
 
   function handleStaffCheckIn(e: FormEvent): void {
     e.preventDefault();
+    const phone = normalizePhone(staffPhone);
+    if (!phone.ok) {
+      addToast({
+        title: 'Invalid staff phone',
+        description: phone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
     const payload: Record<string, unknown> = {
       staff_name: staffName.trim(),
       staff_type: staffType,
     };
-    if (staffPhone.trim()) payload.phone = staffPhone.trim();
+    if (phone.value) payload.phone = phone.value;
     if (staffUnit) payload.unit_id = staffUnit;
     if (staffNotes.trim()) payload.notes = staffNotes.trim();
 
@@ -494,8 +517,8 @@ export default function GateContent(): ReactNode {
         onSuccess() {
           addToast({ title: 'Staff checked out', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to check out staff', variant: 'destructive' });
+        onError(error) {
+          addToast({ title: 'Failed to check out staff', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -562,8 +585,8 @@ export default function GateContent(): ReactNode {
           setCollectedBy('');
           addToast({ title: 'Parcel marked as collected', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to collect parcel', variant: 'destructive' });
+        onError(error) {
+          addToast({ title: 'Failed to collect parcel', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -715,6 +738,7 @@ export default function GateContent(): ReactNode {
                             value={visitorPhone}
                             onChange={(e) => setVisitorPhone(e.target.value.replace(/\D/g, ''))}
                           />
+                          <FormFieldError error={createVisitor.error} field="visitor_phone" />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
@@ -928,6 +952,7 @@ export default function GateContent(): ReactNode {
                           value={staffPhone}
                           onChange={(e) => setStaffPhone(e.target.value.replace(/\D/g, ''))}
                         />
+                        <FormFieldError error={staffCheckIn.error} field="phone" />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="staff-unit">Unit (optional)</Label>
@@ -1522,7 +1547,7 @@ function RegisteredRegularsDirectory(): ReactNode {
       onError(err) {
         addToast({
           title: 'Failed to deactivate',
-          description: err.message,
+          description: friendlyError(err),
           variant: 'destructive',
         });
       },

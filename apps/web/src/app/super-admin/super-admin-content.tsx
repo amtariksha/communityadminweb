@@ -41,6 +41,8 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { normalizePhone } from '@/lib/validation';
+import { FormFieldError } from '@/components/ui/form-field-error';
 import { useToast } from '@/components/ui/toast';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { TOOLTIP } from '@/lib/tooltip-content';
@@ -276,6 +278,19 @@ export default function SuperAdminContent(): ReactNode {
 
   function handleCreateTenant(e: FormEvent): void {
     e.preventDefault();
+    // admin_phone is optional — when the super-admin provides one, we
+    // auto-provision a Committee Member user keyed on that number.
+    // Junk like 0000000000 would create an unreachable admin, so
+    // validate before the tenant row gets created.
+    const adminPhone = normalizePhone(formAdminPhone);
+    if (!adminPhone.ok) {
+      addToast({
+        title: 'Invalid admin phone',
+        description: adminPhone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
     createTenant.mutate(
       {
         name: formName,
@@ -285,7 +300,7 @@ export default function SuperAdminContent(): ReactNode {
         state: formState,
         subscription_plan: formPlan,
         price_per_unit: Number(formPricePerUnit),
-        admin_phone: formAdminPhone || undefined,
+        admin_phone: adminPhone.value || undefined,
       },
       {
         onSuccess() {
@@ -667,10 +682,13 @@ export default function SuperAdminContent(): ReactNode {
                         </Label>
                         <Input
                           id="tenant-admin-phone"
-                          placeholder="+91XXXXXXXXXX"
+                          placeholder="10-digit mobile (optional +91 prefix)"
+                          maxLength={13}
+                          inputMode="tel"
                           value={formAdminPhone}
                           onChange={(e) => setFormAdminPhone(e.target.value)}
                         />
+                        <FormFieldError error={createTenant.error} field="admin_phone" />
                         <p className="text-xs text-muted-foreground">
                           Auto-creates user and assigns Committee Member role
                         </p>

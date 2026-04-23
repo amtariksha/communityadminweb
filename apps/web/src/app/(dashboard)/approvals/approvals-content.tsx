@@ -40,6 +40,7 @@ import { ExportButton } from '@/components/ui/export-button';
 import { Separator } from '@/components/ui/separator';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   useApprovalRequests,
   useApprovalDetail,
@@ -211,7 +212,7 @@ export default function ApprovalsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to approve request',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -237,7 +238,7 @@ export default function ApprovalsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to reject request',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },

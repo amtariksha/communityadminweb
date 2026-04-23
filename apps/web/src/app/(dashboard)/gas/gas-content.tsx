@@ -29,6 +29,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   useGasPlans,
   useGasWallets,
@@ -206,7 +207,7 @@ function PlansTab(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to create plan',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -358,7 +359,7 @@ function WalletsTab(): ReactNode {
         onError(error) {
           addToast({
             title: 'Recharge failed',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },

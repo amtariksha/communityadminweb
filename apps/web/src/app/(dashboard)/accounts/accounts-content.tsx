@@ -34,6 +34,7 @@ import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, financialDateBounds } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   useAccountGroups,
   useLedgerAccounts,
@@ -331,7 +332,7 @@ export default function AccountsContent(): ReactNode {
         setTallyExportDialogOpen(false);
       },
       onError(err) {
-        addToast({ title: 'Export failed', description: err.message, variant: 'destructive' });
+        addToast({ title: 'Export failed', description: friendlyError(err), variant: 'destructive' });
       },
     });
   }
@@ -360,7 +361,7 @@ export default function AccountsContent(): ReactNode {
             addToast({ title: 'Tally XML parsed successfully', variant: 'success' });
           },
           onError(error) {
-            addToast({ title: 'Failed to parse Tally XML', description: error.message, variant: 'destructive' });
+            addToast({ title: 'Failed to parse Tally XML', description: friendlyError(error), variant: 'destructive' });
           },
         },
       );
@@ -374,7 +375,7 @@ export default function AccountsContent(): ReactNode {
             addToast({ title: 'Tally CSV parsed successfully', variant: 'success' });
           },
           onError(error) {
-            addToast({ title: 'Failed to parse Tally CSV', description: error.message, variant: 'destructive' });
+            addToast({ title: 'Failed to parse Tally CSV', description: friendlyError(error), variant: 'destructive' });
           },
         },
       );
@@ -425,7 +426,7 @@ export default function AccountsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to update group',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -466,7 +467,7 @@ export default function AccountsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to update account',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -501,7 +502,7 @@ export default function AccountsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to create group',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -528,7 +529,7 @@ export default function AccountsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to create group',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -580,7 +581,7 @@ export default function AccountsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to create account',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -683,7 +684,7 @@ export default function AccountsContent(): ReactNode {
           if (fileInputRef.current) fileInputRef.current.value = '';
         },
         onError(error: Error) {
-          addToast({ title: 'Import failed', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Import failed', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );

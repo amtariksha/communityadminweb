@@ -149,7 +149,11 @@ export default function ImportContent(): ReactNode {
       'tenant_email',
       'lease_end_date',
     ];
-    const sampleRow = [
+    // Two sample rows: one owner-occupied, one rented. Both populate
+    // block + floor because the guard Flutter app's new unit picker
+    // (2026-04-23) renders Step-1 block tiles + Step-2 floor grid from
+    // these columns.
+    const sampleRow1 = [
       'A-101',
       'A',
       '1',
@@ -167,7 +171,29 @@ export default function ImportContent(): ReactNode {
       '',
       '',
     ];
-    const csvContent = [headers.join(','), sampleRow.join(',')].join('\n');
+    const sampleRow2 = [
+      'B-304',
+      'B',
+      '3',
+      '1450',
+      'flat',
+      '3BHK',
+      '304',
+      'P-25',
+      '405',
+      'Priya Verma',
+      '+919900112233',
+      'priya@example.com',
+      'Rahul Iyer',
+      '+918866554433',
+      'rahul@example.com',
+      '2026-12-31',
+    ];
+    const csvContent = [
+      headers.join(','),
+      sampleRow1.join(','),
+      sampleRow2.join(','),
+    ].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -183,6 +209,14 @@ export default function ImportContent(): ReactNode {
   const [rawRows, setRawRows] = useState<Record<string, string>[]>([]);
   const [mappedRows, setMappedRows] = useState<CsvImportRow[]>([]);
   const [fileName, setFileName] = useState('');
+  // Unit-picker handoff (2026-04-23) — strict mode rejects rows that
+  // are missing block OR floor so we don't seed new rows that'd need
+  // manual backfill to appear in the guard app. Default ON. Admin can
+  // opt out when migrating from a legacy source that genuinely has
+  // neither field (e.g. ADDA export only exposes block; floor has to
+  // be derived later).
+  const [strictBlockFloor, setStrictBlockFloor] = useState(true);
+  const [skippedByStrict, setSkippedByStrict] = useState<number[]>([]);
   const [importResult, setImportResult] = useState<{
     units_created: number;
     units_updated: number;
@@ -212,14 +246,30 @@ export default function ImportContent(): ReactNode {
       // Map rows using template
       const mapped: CsvImportRow[] = [];
       const skipped: number[] = [];
+      const skippedStrict: number[] = [];
 
       rows.forEach((row, idx) => {
         const result = mapRowToImport(selectedSource, row);
-        if (result && result.unit_number) {
-          mapped.push(result);
-        } else {
-          skipped.push(idx + 2); // +2 for 1-indexed + header row
+        const rowNumber = idx + 2; // +2 for 1-indexed + header row
+        if (!result || !result.unit_number) {
+          skipped.push(rowNumber);
+          return;
         }
+        // Unit-picker handoff — strict mode rejects rows where the
+        // admin app's new guardrail would be violated (block or
+        // floor missing). These rows surface in the preview so the
+        // admin knows exactly which source lines to fix before re-
+        // importing.
+        if (
+          strictBlockFloor &&
+          ((!result.block || result.block.trim() === '') ||
+            result.floor === null ||
+            result.floor === undefined)
+        ) {
+          skippedStrict.push(rowNumber);
+          return;
+        }
+        mapped.push(result);
       });
 
       if (skipped.length > 0) {
@@ -228,8 +278,21 @@ export default function ImportContent(): ReactNode {
           variant: 'default',
         });
       }
+      if (skippedStrict.length > 0) {
+        // The toast API only supports default / destructive / success —
+        // strict-mode skips are advisory, not a failure, so we use the
+        // default variant. The preview also renders a yellow warning
+        // banner that lists the skipped line numbers.
+        addToast({
+          title: `${skippedStrict.length} rows skipped (strict mode: missing block or floor)`,
+          description:
+            'Disable "Require block + floor" below to import these anyway, or fix the CSV and retry.',
+          variant: 'default',
+        });
+      }
 
       setMappedRows(mapped);
+      setSkippedByStrict(skippedStrict);
       setStep('preview');
     };
     reader.readAsText(file);
@@ -280,6 +343,8 @@ export default function ImportContent(): ReactNode {
     setMappedRows([]);
     setFileName('');
     setImportResult(null);
+    setSkippedByStrict([]);
+    setStrictBlockFloor(true);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -384,6 +449,27 @@ export default function ImportContent(): ReactNode {
                 </div>
               )}
 
+              {/* Unit-picker handoff: strict block/floor toggle. Default
+                  ON so new imports don't seed the orphan-block/floor
+                  rows that the guard app's picker can't render. */}
+              <label className="flex items-start gap-3 rounded-lg border bg-muted/30 p-4">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4"
+                  checked={strictBlockFloor}
+                  onChange={(e) => setStrictBlockFloor(e.target.checked)}
+                />
+                <div className="flex-1 text-sm">
+                  <p className="font-medium">Require block + floor (recommended)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Rows missing either are skipped during preview, so the guard
+                    app&apos;s unit picker renders every imported unit cleanly.
+                    Turn off only if the source data legitimately doesn&apos;t
+                    have floor info and you plan to backfill later.
+                  </p>
+                </div>
+              </label>
+
               <div
                 className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 p-12 transition-colors hover:border-primary/50"
                 onClick={() => fileInputRef.current?.click()}
@@ -428,6 +514,21 @@ export default function ImportContent(): ReactNode {
               </div>
             </CardHeader>
             <CardContent>
+              {skippedByStrict.length > 0 && (
+                <div className="mb-4 flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-900 dark:bg-yellow-950/30">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 text-yellow-600" />
+                  <div className="text-sm">
+                    <p className="font-medium text-yellow-800 dark:text-yellow-200">
+                      {skippedByStrict.length} row{skippedByStrict.length === 1 ? '' : 's'} skipped by strict mode
+                    </p>
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                      Missing block or floor — CSV line{skippedByStrict.length === 1 ? '' : 's'}: {skippedByStrict.slice(0, 20).join(', ')}
+                      {skippedByStrict.length > 20 ? ', …' : ''}. Fix those rows or uncheck &quot;Require block + floor&quot; on the previous step.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="mb-4 grid grid-cols-3 gap-4">
                 <div className="rounded-lg border p-3 text-center">
                   <p className="text-2xl font-bold">{mappedRows.length}</p>

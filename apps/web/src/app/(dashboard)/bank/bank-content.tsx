@@ -46,6 +46,7 @@ import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { TOOLTIP } from '@/lib/tooltip-content';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   useBankAccounts,
   useCreateBankAccount,
@@ -331,7 +332,7 @@ export default function BankContent(): ReactNode {
           addToast({ title: 'Bank account added', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to add bank account', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to add bank account', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -368,7 +369,7 @@ export default function BankContent(): ReactNode {
           addToast({ title: 'Transfer recorded', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to record transfer', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to record transfer', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -397,7 +398,7 @@ export default function BankContent(): ReactNode {
           addToast({ title: 'Transaction reconciled', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to reconcile', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to reconcile', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -438,7 +439,7 @@ export default function BankContent(): ReactNode {
           addToast({ title: 'Fixed deposit created', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to create FD', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create FD', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -450,7 +451,7 @@ export default function BankContent(): ReactNode {
         addToast({ title: 'Fixed deposit matured', variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to mature FD', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to mature FD', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
@@ -476,7 +477,7 @@ export default function BankContent(): ReactNode {
           addToast({ title: 'Fixed deposit renewed', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to renew FD', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to renew FD', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -515,7 +516,7 @@ export default function BankContent(): ReactNode {
           addToast({ title: 'Cheque issued', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to issue cheque', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to issue cheque', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );

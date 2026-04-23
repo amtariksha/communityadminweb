@@ -39,6 +39,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   useSlotStats,
   useSlots,
@@ -301,7 +302,7 @@ function SlotsTab(): ReactNode {
           setNewMonthlyCharge('');
         },
         onError(error) {
-          addToast({ title: 'Failed to create slot', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create slot', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -323,7 +324,7 @@ function SlotsTab(): ReactNode {
           setAssignUnitId('');
         },
         onError(error) {
-          addToast({ title: 'Failed to assign slot', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to assign slot', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -335,7 +336,7 @@ function SlotsTab(): ReactNode {
         addToast({ title: `Slot ${slot.slot_number} deallocated`, variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to deallocate', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to deallocate', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
@@ -626,7 +627,7 @@ function VehiclesTab(): ReactNode {
           setNewSticker('');
         },
         onError(error) {
-          addToast({ title: 'Failed to register vehicle', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to register vehicle', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -638,7 +639,7 @@ function VehiclesTab(): ReactNode {
         addToast({ title: `Vehicle ${vehicle.registration_number} removed`, variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to remove vehicle', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to remove vehicle', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }

@@ -51,6 +51,7 @@ import { ExportButton } from '@/components/ui/export-button';
 import { Separator } from '@/components/ui/separator';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   useTickets,
   useTicket,
@@ -230,7 +231,7 @@ export default function TicketsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to create ticket',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -248,7 +249,7 @@ export default function TicketsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to update ticket',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -269,7 +270,7 @@ export default function TicketsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to add comment',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -313,7 +314,7 @@ export default function TicketsContent(): ReactNode {
           setSelectedIds(new Set());
         },
         onError(error) {
-          addToast({ title: 'Bulk close failed', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Bulk close failed', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -332,7 +333,7 @@ export default function TicketsContent(): ReactNode {
           setBulkAssignee('');
         },
         onError(error) {
-          addToast({ title: 'Bulk reassign failed', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Bulk reassign failed', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );

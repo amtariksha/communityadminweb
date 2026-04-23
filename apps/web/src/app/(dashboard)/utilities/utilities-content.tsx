@@ -46,6 +46,7 @@ import { ExportButton } from '@/components/ui/export-button';
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   useUtilityStats,
   useMeters,
@@ -311,7 +312,7 @@ function MetersTab({
           setNewIsCommon(false);
         },
         onError(error) {
-          addToast({ title: 'Failed to create meter', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create meter', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -557,7 +558,7 @@ function SlabsTab(): ReactNode {
           setFormLabel('');
         },
         onError(error) {
-          addToast({ title: 'Failed to create slab', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create slab', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -783,7 +784,7 @@ function ReadingsTab(): ReactNode {
           setReadingValue('');
         },
         onError(error) {
-          addToast({ title: 'Failed to submit reading', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to submit reading', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -860,7 +861,7 @@ function ReadingsTab(): ReactNode {
           }
         },
         onError(error) {
-          addToast({ title: 'Bulk upload failed', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Bulk upload failed', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -1079,7 +1080,7 @@ function BillsTab(): ReactNode {
           setCalcOpen(false);
         },
         onError(error) {
-          addToast({ title: 'Failed to calculate bills', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to calculate bills', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -1107,7 +1108,7 @@ function BillsTab(): ReactNode {
           setSelectedBillId('');
         },
         onError(error) {
-          addToast({ title: 'Failed to create invoice', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create invoice', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );

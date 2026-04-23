@@ -1,3 +1,4 @@
+export type { ApiErrorEnvelope } from './api-error';
 export type { Tenant, TenantSettings } from './tenant';
 export type { User, UserTenantRole, JwtPayload, AuthenticatedUser } from './user';
 export type {

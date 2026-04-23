@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/utils';
 import {
   useAssets,
@@ -300,7 +301,7 @@ export default function AssetsContent(): ReactNode {
             resetAssetForm();
           },
           onError(err) {
-            addToast({ title: 'Failed to update asset', description: err.message, variant: 'destructive' });
+            addToast({ title: 'Failed to update asset', description: friendlyError(err), variant: 'destructive' });
           },
         },
       );
@@ -312,7 +313,7 @@ export default function AssetsContent(): ReactNode {
           resetAssetForm();
         },
         onError(err) {
-          addToast({ title: 'Failed to create asset', description: err.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create asset', description: friendlyError(err), variant: 'destructive' });
         },
       });
     }
@@ -347,7 +348,7 @@ export default function AssetsContent(): ReactNode {
           resetAmcForm();
         },
         onError(err) {
-          addToast({ title: 'Failed to create AMC', description: err.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create AMC', description: friendlyError(err), variant: 'destructive' });
         },
       },
     );
@@ -382,7 +383,7 @@ export default function AssetsContent(): ReactNode {
           resetServiceForm();
         },
         onError(err) {
-          addToast({ title: 'Failed to log service', description: err.message, variant: 'destructive' });
+          addToast({ title: 'Failed to log service', description: friendlyError(err), variant: 'destructive' });
         },
       },
     );

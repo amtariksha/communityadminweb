@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { useAddMemberWithRoles, useTenants } from '@/hooks';
+import { normalizePhone } from '@/lib/validation';
+import { FormFieldError } from '@/components/ui/form-field-error';
 
 const ASSIGNABLE_ROLES = [
   { slug: 'community_admin', label: 'Community Admin', description: 'Facility manager — full society access including billing, gate, staff, and settings' },
@@ -70,8 +72,25 @@ export default function AddMemberDialog({
     e.preventDefault();
     if (!effectiveTenantId || !phone || selectedRoles.length === 0) return;
 
+    // The HTML5 `pattern="^\+91\d{10}$"` gate only catches missing-+91
+    // and length mismatches — it still lets 0/1/2/3/4/5-start numbers
+    // through. normalizePhone enforces the Indian mobile 6-9 first-
+    // digit rule and also accepts a bare 10-digit number, canonicalising
+    // to +91XXXXXXXXXX before we hit the backend.
+    const normalized = normalizePhone(phone);
+    if (!normalized.ok || !normalized.value) {
+      addToast({
+        title: 'Invalid phone number',
+        description: normalized.ok
+          ? 'Phone is required.'
+          : normalized.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     addMember.mutate(
-      { tenant_id: effectiveTenantId, phone, roles: selectedRoles },
+      { tenant_id: effectiveTenantId, phone: normalized.value, roles: selectedRoles },
       {
         onSuccess(results) {
           const isNew = results[0]?.user.is_new;
@@ -120,14 +139,16 @@ export default function AddMemberDialog({
               <Input
                 id="member-phone"
                 required
-                placeholder="+91XXXXXXXXXX"
+                placeholder="10-digit mobile (optional +91 prefix)"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                pattern="^\+91\d{10}$"
-                title="Phone must be +91 followed by 10 digits"
+                maxLength={13}
+                inputMode="tel"
+                title="Indian mobile — 10 digits starting 6/7/8/9"
               />
+              <FormFieldError error={addMember.error} field="phone" />
               <p className="text-xs text-muted-foreground">
-                Indian mobile number in +91XXXXXXXXXX format
+                Indian mobile number — 10 digits starting 6/7/8/9, with or without +91.
               </p>
             </div>
 

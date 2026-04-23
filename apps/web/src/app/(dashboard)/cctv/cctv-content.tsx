@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   useCameras,
   useCreateCamera,
@@ -231,7 +232,7 @@ export default function CctvContent(): ReactNode {
             resetForm();
           },
           onError(err) {
-            addToast({ title: 'Failed to update camera', description: err.message, variant: 'destructive' });
+            addToast({ title: 'Failed to update camera', description: friendlyError(err), variant: 'destructive' });
           },
         },
       );
@@ -243,7 +244,7 @@ export default function CctvContent(): ReactNode {
           resetForm();
         },
         onError(err) {
-          addToast({ title: 'Failed to add camera', description: err.message, variant: 'destructive' });
+          addToast({ title: 'Failed to add camera', description: friendlyError(err), variant: 'destructive' });
         },
       });
     }

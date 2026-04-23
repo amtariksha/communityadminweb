@@ -35,6 +35,8 @@ import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
+import { FormFieldError } from '@/components/ui/form-field-error';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -323,7 +325,7 @@ export default function InvoicesContent(): ReactNode {
       onError(error) {
         addToast({
           title: 'Failed to create billing rule',
-          description: error.message,
+          description: friendlyError(error),
           variant: 'destructive',
         });
       },
@@ -349,7 +351,7 @@ export default function InvoicesContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to generate invoices',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -373,7 +375,7 @@ export default function InvoicesContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to post invoices',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -403,7 +405,7 @@ export default function InvoicesContent(): ReactNode {
       onError(error) {
         addToast({
           title: 'Failed to cancel invoice',
-          description: error.message,
+          description: friendlyError(error),
           variant: 'destructive',
         });
       },
@@ -518,6 +520,7 @@ export default function InvoicesContent(): ReactNode {
                                     onChange={(e) => setRuleName(e.target.value)}
                                     required
                                   />
+                                  <FormFieldError error={createInvoiceRule.error} field="name" />
                                 </div>
                                 <div className="space-y-2">
                                   <Label htmlFor="rule-ledger-account">Ledger Account</Label>
@@ -534,6 +537,7 @@ export default function InvoicesContent(): ReactNode {
                                       </option>
                                     ))}
                                   </Select>
+                                  <FormFieldError error={createInvoiceRule.error} field="ledger_account_id" />
                                 </div>
                                 <div className="space-y-2">
                                   <Label htmlFor="rule-charge-type" className="flex items-center gap-1">
@@ -570,6 +574,8 @@ export default function InvoicesContent(): ReactNode {
                                       onChange={(e) => setRuleFlatAmount(e.target.value)}
                                       required
                                     />
+                                    <FormFieldError error={createInvoiceRule.error} field="flat_amount" />
+                                    <FormFieldError error={createInvoiceRule.error} field="amount" />
                                   </div>
                                 ) : (
                                   <div className="space-y-2">
@@ -584,6 +590,7 @@ export default function InvoicesContent(): ReactNode {
                                       onChange={(e) => setRuleRatePerSqft(e.target.value)}
                                       required
                                     />
+                                    <FormFieldError error={createInvoiceRule.error} field="rate_per_sqft" />
                                     <p className="text-xs text-muted-foreground">
                                       Example: rate = ₹2.5, unit = 1,200 sqft → invoice = ₹3,000
                                     </p>
@@ -1237,7 +1244,7 @@ export default function InvoicesContent(): ReactNode {
                         onError(error) {
                           addToast({
                             title: 'Failed to post LPI',
-                            description: error.message,
+                            description: friendlyError(error),
                             variant: 'destructive',
                           });
                         },

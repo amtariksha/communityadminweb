@@ -44,6 +44,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   usePolls,
   useActivePolls,
@@ -289,7 +290,7 @@ export default function VotingContent(): ReactNode {
           resetCreateForm();
         },
         onError(error) {
-          addToast({ title: 'Failed to create poll', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create poll', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -312,7 +313,7 @@ export default function VotingContent(): ReactNode {
         addToast({ title: `Poll "${poll.title}" closed`, variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to close poll', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to close poll', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
@@ -361,7 +362,7 @@ export default function VotingContent(): ReactNode {
           resetResForm();
         },
         onError(error) {
-          addToast({ title: 'Failed to create resolution', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create resolution', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -373,7 +374,7 @@ export default function VotingContent(): ReactNode {
         addToast({ title: 'Resolution proposed', variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to propose', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to propose', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
@@ -384,7 +385,7 @@ export default function VotingContent(): ReactNode {
         addToast({ title: 'Resolution withdrawn', variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to withdraw', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to withdraw', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
@@ -410,7 +411,7 @@ export default function VotingContent(): ReactNode {
           setRecordMinutesResId('');
         },
         onError(error) {
-          addToast({ title: 'Failed to record minutes', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to record minutes', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -476,7 +477,7 @@ export default function VotingContent(): ReactNode {
           resetElForm();
         },
         onError(error) {
-          addToast({ title: 'Failed to create election', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create election', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -488,7 +489,7 @@ export default function VotingContent(): ReactNode {
         addToast({ title: 'Election closed', variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to close election', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to close election', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
