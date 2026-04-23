@@ -18,6 +18,7 @@ import {
 import { useToast } from '@/components/ui/toast';
 import { useAddMemberWithRoles, useTenants } from '@/hooks';
 import { normalizePhone } from '@/lib/validation';
+import { FormFieldError } from '@/components/ui/form-field-error';
 
 const ASSIGNABLE_ROLES = [
   { slug: 'community_admin', label: 'Community Admin', description: 'Facility manager — full society access including billing, gate, staff, and settings' },
@@ -145,6 +146,7 @@ export default function AddMemberDialog({
                 inputMode="tel"
                 title="Indian mobile — 10 digits starting 6/7/8/9"
               />
+              <FormFieldError error={addMember.error} field="phone" />
               <p className="text-xs text-muted-foreground">
                 Indian mobile number — 10 digits starting 6/7/8/9, with or without +91.
               </p>

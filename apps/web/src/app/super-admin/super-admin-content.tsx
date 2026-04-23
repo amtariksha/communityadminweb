@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { normalizePhone } from '@/lib/validation';
+import { FormFieldError } from '@/components/ui/form-field-error';
 import { useToast } from '@/components/ui/toast';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { TOOLTIP } from '@/lib/tooltip-content';
@@ -687,6 +688,7 @@ export default function SuperAdminContent(): ReactNode {
                           value={formAdminPhone}
                           onChange={(e) => setFormAdminPhone(e.target.value)}
                         />
+                        <FormFieldError error={createTenant.error} field="admin_phone" />
                         <p className="text-xs text-muted-foreground">
                           Auto-creates user and assigns Committee Member role
                         </p>

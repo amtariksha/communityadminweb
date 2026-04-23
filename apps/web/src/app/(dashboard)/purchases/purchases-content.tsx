@@ -46,6 +46,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   usePurchaseRequests,
   useCreatePR,
@@ -370,7 +371,7 @@ export default function PurchasesContent(): ReactNode {
           addToast({ title: 'Purchase request created', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to create purchase request', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create purchase request', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -388,7 +389,7 @@ export default function PurchasesContent(): ReactNode {
           addToast({ title: 'Purchase request approved', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to approve', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to approve', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -406,7 +407,7 @@ export default function PurchasesContent(): ReactNode {
           addToast({ title: 'Purchase request rejected', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to reject', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to reject', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -446,7 +447,7 @@ export default function PurchasesContent(): ReactNode {
           addToast({ title: 'Purchase request converted to bill', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to convert', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to convert', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -572,7 +573,7 @@ export default function PurchasesContent(): ReactNode {
           addToast({ title: 'Vendor bill created', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to create bill', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create bill', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -605,7 +606,7 @@ export default function PurchasesContent(): ReactNode {
           addToast({ title: 'Payment recorded', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to record payment', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to record payment', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );

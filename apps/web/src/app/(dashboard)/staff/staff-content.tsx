@@ -45,6 +45,8 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
+import { FormFieldError } from '@/components/ui/form-field-error';
 import { formatDate } from '@/lib/utils';
 import { normalizePhone } from '@/lib/validation';
 import { ClickablePhone } from '@/components/ui/clickable-contact';
@@ -298,7 +300,7 @@ export default function StaffContent(): ReactNode {
             addToast({ title: 'Employee updated', variant: 'success' });
           },
           onError(error) {
-            addToast({ title: 'Failed to update employee', description: error.message, variant: 'destructive' });
+            addToast({ title: 'Failed to update employee', description: friendlyError(error), variant: 'destructive' });
           },
         },
       );
@@ -331,7 +333,7 @@ export default function StaffContent(): ReactNode {
             addToast({ title: 'Employee added', variant: 'success' });
           },
           onError(error) {
-            addToast({ title: 'Failed to add employee', description: error.message, variant: 'destructive' });
+            addToast({ title: 'Failed to add employee', description: friendlyError(error), variant: 'destructive' });
           },
         },
       );
@@ -344,7 +346,7 @@ export default function StaffContent(): ReactNode {
         addToast({ title: 'Employee deactivated', variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to deactivate', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to deactivate', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
@@ -370,7 +372,7 @@ export default function StaffContent(): ReactNode {
           addToast({ title: 'Shift created', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to create shift', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create shift', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -405,7 +407,7 @@ export default function StaffContent(): ReactNode {
           addToast({ title: 'Staff assigned', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to assign staff', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to assign staff', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -432,7 +434,7 @@ export default function StaffContent(): ReactNode {
           addToast({ title: 'Clock in recorded', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to clock in', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to clock in', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -444,7 +446,7 @@ export default function StaffContent(): ReactNode {
         addToast({ title: 'Clock out recorded', variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to clock out', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to clock out', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
@@ -478,7 +480,7 @@ export default function StaffContent(): ReactNode {
           addToast({ title: 'Leave applied', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to apply leave', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to apply leave', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -490,7 +492,7 @@ export default function StaffContent(): ReactNode {
         addToast({ title: 'Leave approved', variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to approve leave', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to approve leave', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
@@ -501,7 +503,7 @@ export default function StaffContent(): ReactNode {
         addToast({ title: 'Leave rejected', variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to reject leave', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to reject leave', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
@@ -624,6 +626,10 @@ export default function StaffContent(): ReactNode {
                               title="Phone must be exactly 10 digits"
                               value={empPhone}
                               onChange={(e) => setEmpPhone(e.target.value.replace(/\D/g, ''))}
+                            />
+                            <FormFieldError
+                              error={editingEmployeeId ? updateEmployee.error : createEmployee.error}
+                              field="phone"
                             />
                           </div>
                         </div>

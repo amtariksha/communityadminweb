@@ -31,6 +31,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import { getCurrentTenant, getUser } from '@/lib/auth';
 import {
   useTenant,
@@ -236,7 +237,7 @@ export default function SettingsContent(): ReactNode {
           addToast({ title: 'Society info updated', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to update', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to update', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -335,7 +336,7 @@ export default function SettingsContent(): ReactNode {
             addToast({ title: 'Billing rule updated', variant: 'success' });
           },
           onError(error) {
-            addToast({ title: 'Failed to update rule', description: error.message, variant: 'destructive' });
+            addToast({ title: 'Failed to update rule', description: friendlyError(error), variant: 'destructive' });
           },
         },
       );
@@ -347,7 +348,7 @@ export default function SettingsContent(): ReactNode {
           addToast({ title: 'Billing rule created', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to create rule', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create rule', description: friendlyError(error), variant: 'destructive' });
         },
       });
     }
@@ -361,7 +362,7 @@ export default function SettingsContent(): ReactNode {
           addToast({ title: 'Billing rule deactivated', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to deactivate rule', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to deactivate rule', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -489,7 +490,7 @@ export default function SettingsContent(): ReactNode {
             addToast({ title: 'Gate updated', variant: 'success' });
           },
           onError(error) {
-            addToast({ title: 'Failed to update gate', description: error.message, variant: 'destructive' });
+            addToast({ title: 'Failed to update gate', description: friendlyError(error), variant: 'destructive' });
           },
         },
       );
@@ -503,7 +504,7 @@ export default function SettingsContent(): ReactNode {
             addToast({ title: 'Gate created', variant: 'success' });
           },
           onError(error) {
-            addToast({ title: 'Failed to create gate', description: error.message, variant: 'destructive' });
+            addToast({ title: 'Failed to create gate', description: friendlyError(error), variant: 'destructive' });
           },
         },
       );
@@ -518,7 +519,7 @@ export default function SettingsContent(): ReactNode {
           addToast({ title: 'Gate deactivated', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to deactivate gate', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to deactivate gate', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -602,7 +603,7 @@ export default function SettingsContent(): ReactNode {
           },
           onError(error) {
             hasError = true;
-            addToast({ title: `Failed to update ${role}/${resource}`, description: error.message, variant: 'destructive' });
+            addToast({ title: `Failed to update ${role}/${resource}`, description: friendlyError(error), variant: 'destructive' });
           },
         },
       );
@@ -615,7 +616,7 @@ export default function SettingsContent(): ReactNode {
         addToast({ title: 'Default permissions seeded', variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to seed permissions', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to seed permissions', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
@@ -637,7 +638,7 @@ export default function SettingsContent(): ReactNode {
           addToast({ title: 'Financial year created', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to create financial year', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create financial year', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -701,7 +702,7 @@ export default function SettingsContent(): ReactNode {
             addToast({ title: 'Amenity updated', variant: 'success' });
           },
           onError(error) {
-            addToast({ title: 'Failed to update amenity', description: error.message, variant: 'destructive' });
+            addToast({ title: 'Failed to update amenity', description: friendlyError(error), variant: 'destructive' });
           },
         },
       );
@@ -712,7 +713,7 @@ export default function SettingsContent(): ReactNode {
           addToast({ title: 'Amenity created', variant: 'success' });
         },
         onError(error) {
-          addToast({ title: 'Failed to create amenity', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to create amenity', description: friendlyError(error), variant: 'destructive' });
         },
       });
     }
@@ -729,7 +730,7 @@ export default function SettingsContent(): ReactNode {
           });
         },
         onError(error) {
-          addToast({ title: 'Failed to update amenity', description: error.message, variant: 'destructive' });
+          addToast({ title: 'Failed to update amenity', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -1290,7 +1291,7 @@ export default function SettingsContent(): ReactNode {
                                   addToast({ title: `${fy.label} set as current year`, variant: 'success' });
                                 },
                                 onError(error: Error) {
-                                  addToast({ title: 'Failed to set current year', description: error.message, variant: 'destructive' });
+                                  addToast({ title: 'Failed to set current year', description: friendlyError(error), variant: 'destructive' });
                                 },
                               });
                             }}
@@ -1308,7 +1309,7 @@ export default function SettingsContent(): ReactNode {
                                   addToast({ title: `${fy.label} frozen`, variant: 'success' });
                                 },
                                 onError(error: Error) {
-                                  addToast({ title: 'Failed to freeze year', description: error.message, variant: 'destructive' });
+                                  addToast({ title: 'Failed to freeze year', description: friendlyError(error), variant: 'destructive' });
                                 },
                               });
                             }}
@@ -1325,7 +1326,7 @@ export default function SettingsContent(): ReactNode {
                                   addToast({ title: `${fy.label} unfrozen`, variant: 'success' });
                                 },
                                 onError(error: Error) {
-                                  addToast({ title: 'Failed to unfreeze year', description: error.message, variant: 'destructive' });
+                                  addToast({ title: 'Failed to unfreeze year', description: friendlyError(error), variant: 'destructive' });
                                 },
                               });
                             }}

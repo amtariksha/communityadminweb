@@ -42,6 +42,7 @@ import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { TOOLTIP } from '@/lib/tooltip-content';
 import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   usePayments,
   usePayment,
@@ -165,7 +166,7 @@ export default function PaymentsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to initiate refund',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },

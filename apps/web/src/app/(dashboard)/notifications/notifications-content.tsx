@@ -28,6 +28,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   useNotificationTemplates,
   useCreateTemplate,
@@ -138,7 +139,7 @@ export default function NotificationsContent(): ReactNode {
             onError(error) {
               addToast({
                 title: 'Template created but failed to send',
-                description: error.message,
+                description: friendlyError(error),
                 variant: 'destructive',
               });
             },
@@ -147,7 +148,7 @@ export default function NotificationsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to create notification',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -161,7 +162,7 @@ export default function NotificationsContent(): ReactNode {
         addToast({ title: `"${template.title}" resent`, variant: 'success' });
       },
       onError(error) {
-        addToast({ title: 'Failed to resend', description: error.message, variant: 'destructive' });
+        addToast({ title: 'Failed to resend', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }

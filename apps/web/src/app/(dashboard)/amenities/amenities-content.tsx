@@ -31,6 +31,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   useAmenities,
   useAmenityBookings,
@@ -281,7 +282,7 @@ function AmenitiesTab({ createOpen, setCreateOpen }: AmenitiesTabProps): ReactNo
         onError(error) {
           addToast({
             title: 'Failed to create amenity',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -317,7 +318,7 @@ function AmenitiesTab({ createOpen, setCreateOpen }: AmenitiesTabProps): ReactNo
         onError(error) {
           addToast({
             title: 'Failed to update amenity',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -338,7 +339,7 @@ function AmenitiesTab({ createOpen, setCreateOpen }: AmenitiesTabProps): ReactNo
         onError(error) {
           addToast({
             title: 'Failed to update amenity',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -800,7 +801,7 @@ function BookingsTab(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to cancel booking',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },

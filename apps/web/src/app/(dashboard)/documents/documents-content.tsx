@@ -46,6 +46,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { formatDate } from '@/lib/utils';
 import { checkUploadFile } from '@/lib/validation';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   useDocumentCategories,
   useDocuments,
@@ -237,7 +238,7 @@ export default function DocumentsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to save document',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -255,8 +256,8 @@ export default function DocumentsContent(): ReactNode {
           setCategoryName('');
           addToast({ title: 'Category created successfully', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to create category', variant: 'destructive' });
+        onError(error) {
+          addToast({ title: 'Failed to create category', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -267,8 +268,8 @@ export default function DocumentsContent(): ReactNode {
       onSuccess() {
         addToast({ title: 'Document deleted', variant: 'success' });
       },
-      onError() {
-        addToast({ title: 'Failed to delete document', variant: 'destructive' });
+      onError(error) {
+        addToast({ title: 'Failed to delete document', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }

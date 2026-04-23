@@ -35,6 +35,7 @@ import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -323,7 +324,7 @@ export default function InvoicesContent(): ReactNode {
       onError(error) {
         addToast({
           title: 'Failed to create billing rule',
-          description: error.message,
+          description: friendlyError(error),
           variant: 'destructive',
         });
       },
@@ -349,7 +350,7 @@ export default function InvoicesContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to generate invoices',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -373,7 +374,7 @@ export default function InvoicesContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to post invoices',
-            description: error.message,
+            description: friendlyError(error),
             variant: 'destructive',
           });
         },
@@ -403,7 +404,7 @@ export default function InvoicesContent(): ReactNode {
       onError(error) {
         addToast({
           title: 'Failed to cancel invoice',
-          description: error.message,
+          description: friendlyError(error),
           variant: 'destructive',
         });
       },
@@ -1237,7 +1238,7 @@ export default function InvoicesContent(): ReactNode {
                         onError(error) {
                           addToast({
                             title: 'Failed to post LPI',
-                            description: error.message,
+                            description: friendlyError(error),
                             variant: 'destructive',
                           });
                         },

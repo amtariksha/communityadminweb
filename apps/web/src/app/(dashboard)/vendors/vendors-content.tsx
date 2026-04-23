@@ -31,6 +31,8 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
+import { FormFieldError } from '@/components/ui/form-field-error';
 import { normalizePhone } from '@/lib/validation';
 import { useVendors, useVendor, useCreateVendor, useUpdateVendor, useDeactivateVendor, useServiceRatings, useTopRated, useVerifyRating } from '@/hooks';
 import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
@@ -202,8 +204,8 @@ export default function VendorsContent(): ReactNode {
           resetForm();
           addToast({ title: 'Vendor added successfully', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to add vendor', variant: 'destructive' });
+        onError(error) {
+          addToast({ title: 'Failed to add vendor', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -216,8 +218,8 @@ export default function VendorsContent(): ReactNode {
         setSelectedVendorId('');
         addToast({ title: 'Vendor deactivated', variant: 'success' });
       },
-      onError() {
-        addToast({ title: 'Failed to deactivate vendor', variant: 'destructive' });
+      onError(error) {
+        addToast({ title: 'Failed to deactivate vendor', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
@@ -270,8 +272,8 @@ export default function VendorsContent(): ReactNode {
           setSelectedVendorId('');
           addToast({ title: 'Vendor updated successfully', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to update vendor', variant: 'destructive' });
+        onError(error) {
+          addToast({ title: 'Failed to update vendor', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -287,8 +289,8 @@ export default function VendorsContent(): ReactNode {
       onSuccess() {
         addToast({ title: 'Rating verified', variant: 'success' });
       },
-      onError() {
-        addToast({ title: 'Failed to verify rating', variant: 'destructive' });
+      onError(error) {
+        addToast({ title: 'Failed to verify rating', description: friendlyError(error), variant: 'destructive' });
       },
     });
   }
@@ -408,6 +410,7 @@ export default function VendorsContent(): ReactNode {
                         value={formPhone}
                         onChange={(e) => setFormPhone(e.target.value.replace(/\D/g, ''))}
                       />
+                      <FormFieldError error={createVendor.error} field="phone" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="vendor-email">Email</Label>
@@ -913,6 +916,7 @@ export default function VendorsContent(): ReactNode {
                     value={editPhone}
                     onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, ''))}
                   />
+                  <FormFieldError error={updateVendor.error} field="phone" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-vendor-email">Email</Label>

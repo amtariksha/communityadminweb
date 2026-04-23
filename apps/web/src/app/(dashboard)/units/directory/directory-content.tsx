@@ -37,6 +37,8 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
+import { FormFieldError } from '@/components/ui/form-field-error';
 import {
   useMemberDirectory,
   useBlocks,
@@ -196,8 +198,8 @@ export default function DirectoryContent(): ReactNode {
           setEditDialogOpen(false);
           addToast({ title: 'Member updated successfully', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to update member', variant: 'destructive' });
+        onError(error) {
+          addToast({ title: 'Failed to update member', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -455,6 +457,7 @@ export default function DirectoryContent(): ReactNode {
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
                 />
+                <FormFieldError error={updateMember.error} field="phone" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-dir-email">Email</Label>

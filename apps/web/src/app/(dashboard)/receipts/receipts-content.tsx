@@ -34,6 +34,7 @@ import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
 import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
 import {
   useReceipts,
   useReceiptSummary,
@@ -197,8 +198,8 @@ export default function ReceiptsContent(): ReactNode {
           resetReceiptForm();
           addToast({ title: 'Receipt recorded successfully', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to record receipt', variant: 'destructive' });
+        onError(error) {
+          addToast({ title: 'Failed to record receipt', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -220,8 +221,8 @@ export default function ReceiptsContent(): ReactNode {
           resetCreditNoteForm();
           addToast({ title: 'Credit note created successfully', variant: 'success' });
         },
-        onError() {
-          addToast({ title: 'Failed to create credit note', variant: 'destructive' });
+        onError(error) {
+          addToast({ title: 'Failed to create credit note', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );

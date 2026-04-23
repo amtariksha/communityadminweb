@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useToast } from '@/components/ui/toast';
+import { ApiError, friendlyError } from '@/lib/api-error';
 
 /**
  * Global toast dispatcher registered at runtime so the QueryCache
@@ -43,10 +44,14 @@ let globalAddToast:
  */
 const queryCache = new QueryCache({
   onError: (error, query) => {
-    const err = error as { response?: { status?: number }; message?: string };
-
-    // Auth / refresh flow already retries transparently.
-    if (err.response?.status === 401) return;
+    // Batch 18 — lib/api.ts now throws ApiError on every non-2xx
+    // so the onError handler can read `.userMessage` (friendly,
+    // code-aware, status-aware) and `.status` directly. Unknown
+    // error shapes fall through to `friendlyError()`.
+    if (error instanceof ApiError) {
+      // Auth / refresh flow already retries transparently.
+      if (error.status === 401) return;
+    }
 
     // If a specific query opts in with meta.suppressToast, skip — the
     // page handles it locally (e.g. a dashboard tile that rolls up N
@@ -55,9 +60,7 @@ const queryCache = new QueryCache({
 
     globalAddToast?.({
       title: 'Failed to load data',
-      description:
-        err.message?.slice(0, 200) ??
-        'The server returned an error. Try again.',
+      description: friendlyError(error),
       variant: 'destructive',
     });
   },
