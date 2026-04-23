@@ -420,11 +420,34 @@ export default function UnitsContent(): ReactNode {
 
   function handleAddUnit(e: FormEvent): void {
     e.preventDefault();
+    // Unit-picker handoff (2026-04-23): the guard Flutter app renders
+    // Step-1 block tiles from DISTINCT blocks, so every NEW unit must
+    // have a block. Older rows (block IS NULL) are tolerated by
+    // migration 051's backfill + the `units_needing_backfill` view,
+    // but we don't create new orphans.
+    const normalizedBlock = formBlock.trim().toUpperCase();
+    if (!normalizedBlock) {
+      addToast({
+        title: 'Block is required',
+        description:
+          'The guard app groups units by block. Enter the block this unit belongs to (e.g. A, B, Tower1).',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const floorNum = Number(formFloor);
+    if (!Number.isInteger(floorNum) || floorNum < -5 || floorNum > 200) {
+      addToast({
+        title: 'Floor must be a whole number between -5 and 200',
+        variant: 'destructive',
+      });
+      return;
+    }
     createUnit.mutate(
       {
         unit_number: formUnitNumber,
-        block: formBlock || null,
-        floor: Number(formFloor),
+        block: normalizedBlock,
+        floor: floorNum,
         area_sqft: Number(formArea),
         unit_type: formUnitType,
       },
@@ -463,13 +486,34 @@ export default function UnitsContent(): ReactNode {
 
   function handleEditUnit(e: FormEvent): void {
     e.preventDefault();
+    // Mirror the create-form guard — edits are the primary channel
+    // for ops to backfill block/floor on legacy rows, so we also
+    // soft-enforce here.
+    const normalizedBlock = editBlock.trim().toUpperCase();
+    if (!normalizedBlock) {
+      addToast({
+        title: 'Block is required',
+        description:
+          'Every unit needs a block for the guard app\'s unit picker.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const floorNum = Number(editFloor);
+    if (!Number.isInteger(floorNum) || floorNum < -5 || floorNum > 200) {
+      addToast({
+        title: 'Floor must be a whole number between -5 and 200',
+        variant: 'destructive',
+      });
+      return;
+    }
     updateUnit.mutate(
       {
         id: detailUnitId,
         data: {
           unit_number: editUnitNumber,
-          block: editBlock || null,
-          floor: Number(editFloor),
+          block: normalizedBlock,
+          floor: floorNum,
           area_sqft: Number(editArea),
           unit_type: editUnitType,
           is_active: editIsActive,
@@ -854,23 +898,33 @@ export default function UnitsContent(): ReactNode {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="unit-block">Block</Label>
+                        <Label htmlFor="unit-block">Block *</Label>
                         <Input
                           id="unit-block"
                           placeholder="e.g., A"
+                          required
+                          maxLength={50}
                           value={formBlock}
-                          onChange={(e) => setFormBlock(e.target.value)}
+                          onChange={(e) =>
+                            setFormBlock(e.target.value.toUpperCase())
+                          }
+                          onBlur={(e) =>
+                            setFormBlock(e.target.value.trim().toUpperCase())
+                          }
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="unit-floor">Floor</Label>
+                        <Label htmlFor="unit-floor">Floor *</Label>
                         <Input
                           id="unit-floor"
                           type="number"
                           placeholder="0"
                           required
+                          min={-5}
+                          max={200}
+                          step={1}
                           value={formFloor}
                           onChange={(e) => setFormFloor(e.target.value)}
                         />
@@ -1164,23 +1218,33 @@ export default function UnitsContent(): ReactNode {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-unit-block">Block</Label>
+                  <Label htmlFor="edit-unit-block">Block *</Label>
                   <Input
                     id="edit-unit-block"
                     placeholder="e.g., A"
+                    required
+                    maxLength={50}
                     value={editBlock}
-                    onChange={(e) => setEditBlock(e.target.value)}
+                    onChange={(e) =>
+                      setEditBlock(e.target.value.toUpperCase())
+                    }
+                    onBlur={(e) =>
+                      setEditBlock(e.target.value.trim().toUpperCase())
+                    }
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-unit-floor">Floor</Label>
+                  <Label htmlFor="edit-unit-floor">Floor *</Label>
                   <Input
                     id="edit-unit-floor"
                     type="number"
                     placeholder="0"
                     required
+                    min={-5}
+                    max={200}
+                    step={1}
                     value={editFloor}
                     onChange={(e) => setEditFloor(e.target.value)}
                   />
