@@ -81,6 +81,7 @@ import {
 } from '@/hooks/use-regular-visitors';
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
 import { formatDate } from '@/lib/utils';
+import { normalizePhone } from '@/lib/validation';
 
 type TabKey = 'visitors' | 'staff' | 'regulars' | 'parcels' | 'vehicles';
 
@@ -380,11 +381,22 @@ export default function GateContent(): ReactNode {
       addToast({ title: 'Please select a unit', variant: 'destructive' });
       return;
     }
+    // Visitor phone is optional, but validate when present so we don't
+    // write 0000000000 junk that can't be reached for re-entry.
+    const phone = normalizePhone(visitorPhone);
+    if (!phone.ok) {
+      addToast({
+        title: 'Invalid visitor phone',
+        description: phone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
     const payload: Record<string, unknown> = {
       unit_id: visitorUnit,
       visitor_name: visitorName.trim(),
     };
-    if (visitorPhone.trim()) payload.visitor_phone = visitorPhone.trim();
+    if (phone.value) payload.visitor_phone = phone.value;
     if (visitorPurpose.trim()) payload.purpose = visitorPurpose.trim();
     if (visitorVehicle.trim()) payload.vehicle_number = visitorVehicle.trim();
     if (selectedGateId) payload.gate_id = selectedGateId;
@@ -460,11 +472,20 @@ export default function GateContent(): ReactNode {
 
   function handleStaffCheckIn(e: FormEvent): void {
     e.preventDefault();
+    const phone = normalizePhone(staffPhone);
+    if (!phone.ok) {
+      addToast({
+        title: 'Invalid staff phone',
+        description: phone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
     const payload: Record<string, unknown> = {
       staff_name: staffName.trim(),
       staff_type: staffType,
     };
-    if (staffPhone.trim()) payload.phone = staffPhone.trim();
+    if (phone.value) payload.phone = phone.value;
     if (staffUnit) payload.unit_id = staffUnit;
     if (staffNotes.trim()) payload.notes = staffNotes.trim();
 

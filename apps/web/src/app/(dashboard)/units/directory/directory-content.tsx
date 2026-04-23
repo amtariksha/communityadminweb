@@ -43,6 +43,7 @@ import {
   useUpdateMemberDetail,
 } from '@/hooks';
 import { formatDate } from '@/lib/utils';
+import { normalizePhone } from '@/lib/validation';
 import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
 import { RenewLeaseDialog } from './renew-lease-dialog';
 import type { DirectoryMember } from '@/hooks';
@@ -157,6 +158,20 @@ export default function DirectoryContent(): ReactNode {
     e.preventDefault();
     if (!editMemberId || !editUnitId) return;
 
+    // Previously no client-side check existed on this form, so any
+    // 10-digit string (or a malformed one) was sent to the backend
+    // and only the API's Indian-phone Zod caught it — surfacing as a
+    // late "Failed to update member" toast with no detail.
+    const phone = normalizePhone(editPhone);
+    if (!phone.ok) {
+      addToast({
+        title: 'Invalid phone number',
+        description: phone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Only send lease_end_date if it changed semantics. Empty string on
     // a lease-bound role clears expiry (overrides to "no expiry"); on
     // an owner-type it is no-op.
@@ -170,7 +185,7 @@ export default function DirectoryContent(): ReactNode {
         unitId: editUnitId,
         memberId: editMemberId,
         name: editName || undefined,
-        phone: editPhone || undefined,
+        phone: phone.value || undefined,
         email: editEmail || null,
         ...(isLeaseBound
           ? { lease_end_date: editLeaseEndDate || null }
@@ -434,7 +449,9 @@ export default function DirectoryContent(): ReactNode {
                 <Label htmlFor="edit-dir-phone">Phone</Label>
                 <Input
                   id="edit-dir-phone"
-                  placeholder="10-digit phone"
+                  placeholder="10-digit mobile (optional +91 prefix)"
+                  maxLength={13}
+                  inputMode="tel"
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
                 />

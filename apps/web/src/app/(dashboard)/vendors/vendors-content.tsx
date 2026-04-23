@@ -31,6 +31,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { normalizePhone } from '@/lib/validation';
 import { useVendors, useVendor, useCreateVendor, useUpdateVendor, useDeactivateVendor, useServiceRatings, useTopRated, useVerifyRating } from '@/hooks';
 import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
 import type { ServiceRating, TopRatedProvider, RatingFilters } from '@/hooks/use-ratings';
@@ -172,6 +173,18 @@ export default function VendorsContent(): ReactNode {
 
   function handleAddVendor(e: FormEvent): void {
     e.preventDefault();
+    // Phone is optional on vendors, but if present it must pass the
+    // Indian-mobile rule so we don't write 0000000000 / 1234567890 as
+    // a vendor contact that no one can actually reach.
+    const phone = normalizePhone(formPhone);
+    if (!phone.ok) {
+      addToast({
+        title: 'Invalid phone number',
+        description: phone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
     createVendor.mutate(
       {
         name: formName,
@@ -180,7 +193,7 @@ export default function VendorsContent(): ReactNode {
         bank_name: formBankName || null,
         bank_account_number: formBankAccount || null,
         bank_ifsc: formBankIfsc || null,
-        phone: formPhone || null,
+        phone: phone.value || null,
         email: formEmail || null,
       },
       {
@@ -227,6 +240,16 @@ export default function VendorsContent(): ReactNode {
     e.preventDefault();
     if (!selectedVendorId) return;
 
+    const phone = normalizePhone(editPhone);
+    if (!phone.ok) {
+      addToast({
+        title: 'Invalid phone number',
+        description: phone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     updateVendor.mutate(
       {
         id: selectedVendorId,
@@ -237,7 +260,7 @@ export default function VendorsContent(): ReactNode {
           bank_name: editBankName || null,
           bank_account_number: editBankAccount || null,
           bank_ifsc: editBankIfsc || null,
-          phone: editPhone || null,
+          phone: phone.value || null,
           email: editEmail || null,
         },
       },

@@ -46,6 +46,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { useToast } from '@/components/ui/toast';
 import { formatDate } from '@/lib/utils';
+import { normalizePhone } from '@/lib/validation';
 import { ClickablePhone } from '@/components/ui/clickable-contact';
 import {
   useStaffEmployees,
@@ -263,6 +264,21 @@ export default function StaffContent(): ReactNode {
 
   function handleSaveEmployee(e: FormEvent): void {
     e.preventDefault();
+    // Phone checks mirror units-content.tsx — reject non-Indian-mobile
+    // inputs client-side so the 400 from the backend's indianPhone
+    // Zod never lands as a late toast. Emergency contact is optional;
+    // primary phone is required on create (the input itself is
+    // `disabled` on edit, so edit path skips the check).
+    const emergency = normalizePhone(empEmergencyContact);
+    if (!emergency.ok) {
+      addToast({
+        title: 'Invalid emergency contact',
+        description: emergency.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (editingEmployeeId) {
       updateEmployee.mutate(
         {
@@ -272,7 +288,7 @@ export default function StaffContent(): ReactNode {
             staff_type: empType,
             designation: empDesignation || undefined,
             address: empAddress || undefined,
-            emergency_contact: empEmergencyContact || undefined,
+            emergency_contact: emergency.value || undefined,
           },
         },
         {
@@ -287,14 +303,25 @@ export default function StaffContent(): ReactNode {
         },
       );
     } else {
+      const phone = normalizePhone(empPhone);
+      if (!phone.ok || !phone.value) {
+        addToast({
+          title: 'Invalid phone number',
+          description: phone.ok
+            ? 'Phone is required.'
+            : phone.error,
+          variant: 'destructive',
+        });
+        return;
+      }
       createEmployee.mutate(
         {
           name: empName,
-          phone: empPhone,
+          phone: phone.value,
           staff_type: empType,
           designation: empDesignation || undefined,
           address: empAddress || undefined,
-          emergency_contact: empEmergencyContact || undefined,
+          emergency_contact: emergency.value || undefined,
           joined_at: empJoinedAt || undefined,
         },
         {
