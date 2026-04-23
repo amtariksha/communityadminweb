@@ -35,6 +35,7 @@ import { UnitSearchSelect } from '@/components/ui/unit-search-select';
 import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
+import { FormFieldError } from '@/components/ui/form-field-error';
 import {
   useReceipts,
   useReceiptSummary,
@@ -346,6 +347,7 @@ export default function ReceiptsContent(): ReactNode {
                         units={units}
                         placeholder="Search unit..."
                       />
+                      <FormFieldError error={createReceipt.error} field="unit_id" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="receipt-amount">Amount</Label>
@@ -361,6 +363,7 @@ export default function ReceiptsContent(): ReactNode {
                         value={receiptAmount}
                         onChange={(e) => setReceiptAmount(e.target.value)}
                       />
+                      <FormFieldError error={createReceipt.error} field="amount" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="receipt-mode">Payment Mode</Label>
@@ -376,6 +379,7 @@ export default function ReceiptsContent(): ReactNode {
                         <option value="bank_transfer">NEFT / Bank Transfer</option>
                         <option value="online">Razorpay / Online</option>
                       </Select>
+                      <FormFieldError error={createReceipt.error} field="mode" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="receipt-reference">Reference / Transaction ID</Label>
@@ -385,6 +389,7 @@ export default function ReceiptsContent(): ReactNode {
                         value={receiptReference}
                         onChange={(e) => setReceiptReference(e.target.value)}
                       />
+                      <FormFieldError error={createReceipt.error} field="reference_number" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="receipt-date">Date</Label>

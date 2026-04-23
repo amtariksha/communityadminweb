@@ -81,6 +81,15 @@ export const ERROR_CODES = {
   // ---------------------------------------------------------------
   // Invoicing
   // ---------------------------------------------------------------
+  invoice_already_cancelled: {
+    status: 400,
+    userMessage: 'This invoice has already been cancelled.',
+  },
+  invoice_has_payments: {
+    status: 400,
+    userMessage:
+      'Cannot cancel an invoice with payments. Create a credit note instead.',
+  },
   invoice_already_posted: {
     status: 409,
     userMessage:
@@ -105,9 +114,29 @@ export const ERROR_CODES = {
     userMessage:
       'The payment could not be verified. If money was deducted, it will be refunded within 5–7 working days.',
   },
+  payment_webhook_signature_invalid: {
+    status: 400,
+    userMessage: 'The payment gateway signature could not be verified.',
+  },
   payment_already_refunded: {
     status: 409,
     userMessage: 'This payment has already been refunded.',
+  },
+
+  // ---------------------------------------------------------------
+  // Autopay subscriptions
+  // ---------------------------------------------------------------
+  subscription_not_active: {
+    status: 400,
+    userMessage: 'Only active subscriptions can be paused.',
+  },
+  subscription_not_paused: {
+    status: 400,
+    userMessage: 'Only paused subscriptions can be resumed.',
+  },
+  subscription_already_terminated: {
+    status: 400,
+    userMessage: 'This subscription has already been cancelled.',
   },
 
   // ---------------------------------------------------------------
