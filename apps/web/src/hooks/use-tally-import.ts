@@ -8,6 +8,36 @@ import { getToken, getCurrentTenant } from '@/lib/auth';
 // Types
 // ---------------------------------------------------------------------------
 
+/**
+ * Response from `POST /tally-import/{xml|csv}`. The backend only PARSES
+ * at this point and stores the parsed data under `import_id` in an
+ * in-memory preview store. Actual DB writes happen on the follow-up
+ * `POST /tally-import/commit` call — see [[TallyCommitResult]].
+ */
+export interface TallyImportParseResult {
+  import_id: string;
+  records_parsed: number;
+  /** Human-readable next-step hint from the server. */
+  message?: string;
+}
+
+/**
+ * Response from `POST /tally-import/commit` — the real results once
+ * the parsed records have been written to groups / ledgers / vouchers
+ * / receipts / payments.
+ */
+export interface TallyCommitResult {
+  records_imported: number;
+  records_skipped: number;
+  /** Per-record error strings. May be omitted / undefined on a clean run. */
+  errors?: string[];
+}
+
+/**
+ * Legacy combined shape used by the accounts-content UI. Kept for
+ * backward compat — in practice the UI builds this by merging the
+ * parse result with the commit result.
+ */
 export interface TallyImportResult {
   import_id: string;
   records_parsed: number;
@@ -60,33 +90,25 @@ export function useTallyImportHistory() {
 // ---------------------------------------------------------------------------
 
 export function useTallyXmlImport() {
-  const queryClient = useQueryClient();
-
+  // Parse-only; no cache invalidation yet because nothing has been
+  // written to the DB. Invalidation happens on useTallyCommitImport
+  // success.
   return useMutation({
     mutationFn: function importXml(input: {
       xml_content: string;
       import_type: 'groups' | 'ledgers' | 'vouchers' | 'all';
       file_name?: string;
     }) {
-      return api.post<{ data: TallyImportResult }>(
+      return api.post<{ data: TallyImportParseResult }>(
         '/tally-import/xml',
         input,
       );
-    },
-    onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: tallyImportKeys.all });
-      // Also invalidate accounts/ledger data since imports affect them
-      queryClient.invalidateQueries({ queryKey: ['ledger'] });
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['receipts'] });
-      queryClient.invalidateQueries({ queryKey: ['vendors'] });
     },
   });
 }
 
 export function useTallyCsvImport() {
-  const queryClient = useQueryClient();
-
+  // Parse-only — see useTallyXmlImport comment.
   return useMutation({
     mutationFn: function importCsv(input: {
       csv_content: string;
@@ -98,16 +120,39 @@ export function useTallyCsvImport() {
         | 'payment_register';
       file_name?: string;
     }) {
-      return api.post<{ data: TallyImportResult }>(
+      return api.post<{ data: TallyImportParseResult }>(
         '/tally-import/csv',
+        input,
+      );
+    },
+  });
+}
+
+/**
+ * Commit a previously-parsed import. Must be called with the
+ * `import_id` returned from the parse hooks above. Once this
+ * resolves the records are written to the DB; only then do we
+ * invalidate downstream caches.
+ */
+export function useTallyCommitImport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function commitImport(input: { import_id: string }) {
+      return api.post<{ data: TallyCommitResult }>(
+        '/tally-import/commit',
         input,
       );
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: tallyImportKeys.all });
+      // Accounts / ledger / invoices / receipts / vendors can all
+      // change depending on the import type.
       queryClient.invalidateQueries({ queryKey: ['ledger'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
     },
   });
 }

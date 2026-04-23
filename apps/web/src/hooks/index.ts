@@ -548,10 +548,13 @@ export {
   useTallyImportHistory,
   useTallyXmlImport,
   useTallyCsvImport,
+  useTallyCommitImport,
   useDownloadInvoicePdf,
 } from './use-tally-import';
 export type {
   TallyImportResult,
+  TallyImportParseResult,
+  TallyCommitResult,
   TallyImportHistory,
 } from './use-tally-import';
 
