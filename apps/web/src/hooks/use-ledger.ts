@@ -85,6 +85,8 @@ interface IncomeExpenditureReport {
 
 interface GeneralLedgerTransaction {
   entry_date: string;
+  // Alias for entry_date returned by some report payloads.
+  date?: string;
   entry_number: string;
   narration: string;
   debit: number;

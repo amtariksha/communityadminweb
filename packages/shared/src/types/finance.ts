@@ -25,7 +25,9 @@ export interface LedgerAccount {
   bank_details: Record<string, unknown> | null;
   is_system: boolean;
   is_active: boolean;
-  created_at: Date;
+  created_at: string | Date;
+  // Computed field returned by list endpoints.
+  current_balance?: number;
 }
 
 export interface FinancialYear {

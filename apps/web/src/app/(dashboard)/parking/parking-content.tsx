@@ -824,8 +824,8 @@ function VehiclesTab(): ReactNode {
               >
                 <option value="">{newUnitId ? 'Select member...' : 'Select a unit first'}</option>
                 {unitMembers.map((member) => {
-                  const m = member as Record<string, unknown>;
-                  const label = (m.name ?? m.full_name ?? m.member_type ?? member.id.slice(0, 8)) as string;
+                  const label =
+                    member.name ?? member.member_type ?? member.id.slice(0, 8);
                   return (
                     <option key={member.id} value={member.id}>
                       {label} ({member.member_type})

@@ -430,7 +430,7 @@ export default function SettingsContent(): ReactNode {
     updateSettings.mutate(
       {
         tenant_id: currentTenantId,
-        settings: merged as Record<string, boolean>,
+        settings: merged as unknown as Record<string, boolean>,
         expected_row_version: expectedVersion,
       },
       {

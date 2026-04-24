@@ -168,10 +168,10 @@ function TrialBalanceView({ asOfDate }: { asOfDate: string }): ReactNode {
               <TableCell className="font-medium">{row.account_name}</TableCell>
               <TableCell className="text-muted-foreground">{row.group_name}</TableCell>
               <TableCell className="text-right">
-                {row.debit > 0 ? formatCurrency(row.debit) : '-'}
+                {(row.debit ?? 0) > 0 ? formatCurrency(row.debit ?? 0) : '-'}
               </TableCell>
               <TableCell className="text-right">
-                {row.credit > 0 ? formatCurrency(row.credit) : '-'}
+                {(row.credit ?? 0) > 0 ? formatCurrency(row.credit ?? 0) : '-'}
               </TableCell>
             </TableRow>
           ))}

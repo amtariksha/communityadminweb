@@ -196,8 +196,11 @@ interface AssignStaffInput {
   staff_id: string;
   gate_id: string;
   shift_id: string;
-  effective_from: string;
+  // Accept both naming conventions; backend tolerates either.
+  effective_from?: string;
   effective_until?: string;
+  from_date?: string;
+  until_date?: string;
 }
 
 interface ClockInInput {

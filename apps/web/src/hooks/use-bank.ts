@@ -86,12 +86,18 @@ interface CreateTransferInput {
 }
 
 interface ReconcileTransactionInput {
-  bank_date: string;
+  bank_date?: string;
+  // Admin-web passes `statement_date` + `statement_balance`; backend
+  // accepts either naming.
+  statement_date?: string;
+  statement_balance?: number;
 }
 
 interface CreateFDInput {
   bank_account_id: string;
-  fd_account_id: string;
+  // Either naming works; backend resolves whichever is supplied.
+  fd_account_id?: string;
+  ledger_account_id?: string;
   fd_number: string;
   principal_amount: number;
   interest_rate: number;
@@ -367,6 +373,10 @@ export function useRenewFD() {
       data?: {
         new_rate?: number;
         new_maturity_date?: string;
+        // Admin-web uses `interest_rate` / `maturity_date` / `maturity_amount`.
+        interest_rate?: number;
+        maturity_date?: string;
+        maturity_amount?: number;
       };
     }) {
       return api.post<{ data: FixedDeposit }>(

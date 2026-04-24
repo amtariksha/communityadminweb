@@ -327,7 +327,7 @@ export default function TicketsContent(): ReactNode {
       { ticket_ids: ids },
       {
         onSuccess(result) {
-          const closed = result.data?.data?.closed ?? ids.length;
+          const closed = result.data?.closed ?? ids.length;
           addToast({ title: `${closed} ticket(s) closed`, variant: 'success' });
           setSelectedIds(new Set());
         },
@@ -608,7 +608,9 @@ export default function TicketsContent(): ReactNode {
                     <TableCell className="font-medium max-w-[200px]">
                       <div className="flex items-center gap-1.5 truncate">
                         {isSlaOverdue(ticket) && (
-                          <Timer className="h-3.5 w-3.5 shrink-0 text-destructive" title="SLA overdue" />
+                          <span title="SLA overdue">
+                            <Timer className="h-3.5 w-3.5 shrink-0 text-destructive" />
+                          </span>
                         )}
                         <span className="truncate">{ticket.subject}</span>
                       </div>

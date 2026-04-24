@@ -241,7 +241,7 @@ export default function InvoicesContent(): ReactNode {
   const unitsQuery = useUnits({ limit: 500 });
   const { data: viewInvoiceData } = useInvoice(viewInvoiceId);
   const lpiData = lpiQuery.data ?? [];
-  const defaulters = defaultersQuery.data?.data ?? [];
+  const defaulters = defaultersQuery.data ?? [];
   const units = unitsQuery.data?.data ?? [];
 
   const invoices = invoicesResponse?.data ?? [];
@@ -364,7 +364,7 @@ export default function InvoicesContent(): ReactNode {
           setBillingDate('');
           addToast({
             title: 'Invoices generated',
-            description: response.message,
+            description: `${response.data.count} invoice(s) created`,
             variant: 'success',
           });
         },

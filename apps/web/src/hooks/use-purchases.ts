@@ -65,6 +65,13 @@ interface RejectPRInput {
   level: number;
 }
 
+interface BillLine {
+  ledger_account_id: string;
+  description: string;
+  amount: number;
+  gst_rate?: number;
+}
+
 interface CreateBillInput {
   vendor_id: string;
   bill_date: string;
@@ -75,15 +82,18 @@ interface CreateBillInput {
   bill_number?: string;
   tds_amount?: number;
   narration?: string;
+  lines?: BillLine[];
 }
 
 interface RecordBillPaymentInput {
   bill_id: string;
   payment_date: string;
   amount: number;
-  payment_mode: string;
+  // Admin-web uses `mode`; accept both to avoid a churn-wide rename.
+  mode?: string;
+  payment_mode?: string;
   reference_number?: string | null;
-  bank_account_id: string;
+  bank_account_id: string | null;
 }
 
 // ---------------------------------------------------------------------------

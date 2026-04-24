@@ -574,7 +574,7 @@ function PushSection({
       <div className="space-y-2">
         <Label className="flex items-center gap-1">
           Private Key
-          {config.firebase_private_key && (
+          {Boolean(config.firebase_private_key) && (
             <span className="text-xs text-muted-foreground">(currently set)</span>
           )}
         </Label>

@@ -148,19 +148,19 @@ export function useDashboardData() {
 
           // Recent invoices
           api
-            .get<{ data: unknown[] }>('/invoices', {
+            .get<{ data: RecentInvoiceRow[] }>('/invoices', {
               params: { page: '1', limit: '5' },
             })
             .then((res) => (Array.isArray(res.data) ? res.data : []))
-            .catch(() => []),
+            .catch(() => [] as RecentInvoiceRow[]),
 
           // Recent receipts
           api
-            .get<{ data: unknown[] }>('/receipts', {
+            .get<{ data: RecentReceiptRow[] }>('/receipts', {
               params: { page: '1', limit: '5' },
             })
             .then((res) => (Array.isArray(res.data) ? res.data : []))
-            .catch(() => []),
+            .catch(() => [] as RecentReceiptRow[]),
         ]);
 
       return {

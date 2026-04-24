@@ -54,9 +54,11 @@ interface BulkImportUnitsInput {
 
 interface CsvImportRow {
   unit_number: string;
-  floor?: number;
+  // `null` means the parser explicitly couldn't derive a value; the
+  // import pipeline later coalesces to undefined for the API.
+  floor?: number | null;
   block?: string | null;
-  area_sqft?: number;
+  area_sqft?: number | null;
   unit_type?: string;
   apartment_number?: string | null;
   bhk_type?: string | null;
