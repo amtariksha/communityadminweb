@@ -53,7 +53,26 @@ export async function refreshAccessToken(): Promise<string | null> {
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        // One specific bad state worth calling out loudly: the
+        // pre-cookie backend validated `refresh_token` in the body via
+        // Zod. A 400 with "Refresh token is required" means the API
+        // hasn't been updated to the httpOnly-cookie flow yet, so this
+        // client is talking to a stale backend and every login-then-
+        // reload will bounce to /login. Surface it in the console so
+        // the bug is obvious instead of looking like a silent logout.
+        if (res.status === 400) {
+          const text = await res.text().catch(() => '');
+          // eslint-disable-next-line no-console
+          console.error(
+            '[auth] /auth/refresh returned 400 — this typically means the ' +
+              'backend has not been upgraded to the cookie-based flow yet ' +
+              '(QA #57). Deploy the latest API and retry. Response: ' +
+              text.slice(0, 300),
+          );
+        }
+        return null;
+      }
       const data = (await res.json()) as {
         access_token?: string;
         token?: string;
