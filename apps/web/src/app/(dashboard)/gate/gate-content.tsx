@@ -394,7 +394,7 @@ export default function GateContent(): ReactNode {
       });
       return;
     }
-    const payload: Record<string, unknown> = {
+    const payload: Parameters<typeof createVisitor.mutate>[0] = {
       unit_id: visitorUnit,
       visitor_name: visitorName.trim(),
     };
@@ -404,7 +404,7 @@ export default function GateContent(): ReactNode {
     if (selectedGateId) payload.gate_id = selectedGateId;
 
     createVisitor.mutate(
-      payload as Parameters<typeof createVisitor.mutate>[0],
+      payload,
       {
         onSuccess() {
           setAddVisitorOpen(false);
@@ -483,7 +483,7 @@ export default function GateContent(): ReactNode {
       });
       return;
     }
-    const payload: Record<string, unknown> = {
+    const payload: Parameters<typeof staffCheckIn.mutate>[0] = {
       staff_name: staffName.trim(),
       staff_type: staffType,
     };
@@ -492,7 +492,7 @@ export default function GateContent(): ReactNode {
     if (staffNotes.trim()) payload.notes = staffNotes.trim();
 
     staffCheckIn.mutate(
-      payload as Parameters<typeof staffCheckIn.mutate>[0],
+      payload,
       {
         onSuccess() {
           setStaffCheckInOpen(false);
@@ -539,7 +539,7 @@ export default function GateContent(): ReactNode {
     }
     // Only include fields the user actually filled. Empty strings on UUID /
     // optional text fields cause a 400 on the backend.
-    const payload: Record<string, unknown> = {
+    const payload: Parameters<typeof createParcel.mutate>[0] = {
       unit_id: parcelUnit,
     };
     if (parcelCourier.trim()) payload.courier_name = parcelCourier.trim();
@@ -547,7 +547,7 @@ export default function GateContent(): ReactNode {
     if (parcelDescription.trim()) payload.description = parcelDescription.trim();
 
     createParcel.mutate(
-      payload as Parameters<typeof createParcel.mutate>[0],
+      payload,
       {
         onSuccess() {
           setLogParcelOpen(false);

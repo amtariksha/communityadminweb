@@ -8,7 +8,7 @@ interface Toast {
   id: string;
   title: string;
   description?: string;
-  variant?: 'default' | 'destructive' | 'success';
+  variant?: 'default' | 'destructive' | 'success' | 'warning';
 }
 
 interface ToastContextValue {
@@ -84,6 +84,7 @@ function ToastItem({ toast, onClose }: ToastItemProps): ReactNode {
     default: 'border bg-card text-card-foreground',
     destructive: 'border-destructive bg-destructive text-destructive-foreground',
     success: 'border-success bg-success/10 text-success',
+    warning: 'border-warning bg-warning/10 text-warning',
   };
 
   return (

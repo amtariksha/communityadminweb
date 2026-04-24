@@ -68,6 +68,8 @@ export interface Parcel {
 export interface GateStats {
   visitors_today: number;
   visitors_checked_in: number;
+  // Alias for `visitors_checked_in` returned by older API versions.
+  currently_inside?: number;
   staff_checked_in: number;
   parcels_pending: number;
   visitors_this_week: number;

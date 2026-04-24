@@ -27,12 +27,30 @@ interface TrialBalanceTotals {
   total_credit: number;
 }
 
+interface RecentInvoiceRow {
+  id: string;
+  invoice_number: string;
+  invoice_date: string | Date;
+  total_amount: number;
+  status: string;
+  unit_number?: string;
+}
+
+interface RecentReceiptRow {
+  id: string;
+  receipt_number: string;
+  receipt_date: string | Date;
+  amount: number;
+  mode?: string;
+  unit_number?: string;
+}
+
 interface DashboardData {
   receipt_summary: ReceiptSummary;
   defaulter_summary: DefaulterSummary;
   trial_balance_totals: TrialBalanceTotals;
-  recent_invoices: unknown[];
-  recent_receipts: unknown[];
+  recent_invoices: RecentInvoiceRow[];
+  recent_receipts: RecentReceiptRow[];
 }
 
 // ---------------------------------------------------------------------------

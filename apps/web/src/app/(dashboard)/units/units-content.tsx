@@ -1091,11 +1091,11 @@ export default function UnitsContent(): ReactNode {
                       <Badge variant="outline">{getUnitTypeLabel(unit.unit_type)}</Badge>
                     </TableCell>
                     <TableCell>
-                      {(unit as Record<string, unknown>).owner_name ? (
+                      {unit.owner_name ? (
                         <div>
-                          <div className="text-sm">{String((unit as Record<string, unknown>).owner_name)}</div>
-                          {(unit as Record<string, unknown>).owner_phone && (
-                            <div className="text-xs"><ClickablePhone phone={String((unit as Record<string, unknown>).owner_phone)} /></div>
+                          <div className="text-sm">{unit.owner_name}</div>
+                          {unit.owner_phone && (
+                            <div className="text-xs"><ClickablePhone phone={unit.owner_phone} /></div>
                           )}
                         </div>
                       ) : (
@@ -1103,15 +1103,15 @@ export default function UnitsContent(): ReactNode {
                       )}
                     </TableCell>
                     <TableCell>
-                      {(unit as Record<string, unknown>).tenant_name ? (
+                      {unit.tenant_name ? (
                         <div>
-                          <div className="text-sm">{String((unit as Record<string, unknown>).tenant_name)}</div>
-                          {(unit as Record<string, unknown>).tenant_phone && (
-                            <div className="text-xs"><ClickablePhone phone={String((unit as Record<string, unknown>).tenant_phone)} /></div>
+                          <div className="text-sm">{unit.tenant_name}</div>
+                          {unit.tenant_phone && (
+                            <div className="text-xs"><ClickablePhone phone={unit.tenant_phone} /></div>
                           )}
                         </div>
-                      ) : (unit as Record<string, unknown>).owner_name ? (
-                        <span className="text-sm text-muted-foreground">{String((unit as Record<string, unknown>).owner_name)} (Self)</span>
+                      ) : unit.owner_name ? (
+                        <span className="text-sm text-muted-foreground">{unit.owner_name} (Self)</span>
                       ) : (
                         <span className="text-sm text-muted-foreground">—</span>
                       )}

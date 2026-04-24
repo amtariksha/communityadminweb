@@ -36,7 +36,7 @@ function NoAccessBody(): ReactNode {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline" className="w-full" onClick={logout}>
+          <Button variant="outline" className="w-full" onClick={() => logout()}>
             Sign out
           </Button>
         </CardContent>
@@ -58,7 +58,7 @@ function NoAccessBody(): ReactNode {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Button variant="outline" className="w-full" onClick={logout}>
+        <Button variant="outline" className="w-full" onClick={() => logout()}>
           Sign out
         </Button>
       </CardContent>

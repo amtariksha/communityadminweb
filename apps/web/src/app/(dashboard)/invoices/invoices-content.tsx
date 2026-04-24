@@ -840,18 +840,16 @@ export default function InvoicesContent(): ReactNode {
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">
-                        {(invoice as Record<string, unknown>).unit_number
-                          ? `${(invoice as Record<string, unknown>).unit_number}${(invoice as Record<string, unknown>).block ? ` (Block ${(invoice as Record<string, unknown>).block})` : ''}`
+                        {invoice.unit_number
+                          ? `${invoice.unit_number}${invoice.block ? ` (Block ${invoice.block})` : ''}`
                           : invoice.unit_id}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {(invoice as Record<string, unknown>).owner_name
-                          ? String((invoice as Record<string, unknown>).owner_name)
-                          : '\u2014'}
+                        {invoice.owner_name ?? '\u2014'}
                       </div>
-                      {(invoice as Record<string, unknown>).tenant_name && (
+                      {invoice.tenant_name && (
                         <div className="text-xs text-muted-foreground/70">
-                          (Tenant: {String((invoice as Record<string, unknown>).tenant_name)})
+                          (Tenant: {invoice.tenant_name})
                         </div>
                       )}
                     </TableCell>
@@ -1016,8 +1014,8 @@ export default function InvoicesContent(): ReactNode {
 
                 <span className="text-muted-foreground">Status</span>
                 <span>
-                  <Badge variant={getStatusBadgeVariant(viewInvoiceData.status as TabFilter)}>
-                    {getStatusLabel(viewInvoiceData.status as TabFilter)}
+                  <Badge variant={getStatusBadgeVariant(viewInvoiceData.status)}>
+                    {getStatusLabel(viewInvoiceData.status)}
                   </Badge>
                 </span>
 

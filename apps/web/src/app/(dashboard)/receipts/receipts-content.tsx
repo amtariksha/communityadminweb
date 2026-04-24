@@ -527,14 +527,12 @@ export default function ReceiptsContent(): ReactNode {
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">
-                        {(receipt as Record<string, unknown>).unit_number
-                          ? String((receipt as Record<string, unknown>).unit_number)
-                          : units.find((u) => u.id === receipt.unit_id)?.unit_number ?? receipt.unit_id}
+                        {receipt.unit_number ??
+                          units.find((u) => u.id === receipt.unit_id)?.unit_number ??
+                          receipt.unit_id}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {(receipt as Record<string, unknown>).owner_name
-                          ? String((receipt as Record<string, unknown>).owner_name)
-                          : '\u2014'}
+                        {receipt.owner_name ?? '\u2014'}
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-medium text-success">

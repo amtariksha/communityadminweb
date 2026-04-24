@@ -87,7 +87,7 @@ export default function SelectTenantContent(): ReactNode {
         ))}
 
         <div className="pt-2">
-          <Button variant="ghost" className="w-full text-muted-foreground" onClick={logout}>
+          <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => logout()}>
             Sign out
           </Button>
         </div>
