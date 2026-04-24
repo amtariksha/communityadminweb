@@ -28,7 +28,11 @@ import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
+type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
+  // Native <select> has no placeholder attribute; the portal-based renderer
+  // shows this when no option is selected. Kept optional to stay drop-in.
+  placeholder?: string;
+};
 
 interface OptionItem {
   value: string;
@@ -56,6 +60,8 @@ function extractOptions(children: ReactNode): OptionItem[] {
 }
 
 const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
+  // `placeholder` is pulled off here so it never reaches the native <select>
+  // (which doesn't know the attribute) — SelectProps widens the type above.
   { className, children, value, onChange, disabled, placeholder, ...props },
   ref,
 ) {

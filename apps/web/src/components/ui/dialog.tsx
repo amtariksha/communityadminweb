@@ -136,7 +136,14 @@ function DialogFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>): 
   );
 }
 
-function DialogClose({ children }: { children: ReactNode }): ReactNode {
+interface DialogCloseProps {
+  children: ReactNode;
+  // Accepted for API parity with Radix-style components; this shim always
+  // wraps children in a span so the flag is effectively ignored.
+  asChild?: boolean;
+}
+
+function DialogClose({ children }: DialogCloseProps): ReactNode {
   const { setOpen } = useDialog();
   return (
     <span onClick={() => setOpen(false)} className="cursor-pointer">

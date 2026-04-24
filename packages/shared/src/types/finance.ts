@@ -87,14 +87,29 @@ export interface Invoice {
   financial_year_id: string;
   invoice_number: string;
   unit_id: string;
-  invoice_date: Date;
-  due_date: Date;
+  // Dates are ISO strings over the wire even though pg types them as Date.
+  invoice_date: string | Date;
+  issue_date?: string | Date;
+  due_date: string | Date;
+  billing_period?: string;
   status: InvoiceStatus;
+  subtotal?: number;
+  gst_amount?: number;
   total_amount: number;
-  paid_amount: number;
+  net_amount?: number;
+  amount_paid: number;
+  /** @deprecated Backend returns `amount_paid`; kept for old callers. */
+  paid_amount?: number;
   balance_due: number;
   lpi_amount: number;
-  created_at: Date;
+  created_at: string | Date;
+  // Joined fields returned by the list query.
+  unit_number?: string;
+  block?: string | null;
+  owner_name?: string | null;
+  owner_phone?: string | null;
+  tenant_name?: string | null;
+  lines?: InvoiceLine[];
 }
 
 export interface InvoiceLine {
@@ -116,12 +131,15 @@ export interface Receipt {
   financial_year_id: string;
   receipt_number: string;
   unit_id: string;
-  receipt_date: Date;
+  receipt_date: string | Date;
   amount: number;
   mode: ReceiptMode;
   reference_number: string | null;
   bank_account_id: string | null;
   narration: string;
+  // Joined fields returned by the list query.
+  unit_number?: string;
+  owner_name?: string | null;
   created_by: string;
   created_at: Date;
 }
