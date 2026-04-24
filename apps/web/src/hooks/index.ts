@@ -436,6 +436,7 @@ export {
   useUpdateAmenity,
   useCreateBooking,
   useCancelBooking,
+  useGenerateBookingInvoice,
 } from './use-amenities';
 export type {
   Amenity,

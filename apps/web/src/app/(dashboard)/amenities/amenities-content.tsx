@@ -1,7 +1,17 @@
 'use client';
 
 import { useState, useMemo, type ReactNode } from 'react';
-import { Plus, Pencil, X, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  FileText,
+  ReceiptText,
+} from 'lucide-react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +48,7 @@ import {
   useCreateAmenity,
   useUpdateAmenity,
   useCancelBooking,
+  useGenerateBookingInvoice,
 } from '@/hooks';
 import type { Amenity, AmenityBooking, AmenityBookingFilters } from '@/hooks';
 
@@ -120,6 +131,19 @@ function bookingStatusVariant(
 function formatBookingStatus(status: string | null | undefined): string {
   if (!status) return '—';
   return status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Admin-web AmenityBooking type uses `amount`/`deposit`; the backend returns
+ * `total_amount`/`deposit_amount`. Normalize so the Generate Invoice button
+ * shows for any billable booking.
+ */
+function bookingBillable(
+  booking: AmenityBooking & { total_amount?: number; deposit_amount?: number },
+): boolean {
+  const amount = Number(booking.total_amount ?? booking.amount ?? 0);
+  const deposit = Number(booking.deposit_amount ?? booking.deposit ?? 0);
+  return amount + deposit > 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -711,6 +735,7 @@ function BookingsTab(): ReactNode {
   const amenitiesQuery = useAmenities();
   const bookingsQuery = useAmenityBookings(filters);
   const cancelMutation = useCancelBooking();
+  const generateInvoiceMutation = useGenerateBookingInvoice();
 
   const amenities = amenitiesQuery.data?.data ?? [];
   const bookings = bookingsQuery.data?.data ?? [];
@@ -784,6 +809,27 @@ function BookingsTab(): ReactNode {
     setCancelTarget(booking);
     setCancelReason('');
     setCancelOpen(true);
+  }
+
+  function handleGenerateInvoice(booking: AmenityBooking): void {
+    generateInvoiceMutation.mutate(
+      { id: booking.id },
+      {
+        onSuccess(res) {
+          addToast({
+            title: `Invoice ${res.data.invoice_number} generated`,
+            variant: 'success',
+          });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to generate invoice',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
   }
 
   function handleCancel(): void {
@@ -1010,17 +1056,48 @@ function BookingsTab(): ReactNode {
                         {booking.notes && <div>{booking.notes}</div>}
                         {booking.amount > 0 && <div>{formatCurrency(booking.amount)}</div>}
                       </div>
-                      {booking.status === 'confirmed' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs text-red-600 hover:text-red-700"
-                          onClick={() => openCancel(booking)}
-                        >
-                          <X className="mr-1 h-3 w-3" />
-                          Cancel
-                        </Button>
-                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {booking.invoice_id ? (
+                          <Link
+                            href={`/invoices?focus=${booking.invoice_id}`}
+                            className="inline-flex h-7 items-center rounded-md border border-input bg-background px-2 text-xs font-medium text-primary hover:bg-accent"
+                          >
+                            <ReceiptText className="mr-1 h-3 w-3" />
+                            Invoice {booking.invoice_number ?? ''}
+                          </Link>
+                        ) : (
+                          booking.status === 'confirmed' &&
+                          bookingBillable(booking) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              disabled={
+                                generateInvoiceMutation.isPending &&
+                                generateInvoiceMutation.variables?.id === booking.id
+                              }
+                              onClick={() => handleGenerateInvoice(booking)}
+                            >
+                              <FileText className="mr-1 h-3 w-3" />
+                              {generateInvoiceMutation.isPending &&
+                              generateInvoiceMutation.variables?.id === booking.id
+                                ? 'Generating...'
+                                : 'Generate Invoice'}
+                            </Button>
+                          )
+                        )}
+                        {booking.status === 'confirmed' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs text-red-600 hover:text-red-700"
+                            onClick={() => openCancel(booking)}
+                          >
+                            <X className="mr-1 h-3 w-3" />
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

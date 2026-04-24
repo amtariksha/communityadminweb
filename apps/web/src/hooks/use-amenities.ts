@@ -54,6 +54,8 @@ export interface AmenityBooking {
   amenity_name?: string;
   member_name?: string;
   unit_number?: string;
+  invoice_id?: string | null;
+  invoice_number?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -239,6 +241,27 @@ export function useCancelBooking() {
       return api.post<{ data: AmenityBooking }>(
         `/amenities/bookings/${input.id}/cancel`,
         { reason: input.reason },
+      );
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: amenityKeys.all });
+    },
+  });
+}
+
+interface GenerateInvoiceResult {
+  booking: AmenityBooking;
+  invoice_id: string;
+  invoice_number: string;
+}
+
+export function useGenerateBookingInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function generateInvoice(input: { id: string }) {
+      return api.post<{ data: GenerateInvoiceResult }>(
+        `/amenities/bookings/${input.id}/generate-invoice`,
       );
     },
     onSuccess: function invalidate() {
