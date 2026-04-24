@@ -1,8 +1,6 @@
 import {
   getToken,
   setToken,
-  getRefreshToken,
-  setRefreshToken,
   getCurrentTenant,
   logout,
 } from '@/lib/auth';
@@ -14,6 +12,8 @@ const API_BASE_URL =
   (typeof window !== 'undefined' && window.location.hostname === 'communityos.eassy.life'
     ? 'https://community.eassy.life'
     : 'http://localhost:4000');
+
+export { API_BASE_URL };
 
 interface ApiRequestOptions {
   headers?: Record<string, string>;
@@ -35,29 +35,32 @@ interface ApiRequestOptions {
 
 let refreshPromise: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
+/**
+ * QA #57 — /auth/refresh reads the refresh token from the httpOnly
+ * cookie the backend set on /auth/verify-otp. The request body is empty
+ * on purpose; we opt into the cookie via `credentials: 'include'`. No
+ * JS on this origin can read the refresh token, so an XSS payload can
+ * call this endpoint but cannot exfiltrate the underlying credential.
+ */
+export async function refreshAccessToken(): Promise<string | null> {
   if (refreshPromise) return refreshPromise;
-
-  const currentRefresh = getRefreshToken();
-  if (!currentRefresh) return null;
 
   refreshPromise = (async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: currentRefresh }),
+        body: '{}',
       });
       if (!res.ok) return null;
       const data = (await res.json()) as {
         access_token?: string;
         token?: string;
-        refresh_token?: string;
       };
       const newAccess = data.access_token ?? data.token ?? null;
       if (!newAccess) return null;
       setToken(newAccess);
-      if (data.refresh_token) setRefreshToken(data.refresh_token);
       return newAccess;
     } catch {
       return null;
@@ -151,6 +154,12 @@ async function request<T>(
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    // QA #57 — send the httpOnly refresh cookie with every request so
+    // the server sees a coherent session. The cookie itself is only
+    // read on /auth/refresh; other routes ignore it, but keeping the
+    // flag on uniformly avoids an accidental omission that would
+    // silently break the refresh flow.
+    credentials: 'include',
   });
 
   if (response.status === 401 && !path.includes('/auth/')) {
@@ -164,6 +173,7 @@ async function request<T>(
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
+        credentials: 'include',
       });
 
       // Retry succeeded → normal response flow.

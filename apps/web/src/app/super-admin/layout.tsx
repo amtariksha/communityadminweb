@@ -1,15 +1,55 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { logout } from '@/lib/auth';
+import { getToken, logout, purgeLegacyTokenStorage } from '@/lib/auth';
+import { refreshAccessToken } from '@/lib/api';
 
 interface SuperAdminLayoutProps {
   children: ReactNode;
 }
 
 export default function SuperAdminLayout({ children }: SuperAdminLayoutProps): ReactNode {
+  const router = useRouter();
+  const [bootstrapped, setBootstrapped] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // QA #57 — mirror the dashboard layout's bootstrap. The in-memory
+    // access token is null on any tab reload; try the httpOnly refresh
+    // cookie before sending the super-admin to /login.
+    purgeLegacyTokenStorage();
+
+    async function bootstrap(): Promise<void> {
+      if (!getToken()) {
+        const newToken = await refreshAccessToken();
+        if (cancelled) return;
+        if (!newToken) {
+          router.replace('/login');
+          return;
+        }
+      }
+      if (!cancelled) setBootstrapped(true);
+    }
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  if (!bootstrapped) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 border-b bg-background">

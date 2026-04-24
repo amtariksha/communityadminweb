@@ -6,7 +6,6 @@ import {
   getToken,
   getUser,
   setToken,
-  setRefreshToken,
   setUser,
   setCurrentTenant,
 } from '@/lib/auth';
@@ -27,8 +26,10 @@ interface TenantInfo {
 }
 
 interface VerifyOtpResponse {
+  // QA #57 — refresh token now ships as an httpOnly cookie. The JSON
+  // response carries only the short-lived access token the SPA needs
+  // to sign Authorization Bearer headers.
   access_token: string;
-  refresh_token: string;
   user: {
     id: string;
     phone: string;
@@ -41,7 +42,6 @@ interface VerifyOtpResponse {
 
 interface RefreshTokenResponse {
   access_token: string;
-  refresh_token: string;
 }
 
 interface SwitchTenantResponse {
@@ -138,9 +138,8 @@ export function useVerifyOtp() {
     },
     onSuccess: function persistSession(data) {
       setToken(data.access_token);
-      if (data.refresh_token) {
-        setRefreshToken(data.refresh_token);
-      }
+      // Refresh token lives in an httpOnly cookie set by the backend —
+      // JS never sees it (QA #57). Nothing to persist here.
 
       // Map API response to the User shape stored in localStorage
       const user: User = {
@@ -172,9 +171,7 @@ export function useRefreshToken() {
     },
     onSuccess: function persistToken(data) {
       setToken(data.access_token);
-      if (data.refresh_token) {
-        setRefreshToken(data.refresh_token);
-      }
+      // Cookie rotation is handled by the backend — no JS state to update.
     },
   });
 }

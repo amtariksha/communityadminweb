@@ -4,7 +4,14 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Shield, ArrowLeft } from 'lucide-react';
-import { isAuthenticated, getUser, getCurrentTenant, setCurrentTenant } from '@/lib/auth';
+import {
+  getUser,
+  getCurrentTenant,
+  getToken,
+  purgeLegacyTokenStorage,
+  setCurrentTenant,
+} from '@/lib/auth';
+import { refreshAccessToken } from '@/lib/api';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 
@@ -31,28 +38,54 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps): ReactNode {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [bootstrapped, setBootstrapped] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    if (!isAuthenticated()) {
-      router.replace('/login');
-      return;
-    }
-    const user = getUser();
-    const tenant = getCurrentTenant();
-    if (!tenant && user && !user.isSuperAdmin) {
-      if (user.societies.length === 1) {
-        setCurrentTenant(user.societies[0].id);
-      } else if (user.societies.length > 1) {
-        router.replace('/select-tenant');
-      } else {
-        router.replace('/no-access');
+    let cancelled = false;
+
+    // QA #57 — access token lives in memory, so a tab reload starts
+    // with `null`. Try the httpOnly refresh cookie first before
+    // bouncing the user to /login — that's the only non-UX-regressing
+    // way to keep reloads seamless after the localStorage removal.
+    purgeLegacyTokenStorage();
+
+    async function bootstrap(): Promise<void> {
+      const existingToken = getToken();
+      if (!existingToken) {
+        const newToken = await refreshAccessToken();
+        if (cancelled) return;
+        if (!newToken) {
+          // No cookie or cookie rejected → require a fresh login.
+          router.replace('/login');
+          return;
+        }
       }
+
+      const user = getUser();
+      const tenant = getCurrentTenant();
+      if (!tenant && user && !user.isSuperAdmin) {
+        if (user.societies.length === 1) {
+          setCurrentTenant(user.societies[0].id);
+        } else if (user.societies.length > 1) {
+          router.replace('/select-tenant');
+          return;
+        } else {
+          router.replace('/no-access');
+          return;
+        }
+      }
+
+      if (!cancelled) setBootstrapped(true);
     }
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
-  if (!mounted) {
+  if (!bootstrapped) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
