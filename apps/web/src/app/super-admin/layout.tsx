@@ -14,6 +14,7 @@ interface SuperAdminLayoutProps {
 export default function SuperAdminLayout({ children }: SuperAdminLayoutProps): ReactNode {
   const router = useRouter();
   const [bootstrapped, setBootstrapped] = useState(false);
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,10 +26,18 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps): R
 
     async function bootstrap(): Promise<void> {
       if (!getToken()) {
-        const newToken = await refreshAccessToken();
+        const outcome = await refreshAccessToken();
         if (cancelled) return;
-        if (!newToken) {
+        if (outcome.kind === 'auth_failed') {
           router.replace('/login');
+          return;
+        }
+        if (outcome.kind === 'transient') {
+          // QA #28 — don't bounce a still-authenticated user to /login
+          // just because /auth/refresh had a network blip.
+          setBootstrapError(
+            'Could not reach the server. Check your connection and try again.',
+          );
           return;
         }
       }
@@ -41,6 +50,23 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps): R
       cancelled = true;
     };
   }, [router]);
+
+  if (bootstrapError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="max-w-md space-y-4 rounded-lg border bg-card p-6 text-center shadow-sm">
+          <h2 className="text-lg font-semibold">Connection issue</h2>
+          <p className="text-sm text-muted-foreground">{bootstrapError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!bootstrapped) {
     return (

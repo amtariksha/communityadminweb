@@ -39,6 +39,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): Rea
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [bootstrapped, setBootstrapped] = useState(false);
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,11 +53,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): Rea
     async function bootstrap(): Promise<void> {
       const existingToken = getToken();
       if (!existingToken) {
-        const newToken = await refreshAccessToken();
+        const outcome = await refreshAccessToken();
         if (cancelled) return;
-        if (!newToken) {
-          // No cookie or cookie rejected → require a fresh login.
+        if (outcome.kind === 'auth_failed') {
           router.replace('/login');
+          return;
+        }
+        if (outcome.kind === 'transient') {
+          // QA #28 — the 5-min access TTL means a network blip during
+          // bootstrap used to silently kick the user to /login. Show
+          // a retry banner instead; the cookie is probably still
+          // valid, we just couldn't reach /auth/refresh right now.
+          setBootstrapError(
+            'Could not reach the server. Check your connection and try again.',
+          );
           return;
         }
       }
@@ -84,6 +94,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): Rea
       cancelled = true;
     };
   }, [router]);
+
+  if (bootstrapError) {
+    return (
+      <div className="flex h-screen items-center justify-center p-6">
+        <div className="max-w-md space-y-4 rounded-lg border bg-card p-6 text-center shadow-sm">
+          <h2 className="text-lg font-semibold">Connection issue</h2>
+          <p className="text-sm text-muted-foreground">{bootstrapError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!bootstrapped) {
     return (

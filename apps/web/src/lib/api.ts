@@ -33,7 +33,28 @@ interface ApiRequestOptions {
 // The singleflight promise below ensures at most one refresh is in
 // flight at any time. All 401-ers await the same promise.
 
-let refreshPromise: Promise<string | null> | null = null;
+/**
+ * Three-way outcome of a refresh attempt:
+ *   'ok'          — new access token in memory, use it.
+ *   'auth_failed' — server definitively rejected the refresh (401/403
+ *                   or the cookie is missing/expired). Caller should
+ *                   redirect to /login.
+ *   'transient'   — network error, 5xx, or a 400 that looks like a
+ *                   pre-cookie backend. Caller should NOT redirect to
+ *                   /login on its own — the user probably still has a
+ *                   valid session, we just couldn't reach the server
+ *                   right now. Shortening JWT_ACCESS_EXPIRY to 5m
+ *                   (QA #28) made this distinction matter: a 5-minute
+ *                   refresh cadence turns a transient network blip
+ *                   into a spurious logout 12× more often than the
+ *                   old 15-minute cadence did.
+ */
+export type RefreshOutcome =
+  | { kind: 'ok'; token: string }
+  | { kind: 'auth_failed' }
+  | { kind: 'transient' };
+
+let refreshPromise: Promise<RefreshOutcome> | null = null;
 
 /**
  * QA #57 — /auth/refresh reads the refresh token from the httpOnly
@@ -42,10 +63,10 @@ let refreshPromise: Promise<string | null> | null = null;
  * JS on this origin can read the refresh token, so an XSS payload can
  * call this endpoint but cannot exfiltrate the underlying credential.
  */
-export async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<RefreshOutcome> {
   if (refreshPromise) return refreshPromise;
 
-  refreshPromise = (async () => {
+  refreshPromise = (async (): Promise<RefreshOutcome> => {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
@@ -53,36 +74,45 @@ export async function refreshAccessToken(): Promise<string | null> {
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
       });
-      if (!res.ok) {
-        // One specific bad state worth calling out loudly: the
-        // pre-cookie backend validated `refresh_token` in the body via
-        // Zod. A 400 with "Refresh token is required" means the API
-        // hasn't been updated to the httpOnly-cookie flow yet, so this
-        // client is talking to a stale backend and every login-then-
-        // reload will bounce to /login. Surface it in the console so
-        // the bug is obvious instead of looking like a silent logout.
-        if (res.status === 400) {
-          const text = await res.text().catch(() => '');
-          // eslint-disable-next-line no-console
-          console.error(
-            '[auth] /auth/refresh returned 400 — this typically means the ' +
-              'backend has not been upgraded to the cookie-based flow yet ' +
-              '(QA #57). Deploy the latest API and retry. Response: ' +
-              text.slice(0, 300),
-          );
-        }
-        return null;
+      if (res.ok) {
+        const data = (await res.json()) as {
+          access_token?: string;
+          token?: string;
+        };
+        const newAccess = data.access_token ?? data.token ?? null;
+        if (!newAccess) return { kind: 'transient' };
+        setToken(newAccess);
+        return { kind: 'ok', token: newAccess };
       }
-      const data = (await res.json()) as {
-        access_token?: string;
-        token?: string;
-      };
-      const newAccess = data.access_token ?? data.token ?? null;
-      if (!newAccess) return null;
-      setToken(newAccess);
-      return newAccess;
+
+      // Real auth failure: cookie is missing, expired, or explicitly
+      // rejected. This is the only signal strong enough to force a
+      // /login redirect.
+      if (res.status === 401 || res.status === 403) {
+        return { kind: 'auth_failed' };
+      }
+
+      // 400 is most commonly "backend doesn't understand the cookie
+      // flow yet" — i.e. an admin-web bundle ahead of the API. Shout
+      // in the console so the operator spots the mismatch instead of
+      // silently bouncing users to /login.
+      if (res.status === 400) {
+        const text = await res.text().catch(() => '');
+        // eslint-disable-next-line no-console
+        console.error(
+          '[auth] /auth/refresh returned 400 — this typically means the ' +
+            'backend has not been upgraded to the cookie-based flow yet ' +
+            '(QA #57). Deploy the latest API and retry. Response: ' +
+            text.slice(0, 300),
+        );
+      }
+
+      // 5xx / network / misc — treat as transient. The user's cookie
+      // is probably still valid; we just can't verify right now.
+      return { kind: 'transient' };
     } catch {
-      return null;
+      // fetch() threw — offline, DNS failure, CORS, etc. Transient.
+      return { kind: 'transient' };
     } finally {
       // Reset the gate so the *next* 401 after the next expiry can
       // start a fresh refresh cycle.
@@ -184,10 +214,10 @@ async function request<T>(
   if (response.status === 401 && !path.includes('/auth/')) {
     // Single-flight refresh — every parallel 401 awaits the same
     // in-flight /auth/refresh so they don't stomp on each other's
-    // refresh tokens. Null => refresh failed → drop to logout.
-    const newAccess = await refreshAccessToken();
-    if (newAccess) {
-      headers['Authorization'] = `Bearer ${newAccess}`;
+    // refresh tokens.
+    const outcome = await refreshAccessToken();
+    if (outcome.kind === 'ok') {
+      headers['Authorization'] = `Bearer ${outcome.token}`;
       const retryResponse = await fetch(url, {
         method,
         headers,
@@ -201,15 +231,22 @@ async function request<T>(
         return retryResponse.json() as Promise<T>;
       }
 
-      // Retry still 401 means the refresh didn't actually give us a
-      // valid session (role revoked, user deactivated, etc.). Fall
-      // through to the logout path below.
+      // Retry still 401: the new token doesn't actually buy us access
+      // (role revoked between refresh and retry, user deactivated,
+      // etc.). Fall through to the logout path.
       if (retryResponse.status !== 401) {
-        // Non-auth error on the retry (5xx, 409, 400 …). Surface it
-        // as an ApiError so consumers can read `.userMessage`,
-        // `.fieldErrors`, `.code` instead of parsing a flat string.
+        // Non-auth error on the retry — surface it so consumers can
+        // read `.userMessage`, `.fieldErrors`, `.code` instead of
+        // parsing a flat string.
         throw await buildApiError(retryResponse);
       }
+    } else if (outcome.kind === 'transient') {
+      // QA #28 — a transient failure on /auth/refresh (5xx, network
+      // blip, DNS) used to silently log the user out. With 5-min
+      // access tokens that would now happen roughly 12× more often
+      // than before; shielding the user by surfacing the original
+      // error instead of a session_expired bounce.
+      throw await buildApiError(response);
     }
 
     logout({ reason: 'session_expired' });
