@@ -14,6 +14,7 @@ import {
   List,
   Plus,
   Trash2,
+  Loader2,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -608,9 +609,17 @@ export default function DocumentsContent(): ReactNode {
                             size="icon"
                             title="Delete"
                             onClick={() => handleDeleteDocument(doc.id)}
-                            disabled={deleteDocument.isPending}
+                            disabled={
+                              deleteDocument.isPending &&
+                              deleteDocument.variables === doc.id
+                            }
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            {deleteDocument.isPending &&
+                            deleteDocument.variables === doc.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-destructive" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            )}
                           </Button>
                         </div>
                       </TableCell>
