@@ -59,7 +59,17 @@ import {
   useDefaulters,
   useUnits,
 } from '@/hooks';
+import { useListUrlState } from '@/hooks/use-list-url-state';
 import type { InvoiceStatus, Invoice } from '@communityos/shared';
+
+const INVOICE_SORTS = [
+  'invoice_date',
+  'invoice_number',
+  'due_date',
+  'total_amount',
+  'balance_due',
+  'status',
+] as const;
 
 // ---------------------------------------------------------------------------
 // Tab / status config
@@ -167,7 +177,15 @@ export default function InvoicesContent(): ReactNode {
   const [lpiPostDate, setLpiPostDate] = useState('');
   const [defaultersDialogOpen, setDefaultersDialogOpen] = useState(false);
   const [unitFilter, setUnitFilter] = useState('');
-  const [page, setPage] = useState(1);
+  // QA #46 — persist page + sort in the URL so pagination survives refresh
+  // and shared links reopen the same view.
+  const listState = useListUrlState({
+    allowedSorts: INVOICE_SORTS,
+    defaultSort: 'invoice_date',
+    defaultDir: 'desc',
+  });
+  const page = listState.state.page;
+  const setPage = listState.setPage;
   const limit = 20;
 
   // Form state for generate
@@ -205,6 +223,8 @@ export default function InvoicesContent(): ReactNode {
     unit_id: unitFilter || undefined,
     page,
     limit,
+    sort: listState.state.sort ?? undefined,
+    dir: listState.state.dir,
   });
   const { data: rules } = useInvoiceRules();
   const { data: accountsResponse } = useLedgerAccounts({ limit: 500 });

@@ -1,6 +1,10 @@
-import { type ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import ReceiptsContent from './receipts-content';
 
 export default function ReceiptsPage(): ReactNode {
-  return <ReceiptsContent />;
+  return (
+    <Suspense fallback={null}>
+      <ReceiptsContent />
+    </Suspense>
+  );
 }

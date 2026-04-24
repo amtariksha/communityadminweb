@@ -64,6 +64,15 @@ import {
   useBulkReassignTickets,
 } from '@/hooks';
 import type { Ticket, TicketComment } from '@/hooks';
+import { useListUrlState } from '@/hooks/use-list-url-state';
+
+const TICKET_SORTS = [
+  'created_at',
+  'updated_at',
+  'priority',
+  'status',
+  'sla_due_at',
+] as const;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -149,7 +158,14 @@ export default function TicketsContent(): ReactNode {
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  // QA #46 — page + sort persist in the URL.
+  const listState = useListUrlState({
+    allowedSorts: TICKET_SORTS,
+    defaultSort: null,
+    defaultDir: 'desc',
+  });
+  const currentPage = listState.state.page;
+  const setCurrentPage = listState.setPage;
 
   // Create dialog
   const [createOpen, setCreateOpen] = useState(false);
@@ -170,6 +186,8 @@ export default function TicketsContent(): ReactNode {
     category: categoryFilter || undefined,
     page: currentPage,
     limit: PAGE_SIZE,
+    sort: listState.state.sort ?? undefined,
+    dir: listState.state.dir,
   });
   const statsQuery = useTicketStats();
   const categoriesQuery = useTicketCategories();
@@ -673,7 +691,7 @@ export default function TicketsContent(): ReactNode {
                   variant="outline"
                   size="sm"
                   disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
+                  onClick={() => setCurrentPage(currentPage - 1)}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -681,7 +699,7 @@ export default function TicketsContent(): ReactNode {
                   variant="outline"
                   size="sm"
                   disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage((p) => p + 1)}
+                  onClick={() => setCurrentPage(currentPage + 1)}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>

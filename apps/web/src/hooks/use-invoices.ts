@@ -44,6 +44,8 @@ interface InvoiceFilters {
   end_date?: string;
   page?: number;
   limit?: number;
+  sort?: string;
+  dir?: 'asc' | 'desc';
 }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +117,8 @@ function filtersToParams(filters?: InvoiceFilters): Record<string, string> | und
   if (filters.end_date) params.end_date = filters.end_date;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
+  if (filters.sort) params.sort = filters.sort;
+  if (filters.dir) params.dir = filters.dir;
   return params;
 }
 

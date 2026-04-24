@@ -59,6 +59,8 @@ export interface TicketFilters {
   assigned_to?: string;
   page?: number;
   limit?: number;
+  sort?: string;
+  dir?: 'asc' | 'desc';
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +118,8 @@ function filtersToParams(filters?: TicketFilters): Record<string, string> | unde
   if (filters.assigned_to) params.assigned_to = filters.assigned_to;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
+  if (filters.sort) params.sort = filters.sort;
+  if (filters.dir) params.dir = filters.dir;
   return params;
 }
 

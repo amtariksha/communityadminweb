@@ -1,6 +1,11 @@
-import { type ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import InvoicesContent from './invoices-content';
 
 export default function InvoicesPage(): ReactNode {
-  return <InvoicesContent />;
+  // useSearchParams inside InvoicesContent needs a Suspense boundary.
+  return (
+    <Suspense fallback={null}>
+      <InvoicesContent />
+    </Suspense>
+  );
 }

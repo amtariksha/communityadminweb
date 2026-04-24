@@ -45,7 +45,15 @@ import {
   useInvoices,
 } from '@/hooks';
 import { useUnits } from '@/hooks';
+import { useListUrlState } from '@/hooks/use-list-url-state';
 import type { ReceiptMode } from '@communityos/shared';
+
+const RECEIPT_SORTS = [
+  'receipt_date',
+  'receipt_number',
+  'amount',
+  'payment_mode',
+] as const;
 
 const ITEMS_PER_PAGE = 20;
 
@@ -123,7 +131,15 @@ export default function ReceiptsContent(): ReactNode {
   const { addToast } = useToast();
   // Clamp date inputs to prev FY start → next month end.
   const dateBounds = useMemo(() => financialDateBounds(), []);
-  const [page, setPage] = useState(1);
+  // QA #46 — page + sort live in the URL so /receipts?page=3&sort=amount
+  // bookmarks the exact view.
+  const listState = useListUrlState({
+    allowedSorts: RECEIPT_SORTS,
+    defaultSort: 'receipt_date',
+    defaultDir: 'desc',
+  });
+  const page = listState.state.page;
+  const setPage = listState.setPage;
   const [modeFilter, setModeFilter] = useState('');
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [creditNoteDialogOpen, setCreditNoteDialogOpen] = useState(false);
@@ -145,6 +161,8 @@ export default function ReceiptsContent(): ReactNode {
     payment_mode: modeFilter || undefined,
     page,
     limit: ITEMS_PER_PAGE,
+    sort: listState.state.sort ?? undefined,
+    dir: listState.state.dir,
   });
   const summaryQuery = useReceiptSummary();
   const unitsQuery = useUnits({ limit: 500 });
