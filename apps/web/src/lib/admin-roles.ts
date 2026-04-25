@@ -45,6 +45,72 @@ export const ADMIN_ELIGIBLE_ROLES = new Set<string>([
 ]);
 
 /**
+ * Priority ordering used to pick a single representative role when a
+ * user holds many. Higher index = lower priority. Roles outside the
+ * list rank infinitely low (i.e. only chosen when nothing else fits).
+ *
+ * Critical for the sidebar display: a user who's `community_admin` of
+ * Society B AND `tenant_resident` of Society A used to get
+ * `tenant_resident` shown at the bottom of the admin sidebar (because
+ * it happened to be `roles[0]`). The Flutter resident app picked them
+ * up — but this admin panel needs to surface the admin role, not
+ * the resident one.
+ */
+const ROLE_PRIORITY: readonly string[] = [
+  'super_admin',
+  'community_admin',
+  'committee_member',
+  'accountant',
+  'moderator',
+  'facility_supervisor',
+  'security_supervisor',
+  'guard_supervisor',
+  'auditor',
+];
+
+/**
+ * Pick the highest-priority admin-eligible role from a list, or
+ * undefined if none qualify. The user holding only resident-tier
+ * roles in this scope returns undefined — they shouldn't see admin
+ * UI.
+ */
+export function pickAdminRole(roles: readonly string[]): string | undefined {
+  for (const candidate of ROLE_PRIORITY) {
+    if (roles.includes(candidate)) return candidate;
+  }
+  return undefined;
+}
+
+/**
+ * Pick the role to render in admin-panel chrome for a user. Prefers
+ * the role they hold in the *currently-selected* tenant; if that
+ * tenant has only resident roles for them, falls back to their best
+ * admin-eligible role across any tenant. Returns undefined if the
+ * user has no admin access anywhere (caller should route to
+ * /no-access).
+ */
+export function pickDisplayRole(
+  user: Pick<User, 'isSuperAdmin' | 'societies'>,
+  currentTenantId: string | null,
+): string | undefined {
+  if (user.isSuperAdmin) return 'super_admin';
+
+  // Prefer the role for the active tenant.
+  if (currentTenantId) {
+    const current = user.societies.find((s) => s.id === currentTenantId);
+    if (current && ADMIN_ELIGIBLE_ROLES.has(current.role)) {
+      return current.role;
+    }
+  }
+
+  // Fallback: best admin-eligible role across every society.
+  const allRoles = user.societies
+    .map((s) => s.role)
+    .filter((r) => ADMIN_ELIGIBLE_ROLES.has(r));
+  return pickAdminRole(allRoles);
+}
+
+/**
  * Supervisor roles with a restricted sidebar (subset of the full nav).
  * Maps each role to the SET of nav-item labels it should see.
  *

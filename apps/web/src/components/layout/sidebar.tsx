@@ -42,7 +42,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, getInitials } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { getUser, getCurrentTenant, logout } from '@/lib/auth';
-import { getSidebarAllowlist } from '@/lib/admin-roles';
+import { getSidebarAllowlist, pickDisplayRole } from '@/lib/admin-roles';
 
 interface NavItem {
   label: string;
@@ -114,6 +114,20 @@ interface SidebarProps {
   onClose: () => void;
 }
 
+/**
+ * snake_case role slug → "Snake Case Role" for display in the
+ * sidebar chrome. Returns "Admin" for undefined (the user has no
+ * admin role at all — the no-access router should already be
+ * handling this case, but the chrome shouldn't render a blank).
+ */
+function formatRoleLabel(role: string | undefined): string {
+  if (!role) return 'Admin';
+  return role
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
 export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
   const pathname = usePathname();
   const user = getUser();
@@ -130,6 +144,13 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
   const currentTenantId = getCurrentTenant();
   const currentRole = user?.societies.find((s) => s.id === currentTenantId)?.role;
   const roleAllowlist = getSidebarAllowlist(currentRole);
+  // Display role at the bottom of the sidebar — picks the user's
+  // admin-eligible role for the current tenant, falling back to
+  // their highest-priority admin role across any tenant. Avoids the
+  // pre-2026-04-25 bug where a user added as community_admin to
+  // Tenant B who was also a tenant_resident at Tenant A saw
+  // "tenant_resident" displayed in the admin sidebar.
+  const displayRole = user ? pickDisplayRole(user, currentTenantId) : undefined;
 
   function isActive(href: string): boolean {
     if (href === '/') {
@@ -243,7 +264,7 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{userName}</p>
-              <p className="text-xs text-muted-foreground">{user?.role ?? 'Admin'}</p>
+              <p className="text-xs text-muted-foreground">{formatRoleLabel(displayRole)}</p>
             </div>
           </div>
           <button

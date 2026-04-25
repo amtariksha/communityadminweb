@@ -10,6 +10,7 @@ import {
   setCurrentTenant,
 } from '@/lib/auth';
 import type { User } from '@/lib/auth';
+import { pickAdminRole } from '@/lib/admin-roles';
 
 // ---------------------------------------------------------------------------
 // Response types
@@ -95,6 +96,10 @@ export function useCurrentUser() {
     queryKey: authKeys.me,
     queryFn: function fetchMe() {
       return api.get<MeResponse>('/auth/me').then(function mapToUser(res): User {
+        // Same admin-eligible role picker as useVerifyOtp — both
+        // entry points must agree, otherwise the next /auth/me poll
+        // would silently overwrite the corrected localStorage with
+        // the buggy first-role-wins shape.
         return {
           id: res.id,
           phone: res.phone,
@@ -103,11 +108,11 @@ export function useCurrentUser() {
           isSuperAdmin: res.isSuperAdmin,
           role: res.isSuperAdmin
             ? 'super_admin'
-            : (res.tenants[0]?.roles[0] ?? 'user'),
+            : (pickAdminRole(res.tenants.flatMap((t) => t.roles)) ?? 'user'),
           societies: res.tenants.map((t) => ({
             id: t.tenantId,
             name: t.tenantName,
-            role: t.roles[0] ?? 'member',
+            role: pickAdminRole(t.roles) ?? t.roles[0] ?? 'member',
           })),
         };
       });
@@ -141,7 +146,26 @@ export function useVerifyOtp() {
       // Refresh token lives in an httpOnly cookie set by the backend —
       // JS never sees it (QA #57). Nothing to persist here.
 
-      // Map API response to the User shape stored in localStorage
+      // Map API response to the User shape stored in localStorage.
+      //
+      // BUG FIX (2026-04-25): the previous mapping picked
+      // `tenants[0].roles[0]` blindly. A user added as community_admin
+      // to Tenant B who is also a tenant_resident at Tenant A would
+      // see "tenant_resident" in the admin sidebar — wrong, plus
+      // confusing because resident roles do not grant admin access.
+      // `pickAdminRole` picks the highest-priority admin-eligible
+      // role; per-society we do the same so the tenant-switcher and
+      // sidebar gating use the user's *admin* role in each society,
+      // not whatever happened to be first.
+      const societies = data.user.tenants.map((t) => ({
+        id: t.tenantId,
+        name: t.tenantName,
+        // Admin-eligible role for this society. If the user only has
+        // resident roles here, fall back to the first role so the
+        // entry isn't blank — but `getAdminSocieties()` will filter
+        // it out of admin-only UI.
+        role: pickAdminRole(t.roles) ?? t.roles[0] ?? 'member',
+      }));
       const user: User = {
         id: data.user.id,
         phone: data.user.phone,
@@ -150,12 +174,8 @@ export function useVerifyOtp() {
         isSuperAdmin: data.user.isSuperAdmin,
         role: data.user.isSuperAdmin
           ? 'super_admin'
-          : (data.user.tenants[0]?.roles[0] ?? 'user'),
-        societies: data.user.tenants.map((t) => ({
-          id: t.tenantId,
-          name: t.tenantName,
-          role: t.roles[0] ?? 'member',
-        })),
+          : (pickAdminRole(data.user.tenants.flatMap((t) => t.roles)) ?? 'user'),
+        societies,
       };
       setUser(user);
 
