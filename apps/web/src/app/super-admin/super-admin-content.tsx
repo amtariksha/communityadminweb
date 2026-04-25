@@ -61,6 +61,7 @@ import UserManagement from './user-management';
 import AddMemberDialog from './add-member-dialog';
 import TenantMembers from './tenant-members';
 import PlatformSettings from './platform-settings';
+import { ABSTRACT_FEATURES, MODULE_FEATURES } from '@/lib/feature-catalogue';
 
 // API response may include computed fields beyond the base Tenant type
 interface TenantRow {
@@ -87,40 +88,15 @@ const ITEMS_PER_PAGE = 20;
 // ---------------------------------------------------------------------------
 // Feature toggle definitions
 // ---------------------------------------------------------------------------
+//
+// Source of truth: lib/feature-catalogue.ts. Both arrays below map onto
+// `tenants.settings_json` boolean keys via PATCH /tenants/:id/features.
+// MODULE_FEATURES mirrors the sidebar nav (one entry per gated page);
+// ABSTRACT_FEATURES are legacy capability flags kept for compatibility
+// with tenants that already have those keys set.
 
-const allFeatureKeys = [
-  { key: 'ev_module', label: 'EV Charging' },
-  { key: 'digital_voting', label: 'Digital Voting' },
-  { key: 'ai_accounting', label: 'AI Accounting' },
-  { key: 'visitor_management', label: 'Visitor Management' },
-  { key: 'maintenance_requests', label: 'Maintenance Requests' },
-  { key: 'parking_management', label: 'Parking Management' },
-];
-
-const allModuleFeatures = [
-  { key: 'units', label: 'Units' },
-  { key: 'gate', label: 'Gate Management' },
-  { key: 'utilities', label: 'Utilities' },
-  { key: 'parking', label: 'Parking' },
-  { key: 'amenities', label: 'Amenities' },
-  { key: 'tickets', label: 'Tickets' },
-  { key: 'announcements', label: 'Announcements' },
-  { key: 'voting', label: 'Voting' },
-  { key: 'staff', label: 'Staff' },
-  { key: 'documents', label: 'Documents' },
-  { key: 'invoices', label: 'Invoices' },
-  { key: 'receipts', label: 'Receipts' },
-  { key: 'vendors', label: 'Vendors' },
-  { key: 'purchases', label: 'Purchases' },
-  { key: 'payments', label: 'Payments' },
-  { key: 'bank', label: 'Bank' },
-  { key: 'reports', label: 'Reports' },
-  { key: 'gas', label: 'Gas Management' },
-  { key: 'marketplace', label: 'Marketplace' },
-  { key: 'analytics', label: 'Analytics' },
-  { key: 'approvals', label: 'Approvals' },
-  { key: 'notifications', label: 'Notifications' },
-];
+const allFeatureKeys = ABSTRACT_FEATURES;
+const allModuleFeatures = MODULE_FEATURES;
 
 // ---------------------------------------------------------------------------
 // Skeleton components

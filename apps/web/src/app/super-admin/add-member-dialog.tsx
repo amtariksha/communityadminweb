@@ -21,17 +21,7 @@ import { normalizePhone } from '@/lib/validation';
 import { FormFieldError } from '@/components/ui/form-field-error';
 import { UserSearchSelect } from '@/components/ui/user-search-select';
 import type { UserSearchHit } from '@/hooks/use-user-search';
-
-const ASSIGNABLE_ROLES = [
-  { slug: 'community_admin', label: 'Community Admin', description: 'Facility manager — full society access including billing, gate, staff, and settings' },
-  { slug: 'committee_member', label: 'Committee Member', description: 'Full admin access — manages society settings, approvals, and all modules' },
-  { slug: 'accountant', label: 'Accountant', description: 'Manages finances — invoices, receipts, ledger, bank, and vendor payments' },
-  { slug: 'moderator', label: 'Moderator', description: 'Day-to-day operations — units, documents, and member communication' },
-  { slug: 'security_guard', label: 'Security Guard', description: 'Gate operations — visitor check-in/out, staff attendance, parcels' },
-  { slug: 'auditor', label: 'Auditor', description: 'Read-only access to financial records and reports for audit purposes' },
-  { slug: 'owner', label: 'Owner', description: 'Flat/unit owner — can view their own invoices, receipts, and documents' },
-  { slug: 'tenant_resident', label: 'Tenant / Resident', description: 'Renting resident — can view their own invoices and society documents' },
-];
+import { ASSIGNABLE_ROLES } from '@/lib/role-catalogue';
 
 interface AddMemberDialogProps {
   open: boolean;
