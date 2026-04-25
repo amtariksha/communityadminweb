@@ -66,25 +66,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ALL_FEATURES } from '@/lib/feature-catalogue';
 
 // ---------------------------------------------------------------------------
 // Feature toggle definitions
 // ---------------------------------------------------------------------------
+//
+// Source of truth: lib/feature-catalogue.ts. The community-admin toggle
+// list mirrors the super-admin one — every page the sidebar gates plus
+// the legacy abstract flags. Previously this file had only 6 abstract
+// toggles, so admins couldn't enable Tickets / Voting / Amenities / Gas
+// / CCTV / Assets / Documents from the per-society Settings page.
 
-interface FeatureToggle {
-  key: string;
-  label: string;
-  description: string;
-}
-
-const featureToggles: FeatureToggle[] = [
-  { key: 'ev_module', label: 'EV Charging Module', description: 'Enable electric vehicle charging management' },
-  { key: 'digital_voting', label: 'Digital Voting', description: 'Enable online voting for society decisions' },
-  { key: 'ai_accounting', label: 'AI Accounting', description: 'Enable AI-powered accounting assistance' },
-  { key: 'visitor_management', label: 'Visitor Management', description: 'Enable visitor entry/exit tracking' },
-  { key: 'maintenance_requests', label: 'Maintenance Requests', description: 'Enable resident maintenance request system' },
-  { key: 'parking_management', label: 'Parking Management', description: 'Enable parking slot allocation and tracking' },
-];
+const featureToggles = ALL_FEATURES;
 
 // ---------------------------------------------------------------------------
 // Main page

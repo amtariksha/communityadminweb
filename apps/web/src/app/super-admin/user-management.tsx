@@ -59,21 +59,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import AddMemberDialog from './add-member-dialog';
+import { ASSIGNABLE_ROLES } from '@/lib/role-catalogue';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const ITEMS_PER_PAGE = 20;
-
-const ASSIGNABLE_ROLES = [
-  { slug: 'committee_member', label: 'Committee Member' },
-  { slug: 'accountant', label: 'Accountant' },
-  { slug: 'moderator', label: 'Moderator' },
-  { slug: 'auditor', label: 'Auditor' },
-  { slug: 'owner', label: 'Owner' },
-  { slug: 'tenant_resident', label: 'Tenant / Resident' },
-];
 
 // ---------------------------------------------------------------------------
 // Skeleton
