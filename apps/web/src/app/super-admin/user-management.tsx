@@ -414,7 +414,13 @@ export default function UserManagement(): ReactNode {
                 </TableRow>
               ) : (
                 users.map(function renderUser(user) {
-                  const isDeleted = user.deleted_at !== null;
+                  // Defensive: treat both `null` and `undefined` as
+                  // not-deleted so a deploy timing mismatch (admin-web
+                  // ahead of API, before migration 056 ran on the
+                  // server) doesn't paint every row red.
+                  // `user.deleted_at !== null` (the v1 check) breaks
+                  // because `undefined !== null` evaluates true.
+                  const isDeleted = Boolean(user.deleted_at);
                   return (
                     <TableRow
                       key={user.id}
