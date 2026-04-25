@@ -73,6 +73,8 @@ import type { UnitDetailMember } from '@/hooks';
 import { useOcrIdDocument } from '@/hooks/use-ocr';
 import { cn, formatDate } from '@/lib/utils';
 import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
+import { UserSearchSelect } from '@/components/ui/user-search-select';
+import type { UserSearchHit } from '@/hooks/use-user-search';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -285,6 +287,17 @@ export default function UnitsContent(): ReactNode {
   const [addMemberType, setAddMemberType] = useState('owner_family');
   const [addMemberParentId, setAddMemberParentId] = useState('');
   const [addMemberMoveIn, setAddMemberMoveIn] = useState('');
+  // Unified user-directory wiring (migration 056 / UserSearchSelect).
+  // `addMemberSelected` is the directory hit picked from autocomplete;
+  // when set, the form submits with that user's exact phone (and the
+  // server's findOrCreateUser will reuse the existing users row instead
+  // of creating a duplicate). On no-match the operator keeps typing
+  // and `addMemberPhone` carries the typed value through silently.
+  const [addMemberSelected, setAddMemberSelected] = useState<UserSearchHit | null>(null);
+  // Family-member-without-phone path: minors / elderly without their
+  // own mobile. members.user_id stays NULL; the parent_member_id link
+  // is what represents them in visitor logs and resident lists.
+  const [addMemberNoPhone, setAddMemberNoPhone] = useState(false);
   // ID scan (Aadhaar / PAN / Passport / Voter / DL). Auto-fills Name;
   // other fields (document_number, DOB, gender) are surfaced in a
   // toast for the admin to record manually — the lightweight
@@ -653,6 +666,8 @@ export default function UnitsContent(): ReactNode {
     setAddMemberName('');
     setAddMemberPhone('');
     setAddMemberMoveIn('');
+    setAddMemberSelected(null);
+    setAddMemberNoPhone(false);
     setAddMemberOpen(true);
   }
 
@@ -662,6 +677,8 @@ export default function UnitsContent(): ReactNode {
     setAddMemberName('');
     setAddMemberPhone('');
     setAddMemberMoveIn('');
+    setAddMemberSelected(null);
+    setAddMemberNoPhone(false);
     setAddMemberOpen(true);
   }
 
@@ -713,15 +730,31 @@ export default function UnitsContent(): ReactNode {
 
   function handleAddMember(e: FormEvent): void {
     e.preventDefault();
-    const phone = normalizePhone(addMemberPhone);
-    if (!phone.ok) {
-      addToast({
-        title: 'Invalid phone number',
-        description: phone.error,
-        variant: 'destructive',
-      });
-      return;
+    const isFamily =
+      addMemberType === 'owner_family' || addMemberType === 'tenant_family';
+    const allowNoPhone = isFamily && addMemberNoPhone;
+
+    // Phone source: prefer the directory hit (no duplicate users row),
+    // fall back to the typed value, fall back to empty (no-phone family
+    // member). The server's findOrCreateUser dedupes when a phone is
+    // present but unselected (silent no-match flow per the plan).
+    const rawPhone = addMemberSelected?.phone ?? addMemberPhone;
+    let phoneValue: string | undefined;
+    if (allowNoPhone && !rawPhone.trim()) {
+      phoneValue = undefined;
+    } else {
+      const phone = normalizePhone(rawPhone);
+      if (!phone.ok) {
+        addToast({
+          title: 'Invalid phone number',
+          description: phone.error,
+          variant: 'destructive',
+        });
+        return;
+      }
+      phoneValue = phone.value || undefined;
     }
+
     const name = validateName(addMemberName);
     if (!name.ok) {
       addToast({
@@ -735,7 +768,7 @@ export default function UnitsContent(): ReactNode {
       {
         unit_id: detailUnitId,
         name: name.value,
-        phone: phone.value || undefined,
+        phone: phoneValue,
         member_type: addMemberType,
         move_in_date: addMemberMoveIn,
         ...(addMemberParentId ? { parent_member_id: addMemberParentId } : {}),
@@ -1381,6 +1414,8 @@ export default function UnitsContent(): ReactNode {
                             setAddMemberName('');
                             setAddMemberPhone('');
                             setAddMemberMoveIn('');
+                            setAddMemberSelected(null);
+                            setAddMemberNoPhone(false);
                             setAddMemberOpen(true);
                           }}
                         >
@@ -1774,6 +1809,67 @@ export default function UnitsContent(): ReactNode {
                   </p>
                 )}
               </div>
+              {/* Family-member-without-phone toggle (minor / elderly).
+                  Hides the directory autocomplete so the operator can
+                  enter just a name + parent_member_id link. */}
+              {(addMemberType === 'owner_family' ||
+                addMemberType === 'tenant_family') && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={addMemberNoPhone}
+                    onChange={(e) => {
+                      setAddMemberNoPhone(e.target.checked);
+                      if (e.target.checked) {
+                        // Drop any partial selection / typed phone so
+                        // the form submits as no-phone cleanly.
+                        setAddMemberSelected(null);
+                        setAddMemberPhone('');
+                      }
+                    }}
+                  />
+                  No phone (e.g. minor / elderly)
+                </label>
+              )}
+
+              {!addMemberNoPhone && (
+                <div className="space-y-2">
+                  <Label>Search directory by phone or name</Label>
+                  <UserSearchSelect
+                    scope="tenant"
+                    value={addMemberSelected}
+                    placeholder="Type at least 3 characters…"
+                    onChange={(hit) => {
+                      setAddMemberSelected(hit);
+                      if (hit) {
+                        setAddMemberPhone(hit.phone);
+                        if (hit.name && !addMemberName) {
+                          setAddMemberName(hit.name);
+                        }
+                      }
+                    }}
+                    onQueryChange={(q) => {
+                      // Track the typed value so the form can fall
+                      // back to it cleanly when the operator types a
+                      // brand-new phone (silent no-match flow).
+                      setAddMemberPhone(q);
+                    }}
+                  />
+                  {addMemberSelected &&
+                    addMemberSelected.units.some((u) => u.is_current) && (
+                      <p className="text-xs text-amber-600">
+                        Existing tenancy:{' '}
+                        {addMemberSelected.units
+                          .filter((u) => u.is_current)
+                          .map((u) => `${u.unit_number} (${u.member_type})`)
+                          .join(', ')}
+                        . Continuing will add another membership row.
+                      </p>
+                    )}
+                  <FormFieldError error={addMember.error} field="phone" />
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="add-m-name">Name</Label>
                 <Input
@@ -1784,18 +1880,6 @@ export default function UnitsContent(): ReactNode {
                   onChange={(e) => setAddMemberName(e.target.value)}
                 />
                 <FormFieldError error={addMember.error} field="name" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-m-phone">Phone</Label>
-                <Input
-                  id="add-m-phone"
-                  required
-                  placeholder="10-digit mobile (optional +91 prefix)"
-                  maxLength={13}
-                  value={addMemberPhone}
-                  onChange={(e) => setAddMemberPhone(e.target.value)}
-                />
-                <FormFieldError error={addMember.error} field="phone" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="add-m-movein">Move-in Date</Label>

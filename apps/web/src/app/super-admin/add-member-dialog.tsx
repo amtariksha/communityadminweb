@@ -19,6 +19,8 @@ import { useToast } from '@/components/ui/toast';
 import { useAddMemberWithRoles, useTenants } from '@/hooks';
 import { normalizePhone } from '@/lib/validation';
 import { FormFieldError } from '@/components/ui/form-field-error';
+import { UserSearchSelect } from '@/components/ui/user-search-select';
+import type { UserSearchHit } from '@/hooks/use-user-search';
 
 const ASSIGNABLE_ROLES = [
   { slug: 'community_admin', label: 'Community Admin', description: 'Facility manager — full society access including billing, gate, staff, and settings' },
@@ -47,6 +49,12 @@ export default function AddMemberDialog({
   const { addToast } = useToast();
 
   const [phone, setPhone] = useState('');
+  // Cross-tenant directory hit picked via UserSearchSelect. When set,
+  // we know the existing users row id + its tenant_roles in other
+  // societies, which we can surface to the operator as context (so
+  // they don't accidentally pile a community_admin role onto someone
+  // who's already a resident across the platform).
+  const [selectedUser, setSelectedUser] = useState<UserSearchHit | null>(null);
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
@@ -58,6 +66,7 @@ export default function AddMemberDialog({
 
   function resetForm(): void {
     setPhone('');
+    setSelectedUser(null);
     setSelectedTenantId('');
     setSelectedRoles([]);
   }
@@ -72,12 +81,17 @@ export default function AddMemberDialog({
     e.preventDefault();
     if (!effectiveTenantId || !phone || selectedRoles.length === 0) return;
 
+    // Prefer the directory hit's exact phone — guarantees no duplicate
+    // users row gets created when the operator just glanced past the
+    // autocomplete. Fall back to the typed value (silent no-match
+    // flow per the unified-directory plan).
+    const rawPhone = selectedUser?.phone ?? phone;
     // The HTML5 `pattern="^\+91\d{10}$"` gate only catches missing-+91
     // and length mismatches — it still lets 0/1/2/3/4/5-start numbers
     // through. normalizePhone enforces the Indian mobile 6-9 first-
     // digit rule and also accepts a bare 10-digit number, canonicalising
     // to +91XXXXXXXXXX before we hit the backend.
-    const normalized = normalizePhone(phone);
+    const normalized = normalizePhone(rawPhone);
     if (!normalized.ok || !normalized.value) {
       addToast({
         title: 'Invalid phone number',
@@ -135,17 +149,27 @@ export default function AddMemberDialog({
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="member-phone">Phone Number</Label>
-              <Input
-                id="member-phone"
-                required
-                placeholder="10-digit mobile (optional +91 prefix)"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                maxLength={13}
-                inputMode="tel"
-                title="Indian mobile — 10 digits starting 6/7/8/9"
+              <Label>Phone Number</Label>
+              <UserSearchSelect
+                scope="super-admin"
+                value={selectedUser}
+                placeholder="Search every society by phone or name…"
+                onChange={(hit) => {
+                  setSelectedUser(hit);
+                  if (hit) setPhone(hit.phone);
+                }}
+                onQueryChange={(q) => {
+                  // Track typed value so the form submits cleanly when
+                  // no autocomplete row matches (silent no-match flow).
+                  setPhone(q);
+                }}
               />
+              {selectedUser && selectedUser.roles.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Existing roles across the platform:{' '}
+                  {selectedUser.roles.map((r) => r.replace(/_/g, ' ')).join(', ')}
+                </p>
+              )}
               <FormFieldError error={addMember.error} field="phone" />
               <p className="text-xs text-muted-foreground">
                 Indian mobile number — 10 digits starting 6/7/8/9, with or without +91.

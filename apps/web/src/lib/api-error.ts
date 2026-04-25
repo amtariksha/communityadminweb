@@ -62,6 +62,15 @@ export class ApiError extends Error {
     return this.envelope.retry_after_seconds;
   }
 
+  /**
+   * Code-specific extra payload (e.g. `tenants` on the soft-delete
+   * `last_admin_orphaning` response). Callers branch on `.code` first,
+   * then read whatever shape `details` has for that code.
+   */
+  get details(): Record<string, unknown> | undefined {
+    return this.envelope.details;
+  }
+
   /** Server request ID for support + log correlation. */
   get requestId(): string | undefined {
     return this.envelope.request_id;

@@ -50,6 +50,8 @@ import { FormFieldError } from '@/components/ui/form-field-error';
 import { formatDate } from '@/lib/utils';
 import { normalizePhone } from '@/lib/validation';
 import { ClickablePhone } from '@/components/ui/clickable-contact';
+import { UserSearchSelect } from '@/components/ui/user-search-select';
+import type { UserSearchHit } from '@/hooks/use-user-search';
 import {
   useStaffEmployees,
   useStaffShifts,
@@ -154,6 +156,12 @@ export default function StaffContent(): ReactNode {
   const [editingEmployeeId, setEditingEmployeeId] = useState('');
   const [empName, setEmpName] = useState('');
   const [empPhone, setEmpPhone] = useState('');
+  // Unified user-directory wiring (UserSearchSelect). When the
+  // operator picks an existing user, `empSelected` carries the
+  // directory hit so we can warn if they're already a resident in
+  // this society — staff role assigned on top of resident is a
+  // legitimate but rare combination, worth surfacing once.
+  const [empSelected, setEmpSelected] = useState<UserSearchHit | null>(null);
   const [empType, setEmpType] = useState('security_guard');
   const [empDesignation, setEmpDesignation] = useState('');
   const [empAddress, setEmpAddress] = useState('');
@@ -245,6 +253,7 @@ export default function StaffContent(): ReactNode {
     setEditingEmployeeId('');
     setEmpName('');
     setEmpPhone('');
+    setEmpSelected(null);
     setEmpType('security_guard');
     setEmpDesignation('');
     setEmpAddress('');
@@ -256,6 +265,7 @@ export default function StaffContent(): ReactNode {
     setEditingEmployeeId(emp.id);
     setEmpName(emp.name);
     setEmpPhone(emp.phone);
+    setEmpSelected(null);
     setEmpType(emp.staff_type);
     setEmpDesignation(emp.designation ?? '');
     setEmpAddress(emp.address ?? '');
@@ -305,7 +315,10 @@ export default function StaffContent(): ReactNode {
         },
       );
     } else {
-      const phone = normalizePhone(empPhone);
+      // Prefer the directory hit (no duplicate users row); fall back
+      // to the typed value when no autocomplete row was picked.
+      const rawPhone = empSelected?.phone ?? empPhone;
+      const phone = normalizePhone(rawPhone);
       if (!phone.ok || !phone.value) {
         addToast({
           title: 'Invalid phone number',
@@ -613,20 +626,40 @@ export default function StaffContent(): ReactNode {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="emp-phone">Phone</Label>
-                            <Input
-                              id="emp-phone"
-                              type="tel"
-                              required={!editingEmployeeId}
-                              disabled={Boolean(editingEmployeeId)}
-                              placeholder="10-digit phone"
-                              maxLength={10}
-                              pattern="[0-9]{10}"
-                              inputMode="numeric"
-                              title="Phone must be exactly 10 digits"
-                              value={empPhone}
-                              onChange={(e) => setEmpPhone(e.target.value.replace(/\D/g, ''))}
-                            />
+                            <Label>Phone</Label>
+                            {editingEmployeeId ? (
+                              <Input
+                                type="tel"
+                                disabled
+                                value={empPhone}
+                              />
+                            ) : (
+                              <>
+                                <UserSearchSelect
+                                  scope="tenant"
+                                  value={empSelected}
+                                  placeholder="Phone or name (3+ chars)…"
+                                  onChange={(hit) => {
+                                    setEmpSelected(hit);
+                                    if (hit) {
+                                      setEmpPhone(hit.phone);
+                                      if (hit.name && !empName) setEmpName(hit.name);
+                                    }
+                                  }}
+                                  onQueryChange={(q) => setEmpPhone(q)}
+                                />
+                                {empSelected && empSelected.units.some((u) => u.is_current) && (
+                                  <p className="text-xs text-amber-600">
+                                    Already a resident of{' '}
+                                    {empSelected.units
+                                      .filter((u) => u.is_current)
+                                      .map((u) => u.unit_number)
+                                      .join(', ')}
+                                    . Adding a staff role on top is supported but unusual.
+                                  </p>
+                                )}
+                              </>
+                            )}
                             <FormFieldError
                               error={editingEmployeeId ? updateEmployee.error : createEmployee.error}
                               field="phone"

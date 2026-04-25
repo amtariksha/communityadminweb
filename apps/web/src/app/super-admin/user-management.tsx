@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import {
   Search,
   ChevronLeft,
   ChevronRight,
   Trash2,
   UserPlus,
+  MoreVertical,
+  Undo2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,6 +35,7 @@ import {
 } from '@/components/ui/dialog';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { ApiError, friendlyError } from '@/lib/api-error';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { TOOLTIP } from '@/lib/tooltip-content';
 import {
@@ -42,7 +46,18 @@ import {
   useSuperAdminUnitsForTenant,
   useTenants,
 } from '@/hooks';
+import {
+  useDeleteSuperAdminUser,
+  useRestoreSuperAdminUser,
+} from '@/hooks/use-super-admin-users';
 import type { SuperAdminUser } from '@/hooks';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Textarea } from '@/components/ui/textarea';
 import AddMemberDialog from './add-member-dialog';
 
 // ---------------------------------------------------------------------------
@@ -92,10 +107,23 @@ export default function UserManagement(): ReactNode {
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
+  // Migration 056 — show soft-deleted users so the operator can pick
+  // Restore. Off by default to keep the active list focused.
+  const [showDeleted, setShowDeleted] = useState(false);
 
   // Role dialog
   const [selectedUser, setSelectedUser] = useState<SuperAdminUser | null>(null);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+
+  // Soft-delete confirmation dialog
+  const [deleteUser, setDeleteUser] = useState<SuperAdminUser | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  // Set to true when the backend returns 400 with `last_admin_orphaning`
+  // — the operator confirms they're aware and resubmits with force.
+  const [deleteForce, setDeleteForce] = useState(false);
+  const [orphaningTenants, setOrphaningTenants] = useState<
+    Array<{ tenant_id: string; tenant_name: string }>
+  >([]);
 
   // Add role form
   const [newRoleTenantId, setNewRoleTenantId] = useState('');
@@ -115,6 +143,7 @@ export default function UserManagement(): ReactNode {
     search: searchQuery || undefined,
     page,
     limit: ITEMS_PER_PAGE,
+    include_deleted: showDeleted,
   });
   const userRolesQuery = useSuperAdminUserRoles(selectedUser?.id ?? '');
   const tenantsQuery = useTenants({ limit: 100 });
@@ -125,6 +154,8 @@ export default function UserManagement(): ReactNode {
   // Mutations
   const assignRole = useAssignUserRole();
   const removeRole = useRemoveUserRole();
+  const deleteUserMutation = useDeleteSuperAdminUser();
+  const restoreUserMutation = useRestoreSuperAdminUser();
 
   // Derived
   const users = usersQuery.data?.data ?? [];
@@ -228,6 +259,92 @@ export default function UserManagement(): ReactNode {
     );
   }
 
+  function openDeleteDialog(user: SuperAdminUser): void {
+    setDeleteUser(user);
+    setDeleteReason('');
+    setDeleteForce(false);
+    setOrphaningTenants([]);
+  }
+
+  function handleConfirmDelete(e: FormEvent): void {
+    e.preventDefault();
+    if (!deleteUser) return;
+    if (deleteReason.trim().length === 0) {
+      addToast({
+        title: 'Reason is required',
+        description: 'Record why this account is being removed.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    deleteUserMutation.mutate(
+      {
+        user_id: deleteUser.id,
+        reason: deleteReason.trim(),
+        force: deleteForce,
+      },
+      {
+        onSuccess(data) {
+          addToast({
+            title: 'User deleted',
+            description:
+              data.cancelled_subscriptions > 0
+                ? `${data.cancelled_subscriptions} autopay subscription(s) cancelled.`
+                : 'Memberships ended; FCM tokens revoked.',
+            variant: 'success',
+          });
+          setDeleteUser(null);
+          setDeleteReason('');
+          setDeleteForce(false);
+          setOrphaningTenants([]);
+        },
+        onError(error) {
+          // Backend returns 400 with code `last_admin_orphaning` + a
+          // tenants list on `details` when the target is the only
+          // community-admin somewhere. Surface the orphaning warning
+          // so the operator can re-submit with `force: true` if they
+          // really mean it.
+          if (error instanceof ApiError && error.code === 'last_admin_orphaning') {
+            const orphaning = error.details?.tenants as
+              | Array<{ tenant_id: string; tenant_name: string }>
+              | undefined;
+            if (orphaning) {
+              setOrphaningTenants(orphaning);
+              return;
+            }
+          }
+          addToast({
+            title: 'Failed to delete user',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
+  }
+
+  function handleRestoreUser(user: SuperAdminUser): void {
+    if (
+      !window.confirm(
+        `Restore ${user.name ?? user.phone}? They will be able to log in again, but memberships and autopay are NOT auto-restored.`,
+      )
+    ) {
+      return;
+    }
+    restoreUserMutation.mutate(user.id, {
+      onSuccess() {
+        addToast({ title: 'User restored', variant: 'success' });
+      },
+      onError(error) {
+        addToast({
+          title: 'Failed to restore user',
+          description: error.message,
+          variant: 'destructive',
+        });
+      },
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -255,6 +372,17 @@ export default function UserManagement(): ReactNode {
               <Button variant="outline" size="sm" onClick={handleSearch}>
                 Search
               </Button>
+              <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={showDeleted}
+                  onChange={(e) => {
+                    setShowDeleted(e.target.checked);
+                    setPage(1);
+                  }}
+                />
+                Show deleted
+              </label>
               <Button size="sm" onClick={() => setAddMemberDialogOpen(true)}>
                 <UserPlus className="mr-2 h-4 w-4" />
                 Add to Society
@@ -272,6 +400,7 @@ export default function UserManagement(): ReactNode {
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Joined</TableHead>
+                <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -279,17 +408,24 @@ export default function UserManagement(): ReactNode {
                 <UserTableSkeleton />
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     {searchQuery ? 'No users found' : 'No users yet'}
                   </TableCell>
                 </TableRow>
               ) : (
                 users.map(function renderUser(user) {
+                  const isDeleted = user.deleted_at !== null;
                   return (
                     <TableRow
                       key={user.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => openRoleDialog(user)}
+                      className={
+                        isDeleted
+                          ? 'cursor-pointer hover:bg-muted/50 opacity-60'
+                          : 'cursor-pointer hover:bg-muted/50'
+                      }
+                      onClick={() => {
+                        if (!isDeleted) openRoleDialog(user);
+                      }}
                     >
                       <TableCell className="font-mono text-sm">{user.phone}</TableCell>
                       <TableCell>
@@ -311,12 +447,50 @@ export default function UserManagement(): ReactNode {
                           : <span className="text-muted-foreground">--</span>}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.is_active ? 'success' : 'destructive'}>
-                          {user.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
+                        {isDeleted ? (
+                          <Badge variant="destructive">Deleted</Badge>
+                        ) : (
+                          <Badge variant={user.is_active ? 'success' : 'destructive'}>
+                            {user.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {formatDate(user.created_at)}
+                      </TableCell>
+                      <TableCell
+                        className="text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <DropdownMenu>
+                          <DropdownMenuTrigger>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {isDeleted ? (
+                              <DropdownMenuItem onClick={() => handleRestoreUser(user)}>
+                                <Undo2 className="mr-2 h-4 w-4" />
+                                Restore user
+                              </DropdownMenuItem>
+                            ) : (
+                              <>
+                                <DropdownMenuItem onClick={() => openRoleDialog(user)}>
+                                  <UserPlus className="mr-2 h-4 w-4" />
+                                  Manage roles
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => openDeleteDialog(user)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete user
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   );
@@ -530,6 +704,114 @@ export default function UserManagement(): ReactNode {
         open={addMemberDialogOpen}
         onOpenChange={setAddMemberDialogOpen}
       />
+
+      {/* Soft-delete confirmation. Two-stage: first submit checks the
+          orphaning guard server-side, second submit (with deleteForce
+          flagged) overrides. */}
+      <Dialog
+        open={deleteUser !== null}
+        onOpenChange={(o) => {
+          if (!o) {
+            setDeleteUser(null);
+            setDeleteReason('');
+            setDeleteForce(false);
+            setOrphaningTenants([]);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <form onSubmit={handleConfirmDelete}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="h-5 w-5" />
+                Delete user
+              </DialogTitle>
+              <DialogDescription>
+                {deleteUser?.name ?? deleteUser?.phone}
+                {deleteUser?.name && (
+                  <span className="text-muted-foreground"> ({deleteUser.phone})</span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4 text-sm">
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-1">
+                <p className="font-medium">This will:</p>
+                <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                  <li>End all current memberships (move-out date today)</li>
+                  <li>Cancel any active autopay subscriptions</li>
+                  <li>Revoke push-notification device tokens</li>
+                  <li>Force the next protected request to 401 within 5 minutes</li>
+                  <li>
+                    Keep the audit trail (invoices, ledger entries, etc.)
+                    intact — soft delete only
+                  </li>
+                </ul>
+              </div>
+
+              {orphaningTenants.length > 0 && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                  <p className="flex items-center gap-2 font-medium text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="h-4 w-4" />
+                    Last community admin warning
+                  </p>
+                  <p className="text-muted-foreground">
+                    This user is the only community admin in:
+                  </p>
+                  <ul className="list-disc list-inside text-muted-foreground">
+                    {orphaningTenants.map((t) => (
+                      <li key={t.tenant_id}>{t.tenant_name}</li>
+                    ))}
+                  </ul>
+                  <label className="mt-2 flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                    <input
+                      type="checkbox"
+                      checked={deleteForce}
+                      onChange={(e) => setDeleteForce(e.target.checked)}
+                    />
+                    Delete anyway — these tenants will have no admin until
+                    super-admin reassigns one.
+                  </label>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <Label htmlFor="delete-reason">Reason (required)</Label>
+                <Textarea
+                  id="delete-reason"
+                  required
+                  rows={3}
+                  placeholder="e.g. Resident requested account closure; offboarded."
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  maxLength={500}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDeleteUser(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={
+                  deleteUserMutation.isPending ||
+                  deleteReason.trim().length === 0 ||
+                  (orphaningTenants.length > 0 && !deleteForce)
+                }
+              >
+                {deleteUserMutation.isPending ? 'Deleting…' : 'Delete user'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

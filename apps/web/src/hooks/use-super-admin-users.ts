@@ -65,6 +65,9 @@ export interface SuperAdminUser {
   is_active: boolean;
   is_super_admin: boolean;
   created_at: string;
+  // Migration 056 — soft-delete metadata.
+  deleted_at: string | null;
+  delete_reason: string | null;
   tenant_count: number;
   tenant_roles: Array<{ tenant_name: string; role: string }>;
 }
@@ -86,6 +89,9 @@ interface UserSearchFilters {
   search?: string;
   page?: number;
   limit?: number;
+  // Migration 056 — set true to surface soft-deleted users so the
+  // operator can pick "Restore". Default false (deleted hidden).
+  include_deleted?: boolean;
 }
 
 interface AssignUserRoleInput {
@@ -132,6 +138,7 @@ function filtersToParams(
   if (filters.search) params.search = filters.search;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
+  if (filters.include_deleted) params.include_deleted = 'true';
   return params;
 }
 
@@ -203,6 +210,62 @@ export function useRemoveUserRole() {
       queryClient.invalidateQueries({
         queryKey: superAdminUserKeys.roles(variables.user_id),
       });
+      queryClient.invalidateQueries({
+        queryKey: superAdminUserKeys.lists(),
+      });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Soft delete (migration 056)
+// ---------------------------------------------------------------------------
+
+export interface DeleteSuperAdminUserInput {
+  user_id: string;
+  reason: string;
+  /**
+   * If the user is the only `community_admin` of one or more tenants,
+   * the backend returns 400 with `code: 'last_admin_orphaning'` and a
+   * tenants list. The caller can confirm with the operator and re-issue
+   * the request with `force: true` to delete anyway. Without force, the
+   * UI surfaces the orphaning warning and stops.
+   */
+  force?: boolean;
+}
+
+export function useDeleteSuperAdminUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function deleteUser(input: DeleteSuperAdminUserInput) {
+      return api.delete<{
+        deleted_at: string;
+        cancelled_subscriptions: number;
+      }>(`/super-admin/users/${input.user_id}`, {
+        reason: input.reason,
+        force: input.force ?? false,
+      });
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({
+        queryKey: superAdminUserKeys.lists(),
+      });
+    },
+  });
+}
+
+export function useRestoreSuperAdminUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function restoreUser(userId: string) {
+      return api.post<{ restored: true }>(
+        `/super-admin/users/${userId}/restore`,
+        {},
+      );
+    },
+    onSuccess: function invalidate() {
       queryClient.invalidateQueries({
         queryKey: superAdminUserKeys.lists(),
       });
