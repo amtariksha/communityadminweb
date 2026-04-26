@@ -64,9 +64,61 @@ function getMemberTypeBadge(type: string): ReactNode {
       return <Badge variant="outline">Tenant Family</Badge>;
     case 'family_member':
       return <Badge variant="outline">Family</Badge>;
+    case 'admin':
+      // Admin-only rows: tenant-level role assignment with no unit
+      // membership. The actual role (community_admin / accountant /
+      // …) shows as a chip in the role column.
+      return <Badge variant="secondary">Admin</Badge>;
     default:
       return <Badge variant="secondary">{type}</Badge>;
   }
+}
+
+// Map a role slug from `roles` table to a short, display-friendly label.
+// Hidden roles list — these are derivable from member_type and would
+// just clutter the row. Everything else is shown.
+const HIDDEN_ROLE_SLUGS = new Set([
+  'owner',
+  'tenant_resident',
+  'tenant',
+  'owner_family',
+  'tenant_family',
+  'family_member',
+]);
+
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: 'Super Admin',
+  community_admin: 'Community Admin',
+  committee_member: 'Committee',
+  accountant: 'Accountant',
+  manager: 'Manager',
+  guard: 'Guard',
+  security_guard: 'Guard',
+  watchman: 'Watchman',
+  guard_supervisor: 'Guard Supervisor',
+};
+
+function formatRoleSlug(slug: string): string {
+  if (ROLE_LABELS[slug]) return ROLE_LABELS[slug];
+  // Fallback: snake_case → Title Case.
+  return slug
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function RoleBadges({ roles }: { roles: readonly string[] }): ReactNode {
+  const visible = roles.filter((r) => !HIDDEN_ROLE_SLUGS.has(r));
+  if (visible.length === 0) return null;
+  return (
+    <span className="flex flex-wrap gap-1">
+      {visible.map((slug) => (
+        <Badge key={slug} variant="outline" className="text-[10px]">
+          {formatRoleSlug(slug)}
+        </Badge>
+      ))}
+    </span>
+  );
 }
 
 function TableSkeleton(): ReactNode {
@@ -141,6 +193,10 @@ export default function DirectoryContent(): ReactNode {
   }
 
   function openEditDialog(member: DirectoryMember): void {
+    // Defensive: admin-only rows have no unit_id and the Edit button
+    // is hidden in render. Bail rather than fire a mutation against
+    // an endpoint that needs a real unit.
+    if (!member.unit_id) return;
     setEditMemberId(member.id);
     setEditUnitId(member.unit_id);
     setEditMemberType(member.member_type);
@@ -258,6 +314,7 @@ export default function DirectoryContent(): ReactNode {
                 <option value="owner_family">Owner Family</option>
                 <option value="tenant_family">Tenant Family</option>
                 <option value="family_member">Family Member</option>
+                <option value="admin">Admin / Staff (no unit)</option>
               </Select>
             </div>
             <div className="space-y-2">
@@ -330,65 +387,77 @@ export default function DirectoryContent(): ReactNode {
                   </TableCell>
                 </TableRow>
               ) : members.length > 0 ? (
-                members.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="font-medium">{member.unit_number}</TableCell>
-                    <TableCell>{member.block ?? '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        {member.name ?? 'Unknown'}
-                        {member.is_primary_contact && (
-                          <Badge variant="success" className="ml-1 text-[10px] px-1 py-0">
-                            Primary
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-1">
-                        <Phone className="h-3 w-3 text-muted-foreground" />
-                        <ClickablePhone phone={member.phone} />
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-1">
-                        <Mail className="h-3 w-3 text-muted-foreground" />
-                        <ClickableEmail email={member.email} />
-                      </span>
-                    </TableCell>
-                    <TableCell>{getMemberTypeBadge(member.member_type)}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(member.move_in_date)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          title="Edit"
-                          onClick={() => openEditDialog(member)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        {/* Renew Lease — only for primary tenant members.
-                            Family members inherit the lease via the unit,
-                            so renewing one's row doesn't make sense. */}
-                        {member.member_type === 'tenant' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                            title="Renew lease"
-                            onClick={() => setRenewTarget(member)}
-                          >
-                            <CalendarClock className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                members.map((member) => {
+                  // Admin-only rows (community admins added via
+                  // super-admin) have no `members` row to edit and no
+                  // unit affiliation, so the Edit / Renew actions
+                  // don't apply. Leave the row but hide those buttons.
+                  const isAdminOnly = member.member_type === 'admin';
+                  return (
+                    <TableRow key={member.id}>
+                      <TableCell className="font-medium">
+                        {member.unit_number ?? '—'}
+                      </TableCell>
+                      <TableCell>{member.block ?? '—'}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span>{member.name ?? 'Unknown'}</span>
+                          {member.is_primary_contact && (
+                            <Badge variant="success" className="text-[10px] px-1 py-0">
+                              Primary
+                            </Badge>
+                          )}
+                          <RoleBadges roles={member.roles ?? []} />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3 w-3 text-muted-foreground" />
+                          <ClickablePhone phone={member.phone} />
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3 w-3 text-muted-foreground" />
+                          <ClickableEmail email={member.email} />
+                        </span>
+                      </TableCell>
+                      <TableCell>{getMemberTypeBadge(member.member_type)}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {member.move_in_date ? formatDate(member.move_in_date) : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {!isAdminOnly && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              title="Edit"
+                              onClick={() => openEditDialog(member)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {/* Renew Lease — only for primary tenant members.
+                              Family members inherit the lease via the unit,
+                              so renewing one's row doesn't make sense. */}
+                          {member.member_type === 'tenant' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              title="Renew lease"
+                              onClick={() => setRenewTarget(member)}
+                            >
+                              <CalendarClock className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
                   <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">

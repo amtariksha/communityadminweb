@@ -51,14 +51,24 @@ export interface UnitDetailResponse {
 export interface DirectoryMember {
   id: string;
   user_id: string;
-  unit_id: string;
-  unit_number: string;
+  /**
+   * NULL for admin-only rows — community admins / accountants etc. who
+   * have a tenant role assignment but no unit-level membership. Those
+   * rows render with `member_type === 'admin'` and skip unit-specific
+   * UI (Edit, Renew Lease).
+   */
+  unit_id: string | null;
+  unit_number: string | null;
   block: string | null;
   name: string | null;
   phone: string | null;
   email: string | null;
+  /**
+   * One of `owner` | `tenant` | `owner_family` | `tenant_family` |
+   * `family_member` | `admin` (synthetic — for tenant-role-only rows).
+   */
   member_type: string;
-  move_in_date: string;
+  move_in_date: string | null;
   is_primary_contact: boolean;
   // Derived from members.lease_end_date. Null for owner / owner_family
   // (ownership doesn't expire) and for societies that don't track
@@ -66,6 +76,13 @@ export interface DirectoryMember {
   // the Flutter app — community admin can override via the edit
   // dialog in Member Directory.
   lease_end_date: string | null;
+  /**
+   * Tenant-level roles assigned to this user from `user_tenant_roles`.
+   * Always present (empty array if none). Rendered as badges next to
+   * the name so a society manager can spot who's also a community
+   * admin / accountant / committee member at a glance.
+   */
+  roles: string[];
 }
 
 interface PaginatedResponse<T> {
