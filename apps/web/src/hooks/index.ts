@@ -718,3 +718,21 @@ export type {
   TallyExportOptions,
   TallyExportPreview,
 } from './use-tally-export';
+
+// Tenant admin management (community_admin grants/revokes admin/staff roles)
+export {
+  ADMIN_ROLE_ALLOW_LIST,
+  tenantAdminKeys,
+  useTenantAdmins,
+  useAddTenantAdmin,
+  useReplaceTenantAdminRoles,
+  useRemoveTenantAdminRole,
+} from './use-tenant-admins';
+export type {
+  AdminRoleSlug,
+  TenantAdminRow,
+  TenantAdminFilters,
+  AddAdminInput,
+  ReplaceAdminRolesInput,
+  RemoveAdminRoleInput,
+} from './use-tenant-admins';

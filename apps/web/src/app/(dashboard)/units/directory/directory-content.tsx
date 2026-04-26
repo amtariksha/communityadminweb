@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import {
   Search,
   ChevronLeft,
@@ -10,6 +10,9 @@ import {
   Mail,
   Pencil,
   CalendarClock,
+  ShieldPlus,
+  ShieldCheck,
+  X,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +46,11 @@ import {
   useMemberDirectory,
   useBlocks,
   useUpdateMemberDetail,
+  useAddTenantAdmin,
+  useReplaceTenantAdminRoles,
+  useRemoveTenantAdminRole,
+  ADMIN_ROLE_ALLOW_LIST,
+  type AdminRoleSlug,
 } from '@/hooks';
 import { formatDate } from '@/lib/utils';
 import { normalizePhone } from '@/lib/validation';
@@ -96,6 +104,10 @@ const ROLE_LABELS: Record<string, string> = {
   security_guard: 'Guard',
   watchman: 'Watchman',
   guard_supervisor: 'Guard Supervisor',
+  security_supervisor: 'Security Supervisor',
+  facility_supervisor: 'Facility Supervisor',
+  auditor: 'Auditor',
+  moderator: 'Moderator',
 };
 
 function formatRoleSlug(slug: string): string {
@@ -162,7 +174,27 @@ export default function DirectoryContent(): ReactNode {
   // Renew-lease dialog state — opens per tenant row.
   const [renewTarget, setRenewTarget] = useState<DirectoryMember | null>(null);
 
+  // Add-Admin dialog state — phone + single role pick. Used by the
+  // toolbar "Add Admin" button. Empty phone clears on close.
+  const [addAdminOpen, setAddAdminOpen] = useState(false);
+  const [addAdminPhone, setAddAdminPhone] = useState('');
+  const [addAdminRole, setAddAdminRole] = useState<AdminRoleSlug>(
+    'community_admin',
+  );
+
+  // Manage-Roles dialog state — opens per admin-only row. Holds the
+  // CURRENT role set the user has so the multi-select can prefill.
+  const [manageTarget, setManageTarget] = useState<DirectoryMember | null>(
+    null,
+  );
+  const [manageSelectedRoles, setManageSelectedRoles] = useState<
+    Set<AdminRoleSlug>
+  >(new Set());
+
   const updateMember = useUpdateMemberDetail();
+  const addAdmin = useAddTenantAdmin();
+  const replaceAdminRoles = useReplaceTenantAdminRoles();
+  const removeAdminRole = useRemoveTenantAdminRole();
 
   const blocksQuery = useBlocks();
   const blocks = blocksQuery.data ?? [];
@@ -261,6 +293,151 @@ export default function DirectoryContent(): ReactNode {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Tenant admin management — Add Admin + Manage Roles
+  // ---------------------------------------------------------------------------
+
+  function resetAddAdminDialog(): void {
+    setAddAdminPhone('');
+    setAddAdminRole('community_admin');
+  }
+
+  function handleAddAdminSubmit(e: FormEvent): void {
+    e.preventDefault();
+    const phone = normalizePhone(addAdminPhone);
+    if (!phone.ok || !phone.value) {
+      addToast({
+        title: 'Invalid phone number',
+        description: phone.ok ? 'Phone is required.' : phone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+    addAdmin.mutate(
+      { phone: phone.value, role: addAdminRole },
+      {
+        onSuccess(res) {
+          // The API returns `created: false` if the user already had
+          // the role. Reflect that in the toast so testers don't think
+          // a noop succeeded silently.
+          const data = (res as { data: { created: boolean; is_new_user: boolean } })
+            .data;
+          const verb = data.created ? 'added' : 'already had';
+          const newUser = data.is_new_user
+            ? ' (new user — they\'ll log in with the OTP next)'
+            : '';
+          addToast({
+            title: `Admin ${verb}: ${formatRoleSlug(addAdminRole)}${newUser}`,
+            variant: 'success',
+          });
+          setAddAdminOpen(false);
+          resetAddAdminDialog();
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to add admin',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
+  }
+
+  function openManageRolesDialog(member: DirectoryMember): void {
+    setManageTarget(member);
+    // Pre-fill with the user's current admin-allowlist roles only —
+    // resident roles aren't editable here.
+    const allowed = new Set<AdminRoleSlug>(
+      ADMIN_ROLE_ALLOW_LIST as readonly AdminRoleSlug[],
+    );
+    const current = (member.roles ?? []).filter((r): r is AdminRoleSlug =>
+      allowed.has(r as AdminRoleSlug),
+    );
+    setManageSelectedRoles(new Set(current));
+  }
+
+  function toggleManageRole(slug: AdminRoleSlug): void {
+    setManageSelectedRoles((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) {
+        next.delete(slug);
+      } else {
+        next.add(slug);
+      }
+      return next;
+    });
+  }
+
+  function handleManageRolesSubmit(e: FormEvent): void {
+    e.preventDefault();
+    if (!manageTarget) return;
+    const roles = Array.from(manageSelectedRoles);
+    if (roles.length === 0) {
+      addToast({
+        title: 'Pick at least one role',
+        description:
+          'To remove every admin role, use the × button on each role badge below.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    replaceAdminRoles.mutate(
+      { userId: manageTarget.user_id, roles },
+      {
+        onSuccess() {
+          addToast({ title: 'Roles updated', variant: 'success' });
+          setManageTarget(null);
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to update roles',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
+  }
+
+  function handleQuickRevoke(slug: AdminRoleSlug): void {
+    if (!manageTarget) return;
+    removeAdminRole.mutate(
+      { userId: manageTarget.user_id, slug },
+      {
+        onSuccess() {
+          // Optimistic local update so the dialog reflects the change
+          // without waiting for the directory query refetch.
+          setManageSelectedRoles((prev) => {
+            const next = new Set(prev);
+            next.delete(slug);
+            return next;
+          });
+          addToast({
+            title: `${formatRoleSlug(slug)} removed`,
+            variant: 'success',
+          });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to remove role',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
+  }
+
+  // Reset the Add-Admin form when the dialog closes (X button, ESC,
+  // backdrop click) so a stale phone doesn't carry over to the next
+  // open.
+  useEffect(() => {
+    if (!addAdminOpen) {
+      resetAddAdminDialog();
+    }
+  }, [addAdminOpen]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -270,6 +447,16 @@ export default function DirectoryContent(): ReactNode {
         ]}
         title="Member Directory"
         description="Search and browse all members across all units"
+        actions={
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setAddAdminOpen(true)}
+          >
+            <ShieldPlus className="mr-2 h-4 w-4" />
+            Add Admin
+          </Button>
+        }
       />
 
       {/* Filters */}
@@ -439,6 +626,24 @@ export default function DirectoryContent(): ReactNode {
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                           )}
+                          {/* Manage Roles — for any row that has at least
+                              one admin/staff role assignment. Lets the
+                              community_admin grant/revoke roles without
+                              opening Super Admin. Resident-only rows
+                              (no admin roles) don't show this. */}
+                          {(member.roles ?? []).some((r) =>
+                            (ADMIN_ROLE_ALLOW_LIST as readonly string[]).includes(r),
+                          ) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              title="Manage roles"
+                              onClick={() => openManageRolesDialog(member)}
+                            >
+                              <ShieldCheck className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           {/* Renew Lease — only for primary tenant members.
                               Family members inherit the lease via the unit,
                               so renewing one's row doesn't make sense. */}
@@ -583,8 +788,10 @@ export default function DirectoryContent(): ReactNode {
       </Dialog>
 
       {/* Renew Lease Dialog — only mounted when a target is set so
-          the file input resets cleanly between invocations. */}
-      {renewTarget && (
+          the file input resets cleanly between invocations.
+          Type-narrow on unit_id / unit_number because DirectoryMember
+          relaxed both to nullable for admin-only rows. */}
+      {renewTarget && renewTarget.unit_id && renewTarget.unit_number && (
         <RenewLeaseDialog
           open={renewTarget !== null}
           onClose={() => setRenewTarget(null)}
@@ -597,6 +804,157 @@ export default function DirectoryContent(): ReactNode {
           tenantName={renewTarget.name}
         />
       )}
+
+      {/* Add Admin Dialog — phone + role pick. Calls POST /rbac/admins. */}
+      <Dialog open={addAdminOpen} onOpenChange={setAddAdminOpen}>
+        <DialogContent>
+          <form onSubmit={handleAddAdminSubmit}>
+            <DialogHeader>
+              <DialogTitle>Add Admin / Staff Member</DialogTitle>
+              <DialogDescription>
+                Grant a tenant-level role (community admin, accountant,
+                committee member, etc.) by phone number. If the person
+                isn&rsquo;t in the system yet, an account is created and
+                they&rsquo;ll log in via OTP.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="add-admin-phone">Phone</Label>
+                <Input
+                  id="add-admin-phone"
+                  placeholder="10-digit mobile (optional +91 prefix)"
+                  maxLength={13}
+                  inputMode="tel"
+                  required
+                  value={addAdminPhone}
+                  onChange={(e) => setAddAdminPhone(e.target.value)}
+                />
+                <FormFieldError error={addAdmin.error} field="phone" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-admin-role">Role</Label>
+                <Select
+                  id="add-admin-role"
+                  value={addAdminRole}
+                  onChange={(e) =>
+                    setAddAdminRole(e.target.value as AdminRoleSlug)
+                  }
+                >
+                  {ADMIN_ROLE_ALLOW_LIST.map((slug) => (
+                    <option key={slug} value={slug}>
+                      {formatRoleSlug(slug)}
+                    </option>
+                  ))}
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  To assign more roles to the same person, use Manage
+                  Roles after they appear in the directory.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={addAdmin.isPending}>
+                {addAdmin.isPending ? 'Adding...' : 'Add Admin'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Roles Dialog — opens per row from the Shield button.
+          Uses PATCH /rbac/admins/:userId for the bulk save and
+          DELETE /rbac/admins/:userId/roles/:slug for one-off revokes
+          on each currently-assigned badge. */}
+      <Dialog
+        open={manageTarget !== null}
+        onOpenChange={(open) => !open && setManageTarget(null)}
+      >
+        <DialogContent>
+          <form onSubmit={handleManageRolesSubmit}>
+            <DialogHeader>
+              <DialogTitle>
+                Manage Roles {manageTarget?.name ? `for ${manageTarget.name}` : ''}
+              </DialogTitle>
+              <DialogDescription>
+                Tick the roles this person should hold on this society.
+                Changes apply atomically on Save. Use the &times; on a
+                role badge below to revoke a single role immediately.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {manageTarget && manageTarget.roles && manageTarget.roles.some((r) =>
+                (ADMIN_ROLE_ALLOW_LIST as readonly string[]).includes(r),
+              ) && (
+                <div className="space-y-2">
+                  <Label>Currently assigned</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {manageTarget.roles
+                      .filter((r): r is AdminRoleSlug =>
+                        (ADMIN_ROLE_ALLOW_LIST as readonly string[]).includes(r),
+                      )
+                      .map((slug) => (
+                        <Badge
+                          key={slug}
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
+                          {formatRoleSlug(slug)}
+                          <button
+                            type="button"
+                            disabled={removeAdminRole.isPending}
+                            onClick={() => handleQuickRevoke(slug)}
+                            className="hover:text-destructive disabled:opacity-50"
+                            aria-label={`Remove ${formatRoleSlug(slug)} role`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Roles after Save</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {ADMIN_ROLE_ALLOW_LIST.map((slug) => (
+                    <label
+                      key={slug}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={manageSelectedRoles.has(slug)}
+                        onChange={() => toggleManageRole(slug)}
+                        className="h-4 w-4"
+                      />
+                      {formatRoleSlug(slug)}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  The last community_admin of a tenant cannot be
+                  removed &mdash; add another community_admin first.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Close</Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                disabled={replaceAdminRoles.isPending || manageSelectedRoles.size === 0}
+              >
+                {replaceAdminRoles.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
