@@ -1,7 +1,8 @@
 'use client';
 
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, API_BASE_URL } from '@/lib/api';
+import { getToken, getCurrentTenant } from '@/lib/auth';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -65,9 +66,42 @@ export function useTallyExportPreview(options: TallyExportOptions) {
 export function useTallyExport() {
   return useMutation({
     mutationFn: async function exportTally(options: TallyExportOptions) {
-      const response = await api.post<string>('/tally-import/export', options);
-      // The server returns raw XML string
-      const xmlContent = typeof response === 'string' ? response : String(response);
+      // The server returns raw XML; we cannot route this through
+      // `api.post()` because that wrapper calls `response.json()`
+      // unconditionally, which throws on `<ENVELOPE>...` and surfaces
+      // as a failed mutation even though the server returned 201 OK
+      // with valid XML attached. Mirrors the `useDownloadInvoicePdf`
+      // pattern in use-tally-import.ts: raw fetch with explicit
+      // Authorization + tenant headers and `credentials: 'include'`
+      // so the httpOnly refresh cookie is sent (QA #57 cookie flow).
+      const token = getToken();
+      const tenantId = getCurrentTenant();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/xml, text/xml',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (tenantId) headers['x-tenant-id'] = tenantId;
+
+      const response = await fetch(`${API_BASE_URL}/tally-import/export`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify(options),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        throw new Error(
+          `Tally export failed (${response.status})${errText ? `: ${errText.slice(0, 200)}` : ''}`,
+        );
+      }
+
+      const xmlContent = await response.text();
+      if (!xmlContent || xmlContent.length === 0) {
+        throw new Error('Tally export returned an empty document');
+      }
+
       const blob = new Blob([xmlContent], { type: 'application/xml' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
