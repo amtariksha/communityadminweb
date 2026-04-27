@@ -411,6 +411,10 @@ export default function AccountsContent(): ReactNode {
       });
       return;
     }
+    // Clear the textarea so the operator can't accidentally trigger
+    // the paste-Parse path on top of an in-flight upload — the
+    // server uses one preview row per upload and we'd race ourselves.
+    setTallyContent('');
     tallyXmlUpload.mutate(file, {
       onSuccess(data) {
         const parsed = data.data;
@@ -1832,9 +1836,21 @@ export default function AccountsContent(): ReactNode {
             {tallyStep === 'input' && (
               <Button
                 onClick={handleTallyParse}
-                disabled={tallyXmlImport.isPending || tallyCsvImport.isPending}
+                disabled={
+                  tallyXmlImport.isPending ||
+                  tallyCsvImport.isPending ||
+                  // Block the paste/Parse path while a file upload is
+                  // in flight — same preview slot, same toast space,
+                  // can't run both. The button label flips so the
+                  // operator can see why.
+                  tallyXmlUpload.isPending
+                }
               >
-                {(tallyXmlImport.isPending || tallyCsvImport.isPending) ? 'Parsing...' : 'Parse'}
+                {tallyXmlUpload.isPending
+                  ? 'Uploading…'
+                  : tallyXmlImport.isPending || tallyCsvImport.isPending
+                  ? 'Parsing…'
+                  : 'Parse'}
               </Button>
             )}
             {tallyStep === 'preview' && (
