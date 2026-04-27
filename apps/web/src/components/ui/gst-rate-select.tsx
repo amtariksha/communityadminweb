@@ -28,6 +28,12 @@ interface GstRateSelectProps {
  * invoices then failed downstream compliance checks. Locking the
  * entry surface to the canonical slabs fixes that at the source.
  */
+// Last-ditch defaults so the dropdown is NEVER empty even if both the
+// hook's placeholderData AND queryFn fallback misfire (e.g. a
+// regression that returns `{ gst: [] }` from a buggy server). Mirrors
+// FALLBACK_GST in use-tax-rates.ts.
+const COMPONENT_FALLBACK_GST = [0, 5, 12, 18, 28];
+
 export function GstRateSelect({
   id,
   value,
@@ -37,7 +43,12 @@ export function GstRateSelect({
   className,
 }: GstRateSelectProps): ReactNode {
   const { data, isLoading } = useTaxRates();
-  const rates = data?.gst ?? [];
+  const fetchedRates = data?.gst ?? [];
+  // Belt-and-suspenders: if the hook returned an empty list for any
+  // reason, fall back to the canonical slabs. Empty dropdown is worse
+  // than slightly-stale GST options — the operator can always pick
+  // the right one.
+  const rates = fetchedRates.length > 0 ? fetchedRates : COMPONENT_FALLBACK_GST;
 
   const stringValue = value == null ? '' : String(value);
 
