@@ -416,13 +416,21 @@ export default function PurchasesContent(): ReactNode {
 
   function openConvertDialog(pr: PRRow): void {
     setConvertPRId(pr.id);
-    setConvertVendorId(pr.vendor_id ?? '');
+    const vendorId = pr.vendor_id ?? '';
+    setConvertVendorId(vendorId);
     setConvertBillNumber('');
     setConvertBillDate('');
     setConvertDueDate('');
     setConvertTotalAmount(String(pr.estimated_amount ?? ''));
     setConvertExpenseAccountId('');
-    setConvertPayableAccountId('');
+    // Auto-fill the payable account if the PR's vendor already has a
+    // linked Sundry Creditors ledger. Same logic as the vendor-onChange
+    // handler on the Select below — this makes the dialog open in a
+    // ready-to-submit state when no vendor change is needed.
+    const preselectedVendor = vendorId
+      ? vendors.find((v) => v.id === vendorId)
+      : undefined;
+    setConvertPayableAccountId(preselectedVendor?.ledger_account_id ?? '');
     setConvertDialogOpen(true);
   }
 
