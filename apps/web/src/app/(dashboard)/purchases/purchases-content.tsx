@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { GstRateSelect } from '@/components/ui/gst-rate-select';
+import { AccountSearchSelect } from '@/components/ui/account-search-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -1143,35 +1144,21 @@ export default function PurchasesContent(): ReactNode {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="bill-expense-account">Expense Account</Label>
-                            <Select
-                              id="bill-expense-account"
-                              required
+                            <AccountSearchSelect
                               value={billExpenseAccountId}
-                              onChange={(e) => setBillExpenseAccountId(e.target.value)}
-                            >
-                              <option value="">Select expense account</option>
-                              {accounts.map((a) => (
-                                <option key={a.id} value={a.id}>
-                                  {a.code} - {a.name}
-                                </option>
-                              ))}
-                            </Select>
+                              onChange={setBillExpenseAccountId}
+                              accountType={['expense']}
+                              placeholder="Search expense account..."
+                            />
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="bill-payable-account">Payable Account</Label>
-                            <Select
-                              id="bill-payable-account"
-                              required
+                            <AccountSearchSelect
                               value={billPayableAccountId}
-                              onChange={(e) => setBillPayableAccountId(e.target.value)}
-                            >
-                              <option value="">Select payable account</option>
-                              {accounts.map((a) => (
-                                <option key={a.id} value={a.id}>
-                                  {a.code} - {a.name}
-                                </option>
-                              ))}
-                            </Select>
+                              onChange={setBillPayableAccountId}
+                              accountType={['liability']}
+                              placeholder="Search payable account..."
+                            />
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -1586,35 +1573,30 @@ export default function PurchasesContent(): ReactNode {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="convert-expense-account">Expense Account</Label>
-                  <Select
-                    id="convert-expense-account"
-                    required
+                  <AccountSearchSelect
                     value={convertExpenseAccountId}
-                    onChange={(e) => setConvertExpenseAccountId(e.target.value)}
-                  >
-                    <option value="">Select expense account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.code} - {a.name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={setConvertExpenseAccountId}
+                    accountType={['expense']}
+                    placeholder="Search expense account..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Where the cost gets booked. Examples: Repairs &amp;
+                    Maintenance, Housekeeping, Electricity.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="convert-payable-account">Payable Account</Label>
-                  <Select
-                    id="convert-payable-account"
-                    required
+                  <AccountSearchSelect
                     value={convertPayableAccountId}
-                    onChange={(e) => setConvertPayableAccountId(e.target.value)}
-                  >
-                    <option value="">Select payable account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.code} - {a.name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={setConvertPayableAccountId}
+                    accountType={['liability']}
+                    placeholder="Search payable account..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    What we owe the vendor — typically under Sundry
+                    Creditors, or the vendor&apos;s own ledger if one
+                    exists.
+                  </p>
                 </div>
               </div>
             </div>

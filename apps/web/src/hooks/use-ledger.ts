@@ -111,6 +111,13 @@ interface GeneralLedgerReport {
 interface AccountFilters {
   group_id?: string;
   search?: string;
+  // Single value or array — passed to /ledger/accounts as a CSV
+  // (the backend splits). Lets context-specific dropdowns ask for
+  // only the relevant slice of the COA, e.g.
+  //   account_type: ['expense']  — Bill convert: Expense Account
+  //   account_type: ['liability'] — Bill convert: Payable Account
+  //   account_type: ['asset']    — Receipt entry: Bank/Cash Account
+  account_type?: string | string[];
   page?: number;
   limit?: number;
 }
@@ -228,6 +235,11 @@ function accountFiltersToParams(filters?: AccountFilters): Record<string, string
   const params: Record<string, string> = {};
   if (filters.group_id) params.group_id = filters.group_id;
   if (filters.search) params.search = filters.search;
+  if (filters.account_type) {
+    params.account_type = Array.isArray(filters.account_type)
+      ? filters.account_type.join(',')
+      : filters.account_type;
+  }
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   return params;
