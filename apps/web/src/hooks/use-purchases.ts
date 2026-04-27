@@ -231,9 +231,16 @@ interface ConvertPRToBillInput {
   bill_number?: string;
   bill_date: string;
   due_date: string;
+  // Gross total (subtotal + GST). Server splits subtotal back out for
+  // posting + storage.
   total_amount: number;
   expense_account_id: string;
   payable_account_id: string;
+  // GST input claimable on this bill (amount, not rate). Optional;
+  // when omitted server treats as 0.
+  gst_amount?: number;
+  // TDS withheld on this bill (amount). Optional; when omitted server
+  // treats as 0.
   tds_amount?: number;
   narration?: string;
 }

@@ -59,6 +59,7 @@ import {
   useRecordBillPayment,
   useVendorAging,
   useVendors,
+  useCreateVendor,
   useLedgerAccounts,
   useBankAccounts,
 } from '@/hooks';
@@ -282,16 +283,47 @@ export default function PurchasesContent(): ReactNode {
   const ocrInvoice = useOcrInvoice();
   const MAX_OCR_BYTES = 10 * 1024 * 1024;
 
-  // Convert PR form state
+  // Convert PR form state.
+  // `convertSubtotal` is the goods/services value before GST. The
+  // displayed total = subtotal + gst_amount; the vendor's payable =
+  // total - tds_amount. The server-side service derives the same
+  // splits and posts a 4-line JE (expense + gst_input vs payable +
+  // tds_payable) when GST or TDS is non-zero.
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [convertPRId, setConvertPRId] = useState('');
   const [convertVendorId, setConvertVendorId] = useState('');
   const [convertBillNumber, setConvertBillNumber] = useState('');
   const [convertBillDate, setConvertBillDate] = useState('');
   const [convertDueDate, setConvertDueDate] = useState('');
-  const [convertTotalAmount, setConvertTotalAmount] = useState('');
+  const [convertSubtotal, setConvertSubtotal] = useState('');
+  const [convertGstRate, setConvertGstRate] = useState<number | null>(null);
+  const [convertTdsRate, setConvertTdsRate] = useState('');
   const [convertExpenseAccountId, setConvertExpenseAccountId] = useState('');
   const [convertPayableAccountId, setConvertPayableAccountId] = useState('');
+
+  // Quick "+ Add Vendor" inline dialog state. Used by both the
+  // Convert and the Direct-Bill dialogs to avoid making the operator
+  // navigate to /vendors mid-flow.
+  const [quickVendorDialogOpen, setQuickVendorDialogOpen] = useState(false);
+  const [quickVendorTarget, setQuickVendorTarget] = useState<
+    'convert' | 'bill' | 'pr' | null
+  >(null);
+  const [quickVendorName, setQuickVendorName] = useState('');
+  const [quickVendorPhone, setQuickVendorPhone] = useState('');
+  const [quickVendorGstin, setQuickVendorGstin] = useState('');
+
+  // Derived totals for the convert dialog. Memoized so we don't
+  // re-parse on every keystroke for downstream consumers (the form
+  // uses the values for both the read-only summary AND the submit
+  // payload).
+  const convertSubtotalNum = Number(convertSubtotal) || 0;
+  const convertGstAmount = convertGstRate
+    ? Math.round(convertSubtotalNum * convertGstRate) / 100
+    : 0;
+  const convertTotalNum = convertSubtotalNum + convertGstAmount;
+  const convertTdsRateNum = convertTdsRate ? Number(convertTdsRate) : 0;
+  const convertTdsAmount = Math.round(convertTotalNum * convertTdsRateNum) / 100;
+  const convertPayableNum = convertTotalNum - convertTdsAmount;
 
   // Payment form state
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -325,6 +357,60 @@ export default function PurchasesContent(): ReactNode {
   const convertPR = useConvertPRToBill();
   const createBill = useCreateBill();
   const recordPayment = useRecordBillPayment();
+  const createVendorMut = useCreateVendor();
+
+  function openQuickVendorDialog(target: 'convert' | 'bill' | 'pr'): void {
+    setQuickVendorTarget(target);
+    setQuickVendorName('');
+    setQuickVendorPhone('');
+    setQuickVendorGstin('');
+    setQuickVendorDialogOpen(true);
+  }
+
+  function handleQuickVendorSubmit(e: FormEvent): void {
+    e.preventDefault();
+    if (!quickVendorName.trim()) {
+      addToast({ title: 'Vendor name is required', variant: 'destructive' });
+      return;
+    }
+    createVendorMut.mutate(
+      {
+        name: quickVendorName.trim(),
+        phone: quickVendorPhone.trim() || undefined,
+        gstin: quickVendorGstin.trim() || undefined,
+      },
+      {
+        onSuccess(res) {
+          // res.data is the created vendor (the hook unwraps the
+          // `{ data: ... }` envelope). Use the new id to auto-select
+          // in the parent dialog the operator was on.
+          const newId = res.data.id;
+          if (quickVendorTarget === 'convert') {
+            setConvertVendorId(newId);
+            if (res.data.ledger_account_id) {
+              setConvertPayableAccountId(res.data.ledger_account_id);
+            }
+          } else if (quickVendorTarget === 'bill') {
+            setBillVendorId(newId);
+            if (res.data.ledger_account_id) {
+              setBillPayableAccountId(res.data.ledger_account_id);
+            }
+          } else if (quickVendorTarget === 'pr') {
+            setPrVendorId(newId);
+          }
+          setQuickVendorDialogOpen(false);
+          addToast({ title: `Vendor "${res.data.name}" created`, variant: 'success' });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to create vendor',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
+  }
 
   // Derived data
   const purchaseRequests = (prQuery.data?.data ?? []) as unknown as PRRow[];
@@ -421,7 +507,12 @@ export default function PurchasesContent(): ReactNode {
     setConvertBillNumber('');
     setConvertBillDate('');
     setConvertDueDate('');
-    setConvertTotalAmount(String(pr.estimated_amount ?? ''));
+    // PR carries an estimated amount; treat it as the subtotal
+    // (operator can edit). Defaulting GST and TDS to zero so a
+    // straight passthrough click still works.
+    setConvertSubtotal(String(pr.estimated_amount ?? ''));
+    setConvertGstRate(null);
+    setConvertTdsRate('');
     setConvertExpenseAccountId('');
     // Auto-fill the payable account if the PR's vendor already has a
     // linked Sundry Creditors ledger. Same logic as the vendor-onChange
@@ -444,7 +535,11 @@ export default function PurchasesContent(): ReactNode {
           bill_number: convertBillNumber || undefined,
           bill_date: convertBillDate,
           due_date: convertDueDate,
-          total_amount: Number(convertTotalAmount),
+          // Server expects total_amount as the gross (subtotal + GST).
+          // It splits subtotal back out and posts the journal lines.
+          total_amount: convertTotalNum,
+          gst_amount: convertGstAmount > 0 ? convertGstAmount : undefined,
+          tds_amount: convertTdsAmount > 0 ? convertTdsAmount : undefined,
           expense_account_id: convertExpenseAccountId,
           payable_account_id: convertPayableAccountId,
         },
@@ -744,16 +839,31 @@ export default function PurchasesContent(): ReactNode {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="pr-vendor">Vendor</Label>
-                            <Select
-                              id="pr-vendor"
-                              value={prVendorId}
-                              onChange={(e) => setPrVendorId(e.target.value)}
-                            >
-                              <option value="">Select vendor (optional)</option>
-                              {vendors.map((v) => (
-                                <option key={v.id} value={v.id}>{v.name}</option>
-                              ))}
-                            </Select>
+                            <div className="flex gap-2">
+                              <Select
+                                id="pr-vendor"
+                                value={prVendorId}
+                                onChange={(e) => setPrVendorId(e.target.value)}
+                                className="flex-1"
+                              >
+                                <option value="">Select vendor (optional)</option>
+                                {vendors.map((v) => (
+                                  <option key={v.id} value={v.id} disabled={v.is_active === false}>
+                                    {v.name}
+                                    {v.is_active === false ? ' (inactive)' : ''}
+                                  </option>
+                                ))}
+                              </Select>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => openQuickVendorDialog('pr')}
+                                title="Add a new vendor"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="pr-amount">Estimated Amount</Label>
@@ -1060,27 +1170,39 @@ export default function PurchasesContent(): ReactNode {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="bill-vendor">Vendor</Label>
-                          <Select
-                            id="bill-vendor"
-                            required
-                            value={billVendorId}
-                            onChange={(e) => {
-                              const newVendorId = e.target.value;
-                              setBillVendorId(newVendorId);
-                              // Same auto-fill as the Convert dialog —
-                              // pre-select the vendor's Sundry Creditors
-                              // ledger as the Payable Account.
-                              const vendor = vendors.find((v) => v.id === newVendorId);
-                              if (vendor?.ledger_account_id) {
-                                setBillPayableAccountId(vendor.ledger_account_id);
-                              }
-                            }}
-                          >
-                            <option value="">Select vendor</option>
-                            {vendors.map((v) => (
-                              <option key={v.id} value={v.id}>{v.name}</option>
-                            ))}
-                          </Select>
+                          <div className="flex gap-2">
+                            <Select
+                              id="bill-vendor"
+                              required
+                              value={billVendorId}
+                              onChange={(e) => {
+                                const newVendorId = e.target.value;
+                                setBillVendorId(newVendorId);
+                                const vendor = vendors.find((v) => v.id === newVendorId);
+                                if (vendor?.ledger_account_id) {
+                                  setBillPayableAccountId(vendor.ledger_account_id);
+                                }
+                              }}
+                              className="flex-1"
+                            >
+                              <option value="">Select vendor</option>
+                              {vendors.map((v) => (
+                                <option key={v.id} value={v.id} disabled={v.is_active === false}>
+                                  {v.name}
+                                  {v.is_active === false ? ' (inactive)' : ''}
+                                </option>
+                              ))}
+                            </Select>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => openQuickVendorDialog('bill')}
+                              title="Add a new vendor"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
@@ -1528,28 +1650,43 @@ export default function PurchasesContent(): ReactNode {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="convert-vendor">Vendor</Label>
-                <Select
-                  id="convert-vendor"
-                  required
-                  value={convertVendorId}
-                  onChange={(e) => {
-                    const newVendorId = e.target.value;
-                    setConvertVendorId(newVendorId);
-                    // Auto-fill the Payable Account picker with the
-                    // vendor's own Sundry Creditors ledger. Operator
-                    // can override by clicking into the picker.
-                    // Skips legacy vendors that pre-date migration 059.
-                    const vendor = vendors.find((v) => v.id === newVendorId);
-                    if (vendor?.ledger_account_id) {
-                      setConvertPayableAccountId(vendor.ledger_account_id);
-                    }
-                  }}
-                >
-                  <option value="">Select vendor</option>
-                  {vendors.map((v) => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
-                  ))}
-                </Select>
+                <div className="flex gap-2">
+                  <Select
+                    id="convert-vendor"
+                    required
+                    value={convertVendorId}
+                    onChange={(e) => {
+                      const newVendorId = e.target.value;
+                      setConvertVendorId(newVendorId);
+                      // Auto-fill the Payable Account picker with the
+                      // vendor's own Sundry Creditors ledger. Operator
+                      // can override by clicking into the picker.
+                      // Skips legacy vendors that pre-date migration 059.
+                      const vendor = vendors.find((v) => v.id === newVendorId);
+                      if (vendor?.ledger_account_id) {
+                        setConvertPayableAccountId(vendor.ledger_account_id);
+                      }
+                    }}
+                    className="flex-1"
+                  >
+                    <option value="">Select vendor</option>
+                    {vendors.map((v) => (
+                      <option key={v.id} value={v.id} disabled={v.is_active === false}>
+                        {v.name}
+                        {v.is_active === false ? ' (inactive)' : ''}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => openQuickVendorDialog('convert')}
+                    title="Add a new vendor"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="convert-bill-number">Bill Number (optional)</Label>
@@ -1586,18 +1723,74 @@ export default function PurchasesContent(): ReactNode {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="convert-total">Total Amount</Label>
-                <Input
-                  id="convert-total"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  required
-                  placeholder="0.00"
-                  value={convertTotalAmount}
-                  onChange={(e) => setConvertTotalAmount(e.target.value)}
-                />
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="convert-subtotal">Subtotal (pre-GST)</Label>
+                  <Input
+                    id="convert-subtotal"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    required
+                    placeholder="0.00"
+                    value={convertSubtotal}
+                    onChange={(e) => setConvertSubtotal(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="convert-gst">GST Rate</Label>
+                  <GstRateSelect
+                    id="convert-gst"
+                    allowNone
+                    value={convertGstRate}
+                    onChange={(v) => setConvertGstRate(v ?? null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="convert-tds">TDS %</Label>
+                  <Input
+                    id="convert-tds"
+                    type="number"
+                    min="0"
+                    max="50"
+                    step="0.01"
+                    placeholder="0"
+                    value={convertTdsRate}
+                    onChange={(e) => setConvertTdsRate(e.target.value)}
+                  />
+                </div>
+              </div>
+              {/* Live computation summary so the operator sees what
+                  posts to the journal before submit. */}
+              <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>{formatCurrency(convertSubtotalNum)}</span>
+                </div>
+                {convertGstAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      GST ({convertGstRate ?? 0}%)
+                    </span>
+                    <span>{formatCurrency(convertGstAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-medium">
+                  <span>Total (gross)</span>
+                  <span>{formatCurrency(convertTotalNum)}</span>
+                </div>
+                {convertTdsAmount > 0 && (
+                  <div className="flex justify-between text-orange-600 dark:text-orange-400">
+                    <span>
+                      TDS withheld ({convertTdsRateNum}%)
+                    </span>
+                    <span>− {formatCurrency(convertTdsAmount)}</span>
+                  </div>
+                )}
+                <div className="mt-1 flex justify-between border-t pt-1 font-semibold">
+                  <span>Payable to vendor</span>
+                  <span>{formatCurrency(convertPayableNum)}</span>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -1635,6 +1828,68 @@ export default function PurchasesContent(): ReactNode {
               </DialogClose>
               <Button type="submit" disabled={convertPR.isPending}>
                 {convertPR.isPending ? 'Converting...' : 'Convert to Bill'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Quick "+ Add Vendor" Dialog                                          */}
+      {/* Tiny inline form so the operator can add a vendor mid-flow without */}
+      {/* navigating to /vendors. The created vendor's id is auto-selected   */}
+      {/* in whichever parent dialog (convert / bill / pr) opened this.      */}
+      {/* ------------------------------------------------------------------- */}
+      <Dialog open={quickVendorDialogOpen} onOpenChange={setQuickVendorDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleQuickVendorSubmit}>
+            <DialogHeader>
+              <DialogTitle>Add Vendor</DialogTitle>
+              <DialogDescription>
+                Quick-create a vendor. They&apos;ll also get a Sundry
+                Creditors ledger automatically. Edit further details
+                anytime on the Vendors page.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="quick-vendor-name">Name</Label>
+                <Input
+                  id="quick-vendor-name"
+                  required
+                  autoFocus
+                  placeholder="e.g., Acme Cleaning Services"
+                  value={quickVendorName}
+                  onChange={(e) => setQuickVendorName(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="quick-vendor-phone">Phone (optional)</Label>
+                  <Input
+                    id="quick-vendor-phone"
+                    placeholder="+91…"
+                    value={quickVendorPhone}
+                    onChange={(e) => setQuickVendorPhone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quick-vendor-gstin">GSTIN (optional)</Label>
+                  <Input
+                    id="quick-vendor-gstin"
+                    placeholder="22AAAAA0000A1Z5"
+                    value={quickVendorGstin}
+                    onChange={(e) => setQuickVendorGstin(e.target.value.toUpperCase())}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={createVendorMut.isPending}>
+                {createVendorMut.isPending ? 'Creating…' : 'Add Vendor'}
               </Button>
             </DialogFooter>
           </form>
