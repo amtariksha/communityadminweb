@@ -313,6 +313,22 @@ export default function AccountsContent(): ReactNode {
     useState<TallyCommitResult | null>(null);
   const [tallyStep, setTallyStep] = useState<'input' | 'preview' | 'done'>('input');
 
+  // Per-type commit selection (Phase 1 of the import revamp). Each
+  // entity type has two flags — include_new and include_changed —
+  // that the operator toggles via checkboxes on the preview step.
+  // The whole "type bucket" is omitted from the commit body when its
+  // master checkbox is off, which tells the server "skip this type
+  // entirely" (vs. "commit but only the new ones").
+  const [tallyCommitGroups, setTallyCommitGroups] = useState(true);
+  const [tallyCommitGroupsChanged, setTallyCommitGroupsChanged] = useState(true);
+  const [tallyCommitLedgers, setTallyCommitLedgers] = useState(true);
+  const [tallyCommitLedgersChanged, setTallyCommitLedgersChanged] = useState(true);
+  const [tallyCommitVouchers, setTallyCommitVouchers] = useState(true);
+  const [tallyCommitVouchersChanged, setTallyCommitVouchersChanged] = useState(true);
+  // Force flag — bypasses the file-hash dedupe ("imported same file
+  // 2h ago"). Per-voucher hash + edited-locally guards still apply.
+  const [tallyForceCommit, setTallyForceCommit] = useState(false);
+
   // -- Tally export state --
   const [tallyExportDialogOpen, setTallyExportDialogOpen] = useState(false);
   const [exportFromDate, setExportFromDate] = useState('');
@@ -357,6 +373,13 @@ export default function AccountsContent(): ReactNode {
     setTallyCommitResult(null);
     setTallyStep('input');
     setTallyFormat('xml');
+    setTallyCommitGroups(true);
+    setTallyCommitGroupsChanged(true);
+    setTallyCommitLedgers(true);
+    setTallyCommitLedgersChanged(true);
+    setTallyCommitVouchers(true);
+    setTallyCommitVouchersChanged(true);
+    setTallyForceCommit(false);
   }
 
   function handleTallyParse(): void {
@@ -370,10 +393,34 @@ export default function AccountsContent(): ReactNode {
         { xml_content: tallyContent, import_type: 'all' },
         {
           onSuccess(data) {
-            setTallyParseResult(data.data);
+            const parsed = data.data;
+            setTallyParseResult(parsed);
             setTallyCommitResult(null);
+            // Default the per-type checkboxes from the parser's
+            // counts: tick a type only if there's something to
+            // commit. Operator can untick to skip.
+            const c = parsed.counts;
+            if (c) {
+              setTallyCommitGroups(c.groups > 0);
+              setTallyCommitLedgers(c.ledgers > 0);
+              setTallyCommitVouchers(c.vouchers > 0);
+            }
+            // Pre-tick "include changed" by default — re-imports
+            // typically want the latest Tally state to win unless
+            // the operator explicitly says "only new".
+            setTallyCommitGroupsChanged(true);
+            setTallyCommitLedgersChanged(true);
+            setTallyCommitVouchersChanged(true);
+            // If the server flagged a duplicate, default Force off
+            // — operator explicitly opts in.
+            setTallyForceCommit(false);
             setTallyStep('preview');
-            addToast({ title: 'Tally XML parsed successfully', variant: 'success' });
+            addToast({
+              title: parsed.duplicate_of
+                ? 'Parsed — same file imported recently'
+                : 'Tally XML parsed successfully',
+              variant: 'success',
+            });
           },
           onError(error) {
             addToast({ title: 'Failed to parse Tally XML', description: friendlyError(error), variant: 'destructive' });
@@ -412,8 +459,43 @@ export default function AccountsContent(): ReactNode {
       });
       return;
     }
+    // Build the per-type selection from the checkboxes. Omit a type
+    // entirely when its master checkbox is unticked — that tells
+    // the server "skip this type". Including with both flags false
+    // would be a no-op anyway, but omitting is clearer in logs.
+    const commit: NonNullable<Parameters<typeof tallyCommitImport.mutate>[0]['commit']> = {};
+    if (tallyCommitGroups) {
+      commit.groups = {
+        include_new: true,
+        include_changed: tallyCommitGroupsChanged,
+      };
+    }
+    if (tallyCommitLedgers) {
+      commit.ledgers = {
+        include_new: true,
+        include_changed: tallyCommitLedgersChanged,
+      };
+    }
+    if (tallyCommitVouchers) {
+      commit.vouchers = {
+        include_new: true,
+        include_changed: tallyCommitVouchersChanged,
+      };
+    }
+    if (Object.keys(commit).length === 0) {
+      addToast({
+        title: 'Pick at least one type to import',
+        description: 'Tick the checkbox next to Groups, Ledgers, or Vouchers.',
+        variant: 'destructive',
+      });
+      return;
+    }
     tallyCommitImport.mutate(
-      { import_id: tallyParseResult.import_id },
+      {
+        import_id: tallyParseResult.import_id,
+        commit,
+        force: tallyForceCommit,
+      },
       {
         onSuccess(data) {
           setTallyCommitResult(data.data);
@@ -1358,47 +1440,225 @@ export default function AccountsContent(): ReactNode {
               </>
             )}
 
-            {/* Preview step — shows parse result + a Commit button.
-                Nothing is in the DB yet. */}
+            {/* Preview step — per-type checkbox grid, classification
+                breakdown (new/changed/unchanged/conflict), duplicate-
+                file warning, and the Force toggle. Nothing in the DB
+                yet — Commit fires the actual writes. */}
             {tallyStep === 'preview' && tallyParseResult && (
               <div className="space-y-4">
-                <div className="rounded-md border p-4 space-y-2">
-                  <h4 className="font-medium text-sm">Parse Summary</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>Records Parsed:</div>
-                    <div className="font-medium">{tallyParseResult.records_parsed}</div>
+                {/* Duplicate-file warning */}
+                {tallyParseResult.duplicate_of && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-3 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                    <div className="text-xs text-amber-700 dark:text-amber-400 space-y-1 flex-1">
+                      <p className="font-medium">Same file imported recently</p>
+                      <p>
+                        This file was committed{' '}
+                        {new Date(tallyParseResult.duplicate_of.created_at).toLocaleString()}.
+                        The commit endpoint will reject this re-upload unless you tick
+                        the Force option below. The per-voucher hash check still applies —
+                        unchanged vouchers will be skipped automatically even with Force on.
+                      </p>
+                    </div>
                   </div>
-                  {tallyParseResult.message && (
-                    <p className="text-xs text-muted-foreground pt-2 border-t">
-                      {tallyParseResult.message}
-                    </p>
-                  )}
+                )}
+
+                {/* Per-type commit grid */}
+                <div className="rounded-md border divide-y">
+                  <div className="px-4 py-2 bg-muted/50 text-xs font-medium uppercase tracking-wide flex items-center gap-2">
+                    <span className="flex-1">Pick what to import</span>
+                    <span className="text-muted-foreground">
+                      {tallyParseResult.records_parsed} total parsed
+                    </span>
+                  </div>
+                  {/* Render a row per entity type. The checkbox on
+                      the left is the master "commit this type"
+                      switch; the sub-checkbox is the
+                      "include_changed" guard. */}
+                  {([
+                    {
+                      key: 'groups' as const,
+                      label: 'Groups',
+                      master: tallyCommitGroups,
+                      setMaster: setTallyCommitGroups,
+                      changed: tallyCommitGroupsChanged,
+                      setChanged: setTallyCommitGroupsChanged,
+                      counts: tallyParseResult.counts?.groups ?? 0,
+                      cls: tallyParseResult.classification?.groups,
+                    },
+                    {
+                      key: 'ledgers' as const,
+                      label: 'Ledgers',
+                      master: tallyCommitLedgers,
+                      setMaster: setTallyCommitLedgers,
+                      changed: tallyCommitLedgersChanged,
+                      setChanged: setTallyCommitLedgersChanged,
+                      counts: tallyParseResult.counts?.ledgers ?? 0,
+                      cls: tallyParseResult.classification?.ledgers,
+                    },
+                    {
+                      key: 'vouchers' as const,
+                      label: 'Vouchers (transactions)',
+                      master: tallyCommitVouchers,
+                      setMaster: setTallyCommitVouchers,
+                      changed: tallyCommitVouchersChanged,
+                      setChanged: setTallyCommitVouchersChanged,
+                      counts: tallyParseResult.counts?.vouchers ?? 0,
+                      cls: tallyParseResult.classification?.vouchers,
+                    },
+                  ]).map((row) => {
+                    const empty = row.counts === 0;
+                    return (
+                      <div key={row.key} className="px-4 py-3 space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={row.master}
+                            disabled={empty}
+                            onChange={(e) => row.setMaster(e.target.checked)}
+                            className="h-4 w-4"
+                          />
+                          <span className="font-medium text-sm flex-1">
+                            {row.label}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {row.counts} detected
+                          </span>
+                        </label>
+                        {!empty && row.cls && (
+                          <div className="ml-6 grid grid-cols-4 gap-2 text-xs">
+                            <span>
+                              <span className="text-green-600 font-medium">{row.cls.new}</span>{' '}
+                              <span className="text-muted-foreground">new</span>
+                            </span>
+                            <span>
+                              <span className="text-blue-600 font-medium">{row.cls.changed}</span>{' '}
+                              <span className="text-muted-foreground">changed</span>
+                            </span>
+                            <span>
+                              <span className="text-muted-foreground font-medium">{row.cls.unchanged}</span>{' '}
+                              <span className="text-muted-foreground">unchanged</span>
+                            </span>
+                            <span>
+                              <span className={row.cls.conflict > 0 ? 'text-amber-600 font-medium' : 'text-muted-foreground'}>
+                                {row.cls.conflict}
+                              </span>{' '}
+                              <span className="text-muted-foreground">conflict</span>
+                            </span>
+                          </div>
+                        )}
+                        {!empty && row.master && row.cls && row.cls.changed > 0 && (
+                          <label className="ml-6 flex items-center gap-2 cursor-pointer text-xs">
+                            <input
+                              type="checkbox"
+                              checked={row.changed}
+                              onChange={(e) => row.setChanged(e.target.checked)}
+                              className="h-3.5 w-3.5"
+                            />
+                            <span>
+                              Update {row.cls.changed} changed record{row.cls.changed === 1 ? '' : 's'}
+                              {' '}— untick to import only new ones
+                            </span>
+                          </label>
+                        )}
+                        {!empty && row.cls && row.cls.conflict > 0 && (
+                          <p className="ml-6 text-xs text-amber-600 dark:text-amber-500">
+                            {row.cls.conflict} record{row.cls.conflict === 1 ? '' : 's'} edited
+                            locally — skipped automatically to preserve your changes.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
+
+                {/* Force toggle — only meaningful when duplicate flagged */}
+                {tallyParseResult.duplicate_of && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={tallyForceCommit}
+                      onChange={(e) => setTallyForceCommit(e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm">
+                      Force re-import (bypass the same-file-recently-imported guard)
+                    </span>
+                  </label>
+                )}
+
                 <div className="rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/20 p-3 flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
                   <div className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
                     <p className="font-medium">Ready to import</p>
                     <p>
-                      {tallyParseResult.records_parsed} records have been parsed but
-                      NOT yet saved. Click <strong>Import</strong> below to commit
-                      them to your ledger. The operation cannot be undone.
+                      Records are parsed but NOT yet saved. Click{' '}
+                      <strong>Import</strong> to commit only the ticked types.
+                      Unchanged records are no-ops; conflict-flagged records are
+                      preserved.
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Done step — shows the real commit result. `summary` is
-                always defensively unwrapped; `errors` too. */}
+            {/* Done step — per-type disposition breakdown + errors. */}
             {tallyStep === 'done' && tallyCommitResult && (
               <div className="space-y-4">
-                <div className="rounded-md border p-4 space-y-2">
-                  <h4 className="font-medium text-sm">Import Result</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>Records Imported:</div>
-                    <div className="font-medium text-green-600">{tallyCommitResult.records_imported}</div>
-                    <div>Records Skipped:</div>
-                    <div className="font-medium text-yellow-600">{tallyCommitResult.records_skipped}</div>
+                <div className="rounded-md border divide-y">
+                  <div className="px-4 py-2 bg-muted/50 text-xs font-medium uppercase tracking-wide">
+                    Import Result
+                  </div>
+                  {/* Render a row per type that actually ran */}
+                  {(['groups', 'ledgers', 'vouchers'] as const).map((key) => {
+                    const r = tallyCommitResult[key];
+                    if (!r) return null;
+                    const label =
+                      key === 'groups'
+                        ? 'Groups'
+                        : key === 'ledgers'
+                        ? 'Ledgers'
+                        : 'Vouchers';
+                    return (
+                      <div key={key} className="px-4 py-3 space-y-1">
+                        <div className="flex items-center text-sm font-medium">
+                          <span className="flex-1">{label}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {r.new + r.updated} committed
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 text-xs">
+                          <span>
+                            <span className="text-green-600 font-medium">{r.new}</span>{' '}
+                            <span className="text-muted-foreground">new</span>
+                          </span>
+                          <span>
+                            <span className="text-blue-600 font-medium">{r.updated}</span>{' '}
+                            <span className="text-muted-foreground">updated</span>
+                          </span>
+                          <span>
+                            <span className="text-muted-foreground font-medium">{r.unchanged}</span>{' '}
+                            <span className="text-muted-foreground">unchanged</span>
+                          </span>
+                          <span>
+                            <span className={r.conflict > 0 ? 'text-amber-600 font-medium' : 'text-muted-foreground'}>
+                              {r.conflict}
+                            </span>{' '}
+                            <span className="text-muted-foreground">conflict</span>
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="px-4 py-2 text-xs flex items-center gap-4">
+                    <span>
+                      <strong className="text-green-600">{tallyCommitResult.records_imported}</strong>{' '}
+                      <span className="text-muted-foreground">total imported</span>
+                    </span>
+                    <span>
+                      <strong className="text-yellow-600">{tallyCommitResult.records_skipped}</strong>{' '}
+                      <span className="text-muted-foreground">skipped</span>
+                    </span>
                   </div>
                 </div>
                 {(tallyCommitResult.errors?.length ?? 0) > 0 && (

@@ -9,28 +9,90 @@ import { getToken, getCurrentTenant } from '@/lib/auth';
 // ---------------------------------------------------------------------------
 
 /**
- * Response from `POST /tally-import/{xml|csv}`. The backend only PARSES
- * at this point and stores the parsed data under `import_id` in an
- * in-memory preview store. Actual DB writes happen on the follow-up
- * `POST /tally-import/commit` call — see [[TallyCommitResult]].
+ * Response from `POST /tally-import/{xml|csv}`. The backend parses
+ * the XML and stores the result keyed by `import_id` (DB-backed
+ * since migration 052 — survives PM2 worker round-robin). The XML
+ * path also returns per-type counts + a classification breakdown
+ * so the preview UI can render checkboxes without re-parsing.
  */
 export interface TallyImportParseResult {
   import_id: string;
   records_parsed: number;
+  /**
+   * Per-entity-type counts of what's IN the file. Always populated
+   * for XML imports (post Phase 1 of the import revamp); CSV
+   * imports only populate the legacy `records_parsed` and leave
+   * counts undefined.
+   */
+  counts?: {
+    groups: number;
+    ledgers: number;
+    vouchers: number;
+  };
+  /**
+   * SHA-256 of the raw XML. The commit endpoint uses this to dedupe
+   * re-uploads of the same file within a 24h window unless the
+   * operator passes `force: true`.
+   */
+  file_hash?: string;
+  /**
+   * If a recent commit of the same file_hash exists for this tenant
+   * (within 24h), the server populates this so the UI can warn
+   * before the operator hits Commit again.
+   */
+  duplicate_of?: { import_id: string; created_at: string } | null;
+  /**
+   * Per-disposition breakdown computed by classifying every parsed
+   * entity against the existing DB rows. UI uses this to render
+   * "X new · Y changed · Z unchanged · N conflict" per type.
+   */
+  classification?: {
+    groups: { new: number; changed: number; unchanged: number; conflict: number };
+    ledgers: { new: number; changed: number; unchanged: number; conflict: number };
+    vouchers: { new: number; changed: number; unchanged: number; conflict: number };
+  };
   /** Human-readable next-step hint from the server. */
   message?: string;
 }
 
 /**
+ * Per-disposition counts the commit endpoint returns for each ticked
+ * entity type. Mirrors the server-side `DispositionCounts`.
+ */
+export interface TallyDispositionCounts {
+  new: number;
+  updated: number;
+  unchanged: number;
+  conflict: number;
+  errors: string[];
+}
+
+/**
  * Response from `POST /tally-import/commit` — the real results once
- * the parsed records have been written to groups / ledgers / vouchers
- * / receipts / payments.
+ * the parsed records have been written.
  */
 export interface TallyCommitResult {
+  groups?: TallyDispositionCounts;
+  ledgers?: TallyDispositionCounts;
+  vouchers?: TallyDispositionCounts;
+  /** Aggregate of new + updated across all ticked types. */
   records_imported: number;
+  /** Aggregate of unchanged + conflict + per-row errors. */
   records_skipped: number;
-  /** Per-record error strings. May be omitted / undefined on a clean run. */
-  errors?: string[];
+  /** Concatenated per-type error messages. */
+  errors: string[];
+}
+
+/**
+ * Per-type include flags the operator picks via the preview
+ * checkboxes. An omitted top-level key (e.g. no `groups`) means
+ * "skip this type entirely". Within a type, both flags default to
+ * true on the server.
+ */
+export interface TallyCommitSelection {
+  groups?: { include_new?: boolean; include_changed?: boolean };
+  ledgers?: { include_new?: boolean; include_changed?: boolean };
+  vouchers?: { include_new?: boolean; include_changed?: boolean };
 }
 
 /**
@@ -130,15 +192,20 @@ export function useTallyCsvImport() {
 
 /**
  * Commit a previously-parsed import. Must be called with the
- * `import_id` returned from the parse hooks above. Once this
- * resolves the records are written to the DB; only then do we
- * invalidate downstream caches.
+ * `import_id` returned from the parse hooks above plus the per-type
+ * `commit` selection from the operator's preview checkboxes. The
+ * `force` flag bypasses the 24h file-hash dedupe; per-voucher hash +
+ * edited-locally guards still apply downstream.
  */
 export function useTallyCommitImport() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: function commitImport(input: { import_id: string }) {
+    mutationFn: function commitImport(input: {
+      import_id: string;
+      commit?: TallyCommitSelection;
+      force?: boolean;
+    }) {
       return api.post<{ data: TallyCommitResult }>(
         '/tally-import/commit',
         input,
