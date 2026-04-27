@@ -46,6 +46,7 @@ import {
   useSetOpeningBalance,
   useBulkImportBalances,
   useTallyXmlImport,
+  useTallyXmlUpload,
   useTallyCsvImport,
   useTallyCommitImport,
 } from '@/hooks';
@@ -253,6 +254,7 @@ export default function AccountsContent(): ReactNode {
   const setOpeningBalance = useSetOpeningBalance();
   const bulkImportBalances = useBulkImportBalances();
   const tallyXmlImport = useTallyXmlImport();
+  const tallyXmlUpload = useTallyXmlUpload();
   const tallyCsvImport = useTallyCsvImport();
   const tallyCommitImport = useTallyCommitImport();
 
@@ -325,6 +327,11 @@ export default function AccountsContent(): ReactNode {
   const [tallyCommitLedgersChanged, setTallyCommitLedgersChanged] = useState(true);
   const [tallyCommitVouchers, setTallyCommitVouchers] = useState(true);
   const [tallyCommitVouchersChanged, setTallyCommitVouchersChanged] = useState(true);
+  // Phase 2 — cost centres + voucher type definitions.
+  const [tallyCommitCostCentres, setTallyCommitCostCentres] = useState(true);
+  const [tallyCommitCostCentresChanged, setTallyCommitCostCentresChanged] = useState(true);
+  const [tallyCommitVoucherTypes, setTallyCommitVoucherTypes] = useState(true);
+  const [tallyCommitVoucherTypesChanged, setTallyCommitVoucherTypesChanged] = useState(true);
   // Force flag — bypasses the file-hash dedupe ("imported same file
   // 2h ago"). Per-voucher hash + edited-locally guards still apply.
   const [tallyForceCommit, setTallyForceCommit] = useState(false);
@@ -379,7 +386,66 @@ export default function AccountsContent(): ReactNode {
     setTallyCommitLedgersChanged(true);
     setTallyCommitVouchers(true);
     setTallyCommitVouchersChanged(true);
+    setTallyCommitCostCentres(true);
+    setTallyCommitCostCentresChanged(true);
+    setTallyCommitVoucherTypes(true);
+    setTallyCommitVoucherTypesChanged(true);
     setTallyForceCommit(false);
+  }
+
+  /**
+   * Upload an XML file directly via multipart/form-data instead of
+   * pasting it into the textarea. Saves the JSON-encoding round-trip
+   * (which roughly doubles peak memory on a 30 MB XML) and supports
+   * up to the server's 100 MB FileInterceptor cap. Mirrors the same
+   * onSuccess flow as handleTallyParse — the parse response shape
+   * is identical.
+   */
+  function handleTallyFileSelect(file: File | null): void {
+    if (!file) return;
+    if (file.size > 100 * 1024 * 1024) {
+      addToast({
+        title: 'File too large',
+        description: 'Max 100 MB. Split the export and import in two passes.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    tallyXmlUpload.mutate(file, {
+      onSuccess(data) {
+        const parsed = data.data;
+        setTallyParseResult(parsed);
+        setTallyCommitResult(null);
+        const c = parsed.counts;
+        if (c) {
+          setTallyCommitGroups(c.groups > 0);
+          setTallyCommitLedgers(c.ledgers > 0);
+          setTallyCommitVouchers(c.vouchers > 0);
+          setTallyCommitCostCentres((c.costCentres ?? 0) > 0);
+          setTallyCommitVoucherTypes((c.voucherTypes ?? 0) > 0);
+        }
+        setTallyCommitGroupsChanged(true);
+        setTallyCommitLedgersChanged(true);
+        setTallyCommitVouchersChanged(true);
+        setTallyCommitCostCentresChanged(true);
+        setTallyCommitVoucherTypesChanged(true);
+        setTallyForceCommit(false);
+        setTallyStep('preview');
+        addToast({
+          title: parsed.duplicate_of
+            ? 'Parsed — same file imported recently'
+            : `Tally XML uploaded (${(file.size / 1024 / 1024).toFixed(1)} MB)`,
+          variant: 'success',
+        });
+      },
+      onError(error) {
+        addToast({
+          title: 'Upload failed',
+          description: friendlyError(error),
+          variant: 'destructive',
+        });
+      },
+    });
   }
 
   function handleTallyParse(): void {
@@ -404,6 +470,8 @@ export default function AccountsContent(): ReactNode {
               setTallyCommitGroups(c.groups > 0);
               setTallyCommitLedgers(c.ledgers > 0);
               setTallyCommitVouchers(c.vouchers > 0);
+              setTallyCommitCostCentres((c.costCentres ?? 0) > 0);
+              setTallyCommitVoucherTypes((c.voucherTypes ?? 0) > 0);
             }
             // Pre-tick "include changed" by default — re-imports
             // typically want the latest Tally state to win unless
@@ -411,6 +479,8 @@ export default function AccountsContent(): ReactNode {
             setTallyCommitGroupsChanged(true);
             setTallyCommitLedgersChanged(true);
             setTallyCommitVouchersChanged(true);
+            setTallyCommitCostCentresChanged(true);
+            setTallyCommitVoucherTypesChanged(true);
             // If the server flagged a duplicate, default Force off
             // — operator explicitly opts in.
             setTallyForceCommit(false);
@@ -480,6 +550,18 @@ export default function AccountsContent(): ReactNode {
       commit.vouchers = {
         include_new: true,
         include_changed: tallyCommitVouchersChanged,
+      };
+    }
+    if (tallyCommitCostCentres) {
+      commit.cost_centres = {
+        include_new: true,
+        include_changed: tallyCommitCostCentresChanged,
+      };
+    }
+    if (tallyCommitVoucherTypes) {
+      commit.voucher_types = {
+        include_new: true,
+        include_changed: tallyCommitVoucherTypesChanged,
       };
     }
     if (Object.keys(commit).length === 0) {
@@ -1423,17 +1505,47 @@ export default function AccountsContent(): ReactNode {
                   </div>
                 )}
 
+                {/* Upload (XML only) — preferred path for files
+                    over a few hundred KB. Pasting still works for
+                    small snippets via the textarea below. */}
+                {tallyFormat === 'xml' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="tally-file">Upload XML file</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="tally-file"
+                        type="file"
+                        accept=".xml,text/xml,application/xml"
+                        disabled={tallyXmlUpload.isPending}
+                        onChange={(e) =>
+                          handleTallyFileSelect(e.target.files?.[0] ?? null)
+                        }
+                        className="block w-full text-sm file:mr-3 file:rounded file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-primary-foreground file:cursor-pointer"
+                      />
+                      {tallyXmlUpload.isPending && (
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          Uploading…
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Streamed via multipart up to 100 MB. For tiny snippets
+                      you can paste below instead.
+                    </p>
+                  </div>
+                )}
+
                 {/* Content area */}
                 <div className="space-y-2">
                   <Label htmlFor="tally-content">
-                    {tallyFormat === 'xml' ? 'Paste XML Content' : 'Paste CSV Content'}
+                    {tallyFormat === 'xml' ? 'Or paste XML content' : 'Paste CSV Content'}
                   </Label>
                   <Textarea
                     id="tally-content"
                     value={tallyContent}
                     onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setTallyContent(e.target.value)}
                     placeholder={tallyFormat === 'xml' ? '<ENVELOPE>...</ENVELOPE>' : 'Paste CSV data here...'}
-                    rows={10}
+                    rows={tallyFormat === 'xml' ? 6 : 10}
                     className="font-mono text-xs"
                   />
                 </div>
@@ -1495,6 +1607,26 @@ export default function AccountsContent(): ReactNode {
                       setChanged: setTallyCommitLedgersChanged,
                       counts: tallyParseResult.counts?.ledgers ?? 0,
                       cls: tallyParseResult.classification?.ledgers,
+                    },
+                    {
+                      key: 'cost_centres' as const,
+                      label: 'Cost Centres',
+                      master: tallyCommitCostCentres,
+                      setMaster: setTallyCommitCostCentres,
+                      changed: tallyCommitCostCentresChanged,
+                      setChanged: setTallyCommitCostCentresChanged,
+                      counts: tallyParseResult.counts?.costCentres ?? 0,
+                      cls: tallyParseResult.classification?.cost_centres,
+                    },
+                    {
+                      key: 'voucher_types' as const,
+                      label: 'Voucher Types',
+                      master: tallyCommitVoucherTypes,
+                      setMaster: setTallyCommitVoucherTypes,
+                      changed: tallyCommitVoucherTypesChanged,
+                      setChanged: setTallyCommitVoucherTypesChanged,
+                      counts: tallyParseResult.counts?.voucherTypes ?? 0,
+                      cls: tallyParseResult.classification?.voucher_types,
                     },
                     {
                       key: 'vouchers' as const,
@@ -1610,7 +1742,7 @@ export default function AccountsContent(): ReactNode {
                     Import Result
                   </div>
                   {/* Render a row per type that actually ran */}
-                  {(['groups', 'ledgers', 'vouchers'] as const).map((key) => {
+                  {(['groups', 'ledgers', 'cost_centres', 'voucher_types', 'vouchers'] as const).map((key) => {
                     const r = tallyCommitResult[key];
                     if (!r) return null;
                     const label =
@@ -1618,6 +1750,10 @@ export default function AccountsContent(): ReactNode {
                         ? 'Groups'
                         : key === 'ledgers'
                         ? 'Ledgers'
+                        : key === 'cost_centres'
+                        ? 'Cost Centres'
+                        : key === 'voucher_types'
+                        ? 'Voucher Types'
                         : 'Vouchers';
                     return (
                       <div key={key} className="px-4 py-3 space-y-1">

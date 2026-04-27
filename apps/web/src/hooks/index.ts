@@ -555,6 +555,7 @@ export {
   tallyImportKeys,
   useTallyImportHistory,
   useTallyXmlImport,
+  useTallyXmlUpload,
   useTallyCsvImport,
   useTallyCommitImport,
   useDownloadInvoicePdf,

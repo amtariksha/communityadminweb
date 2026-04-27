@@ -28,6 +28,8 @@ export interface TallyImportParseResult {
     groups: number;
     ledgers: number;
     vouchers: number;
+    costCentres?: number;
+    voucherTypes?: number;
   };
   /**
    * SHA-256 of the raw XML. The commit endpoint uses this to dedupe
@@ -50,6 +52,8 @@ export interface TallyImportParseResult {
     groups: { new: number; changed: number; unchanged: number; conflict: number };
     ledgers: { new: number; changed: number; unchanged: number; conflict: number };
     vouchers: { new: number; changed: number; unchanged: number; conflict: number };
+    cost_centres?: { new: number; changed: number; unchanged: number; conflict: number };
+    voucher_types?: { new: number; changed: number; unchanged: number; conflict: number };
   };
   /** Human-readable next-step hint from the server. */
   message?: string;
@@ -75,6 +79,8 @@ export interface TallyCommitResult {
   groups?: TallyDispositionCounts;
   ledgers?: TallyDispositionCounts;
   vouchers?: TallyDispositionCounts;
+  cost_centres?: TallyDispositionCounts;
+  voucher_types?: TallyDispositionCounts;
   /** Aggregate of new + updated across all ticked types. */
   records_imported: number;
   /** Aggregate of unchanged + conflict + per-row errors. */
@@ -93,6 +99,8 @@ export interface TallyCommitSelection {
   groups?: { include_new?: boolean; include_changed?: boolean };
   ledgers?: { include_new?: boolean; include_changed?: boolean };
   vouchers?: { include_new?: boolean; include_changed?: boolean };
+  cost_centres?: { include_new?: boolean; include_changed?: boolean };
+  voucher_types?: { include_new?: boolean; include_changed?: boolean };
 }
 
 /**
@@ -164,6 +172,29 @@ export function useTallyXmlImport() {
       return api.post<{ data: TallyImportParseResult }>(
         '/tally-import/xml',
         input,
+      );
+    },
+  });
+}
+
+/**
+ * Multipart-upload variant of XML import. Same response shape as
+ * useTallyXmlImport, but the file streams over multipart/form-data
+ * instead of being JSON-encoded — saves the ~2× memory cost of
+ * JSON.stringify on a 30 MB XML and supports up to 100 MB on the
+ * server (controller's FileInterceptor cap). Use this with a native
+ * <input type="file"> picker.
+ */
+export function useTallyXmlUpload() {
+  return useMutation({
+    mutationFn: async function uploadXml(file: File) {
+      const formData = new FormData();
+      formData.append('file', file);
+      // axios infers multipart Content-Type from FormData
+      // automatically; explicit headers would clobber the boundary.
+      return api.post<{ data: TallyImportParseResult }>(
+        '/tally-import/upload',
+        formData,
       );
     },
   });
