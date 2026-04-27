@@ -1056,7 +1056,17 @@ export default function PurchasesContent(): ReactNode {
                             id="bill-vendor"
                             required
                             value={billVendorId}
-                            onChange={(e) => setBillVendorId(e.target.value)}
+                            onChange={(e) => {
+                              const newVendorId = e.target.value;
+                              setBillVendorId(newVendorId);
+                              // Same auto-fill as the Convert dialog —
+                              // pre-select the vendor's Sundry Creditors
+                              // ledger as the Payable Account.
+                              const vendor = vendors.find((v) => v.id === newVendorId);
+                              if (vendor?.ledger_account_id) {
+                                setBillPayableAccountId(vendor.ledger_account_id);
+                              }
+                            }}
                           >
                             <option value="">Select vendor</option>
                             {vendors.map((v) => (
@@ -1514,7 +1524,18 @@ export default function PurchasesContent(): ReactNode {
                   id="convert-vendor"
                   required
                   value={convertVendorId}
-                  onChange={(e) => setConvertVendorId(e.target.value)}
+                  onChange={(e) => {
+                    const newVendorId = e.target.value;
+                    setConvertVendorId(newVendorId);
+                    // Auto-fill the Payable Account picker with the
+                    // vendor's own Sundry Creditors ledger. Operator
+                    // can override by clicking into the picker.
+                    // Skips legacy vendors that pre-date migration 059.
+                    const vendor = vendors.find((v) => v.id === newVendorId);
+                    if (vendor?.ledger_account_id) {
+                      setConvertPayableAccountId(vendor.ledger_account_id);
+                    }
+                  }}
                 >
                   <option value="">Select vendor</option>
                   {vendors.map((v) => (
