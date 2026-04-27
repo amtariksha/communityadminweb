@@ -62,7 +62,9 @@ import {
   useCreateVendor,
   useLedgerAccounts,
   useBankAccounts,
+  useTdsConfig,
 } from '@/hooks';
+import type { TdsConfig } from '@/hooks';
 import { useOcrInvoice } from '@/hooks/use-ocr';
 
 // API responses may include joined fields beyond the base shared types
@@ -349,6 +351,11 @@ export default function PurchasesContent(): ReactNode {
   const accountsQuery = useLedgerAccounts({ limit: 200 });
   const bankAccountsQuery = useBankAccounts();
   const agingQuery = useVendorAging();
+  // Resolved TDS config for this tenant — drives the auto-suggest in
+  // the convert-PR-to-bill dialog. Falls through to the platform
+  // default when the tenant hasn't customized.
+  const tdsConfigQuery = useTdsConfig();
+  const tdsConfig: TdsConfig | null = tdsConfigQuery.data?.config ?? null;
 
   // Mutations
   const createPR = useCreatePR();
@@ -358,6 +365,37 @@ export default function PurchasesContent(): ReactNode {
   const createBill = useCreateBill();
   const recordPayment = useRecordBillPayment();
   const createVendorMut = useCreateVendor();
+
+  /**
+   * Suggest a TDS rate (%) for a given subtotal + vendor. Returns 0
+   * when:
+   *   - The TDS auto-suggest is disabled for this tenant
+   *   - The subtotal is below the matching threshold
+   *   - No config has loaded yet (mid-fetch)
+   *
+   * Pure client-side computation against the resolved TDS config.
+   * Mirrors the server-side suggestTds(), but avoids a round-trip on
+   * every keystroke.
+   */
+  function suggestTdsRate(
+    subtotalGross: number,
+    vendor?: { tds_section?: string | null } | null,
+  ): number {
+    if (!tdsConfig || !tdsConfig.enabled || subtotalGross <= 0) return 0;
+    const section = vendor?.tds_section?.trim();
+    let threshold = tdsConfig.default_threshold;
+    let rate = tdsConfig.default_rate;
+    if (section) {
+      const match = tdsConfig.sections.find(
+        (s) => s.code.toLowerCase() === section.toLowerCase(),
+      );
+      if (match) {
+        threshold = match.threshold;
+        rate = match.rate;
+      }
+    }
+    return subtotalGross >= threshold ? rate : 0;
+  }
 
   function openQuickVendorDialog(target: 'convert' | 'bill' | 'pr'): void {
     setQuickVendorTarget(target);
@@ -508,11 +546,11 @@ export default function PurchasesContent(): ReactNode {
     setConvertBillDate('');
     setConvertDueDate('');
     // PR carries an estimated amount; treat it as the subtotal
-    // (operator can edit). Defaulting GST and TDS to zero so a
-    // straight passthrough click still works.
+    // (operator can edit). Defaulting GST to zero so a straight
+    // passthrough click still works. TDS auto-suggests below.
+    const subtotalNum = Number(pr.estimated_amount ?? 0);
     setConvertSubtotal(String(pr.estimated_amount ?? ''));
     setConvertGstRate(null);
-    setConvertTdsRate('');
     setConvertExpenseAccountId('');
     // Auto-fill the payable account if the PR's vendor already has a
     // linked Sundry Creditors ledger. Same logic as the vendor-onChange
@@ -522,7 +560,27 @@ export default function PurchasesContent(): ReactNode {
       ? vendors.find((v) => v.id === vendorId)
       : undefined;
     setConvertPayableAccountId(preselectedVendor?.ledger_account_id ?? '');
+    // Auto-suggest TDS rate from the resolved tenant TDS config. The
+    // operator can override before submitting; this just removes the
+    // manual lookup from "common case" PRs.
+    const suggestedRate = suggestTdsRate(subtotalNum, preselectedVendor);
+    setConvertTdsRate(suggestedRate > 0 ? String(suggestedRate) : '');
     setConvertDialogOpen(true);
+  }
+
+  /**
+   * Re-run the TDS suggestion when the vendor or subtotal changes
+   * inside the convert dialog. Only fires for the dialog that's
+   * currently open. Skips when the operator has already typed a
+   * non-zero rate — we never overwrite manual edits.
+   */
+  function reSuggestTds(nextVendorId: string, nextSubtotal: string): void {
+    const subtotalNum = Number(nextSubtotal) || 0;
+    const vendor = nextVendorId
+      ? vendors.find((v) => v.id === nextVendorId)
+      : undefined;
+    const suggested = suggestTdsRate(subtotalNum, vendor);
+    setConvertTdsRate(suggested > 0 ? String(suggested) : '');
   }
 
   function handleConvertPR(e: FormEvent): void {
@@ -1666,6 +1724,10 @@ export default function PurchasesContent(): ReactNode {
                       if (vendor?.ledger_account_id) {
                         setConvertPayableAccountId(vendor.ledger_account_id);
                       }
+                      // Refresh TDS suggestion — different vendor may
+                      // map to a different IT-Act section (194C vs 194J
+                      // vs 194I) with a different threshold/rate.
+                      reSuggestTds(newVendorId, convertSubtotal);
                     }}
                     className="flex-1"
                   >
@@ -1734,7 +1796,13 @@ export default function PurchasesContent(): ReactNode {
                     required
                     placeholder="0.00"
                     value={convertSubtotal}
-                    onChange={(e) => setConvertSubtotal(e.target.value)}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setConvertSubtotal(next);
+                      // Re-evaluate TDS suggestion — crossing the
+                      // threshold flips deduction on/off.
+                      reSuggestTds(convertVendorId, next);
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -1747,7 +1815,21 @@ export default function PurchasesContent(): ReactNode {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="convert-tds">TDS %</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="convert-tds">TDS %</Label>
+                    {tdsConfig?.enabled && (
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline"
+                        onClick={() =>
+                          reSuggestTds(convertVendorId, convertSubtotal)
+                        }
+                        title="Reset to the suggested rate based on this vendor's TDS section + the platform/tenant config"
+                      >
+                        Auto-suggest
+                      </button>
+                    )}
+                  </div>
                   <Input
                     id="convert-tds"
                     type="number"
@@ -1758,6 +1840,25 @@ export default function PurchasesContent(): ReactNode {
                     value={convertTdsRate}
                     onChange={(e) => setConvertTdsRate(e.target.value)}
                   />
+                  {tdsConfig?.enabled && convertVendorId && (
+                    <p className="text-[11px] text-muted-foreground">
+                      {(() => {
+                        const v = vendors.find((x) => x.id === convertVendorId);
+                        const sec = v?.tds_section?.trim();
+                        if (!sec) {
+                          return `Default rate ${tdsConfig.default_rate}% over ₹${tdsConfig.default_threshold.toLocaleString()}.`;
+                        }
+                        const match = tdsConfig.sections.find(
+                          (s) =>
+                            s.code.toLowerCase() === sec.toLowerCase(),
+                        );
+                        if (!match) {
+                          return `Section ${sec} not in config — using default ${tdsConfig.default_rate}%.`;
+                        }
+                        return `Section ${match.code}: ${match.rate}% over ₹${match.threshold.toLocaleString()}.`;
+                      })()}
+                    </p>
+                  )}
                 </div>
               </div>
               {/* Live computation summary so the operator sees what

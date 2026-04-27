@@ -11,6 +11,14 @@ export interface Vendor {
   bank_name: string | null;
   bank_account_number: string | null;
   bank_ifsc: string | null;
+  // FK to the vendor's payable ledger under Sundry Creditors (created
+  // automatically on vendor.create per migration 059). Null for
+  // vendors created before that migration ran.
+  ledger_account_id?: string | null;
+  // TDS classification — used by the bill-conversion dialog to pull
+  // the right section rule from the resolved TDS config.
+  tds_section?: string | null;
+  tds_rate?: number | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;

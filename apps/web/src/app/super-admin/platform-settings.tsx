@@ -8,6 +8,7 @@ import {
   Bell,
   Mail,
   Palette,
+  Receipt,
   Save,
   Eye,
   EyeOff,
@@ -27,13 +28,21 @@ import {
   usePlatformConfig,
   useUpdatePlatformConfig,
 } from '@/hooks';
-import type { PlatformConfigItem } from '@/hooks';
+import type { PlatformConfigItem, TdsConfig } from '@/hooks';
+import { TdsConfigEditor } from '@/components/tds/tds-config-editor';
 
 // ---------------------------------------------------------------------------
 // Tab definitions
 // ---------------------------------------------------------------------------
 
-type SettingsTab = 'storage' | 'otp' | 'payments' | 'push' | 'email' | 'branding';
+type SettingsTab =
+  | 'storage'
+  | 'otp'
+  | 'payments'
+  | 'push'
+  | 'email'
+  | 'branding'
+  | 'tax';
 
 const TABS: { key: SettingsTab; label: string; icon: typeof HardDrive }[] = [
   { key: 'storage', label: 'Storage', icon: HardDrive },
@@ -42,6 +51,7 @@ const TABS: { key: SettingsTab; label: string; icon: typeof HardDrive }[] = [
   { key: 'push', label: 'Push Notifications', icon: Bell },
   { key: 'email', label: 'Email', icon: Mail },
   { key: 'branding', label: 'Branding', icon: Palette },
+  { key: 'tax', label: 'Tax Defaults', icon: Receipt },
 ];
 
 // ---------------------------------------------------------------------------
@@ -59,6 +69,7 @@ const TAB_CONFIG_KEYS: Record<SettingsTab, string> = {
   push: 'push_notifications',
   email: 'email',
   branding: 'branding',
+  tax: 'tds_config',
 };
 
 // ---------------------------------------------------------------------------
@@ -671,6 +682,42 @@ function EmailSection({
 }
 
 // ---------------------------------------------------------------------------
+// Tax Defaults Tab — TDS thresholds & rates that every tenant inherits
+// unless they override in Community Settings.
+// ---------------------------------------------------------------------------
+
+function TaxDefaultsSection({
+  config,
+  onSave,
+  isPending,
+}: {
+  config: Record<string, unknown>;
+  onSave: (value: Record<string, unknown>) => void;
+  isPending: boolean;
+}): ReactNode {
+  // The platform_config row stores the same shape as TdsConfig; cast
+  // is safe — anything malformed is replaced by editor defaults.
+  const tdsConfig = config as unknown as TdsConfig | null;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        These are the TDS rules applied to every tenant&apos;s vendor bills
+        unless that tenant has set its own override on the
+        Community-Admin → Settings page. Update these whenever CBDT
+        notifies new thresholds or rates — changes propagate to every
+        tenant automatically (5-min Redis cache TTL).
+      </p>
+      <TdsConfigEditor
+        value={tdsConfig ?? null}
+        onSave={(cfg) => onSave(cfg as unknown as Record<string, unknown>)}
+        isPending={isPending}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Branding Tab
 // ---------------------------------------------------------------------------
 
@@ -919,6 +966,13 @@ export default function PlatformSettings(): ReactNode {
             <BrandingSection
               config={getConfigForTab('branding')}
               onSave={(v) => handleSave('branding', v)}
+              isPending={updateConfig.isPending}
+            />
+          )}
+          {activeTab === 'tax' && (
+            <TaxDefaultsSection
+              config={getConfigForTab('tax')}
+              onSave={(v) => handleSave('tax', v)}
               isPending={updateConfig.isPending}
             />
           )}

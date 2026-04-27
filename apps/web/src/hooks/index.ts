@@ -296,6 +296,9 @@ export {
   useComplianceCalendar,
   useCreateChallan,
   useCreateRemittance,
+  useTdsConfig,
+  useUpdateTenantTdsConfig,
+  useSuggestTds,
 } from './use-tax';
 export type {
   GstSummary,
@@ -307,6 +310,10 @@ export type {
   TdsChallan,
   Remittance,
   TaxPeriodFilters,
+  TdsSection,
+  TdsConfig,
+  ResolvedTdsConfig,
+  TdsSuggestion,
 } from './use-tax';
 
 // Autopay

@@ -60,6 +60,7 @@ import type { Gate, RbacPermission } from '@/hooks/use-staff';
 import type { Amenity } from '@/hooks/use-amenities';
 import { RoleDelegationCard } from './role-delegation-card';
 import { AutomatedReportsCard } from './automated-reports-card';
+import { TdsConfigCard } from './tds-config-card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1806,6 +1807,11 @@ export default function SettingsContent(): ReactNode {
       {/* Automated Reports — monthly email digest (Batch 15)                  */}
       {/* ------------------------------------------------------------------- */}
       <AutomatedReportsCard />
+
+      {/* ------------------------------------------------------------------- */}
+      {/* TDS Configuration — platform default + per-tenant override            */}
+      {/* ------------------------------------------------------------------- */}
+      <TdsConfigCard />
     </div>
   );
 }

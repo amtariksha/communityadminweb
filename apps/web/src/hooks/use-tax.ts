@@ -117,6 +117,38 @@ export interface TaxPeriodFilters {
 }
 
 // ---------------------------------------------------------------------------
+// TDS configuration
+// ---------------------------------------------------------------------------
+
+export interface TdsSection {
+  code: string;
+  label: string;
+  threshold: number;
+  rate: number;
+}
+
+export interface TdsConfig {
+  enabled: boolean;
+  default_threshold: number;
+  default_rate: number;
+  sections: TdsSection[];
+}
+
+export interface ResolvedTdsConfig {
+  config: TdsConfig;
+  source: 'tenant' | 'platform';
+}
+
+export interface TdsSuggestion {
+  tds_amount: number;
+  applied_section: string | null;
+  applied_threshold: number;
+  applied_rate: number;
+  below_threshold: boolean;
+  config_source: 'tenant' | 'platform';
+}
+
+// ---------------------------------------------------------------------------
 // Query keys
 // ---------------------------------------------------------------------------
 
@@ -132,6 +164,7 @@ export const taxKeys = {
   challans: () => [...taxKeys.all, 'challans'] as const,
   remittances: () => [...taxKeys.all, 'remittances'] as const,
   complianceCalendar: (fyId?: string) => [...taxKeys.all, 'compliance', fyId] as const,
+  tdsConfig: () => [...taxKeys.all, 'tds-config'] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -304,6 +337,75 @@ export function useCreateRemittance() {
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: taxKeys.remittances() });
       queryClient.invalidateQueries({ queryKey: taxKeys.complianceCalendar() });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// TDS config hooks
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the resolved TDS config for the current tenant. The hook
+ * always resolves to a non-null config — the API guarantees a fallback
+ * even when neither the tenant nor the platform have customized — so
+ * callers don't have to handle a "not configured" branch.
+ *
+ * `source` tells you which layer the config came from. The tenant
+ * Settings UI uses this to render "Using platform default" vs "Custom
+ * for this society".
+ */
+export function useTdsConfig() {
+  return useQuery({
+    queryKey: taxKeys.tdsConfig(),
+    queryFn: function fetchTdsConfig() {
+      return api
+        .get<{ data: ResolvedTdsConfig }>('/tax/tds-config')
+        .then((res) => res.data);
+    },
+    // Match the backend Redis TTL — the config rarely changes and the
+    // dialogs that consume it would be slow if every open re-fetched.
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Update the per-tenant TDS override. Pass `config: null` to clear
+ * the override and revert to the platform default.
+ */
+export function useUpdateTenantTdsConfig() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function updateTdsConfig(input: {
+      config: TdsConfig | null;
+    }) {
+      return api
+        .patch<{ data: { updated: boolean } }>('/tax/tds-config', input)
+        .then((res) => res.data);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: taxKeys.tdsConfig() });
+    },
+  });
+}
+
+/**
+ * Server-side TDS suggestion. Used by the convert-PR-to-bill and
+ * direct-create-bill dialogs to auto-populate the TDS field. We could
+ * compute this client-side from `useTdsConfig` data, but the server
+ * call lets the same logic run on mobile/integrations later without
+ * duplicating the threshold/rate math.
+ */
+export function useSuggestTds() {
+  return useMutation({
+    mutationFn: function suggestTds(input: {
+      subtotal: number;
+      tds_section?: string | null;
+    }) {
+      return api
+        .post<{ data: TdsSuggestion }>('/tax/tds-suggest', input)
+        .then((res) => res.data);
     },
   });
 }
