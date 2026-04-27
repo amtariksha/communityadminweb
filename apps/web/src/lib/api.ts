@@ -174,8 +174,18 @@ async function request<T>(
   const token = getToken();
   const tenantId = getCurrentTenant();
 
+  // Detect binary / multipart bodies (FormData, Blob, ArrayBuffer).
+  // For these, fetch() needs to set its OWN Content-Type — including
+  // the multipart boundary parameter — so we MUST NOT hardcode
+  // application/json. Stringifying them would otherwise produce
+  // "[object FormData]" on the wire and a 400 on the server.
+  const isBinaryBody =
+    typeof FormData !== 'undefined' && body instanceof FormData ||
+    typeof Blob !== 'undefined' && body instanceof Blob ||
+    body instanceof ArrayBuffer;
+
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isBinaryBody ? {} : { 'Content-Type': 'application/json' }),
     ...options.headers,
   };
 
@@ -199,10 +209,21 @@ async function request<T>(
     url += `?${searchParams.toString()}`;
   }
 
+  // Pick the right body shape:
+  //   - FormData / Blob / ArrayBuffer pass through as-is so fetch()
+  //     can fingerprint the multipart boundary itself.
+  //   - Everything else gets JSON-stringified. `undefined` stays
+  //     undefined for GETs.
+  const fetchBody = !body
+    ? undefined
+    : isBinaryBody
+    ? (body as BodyInit)
+    : JSON.stringify(body);
+
   const response = await fetch(url, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: fetchBody,
     // QA #57 — send the httpOnly refresh cookie with every request so
     // the server sees a coherent session. The cookie itself is only
     // read on /auth/refresh; other routes ignore it, but keeping the
@@ -221,7 +242,7 @@ async function request<T>(
       const retryResponse = await fetch(url, {
         method,
         headers,
-        body: body ? JSON.stringify(body) : undefined,
+        body: fetchBody,
         credentials: 'include',
       });
 
