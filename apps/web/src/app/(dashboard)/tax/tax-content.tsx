@@ -53,9 +53,13 @@ function getCurrentFyRange(): { from_date: string; to_date: string } {
 }
 
 function monthPeriod(): string {
-  // GSTR-1 period is MMYYYY (e.g. 042026 for April 2026).
+  // QA #237 — server validates `period` as YYYY-MM (matches GSTR-1
+  // export internals at tax.service.ts#exportGstr1). Earlier UI sent
+  // MMYYYY (the GST portal's filing convention) which 400-ed every
+  // submit. Sticking with YYYY-MM here; the backend transposes to
+  // MMYYYY when it builds the GSTR-1 payload.
   const now = new Date();
-  return `${String(now.getMonth() + 1).padStart(2, '0')}${now.getFullYear()}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
 function complianceBadge(
@@ -247,21 +251,32 @@ function Gstr1ExportCard(): ReactNode {
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
           Generates the GSTR-1 filing payload (JSON). Hand this to your CA
-          or upload to the GST portal. Period format: MMYYYY (e.g.{' '}
-          <code>042026</code> for April 2026).
+          or upload to the GST portal. Period format: YYYY-MM (e.g.{' '}
+          <code>2026-04</code> for April 2026). The server transposes to
+          MMYYYY in the JSON payload itself.
         </p>
         <div className="flex items-end gap-2">
           <div className="space-y-1">
-            <Label htmlFor="gstr1-period">Period (MMYYYY)</Label>
+            <Label htmlFor="gstr1-period">Period (YYYY-MM)</Label>
             <Input
               id="gstr1-period"
               value={period}
-              onChange={(e) => setPeriod(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              maxLength={6}
-              className="w-28 font-mono"
+              // Strip anything except digits + dash, keep at most 7
+              // chars (YYYY-MM = 7 chars). Native HTML5 month input
+              // would be cleaner but Safari support is uneven and the
+              // GSTR-1 portal users want a plain text field.
+              onChange={(e) =>
+                setPeriod(e.target.value.replace(/[^\d-]/g, '').slice(0, 7))
+              }
+              maxLength={7}
+              placeholder="2026-04"
+              className="w-32 font-mono"
             />
           </div>
-          <Button onClick={handleGenerate} disabled={period.length !== 6}>
+          <Button
+            onClick={handleGenerate}
+            disabled={!/^\d{4}-\d{2}$/.test(period)}
+          >
             Generate
           </Button>
           {query.data && (

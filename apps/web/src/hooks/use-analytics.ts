@@ -54,10 +54,35 @@ export interface MaintenancePrediction {
 }
 
 export interface BenchmarkMetric {
+  // QA #117 — backend emits `label` + `percentile_rank`. UI used to
+  // read `name` + `percentile` against an `metrics: []` field that
+  // didn't exist on the wire — every benchmark row rendered as
+  // empty. Both naming conventions kept here so the hook can adapt
+  // either response shape.
   name: string;
-  tenant_value: number;
-  platform_avg: number;
-  percentile: number;
+  label?: string;
+  tenant_value: number | null;
+  platform_avg: number | null;
+  percentile: number | null;
+  percentile_rank?: number | null;
+  unit?: string;
+}
+
+/**
+ * Backend's getBenchmarkData returns a flat object keyed by metric
+ * name (`maintenance_cost_per_sqft`, `collection_efficiency`,
+ * `avg_ticket_resolution_hours`, `staff_to_unit_ratio`). Each value
+ * carries `label` and `percentile_rank`. The UI table iterates
+ * `data.metrics` — we synthesize that array here from the keyed
+ * accessors, normalizing field names along the way.
+ */
+interface BenchmarkResponse {
+  metrics?: BenchmarkMetric[];
+  maintenance_cost_per_sqft?: BenchmarkMetric;
+  collection_efficiency?: BenchmarkMetric;
+  avg_ticket_resolution_hours?: BenchmarkMetric;
+  staff_to_unit_ratio?: BenchmarkMetric;
+  computed_at?: string;
 }
 
 export const analyticsKeys = {
@@ -89,7 +114,43 @@ export function useHealthScoreTrend(months = 6) {
 export function useBenchmark() {
   return useQuery({
     queryKey: analyticsKeys.benchmark(),
-    queryFn: () => api.get<{ data: { metrics: BenchmarkMetric[] } }>('/analytics/benchmark').then((r) => r.data),
+    queryFn: async () => {
+      const res = await api.get<{ data: BenchmarkResponse }>(
+        '/analytics/benchmark',
+      );
+      const raw = res.data ?? {};
+
+      // If the server already shipped a `metrics` array (future
+      // shape), pass it through unchanged after field-name
+      // normalization. Otherwise, synthesize the array from the
+      // flat keyed accessors so the table can iterate.
+      const adapt = (m?: BenchmarkMetric): BenchmarkMetric | null =>
+        m
+          ? {
+              name: m.name ?? m.label ?? '',
+              label: m.label ?? m.name,
+              tenant_value: m.tenant_value ?? null,
+              platform_avg: m.platform_avg ?? null,
+              percentile: m.percentile ?? m.percentile_rank ?? null,
+              percentile_rank: m.percentile_rank ?? m.percentile ?? null,
+              unit: m.unit,
+            }
+          : null;
+
+      const fromArray = Array.isArray(raw.metrics)
+        ? raw.metrics.map((m) => adapt(m)).filter((m): m is BenchmarkMetric => m !== null)
+        : [];
+      const fromKeyed = [
+        adapt(raw.maintenance_cost_per_sqft),
+        adapt(raw.collection_efficiency),
+        adapt(raw.avg_ticket_resolution_hours),
+        adapt(raw.staff_to_unit_ratio),
+      ].filter((m): m is BenchmarkMetric => m !== null);
+
+      return {
+        metrics: fromArray.length > 0 ? fromArray : fromKeyed,
+      };
+    },
   });
 }
 
