@@ -474,6 +474,7 @@ export {
   useCreatePoll,
   useCastVote,
   useClosePoll,
+  useRecordPollMinutes,
 } from './use-voting';
 export type {
   Poll,

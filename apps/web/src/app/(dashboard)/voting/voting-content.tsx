@@ -59,6 +59,7 @@ import {
   useCreateElection,
   useCloseElection,
   useRecordMinutes,
+  useRecordPollMinutes,
 } from '@/hooks';
 import type { Poll } from '@/hooks/use-voting';
 import type { Resolution, Election } from '@/hooks/use-governance';
@@ -203,10 +204,16 @@ export default function VotingContent(): ReactNode {
   const [elVoteStart, setElVoteStart] = useState('');
   const [elVoteEnd, setElVoteEnd] = useState('');
 
-  // -- Record Minutes state --
+  // -- Record Minutes state (resolutions) --
   const [recordMinutesOpen, setRecordMinutesOpen] = useState(false);
   const [recordMinutesResId, setRecordMinutesResId] = useState('');
   const [recordMinutesText, setRecordMinutesText] = useState('');
+
+  // QA #111 — Record Minutes state (polls). Mirrors the resolution
+  // pattern above. Shown when the admin clicks "Minutes" in the
+  // poll detail dialog.
+  const [pollMinutesOpen, setPollMinutesOpen] = useState(false);
+  const [pollMinutesText, setPollMinutesText] = useState('');
 
   // -- Queries --
   const pollsQuery = usePolls(statusFilter || undefined);
@@ -222,6 +229,7 @@ export default function VotingContent(): ReactNode {
   const proposeResMutation = useProposeResolution();
   const withdrawResMutation = useWithdrawResolution();
   const recordMinutesMutation = useRecordMinutes();
+  const recordPollMinutesMutation = useRecordPollMinutes();
   const createElMutation = useCreateElection();
   const closeElMutation = useCloseElection();
 
@@ -321,6 +329,37 @@ export default function VotingContent(): ReactNode {
   function handleViewDetail(poll: Poll): void {
     setSelectedPollId(poll.id);
     setDetailOpen(true);
+  }
+
+  // QA #111 — open the poll-minutes dialog with the existing minutes
+  // text prefilled (so subsequent edits don't lose context).
+  function handleOpenPollMinutes(): void {
+    setPollMinutesText(pollDetail?.poll.minutes_text ?? '');
+    setPollMinutesOpen(true);
+  }
+
+  function handleSavePollMinutes(): void {
+    if (!pollMinutesText.trim()) {
+      addToast({ title: 'Minutes text is required', variant: 'destructive' });
+      return;
+    }
+    if (!selectedPollId) return;
+    recordPollMinutesMutation.mutate(
+      { pollId: selectedPollId, minutes_text: pollMinutesText.trim() },
+      {
+        onSuccess() {
+          addToast({ title: 'Minutes published', variant: 'success' });
+          setPollMinutesOpen(false);
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to save minutes',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -1018,13 +1057,74 @@ export default function VotingContent(): ReactNode {
                   <p>Status: <Badge variant={pollStatusVariant(pollDetail.poll.status)} className="ml-1">{pollDetail.poll.status}</Badge></p>
                   <p>Voting period: {formatDate(pollDetail.poll.voting_start)} - {formatDate(pollDetail.poll.voting_end)}</p>
                 </div>
+
+                {/* QA #111 — Minutes of Meeting block. When the
+                    committee has published minutes, render them
+                    here for read-only display; otherwise just show
+                    the editor entry-point. */}
+                {pollDetail.poll.minutes_text ? (
+                  <div className="rounded border bg-muted/40 p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Minutes of Meeting
+                      {pollDetail.poll.minutes_published_at
+                        ? ` · published ${formatDate(pollDetail.poll.minutes_published_at)}`
+                        : ''}
+                    </p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm">
+                      {pollDetail.poll.minutes_text}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    No minutes published yet for this poll.
+                  </p>
+                )}
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-4">Poll not found</p>
             )}
           </div>
           <DialogFooter>
+            {pollDetail && (
+              <Button variant="outline" onClick={handleOpenPollMinutes}>
+                {pollDetail.poll.minutes_text ? 'Edit Minutes' : 'Add Minutes'}
+              </Button>
+            )}
             <DialogClose asChild><Button variant="outline">Close</Button></DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* QA #111 — Poll minutes editor dialog. Mirrors the
+          resolution-minutes dialog below; the committee enters
+          free-form text and the backend stamps published_at on the
+          first save. */}
+      <Dialog open={pollMinutesOpen} onOpenChange={setPollMinutesOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Poll Minutes of Meeting</DialogTitle>
+            <DialogDescription>
+              Visible to all eligible voters once published.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Textarea
+              value={pollMinutesText}
+              onChange={(e) => setPollMinutesText(e.target.value)}
+              placeholder="Discussion summary, decisions, action items..."
+              rows={10}
+            />
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              onClick={handleSavePollMinutes}
+              disabled={recordPollMinutesMutation.isPending}
+            >
+              {recordPollMinutesMutation.isPending ? 'Saving...' : 'Save Minutes'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -31,6 +31,10 @@ export interface Poll {
   created_at: string;
   closed_at: string | null;
   creator_name?: string;
+  // QA #111 — Minutes of Meeting (migration 066). Both NULL until
+  // a committee_member publishes minutes.
+  minutes_text: string | null;
+  minutes_published_at: string | null;
 }
 
 export interface PollVote {
@@ -197,6 +201,26 @@ export function useClosePoll() {
   return useMutation({
     mutationFn: function closePoll(id: string) {
       return api.post<{ data: Poll }>(`/voting/polls/${id}/close`);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: votingKeys.all });
+    },
+  });
+}
+
+// QA #111 — publish or edit Minutes of Meeting on a poll. The
+// first call also stamps minutes_published_at server-side.
+export function useRecordPollMinutes() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function recordMinutes(input: {
+      pollId: string;
+      minutes_text: string;
+    }) {
+      return api.patch<{ data: Poll }>(`/voting/polls/${input.pollId}/minutes`, {
+        minutes_text: input.minutes_text,
+      });
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: votingKeys.all });
