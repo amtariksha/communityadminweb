@@ -27,6 +27,12 @@ interface TrialBalanceTotals {
   total_credit: number;
 }
 
+interface IncomeExpenditureTotals {
+  total_income: number;
+  total_expenditure: number;
+  surplus_or_deficit: number;
+}
+
 interface RecentInvoiceRow {
   id: string;
   invoice_number: string;
@@ -49,6 +55,10 @@ interface DashboardData {
   receipt_summary: ReceiptSummary;
   defaulter_summary: DefaulterSummary;
   trial_balance_totals: TrialBalanceTotals;
+  // QA #58 / #59 / #244 — Income & Expenses come from the
+  // income-expenditure report (ag.type IN ('income','expense')),
+  // not from raw trial-balance debits/credits.
+  income_expenditure: IncomeExpenditureTotals;
   recent_invoices: RecentInvoiceRow[];
   recent_receipts: RecentReceiptRow[];
 }
@@ -96,16 +106,73 @@ export function useDashboardData() {
       const { start_date, end_date } = getFYDates();
       const today = new Date().toISOString().split('T')[0];
 
-      // All calls have .catch() fallbacks so one failure doesn't break the dashboard
-      const [receiptSummary, defaulterSummary, trialBalance, recentInvoices, recentReceipts] =
-        await Promise.all([
-          // Receipt summary — requires start_date and end_date
-          api
-            .get<{ data: ReceiptSummary }>('/receipts/summary', {
-              params: { start_date, end_date },
-            })
-            .then((res) => res.data)
-            .catch(() => EMPTY_RECEIPT_SUMMARY),
+      // QA #58 / #59 / #244 — the dashboard KPIs used to read:
+      //   Total Income  = receipt_summary.total_collected (an object key
+      //                   that NEVER existed — /receipts/summary returns
+      //                   an ARRAY of {month, mode, count, total} rows).
+      //   Expenses      = SUM(total_debit) over EVERY trial-balance row,
+      //                   which inflates expenses with asset / drawings
+      //                   debits — completely meaningless economically.
+      // Fix: aggregate the receipts array properly, and use the
+      // income-expenditure report (already filtered to
+      // income / expense account types) for the Income vs. Expenses
+      // KPIs. Trial balance still ships its totals for the Balance
+      // Sheet card downstream.
+      const [
+        receiptSummary,
+        defaulterSummary,
+        trialBalance,
+        incomeExpenditure,
+        recentInvoices,
+        recentReceipts,
+      ] = await Promise.all([
+        // Receipt summary — endpoint returns Array<{ month, mode, count, total }>.
+        // We fold it into the per-mode aggregate the UI expects.
+        api
+          .get<{
+            data: Array<{
+              month: string;
+              mode: string;
+              count: number;
+              total: number;
+            }>;
+          }>('/receipts/summary', {
+            params: { start_date, end_date },
+          })
+          .then((res) => {
+            const rows = Array.isArray(res.data) ? res.data : [];
+            const summary: ReceiptSummary = { ...EMPTY_RECEIPT_SUMMARY };
+            for (const row of rows) {
+              const total = Number(row.total) || 0;
+              const count = Number(row.count) || 0;
+              summary.total_collected += total;
+              summary.count += count;
+              switch (String(row.mode).toLowerCase()) {
+                case 'cash':
+                  summary.cash += total;
+                  break;
+                case 'cheque':
+                  summary.cheque += total;
+                  break;
+                case 'bank_transfer':
+                  summary.bank_transfer += total;
+                  break;
+                case 'upi':
+                  summary.upi += total;
+                  break;
+                case 'online':
+                case 'razorpay':
+                  summary.online += total;
+                  break;
+                default:
+                  // Unknown mode — still rolled into total_collected
+                  // so the headline number stays accurate.
+                  break;
+              }
+            }
+            return summary;
+          })
+          .catch(() => EMPTY_RECEIPT_SUMMARY),
 
           // Defaulters — use the list endpoint, not /summary
           api
@@ -123,7 +190,10 @@ export function useDashboardData() {
             }))
             .catch(() => ({ total_defaulters: 0, total_overdue_amount: 0 })),
 
-          // Trial balance
+          // Trial balance — kept as-is for the Balance Sheet card.
+          // NOT used for Income / Expenses anymore; that comes from
+          // /ledger/reports/income-expenditure below which is
+          // pre-filtered to the right account types.
           api
             .get<{ data: Array<Record<string, unknown>> }>(
               '/ledger/reports/trial-balance',
@@ -146,6 +216,30 @@ export function useDashboardData() {
             })
             .catch(() => ({ total_debit: 0, total_credit: 0 })),
 
+          // Income & Expenditure — already aggregates
+          // journal_lines by ag.type IN ('income', 'expense'), which
+          // is exactly what the headline KPIs need.
+          api
+            .get<{
+              data: {
+                total_income?: number;
+                total_expenditure?: number;
+                surplus_or_deficit?: number;
+              };
+            }>('/ledger/reports/income-expenditure', {
+              params: { start_date, end_date },
+            })
+            .then((res) => ({
+              total_income: Number(res.data?.total_income ?? 0),
+              total_expenditure: Number(res.data?.total_expenditure ?? 0),
+              surplus_or_deficit: Number(res.data?.surplus_or_deficit ?? 0),
+            }))
+            .catch(() => ({
+              total_income: 0,
+              total_expenditure: 0,
+              surplus_or_deficit: 0,
+            })),
+
           // Recent invoices
           api
             .get<{ data: RecentInvoiceRow[] }>('/invoices', {
@@ -167,6 +261,7 @@ export function useDashboardData() {
         receipt_summary: receiptSummary,
         defaulter_summary: defaulterSummary,
         trial_balance_totals: trialBalance,
+        income_expenditure: incomeExpenditure,
         recent_invoices: recentInvoices,
         recent_receipts: recentReceipts,
       };

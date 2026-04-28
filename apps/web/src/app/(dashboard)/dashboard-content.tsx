@@ -107,12 +107,26 @@ export default function DashboardContent(): ReactNode {
   const { startDate, endDate } = getMonthRange();
   const { data: incomeExpenditure } = useIncomeExpenditure(startDate, endDate);
 
-  const totalIncome = dashboard?.receipt_summary?.total_collected ?? 0;
-  const totalExpenses = dashboard?.trial_balance_totals?.total_debit ?? 0;
+  // QA #58 / #59 / #244 — Income / Expenses / Collection now derive
+  // from accounting-layer truth instead of:
+  //   - receipt_summary.total_collected (a key that never existed
+  //     on the array response from /receipts/summary)
+  //   - SUM(trial_balance.total_debit) over EVERY account (which
+  //     mixes asset/expense/drawings — economically meaningless)
+  // Now: Income & Expenses come from the income-expenditure report,
+  // which already filters to ag.type IN ('income', 'expense').
+  // Collection Rate uses receipts collected vs (collected + outstanding).
+  const totalIncome = dashboard?.income_expenditure?.total_income ?? 0;
+  const totalExpenses = dashboard?.income_expenditure?.total_expenditure ?? 0;
   const outstandingDues = dashboard?.defaulter_summary?.total_overdue_amount ?? 0;
+  const totalCollected = dashboard?.receipt_summary?.total_collected ?? 0;
 
-  const invoicedTotal = totalIncome + outstandingDues;
-  const collectionRate = invoicedTotal > 0 ? (totalIncome / invoicedTotal) * 100 : 0;
+  // Collection rate compares actual receipts received vs. what
+  // SHOULD have been collected (receipts + overdue). totalIncome
+  // is a P&L-side number; it isn't the right denominator for
+  // collection-rate UX, which is cash-basis.
+  const billedTotal = totalCollected + outstandingDues;
+  const collectionRate = billedTotal > 0 ? (totalCollected / billedTotal) * 100 : 0;
 
   const incomeArr = incomeExpenditure?.income ?? [];
   const expenditureArr = incomeExpenditure?.expenditure ?? [];
@@ -191,25 +205,36 @@ export default function DashboardContent(): ReactNode {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>
-                <p className="text-xs text-muted-foreground">From trial balance debits</p>
+                <p className="text-xs text-muted-foreground">Posted to expense accounts this FY</p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-1">
-                  Outstanding Dues
-                  <HelpTooltip text={TOOLTIP.dashboard.outstanding} side="bottom" />
-                </CardTitle>
-                <AlertCircle className="h-4 w-4 text-warning" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(outstandingDues)}</div>
-                <p className="text-xs text-muted-foreground">
-                  {dashboard?.defaulter_summary.total_defaulters ?? 0} defaulters
-                </p>
-              </CardContent>
-            </Card>
+            {/* QA #95 / #246 — Outstanding Dues card now drills into
+                the Invoices page filtered to defaulters. The Defaulters
+                count under the amount is the only natural drilldown the
+                dashboard offered (everything else is read-only); without
+                a click target, testers reported the card felt broken. */}
+            <Link
+              href="/invoices?filter=defaulters"
+              className="rounded-lg transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`View ${dashboard?.defaulter_summary.total_defaulters ?? 0} defaulters with ${formatCurrency(outstandingDues)} outstanding`}
+            >
+              <Card className="cursor-pointer">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-1">
+                    Outstanding Dues
+                    <HelpTooltip text={TOOLTIP.dashboard.outstanding} side="bottom" />
+                  </CardTitle>
+                  <AlertCircle className="h-4 w-4 text-warning" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatCurrency(outstandingDues)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {dashboard?.defaulter_summary.total_defaulters ?? 0} defaulters →
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
