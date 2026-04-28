@@ -62,7 +62,14 @@ function parseCsv(text: string): { rows: ParsedRow[]; errors: string[] } {
     return { rows: [], errors: ['CSV must have a header and at least one row'] };
   }
 
-  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+  // QA #228 — Excel exports CSVs with a leading UTF-8 BOM (\uFEFF). The
+  // BOM rides on the first cell of the first row, so headers[0] became
+  // "\ufeffdate" and the "date" lookup failed → "Missing required
+  // columns" rejection on otherwise-valid SBI / HDFC / Axis CSVs.
+  // Strip BOM once at the top before splitting so every header
+  // normalizes correctly.
+  const firstLine = lines[0].replace(/^\uFEFF/, '');
+  const headers = firstLine.split(',').map((h) => h.trim().toLowerCase());
   const indexOf = (...names: string[]): number => {
     for (const name of names) {
       const idx = headers.indexOf(name.toLowerCase());

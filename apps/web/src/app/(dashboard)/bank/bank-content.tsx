@@ -75,7 +75,11 @@ interface BankAccountRow {
   account_type: string;
   branch: string;
   opening_balance: number;
-  balance?: number;
+  // QA #101 / #248 — backend returns `current_balance` (computed from the
+  // linked ledger account's opening_balance + journal entries). The list
+  // page used to read `acct.balance`, which never existed → every card
+  // rendered ₹0 even when the user had set an opening balance.
+  current_balance?: number;
   is_primary: boolean;
   is_active: boolean;
 }
@@ -250,12 +254,15 @@ export default function BankContent(): ReactNode {
   const [fdStartDate, setFdStartDate] = useState('');
   const [fdMaturityDate, setFdMaturityDate] = useState('');
   const [fdMaturityAmount, setFdMaturityAmount] = useState('');
-  const [fdLedgerAccountId, setFdLedgerAccountId] = useState('');
+  // QA #102 — backend createFDSchema requires `fd_account_id` (the FD
+  // ledger account that the principal gets booked under). Was previously
+  // sent as `ledger_account_id` and was optional, so every FD-create POST
+  // failed Zod validation with "fd_account_id is required".
+  const [fdAccountId, setFdAccountId] = useState('');
   const [renewDialogOpen, setRenewDialogOpen] = useState(false);
   const [selectedFDId, setSelectedFDId] = useState('');
   const [renewRate, setRenewRate] = useState('');
   const [renewMaturityDate, setRenewMaturityDate] = useState('');
-  const [renewMaturityAmount, setRenewMaturityAmount] = useState('');
 
   // Issue Cheque state
   const [issueChequeOpen, setIssueChequeOpen] = useState(false);
@@ -416,7 +423,7 @@ export default function BankContent(): ReactNode {
     setFdStartDate('');
     setFdMaturityDate('');
     setFdMaturityAmount('');
-    setFdLedgerAccountId('');
+    setFdAccountId('');
   }
 
   function handleCreateFD(e: FormEvent): void {
@@ -430,7 +437,7 @@ export default function BankContent(): ReactNode {
         start_date: fdStartDate,
         maturity_date: fdMaturityDate,
         maturity_amount: Number(fdMaturityAmount),
-        ledger_account_id: fdLedgerAccountId || undefined,
+        fd_account_id: fdAccountId,
       },
       {
         onSuccess() {
@@ -461,10 +468,13 @@ export default function BankContent(): ReactNode {
     renewFD.mutate(
       {
         id: selectedFDId,
+        // QA #103 — backend renewFDSchema only accepts new_rate and
+        // new_maturity_date. Was previously sending interest_rate /
+        // maturity_date / maturity_amount; Zod stripped them and the
+        // renewal silently no-op'd, leaving the FD unchanged.
         data: {
-          interest_rate: renewRate ? Number(renewRate) : undefined,
-          maturity_date: renewMaturityDate || undefined,
-          maturity_amount: renewMaturityAmount ? Number(renewMaturityAmount) : undefined,
+          new_rate: renewRate ? Number(renewRate) : undefined,
+          new_maturity_date: renewMaturityDate || undefined,
         },
       },
       {
@@ -473,7 +483,6 @@ export default function BankContent(): ReactNode {
           setSelectedFDId('');
           setRenewRate('');
           setRenewMaturityDate('');
-          setRenewMaturityAmount('');
           addToast({ title: 'Fixed deposit renewed', variant: 'success' });
         },
         onError(error) {
@@ -551,7 +560,7 @@ export default function BankContent(): ReactNode {
               { key: 'ifsc_code', label: 'IFSC' },
               { key: 'account_type', label: 'Type' },
               { key: 'branch', label: 'Branch' },
-              { key: 'balance', label: 'Balance' },
+              { key: 'current_balance', label: 'Balance' },
             ]}
           />
         }
@@ -694,7 +703,7 @@ export default function BankContent(): ReactNode {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold">{formatCurrency(acct.balance ?? 0)}</p>
+                    <p className="text-2xl font-bold">{formatCurrency(acct.current_balance ?? 0)}</p>
                     <p className="mt-1 font-mono text-xs text-muted-foreground">
                       A/C: {acct.account_number}
                     </p>
@@ -1212,16 +1221,21 @@ export default function BankContent(): ReactNode {
                         <Label htmlFor="fd-ledger-account">FD Ledger Account</Label>
                         <Select
                           id="fd-ledger-account"
-                          value={fdLedgerAccountId}
-                          onChange={(e) => setFdLedgerAccountId(e.target.value)}
+                          required
+                          value={fdAccountId}
+                          onChange={(e) => setFdAccountId(e.target.value)}
                         >
-                          <option value="">Select ledger account (optional)</option>
+                          <option value="">Select FD ledger account</option>
                           {ledgerAccounts.map((account) => (
                             <option key={account.id} value={account.id}>
                               {account.code} - {account.name}
                             </option>
                           ))}
                         </Select>
+                        <p className="text-xs text-muted-foreground">
+                          The asset account where the FD principal will be
+                          booked (e.g. Fixed Deposit — SBI).
+                        </p>
                       </div>
                     </div>
                     <DialogFooter>
@@ -1313,9 +1327,13 @@ export default function BankContent(): ReactNode {
                           )}
                         </TableCell>
                         <TableCell>
-                          {fd.status === 'active' && (
+                          {/* QA #103 — Renew gates on maturity within 30
+                              days (active) or past maturity (matured), not
+                              every active FD. Mature still requires status
+                              = active and overdue. */}
+                          {(fd.status === 'active' || fd.status === 'matured') && (
                             <div className="flex gap-1">
-                              {daysLeft <= 0 && (
+                              {fd.status === 'active' && daysLeft <= 0 && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -1327,18 +1345,20 @@ export default function BankContent(): ReactNode {
                                   Mature
                                 </Button>
                               )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 p-1 text-xs"
-                                onClick={() => {
-                                  setSelectedFDId(fd.id);
-                                  setRenewDialogOpen(true);
-                                }}
-                              >
-                                <RefreshCw className="mr-1 h-3 w-3" />
-                                Renew
-                              </Button>
+                              {daysLeft <= 30 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 p-1 text-xs"
+                                  onClick={() => {
+                                    setSelectedFDId(fd.id);
+                                    setRenewDialogOpen(true);
+                                  }}
+                                >
+                                  <RefreshCw className="mr-1 h-3 w-3" />
+                                  Renew
+                                </Button>
+                              )}
                             </div>
                           )}
                         </TableCell>
@@ -1528,18 +1548,10 @@ export default function BankContent(): ReactNode {
                   value={renewMaturityDate}
                   onChange={(e) => setRenewMaturityDate(e.target.value)}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="renew-maturity-amount">New Maturity Amount</Label>
-                <Input
-                  id="renew-maturity-amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={renewMaturityAmount}
-                  onChange={(e) => setRenewMaturityAmount(e.target.value)}
-                />
+                <p className="text-xs text-muted-foreground">
+                  Maturity amount is recomputed from principal × new rate ×
+                  tenure, so no manual entry is needed.
+                </p>
               </div>
             </div>
             <DialogFooter>

@@ -95,9 +95,10 @@ interface ReconcileTransactionInput {
 
 interface CreateFDInput {
   bank_account_id: string;
-  // Either naming works; backend resolves whichever is supplied.
-  fd_account_id?: string;
-  ledger_account_id?: string;
+  // QA #102 — `fd_account_id` is the only key the backend accepts (Zod
+  // strips the rest). Was previously typed as either `fd_account_id` OR
+  // `ledger_account_id`; the latter never worked.
+  fd_account_id: string;
   fd_number: string;
   principal_amount: number;
   interest_rate: number;
@@ -370,13 +371,12 @@ export function useRenewFD() {
   return useMutation({
     mutationFn: function renewFD(params: {
       id: string;
+      // QA #103 — backend renewFDSchema only accepts new_rate /
+      // new_maturity_date. Other keys get stripped by Zod and the
+      // renewal silently no-ops.
       data?: {
         new_rate?: number;
         new_maturity_date?: string;
-        // Admin-web uses `interest_rate` / `maturity_date` / `maturity_amount`.
-        interest_rate?: number;
-        maturity_date?: string;
-        maturity_amount?: number;
       };
     }) {
       return api.post<{ data: FixedDeposit }>(
