@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import {
   Plus,
   Clock,
@@ -168,6 +168,14 @@ export default function StaffContent(): ReactNode {
   const [empEmergencyContact, setEmpEmergencyContact] = useState('');
   const [empJoinedAt, setEmpJoinedAt] = useState('');
 
+  // QA #89 — join date can't be more than 30 days in the future. Same
+  // ceiling enforced server-side in employeeJoinDate Zod helper.
+  const maxJoinDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().split('T')[0];
+  }, []);
+
   // Shift dialog state
   const [addShiftOpen, setAddShiftOpen] = useState(false);
   const [shiftName, setShiftName] = useState('');
@@ -223,6 +231,20 @@ export default function StaffContent(): ReactNode {
   };
   const attendanceQuery = useStaffAttendance(attendanceFilters);
   const attendanceRecords: Attendance[] = attendanceQuery.data?.data ?? [];
+
+  // QA #257 — Clock-In dropdown should not list staff that have
+  // already clocked in (or out) today. attendanceRecords above is
+  // filtered by `attendanceDate` which the admin can scroll back —
+  // so for the dialog we run a parallel query bound to today only.
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todaysAttendanceQuery = useStaffAttendance({ date: todayStr, limit: 500 });
+  const staffIdsLoggedToday = useMemo(() => {
+    const set = new Set<string>();
+    for (const row of todaysAttendanceQuery.data?.data ?? []) {
+      if (row.staff_id) set.add(row.staff_id);
+    }
+    return set;
+  }, [todaysAttendanceQuery.data]);
 
   const leaveFilters: LeaveFilters = {
     status: leaveStatusFilter || undefined,
@@ -325,6 +347,17 @@ export default function StaffContent(): ReactNode {
           description: phone.ok
             ? 'Phone is required.'
             : phone.error,
+          variant: 'destructive',
+        });
+        return;
+      }
+      // QA #89 — block obvious typos before they hit the API. The
+      // server still enforces this in employeeJoinDate, but failing
+      // fast keeps the toast useful.
+      if (empJoinedAt && empJoinedAt > maxJoinDate) {
+        addToast({
+          title: 'Invalid join date',
+          description: 'Join date cannot be more than 30 days in the future.',
           variant: 'destructive',
         });
         return;
@@ -720,6 +753,12 @@ export default function StaffContent(): ReactNode {
                                 id="emp-joined"
                                 type="date"
                                 value={empJoinedAt}
+                                // QA #89 — server rejects join dates more
+                                // than 30 days in the future. Clamp the
+                                // date picker so the typo can't be picked
+                                // and the form-level check below catches
+                                // anything pasted by hand.
+                                max={maxJoinDate}
                                 onChange={(e) => setEmpJoinedAt(e.target.value)}
                               />
                             </div>
@@ -1102,9 +1141,16 @@ export default function StaffContent(): ReactNode {
                             onChange={(e) => setClockInStaffId(e.target.value)}
                           >
                             <option value="">Select staff...</option>
-                            {employees.filter((e) => e.is_active).map((emp) => (
-                              <option key={emp.id} value={emp.id}>{emp.name}</option>
-                            ))}
+                            {employees
+                              .filter((e) => e.is_active)
+                              // QA #257 — exclude anyone with an
+                              // attendance row already created today,
+                              // open or completed. Matches the spec:
+                              // "filter by latest_attendance row".
+                              .filter((e) => !staffIdsLoggedToday.has(e.id))
+                              .map((emp) => (
+                                <option key={emp.id} value={emp.id}>{emp.name}</option>
+                              ))}
                           </Select>
                         </div>
                         <div className="space-y-2">
