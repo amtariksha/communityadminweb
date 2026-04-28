@@ -32,6 +32,7 @@ import {
   Store,
   Wrench,
   Video,
+  Wallet,
   ScrollText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -94,6 +95,8 @@ const navGroups: NavGroup[] = [
       { label: 'Assets', href: '/assets', icon: <Wrench className="h-4 w-4" />, feature: 'assets' },
       { label: 'CCTV', href: '/cctv', icon: <Video className="h-4 w-4" />, feature: 'cctv' },
       { label: 'Staff', href: '/staff', icon: <Users className="h-4 w-4" />, feature: 'staff' },
+      // QA #204 — placeholder route until the salaries feature lands.
+      { label: 'Salaries', href: '/staff/salaries', icon: <Wallet className="h-4 w-4" />, feature: 'staff' },
       { label: 'Documents', href: '/documents', icon: <FolderOpen className="h-4 w-4" />, feature: 'documents' },
     ],
   },
