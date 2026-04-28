@@ -35,6 +35,16 @@ export interface ApiErrorEnvelope {
   errors?: Record<string, string[]>;
   code?: string;
   retry_after_seconds?: number;
+  /**
+   * Free-form, code-specific extra context. Used by callers that need
+   * to render a richer warning than `message + errors` can carry — for
+   * example, the soft-delete `last_admin_orphaning` response carries
+   * the list of tenants that would be left adminless. Clients branch
+   * on `code` first, then read whatever shape `details` has for that
+   * code. Keep the inner shape simple (no nested classes / Dates) so
+   * Dio + JSON.parse round-trip cleanly.
+   */
+  details?: Record<string, unknown>;
   request_id: string;
   timestamp: string;
 }

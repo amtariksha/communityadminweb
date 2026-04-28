@@ -1,0 +1,47 @@
+name: Type-check
+
+# Gate every PR + every push to main on a clean `tsc --noEmit`. Without
+# this the only catch was a developer running the command by hand,
+# which is how 159 errors quietly piled up before the cleanup sweep.
+# We also keep `typescript.ignoreBuildErrors: false` in next.config.js
+# so the Vercel preview build is a second gate.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    name: tsc --noEmit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Build @communityos/shared first — `apps/web` consumes it via
+      # `workspace:*` and the package re-exports through `./dist/index.js`.
+      # Without the build step the web type-check trips on missing module
+      # paths, masking the real errors we're trying to surface.
+      - name: Build shared package
+        run: pnpm --filter @communityos/shared build
+
+      - name: Type-check shared
+        run: pnpm --filter @communityos/shared type-check
+
+      - name: Type-check web
+        run: pnpm --filter @communityos/web type-check
