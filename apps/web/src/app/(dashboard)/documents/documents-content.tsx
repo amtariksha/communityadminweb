@@ -25,6 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UploadProgress } from '@/components/ui/upload-progress';
 import {
   Table,
   TableBody,
@@ -144,6 +145,10 @@ export default function DocumentsContent(): ReactNode {
   const [uploadCategoryId, setUploadCategoryId] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  // QA #261 — track upload progress so users see something happening
+  // during multi-MB document uploads.
+  const [uploadPercent, setUploadPercent] = useState<number | null>(null);
+  const [uploadFailed, setUploadFailed] = useState(false);
 
   // Category dialog
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -181,6 +186,8 @@ export default function DocumentsContent(): ReactNode {
     setUploadCategoryId('');
     setUploadDescription('');
     setUploadFile(null);
+    setUploadPercent(null);
+    setUploadFailed(false);
   }
 
   async function handleUploadDocument(e: FormEvent): Promise<void> {
@@ -207,10 +214,16 @@ export default function DocumentsContent(): ReactNode {
     //    directly to S3. S3 enforces the content-length-range from the
     //    policy condition — oversized files get a 400 from S3 itself.
     let fileUrl: string;
+    setUploadPercent(0);
+    setUploadFailed(false);
     try {
-      const res = await uploadFileToS3.mutateAsync({ file: uploadFile });
+      const res = await uploadFileToS3.mutateAsync({
+        file: uploadFile,
+        onProgress: setUploadPercent,
+      });
       fileUrl = res.fileUrl;
     } catch (err) {
+      setUploadFailed(true);
       addToast({
         title: 'Upload failed',
         description: (err as Error).message ?? 'Could not upload file',
@@ -395,6 +408,17 @@ export default function DocumentsContent(): ReactNode {
                       <p className="text-xs text-muted-foreground">
                         Accepted: PDF, JPG, PNG, CSV, XLS/XLSX. Max 25 MB.
                       </p>
+                      <UploadProgress
+                        percent={uploadPercent}
+                        fileName={uploadFile?.name}
+                        state={
+                          uploadFailed
+                            ? 'error'
+                            : uploadPercent === 100
+                              ? 'done'
+                              : 'uploading'
+                        }
+                      />
                     </div>
                   </div>
                   <DialogFooter>

@@ -196,14 +196,72 @@ export function useUploadDocument() {
  * A pre-signed PUT with a single `Content-Type` header is a simple
  * request and goes through without a preflight in current browsers.
  *
+ * Why XHR (not fetch): QA #261 — `fetch()` doesn't surface upload
+ * progress events. XMLHttpRequest exposes `upload.onprogress` so the
+ * caller can render a progress bar. The onProgress callback is fired
+ * 0..100 (clamped); callers store the value in component state and
+ * pass it to <UploadProgress />.
+ *
  * Returns the public fileUrl — the caller persists this on its own
  * domain record.
  */
+export interface UploadFileInput {
+  file: File;
+  onProgress?: (percent: number) => void;
+}
+
+function putFileWithProgress(
+  uploadUrl: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl, true);
+    xhr.setRequestHeader(
+      'Content-Type',
+      file.type || 'application/octet-stream',
+    );
+
+    xhr.upload.onprogress = (e) => {
+      if (!onProgress) return;
+      if (e.lengthComputable && e.total > 0) {
+        const pct = Math.min(100, Math.round((e.loaded / e.total) * 100));
+        onProgress(pct);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (onProgress) onProgress(100);
+        resolve();
+        return;
+      }
+      const body = (xhr.responseText ?? '').slice(0, 300);
+      reject(
+        new Error(
+          `Upload failed (${xhr.status}): ${body || xhr.statusText || 'unknown error'}`,
+        ),
+      );
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('Upload failed: network error'));
+    };
+
+    xhr.onabort = () => {
+      reject(new Error('Upload aborted'));
+    };
+
+    xhr.send(file);
+  });
+}
+
 export function useUploadFileToS3() {
   return useMutation({
-    mutationFn: async function uploadFile(input: {
-      file: File;
-    }): Promise<{ fileUrl: string; key: string }> {
+    mutationFn: async function uploadFile(
+      input: UploadFileInput,
+    ): Promise<{ fileUrl: string; key: string }> {
       // Step 1 — request the permission slip.
       const presign = await api.post<{
         data: { uploadUrl: string; fileUrl: string; key: string };
@@ -213,22 +271,11 @@ export function useUploadFileToS3() {
       });
       const { uploadUrl, fileUrl, key } = presign.data;
 
-      // Step 2 — ship the bytes straight to the object store.
-      // Do NOT attach Authorization here; the signature is in the URL
-      // query string. Content-Type must match what was signed.
-      const res = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': input.file.type || 'application/octet-stream',
-        },
-        body: input.file,
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(
-          `Upload failed (${res.status}): ${text.slice(0, 300) || 'unknown error'}`,
-        );
-      }
+      // Step 2 — ship the bytes straight to the object store via XHR
+      // so the caller can render an upload-progress UI. Do NOT attach
+      // Authorization here; the signature is in the URL query string.
+      // Content-Type must match what was signed.
+      await putFileWithProgress(uploadUrl, input.file, input.onProgress);
 
       return { fileUrl, key };
     },

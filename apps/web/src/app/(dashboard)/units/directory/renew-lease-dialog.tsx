@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
+import { UploadProgress } from '@/components/ui/upload-progress';
 import { useRenewAgreement, useUploadFileToS3 } from '@/hooks';
 
 // Accept a narrow subset of document types — the presigned-URL
@@ -51,6 +52,9 @@ export function RenewLeaseDialog({
   const [newStart, setNewStart] = useState<string>('');
   const [newEnd, setNewEnd] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
+  // QA #261 — upload progress UI for the agreement PDF.
+  const [uploadPercent, setUploadPercent] = useState<number | null>(null);
+  const [uploadFailed, setUploadFailed] = useState(false);
   const uploadFile = useUploadFileToS3();
   const renew = useRenewAgreement();
   const { addToast } = useToast();
@@ -96,7 +100,12 @@ export function RenewLeaseDialog({
       let fileUrl: string | undefined;
       let fileKey: string | undefined;
       if (file) {
-        const uploaded = await uploadFile.mutateAsync({ file });
+        setUploadPercent(0);
+        setUploadFailed(false);
+        const uploaded = await uploadFile.mutateAsync({
+          file,
+          onProgress: setUploadPercent,
+        });
         fileUrl = uploaded.fileUrl;
         fileKey = uploaded.key;
       }
@@ -121,8 +130,11 @@ export function RenewLeaseDialog({
       setFile(null);
       setNewStart('');
       setNewEnd('');
+      setUploadPercent(null);
+      setUploadFailed(false);
       onClose();
     } catch (err) {
+      setUploadFailed(true);
       addToast({
         title: 'Renewal failed',
         description: (err as Error).message,
@@ -184,6 +196,17 @@ export function RenewLeaseDialog({
                 Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
               </p>
             )}
+            <UploadProgress
+              percent={uploadPercent}
+              fileName={file?.name}
+              state={
+                uploadFailed
+                  ? 'error'
+                  : uploadPercent === 100
+                    ? 'done'
+                    : 'uploading'
+              }
+            />
           </div>
         </div>
 
