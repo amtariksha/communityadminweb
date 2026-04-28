@@ -45,6 +45,7 @@ import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import {
   usePayments,
+  useReconcilePending,
   usePayment,
   usePaymentStats,
   useInitiateRefund,
@@ -139,6 +140,8 @@ export default function PaymentsContent(): ReactNode {
   const statsQuery = usePaymentStats(statsRange.startDate, statsRange.endDate);
   const paymentDetailQuery = usePayment(selectedPaymentId);
   const refundMutation = useInitiateRefund();
+  // QA #27 — manual reconcile button
+  const reconcileMutation = useReconcilePending();
 
   const payments = paymentsQuery.data?.data ?? [];
   const total = paymentsQuery.data?.total ?? 0;
@@ -181,6 +184,29 @@ export default function PaymentsContent(): ReactNode {
     setCurrentPage(1);
   }
 
+  function handleReconcile(): void {
+    reconcileMutation.mutate(undefined, {
+      onSuccess(response) {
+        const summary = response.data;
+        addToast({
+          title: 'Reconciliation complete',
+          description:
+            summary.scanned === 0
+              ? 'No pending payments needed reconciling.'
+              : `Scanned ${summary.scanned} · paid ${summary.paid} · failed ${summary.failed} · still pending ${summary.still_pending}`,
+          variant: 'success',
+        });
+      },
+      onError(error) {
+        addToast({
+          title: 'Reconcile failed',
+          description: friendlyError(error),
+          variant: 'destructive',
+        });
+      },
+    });
+  }
+
   const detail = paymentDetailQuery.data;
 
   return (
@@ -191,18 +217,35 @@ export default function PaymentsContent(): ReactNode {
         description="Online payment collection via Razorpay — orders, settlements, refunds, and autopay mandates"
         actions={
           activeTab === 'payments' ? (
-            <ExportButton
-              data={payments as unknown as Record<string, unknown>[]}
-              filename={`payments-${new Date().toISOString().split('T')[0]}`}
-              columns={[
-                { key: 'order_id', label: 'Order ID' },
-                { key: 'unit_number', label: 'Unit' },
-                { key: 'amount', label: 'Amount' },
-                { key: 'status', label: 'Status' },
-                { key: 'method', label: 'Method' },
-                { key: 'created_at', label: 'Date' },
-              ]}
-            />
+            <div className="flex items-center gap-2">
+              {/* QA #27 — manual reconcile. The 5-min cron does this
+                  automatically; this button lets an admin force the
+                  pull when a user is on the phone reporting a stuck
+                  payment. */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReconcile}
+                disabled={reconcileMutation.isPending}
+              >
+                <RefreshCw
+                  className={`mr-2 h-4 w-4 ${reconcileMutation.isPending ? 'animate-spin' : ''}`}
+                />
+                {reconcileMutation.isPending ? 'Reconciling…' : 'Reconcile pending payments'}
+              </Button>
+              <ExportButton
+                data={payments as unknown as Record<string, unknown>[]}
+                filename={`payments-${new Date().toISOString().split('T')[0]}`}
+                columns={[
+                  { key: 'order_id', label: 'Order ID' },
+                  { key: 'unit_number', label: 'Unit' },
+                  { key: 'amount', label: 'Amount' },
+                  { key: 'status', label: 'Status' },
+                  { key: 'method', label: 'Method' },
+                  { key: 'created_at', label: 'Date' },
+                ]}
+              />
+            </div>
           ) : null
         }
       />

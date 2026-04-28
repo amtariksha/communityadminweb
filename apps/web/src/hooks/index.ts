@@ -168,8 +168,9 @@ export {
   useCreatePaymentOrder,
   useVerifyPayment,
   useInitiateRefund,
+  useReconcilePending,
 } from './use-payments';
-export type { Payment, PaymentStats, PaymentFilters } from './use-payments';
+export type { Payment, PaymentStats, PaymentFilters, PaymentReconcileSummary } from './use-payments';
 
 // Tenants
 export {

@@ -193,3 +193,26 @@ export function useInitiateRefund() {
     },
   });
 }
+
+// QA #27 — manual reconcile button hook. POSTs to /payments/reconcile
+// and returns a count summary so the UI can render a toast.
+export interface PaymentReconcileSummary {
+  scanned: number;
+  paid: number;
+  failed: number;
+  still_pending: number;
+}
+
+export function useReconcilePending() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function reconcilePending() {
+      return api.post<{ data: PaymentReconcileSummary }>('/payments/reconcile');
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: paymentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
+    },
+  });
+}
