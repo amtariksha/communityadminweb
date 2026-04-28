@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, type FormEvent, type ChangeEvent, type ReactNode } from 'react';
+import { useState, useMemo, useRef, useEffect, type FormEvent, type ChangeEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ChevronRight, ChevronDown, Plus, BookOpen, Upload, Download, AlertCircle, CheckCircle2, Pencil, FileUp, FileDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,6 +50,10 @@ import {
   useTallyCsvImport,
   useTallyCommitImport,
 } from '@/hooks';
+import {
+  useTallyEnqueueCommit,
+  useTallyCommitJob,
+} from '@/hooks/use-tally-import';
 import type {
   TallyImportParseResult,
   TallyCommitResult,
@@ -257,6 +261,12 @@ export default function AccountsContent(): ReactNode {
   const tallyXmlUpload = useTallyXmlUpload();
   const tallyCsvImport = useTallyCsvImport();
   const tallyCommitImport = useTallyCommitImport();
+  // Phase 2 — async commit + polling. Both are wired even though
+  // the dialog only uses the async path now; the legacy synchronous
+  // hook stays for any future caller that wants inline results.
+  // (The polling hook is declared below the tallyJobId state so its
+  // arg can reference it.)
+  const tallyEnqueueCommit = useTallyEnqueueCommit();
 
   const isLoading = groupsLoading || accountsLoading;
   const accounts = accountsResponse?.data ?? [];
@@ -313,7 +323,16 @@ export default function AccountsContent(): ReactNode {
   // to render fields that don't exist until the commit fires.
   const [tallyCommitResult, setTallyCommitResult] =
     useState<TallyCommitResult | null>(null);
-  const [tallyStep, setTallyStep] = useState<'input' | 'preview' | 'done'>('input');
+  const [tallyStep, setTallyStep] = useState<
+    'input' | 'preview' | 'running' | 'done'
+  >('input');
+  // Phase 2 — async commit. When the operator clicks Import, we
+  // enqueue a BullMQ job server-side and stash the job_id here.
+  // The polling hook (useTallyCommitJob) takes over from there:
+  // every 3s it fetches status + progress, and when status settles
+  // (done | failed) we transition to the done step with the result.
+  const [tallyJobId, setTallyJobId] = useState('');
+  const tallyJobQuery = useTallyCommitJob(tallyJobId, tallyJobId !== '');
 
   // Per-type commit selection (Phase 1 of the import revamp). Each
   // entity type has two flags — include_new and include_changed —
@@ -391,6 +410,7 @@ export default function AccountsContent(): ReactNode {
     setTallyCommitVoucherTypes(true);
     setTallyCommitVoucherTypesChanged(true);
     setTallyForceCommit(false);
+    setTallyJobId('');
   }
 
   /**
@@ -576,7 +596,12 @@ export default function AccountsContent(): ReactNode {
       });
       return;
     }
-    tallyCommitImport.mutate(
+    // Phase 2 — async commit. Enqueue the job, switch to the
+    // 'running' step, and let the polling hook drive the rest.
+    // Even small commits go through this path now: it strictly
+    // beats the sync flow (no nginx 120s timeout, no JWT-mid-
+    // import expiry, polled progress visibility).
+    tallyEnqueueCommit.mutate(
       {
         import_id: tallyParseResult.import_id,
         commit,
@@ -584,20 +609,15 @@ export default function AccountsContent(): ReactNode {
       },
       {
         onSuccess(data) {
-          setTallyCommitResult(data.data);
-          setTallyStep('done');
-          addToast({
-            title: `Imported ${data.data.records_imported} records`,
-            description:
-              (data.data.errors?.length ?? 0) > 0
-                ? `${data.data.errors!.length} rows had errors — see details.`
-                : undefined,
-            variant: 'success',
-          });
+          // Hook unwraps `{ data: ... }` for us; the response is
+          // `{ job_id, status }` directly.
+          setTallyJobId(data.job_id);
+          setTallyCommitResult(null);
+          setTallyStep('running');
         },
         onError(error) {
           addToast({
-            title: 'Failed to commit import',
+            title: 'Failed to enqueue import',
             description: friendlyError(error),
             variant: 'destructive',
           });
@@ -605,6 +625,34 @@ export default function AccountsContent(): ReactNode {
       },
     );
   }
+
+  // QA / Phase 2 — the polling hook (useTallyCommitJob) emits the
+  // job's terminal state automatically. When that lands, transition
+  // to the done step + populate the result for rendering.
+  useEffect(() => {
+    const job = tallyJobQuery.data;
+    if (!job) return;
+    if (job.status === 'done') {
+      setTallyCommitResult(job.result ?? null);
+      setTallyStep('done');
+      const imported = job.result?.records_imported ?? 0;
+      const errors = job.result?.errors?.length ?? 0;
+      addToast({
+        title: `Imported ${imported} records`,
+        description: errors > 0 ? `${errors} rows had errors — see details.` : undefined,
+        variant: 'success',
+      });
+    } else if (job.status === 'failed') {
+      setTallyStep('done');
+      setTallyCommitResult(null);
+      addToast({
+        title: 'Import failed',
+        description: job.error_message ?? 'Unknown error',
+        variant: 'destructive',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tallyJobQuery.data?.status]);
 
   function resetGroupForm(): void {
     setGroupName('');
@@ -1746,6 +1794,75 @@ export default function AccountsContent(): ReactNode {
               </div>
             )}
 
+            {/* Running step — Phase 2 async commit. The polling
+                hook (useTallyCommitJob) drives this — every 3s it
+                refetches /tally-import/jobs/:id and we render the
+                latest stage + progress. The hook stops polling
+                automatically when status flips to done/failed; the
+                useEffect above transitions to the done step. */}
+            {tallyStep === 'running' && (
+              <div className="space-y-4">
+                {(() => {
+                  const job = tallyJobQuery.data;
+                  const total = job?.total_records ?? tallyParseResult?.records_parsed ?? 0;
+                  const done = job?.processed ?? 0;
+                  const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+                  const stageLabel =
+                    job?.stage === 'committing'
+                      ? 'Writing to your books'
+                      : job?.stage === 'starting'
+                      ? 'Worker picked up the job'
+                      : job?.status === 'queued'
+                      ? 'Waiting in queue'
+                      : job?.status ?? 'starting';
+                  return (
+                    <>
+                      <div className="rounded-md border p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-3 w-3 animate-pulse rounded-full bg-primary" />
+                          <p className="text-sm font-medium">
+                            {stageLabel}
+                            {job?.status === 'queued' ? '…' : ''}
+                          </p>
+                        </div>
+                        {/* Progress bar — pure CSS, no extra
+                            dependency. Value comes from the
+                            tally_import_jobs.processed checkpoint. */}
+                        <div className="h-2 w-full overflow-hidden rounded bg-muted">
+                          <div
+                            className="h-full bg-primary transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>
+                            {done.toLocaleString()} / {total.toLocaleString()} records
+                          </span>
+                          <span>{pct}%</span>
+                        </div>
+                      </div>
+                      <div className="rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/20 p-3 flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                        <div className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
+                          <p className="font-medium">
+                            You can close this dialog
+                          </p>
+                          <p>
+                            The import keeps running in the background.
+                            Re-open Tally Import &amp; navigate to the
+                            history strip to see the result, or come
+                            back to this page in a couple of minutes —
+                            invoices / ledger / reports will refresh
+                            automatically when the job finishes.
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
             {/* Done step — per-type disposition breakdown + errors. */}
             {tallyStep === 'done' && tallyCommitResult && (
               <div className="space-y-4">
@@ -1869,17 +1986,24 @@ export default function AccountsContent(): ReactNode {
                     setTallyParseResult(null);
                     setTallyStep('input');
                   }}
-                  disabled={tallyCommitImport.isPending}
+                  disabled={tallyEnqueueCommit.isPending}
                 >
                   Back
                 </Button>
                 <Button
                   onClick={handleTallyCommit}
-                  disabled={tallyCommitImport.isPending}
+                  disabled={tallyEnqueueCommit.isPending}
                 >
-                  {tallyCommitImport.isPending ? 'Importing...' : 'Import'}
+                  {tallyEnqueueCommit.isPending ? 'Queuing…' : 'Import'}
                 </Button>
               </>
+            )}
+            {tallyStep === 'running' && (
+              // No Import button on this step — the operator's only
+              // action is to close the dialog (the job keeps running).
+              <span className="text-xs text-muted-foreground">
+                Job ID: <code className="font-mono">{tallyJobId.slice(0, 8)}</code>
+              </span>
             )}
             {tallyStep === 'done' && (
               <Button variant="outline" onClick={() => { resetTallyForm(); }}>

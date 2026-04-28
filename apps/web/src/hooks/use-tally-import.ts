@@ -255,6 +255,95 @@ export function useTallyCommitImport() {
   });
 }
 
+/**
+ * Phase 2 — async commit. Enqueues a BullMQ job server-side and
+ * returns the job_id immediately. The UI then polls
+ * useTallyCommitJob until status flips to 'done' or 'failed'.
+ *
+ * Use this for any commit that might exceed the nginx 120s proxy
+ * timeout (typically vouchers > ~1500). The synchronous
+ * useTallyCommitImport above stays for small / fast commits where
+ * the operator wants the result inline.
+ */
+export function useTallyEnqueueCommit() {
+  return useMutation({
+    mutationFn: function enqueueCommit(input: {
+      import_id: string;
+      commit?: TallyCommitSelection;
+      force?: boolean;
+    }) {
+      return api
+        .post<{ data: { job_id: string; status: 'queued' } }>(
+          '/tally-import/commit-async',
+          input,
+        )
+        .then((res) => res.data);
+    },
+  });
+}
+
+export interface TallyCommitJob {
+  id: string;
+  status: 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
+  stage: string | null;
+  processed: number;
+  total_records: number;
+  result: TallyCommitResult | null;
+  error_message: string | null;
+  queued_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+/**
+ * Poll a Tally commit job. Emits the status row at the configured
+ * interval until the job settles (status='done' | 'failed' |
+ * 'cancelled'); after that React Query stops the interval
+ * automatically.
+ *
+ * Call with `enabled: jobId !== ''` from the dialog so polling
+ * only happens while there's a job to watch.
+ */
+export function useTallyCommitJob(jobId: string, enabled = true) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: [...tallyImportKeys.all, 'jobs', jobId],
+    enabled: enabled && jobId !== '',
+    queryFn: async () => {
+      const res = await api.get<{ data: TallyCommitJob }>(
+        `/tally-import/jobs/${jobId}`,
+      );
+      const job = res.data;
+      // On settle, invalidate the downstream caches once so the
+      // accounts / ledger / invoices pages refetch their fresh
+      // state without the operator having to reload.
+      if (job.status === 'done' || job.status === 'failed') {
+        queryClient.invalidateQueries({ queryKey: tallyImportKeys.all });
+        queryClient.invalidateQueries({ queryKey: ['ledger'] });
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        queryClient.invalidateQueries({ queryKey: ['receipts'] });
+        queryClient.invalidateQueries({ queryKey: ['vendors'] });
+        queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      }
+      return job;
+    },
+    // Poll every 3s while running. React Query stops calling
+    // refetchInterval once it returns false, so we use the
+    // function form to gate it on the job's terminal state.
+    refetchInterval: (query) => {
+      const data = query.state.data as TallyCommitJob | undefined;
+      if (!data) return 3_000;
+      if (data.status === 'done' || data.status === 'failed' || data.status === 'cancelled') {
+        return false;
+      }
+      return 3_000;
+    },
+    // Don't cache stale state across dialog reopens — the next
+    // commit should always start from a fresh poll.
+    staleTime: 0,
+  });
+}
+
 export function useDownloadInvoicePdf() {
   return useMutation({
     mutationFn: async function downloadPdf(invoiceId: string) {
