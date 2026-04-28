@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo, type FormEvent, type ReactNode } from 'react';
+import { useState, useMemo, useEffect, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { FileText, Plus, Send, Ban, Eye, MoreHorizontal, Download, Calculator } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ import {
   usePostLPI,
   useDefaulters,
   useUnits,
+  useBulkUpdateDueDates,
 } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
 import type { InvoiceStatus, Invoice } from '@communityos/shared';
@@ -177,6 +179,20 @@ export default function InvoicesContent(): ReactNode {
   const [lpiPostDate, setLpiPostDate] = useState('');
   const [defaultersDialogOpen, setDefaultersDialogOpen] = useState(false);
   const [unitFilter, setUnitFilter] = useState('');
+  // QA #92 — bulk-update-due-date dialog
+  const [bulkDueDialogOpen, setBulkDueDialogOpen] = useState(false);
+  const [bulkDueDate, setBulkDueDate] = useState('');
+
+  // QA #95 / #246 — dashboard Outstanding-Dues card now links here
+  // with `?filter=defaulters`. Open the existing Defaulters dialog
+  // automatically so the operator lands on the drilldown without an
+  // extra click.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams?.get('filter') === 'defaulters') {
+      setDefaultersDialogOpen(true);
+    }
+  }, [searchParams]);
   // QA #46 — persist page + sort in the URL so pagination survives refresh
   // and shared links reopen the same view.
   const listState = useListUrlState({
@@ -239,6 +255,8 @@ export default function InvoicesContent(): ReactNode {
   const postLPI = usePostLPI();
   const defaultersQuery = useDefaulters();
   const unitsQuery = useUnits({ limit: 500 });
+  // QA #92 — bulk-update-due-date toolbar action
+  const bulkUpdateDueDates = useBulkUpdateDueDates();
   const { data: viewInvoiceData } = useInvoice(viewInvoiceId);
   const lpiData = lpiQuery.data ?? [];
   const defaulters = defaultersQuery.data ?? [];
@@ -403,6 +421,44 @@ export default function InvoicesContent(): ReactNode {
     );
   }
 
+  // QA #92 — bulk-update due-date for selected invoices. The
+  // backend wrapper (PATCH /invoices/due-dates) already takes
+  // { invoice_ids, due_date } and updates them in one shot; no
+  // backend change needed here.
+  function openBulkDueDialog(): void {
+    setBulkDueDate('');
+    setBulkDueDialogOpen(true);
+  }
+
+  function handleBulkDueDate(e: FormEvent): void {
+    e.preventDefault();
+    if (!bulkDueDate) {
+      addToast({ title: 'Pick a new due date', variant: 'destructive' });
+      return;
+    }
+    const ids = Array.from(selectedIds);
+    bulkUpdateDueDates.mutate(
+      { invoice_ids: ids, due_date: bulkDueDate },
+      {
+        onSuccess() {
+          setBulkDueDialogOpen(false);
+          setSelectedIds(new Set());
+          addToast({
+            title: `Due date updated on ${ids.length} invoice${ids.length === 1 ? '' : 's'}`,
+            variant: 'success',
+          });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to update due dates',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
+  }
+
   function openCancelDialog(invoiceId: string): void {
     setCancelInvoiceId(invoiceId);
     setCancelReason('');
@@ -468,16 +524,29 @@ export default function InvoicesContent(): ReactNode {
               ]}
             />
             {selectedIds.size > 0 && (
-              <Button
-                variant="outline"
-                onClick={handlePostSelected}
-                disabled={postInvoices.isPending}
-              >
-                <Send className="mr-2 h-4 w-4" />
-                {postInvoices.isPending
-                  ? 'Posting...'
-                  : `Post Selected (${selectedIds.size})`}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handlePostSelected}
+                  disabled={postInvoices.isPending}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  {postInvoices.isPending
+                    ? 'Posting...'
+                    : `Post Selected (${selectedIds.size})`}
+                </Button>
+                {/* QA #92 — open the bulk-update-due-date dialog */}
+                <Button
+                  variant="outline"
+                  onClick={openBulkDueDialog}
+                  disabled={bulkUpdateDueDates.isPending}
+                >
+                  <Calculator className="mr-2 h-4 w-4" />
+                  {bulkUpdateDueDates.isPending
+                    ? 'Updating…'
+                    : `Update Due Date (${selectedIds.size})`}
+                </Button>
+              </>
             )}
             <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
               <DialogTrigger>
@@ -951,6 +1020,47 @@ export default function InvoicesContent(): ReactNode {
       </Card>
 
       {/* Cancel Invoice Dialog */}
+      {/* QA #92 — Bulk update due-date dialog */}
+      <Dialog open={bulkDueDialogOpen} onOpenChange={setBulkDueDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleBulkDueDate}>
+            <DialogHeader>
+              <DialogTitle>
+                Update due date — {selectedIds.size} invoice
+                {selectedIds.size === 1 ? '' : 's'}
+              </DialogTitle>
+              <DialogDescription>
+                Pick the new due date. All selected invoices will be
+                updated atomically. Defaulters / LPI re-evaluate
+                automatically against the new date.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="bulk-due-date">New due date</Label>
+                <Input
+                  id="bulk-due-date"
+                  type="date"
+                  value={bulkDueDate}
+                  onChange={(e) => setBulkDueDate(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={bulkUpdateDueDates.isPending}>
+                {bulkUpdateDueDates.isPending ? 'Updating…' : 'Apply'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <DialogContent>
           <form onSubmit={handleCancel}>
