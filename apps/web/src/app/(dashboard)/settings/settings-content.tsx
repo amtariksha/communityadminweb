@@ -58,6 +58,7 @@ import {
 } from '@/hooks';
 import type { Gate, RbacPermission } from '@/hooks/use-staff';
 import type { Amenity } from '@/hooks/use-amenities';
+import type { FinancialYear } from '@communityos/shared';
 import { RoleDelegationCard } from './role-delegation-card';
 import { AutomatedReportsCard } from './automated-reports-card';
 import { TdsConfigCard } from './tds-config-card';
@@ -134,6 +135,9 @@ export default function SettingsContent(): ReactNode {
   const [fyLabel, setFyLabel] = useState('');
   const [fyStartDate, setFyStartDate] = useState('');
   const [fyEndDate, setFyEndDate] = useState('');
+
+  // QA #230: styled freeze confirmation dialog (replaces native confirm)
+  const [freezeFyTarget, setFreezeFyTarget] = useState<FinancialYear | null>(null);
 
   // Feature toggles
   const [features, setFeatures] = useState<Record<string, boolean>>({});
@@ -1297,17 +1301,7 @@ export default function SettingsContent(): ReactNode {
                         )}
                         {!fy.is_frozen && !fy.is_current && (
                           <DropdownMenuItem
-                            onClick={() => {
-                              if (!confirm(`Freeze ${fy.label}? No transactions can be posted to a frozen year.`)) return;
-                              freezeYear.mutate(fy.id, {
-                                onSuccess() {
-                                  addToast({ title: `${fy.label} frozen`, variant: 'success' });
-                                },
-                                onError(error: Error) {
-                                  addToast({ title: 'Failed to freeze year', description: friendlyError(error), variant: 'destructive' });
-                                },
-                              });
-                            }}
+                            onClick={() => setFreezeFyTarget(fy)}
                           >
                             <Lock className="mr-2 h-4 w-4" />
                             Freeze Year
@@ -1343,6 +1337,56 @@ export default function SettingsContent(): ReactNode {
           )}
         </CardContent>
       </Card>
+
+      {/* QA #230 — Freeze financial year confirmation dialog. Replaces a
+          native confirm() so users see the FY end date and the explicit
+          journal-entry consequence before locking. */}
+      <Dialog
+        open={!!freezeFyTarget}
+        onOpenChange={(open) => { if (!open) setFreezeFyTarget(null); }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Freeze {freezeFyTarget?.label}?</DialogTitle>
+            <DialogDescription>
+              Once frozen, no journal entries can be posted before{' '}
+              <span className="font-medium">
+                {freezeFyTarget ? formatDate(freezeFyTarget.end_date) : ''}
+              </span>
+              . Continue?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setFreezeFyTarget(null)}
+              disabled={freezeYear.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={freezeYear.isPending}
+              onClick={() => {
+                if (!freezeFyTarget) return;
+                const target = freezeFyTarget;
+                freezeYear.mutate(target.id, {
+                  onSuccess() {
+                    addToast({ title: `${target.label} frozen`, variant: 'success' });
+                    setFreezeFyTarget(null);
+                  },
+                  onError(error: Error) {
+                    addToast({ title: 'Failed to freeze year', description: friendlyError(error), variant: 'destructive' });
+                  },
+                });
+              }}
+            >
+              {freezeYear.isPending ? 'Freezing…' : 'Freeze Year'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ------------------------------------------------------------------- */}
       {/* Gates Configuration Section                                          */}
       {/* ------------------------------------------------------------------- */}
