@@ -32,7 +32,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
-import { formatCurrency, financialDateBounds } from '@/lib/utils';
+import { formatCurrency, formatTallyBalance, financialDateBounds } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import {
@@ -188,14 +188,28 @@ function TreeNodeView({ node, depth, onEditGroup, onEditAccount }: TreeNodeViewP
               >
                 <span className="text-sm">{account.name}</span>
                 <span className="text-xs text-muted-foreground">({account.code})</span>
-                <span className="ml-auto text-sm font-medium">
-                  {formatCurrency(
+                {/* Tally-style balance — never a minus sign. The Dr/Cr
+                    suffix flips when the balance moved to the
+                    anomalous side (asset gone credit, liability gone
+                    debit). See formatTallyBalance. */}
+                {(() => {
+                  const naturalSide =
+                    account.balance_type === 'credit' ? 'credit' : 'debit';
+                  const balance = formatTallyBalance(
                     account.current_balance ?? account.opening_balance,
-                  )}
-                </span>
-                <Badge variant="outline" className="text-xs">
-                  {account.balance_type === 'debit' ? 'Dr' : 'Cr'}
-                </Badge>
+                    naturalSide,
+                  );
+                  return (
+                    <>
+                      <span className="ml-auto text-sm font-medium">
+                        {balance.text}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {balance.side}
+                      </Badge>
+                    </>
+                  );
+                })()}
               </Link>
               <button
                 type="button"

@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/layout/page-header';
-import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
+import { formatCurrency, formatTallyBalance, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useLedgerAccount, useGeneralLedgerReport, useAccountGroups } from '@/hooks';
 
 function getDefaultDateRange(): { startDate: string; endDate: string } {
@@ -102,28 +102,53 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
           </>
         ) : account ? (
           <>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Opening Balance</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{formatCurrency(account.opening_balance)}</p>
-                <Badge variant="outline" className="mt-1">
-                  {account.balance_type === 'debit' ? 'Debit' : 'Credit'}
-                </Badge>
-              </CardContent>
-            </Card>
+            {/* Tally-style balance cards. Opening uses the stored
+                balance_type as natural side (it was set that way at
+                seed/import time). Closing flips the suffix when the
+                balance has swung to the opposite side — matches the
+                Tally ledger-statement convention. */}
+            {(() => {
+              const naturalSide =
+                account.balance_type === 'credit' ? 'credit' : 'debit';
+              const opening = formatTallyBalance(
+                account.opening_balance,
+                naturalSide,
+              );
+              const closing = report
+                ? formatTallyBalance(report.closing_balance, naturalSide)
+                : null;
+              return (
+                <>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>Opening Balance</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold">{opening.text}</p>
+                      <Badge variant="outline" className="mt-1">
+                        {opening.side}
+                      </Badge>
+                    </CardContent>
+                  </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Closing Balance</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">
-                  {report ? formatCurrency(report.closing_balance) : '--'}
-                </p>
-              </CardContent>
-            </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>Closing Balance</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold">
+                        {closing ? closing.text : '--'}
+                      </p>
+                      {closing && (
+                        <Badge variant="outline" className="mt-1">
+                          {closing.side}
+                        </Badge>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
+              );
+            })()}
 
             <Card>
               <CardHeader className="pb-2">
@@ -196,26 +221,40 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
               {reportLoading ? (
                 <TableRowSkeleton />
               ) : report && report.transactions.length > 0 ? (
-                report.transactions.map((txn, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(txn.entry_date)}
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-mono text-xs">{txn.entry_number}</span>
-                    </TableCell>
-                    <TableCell className="font-medium">{txn.narration}</TableCell>
-                    <TableCell className="text-right">
-                      {txn.debit > 0 ? formatCurrency(txn.debit) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {txn.credit > 0 ? formatCurrency(txn.credit) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(txn.running_balance)}
-                    </TableCell>
-                  </TableRow>
-                ))
+                report.transactions.map((txn, index) => {
+                  // Per-row running balance also follows Tally style
+                  // — no minus sign; suffix flips when running
+                  // balance crosses zero into the opposite side.
+                  const naturalSide =
+                    account?.balance_type === 'credit' ? 'credit' : 'debit';
+                  const running = formatTallyBalance(
+                    txn.running_balance,
+                    naturalSide,
+                  );
+                  return (
+                    <TableRow key={index}>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(txn.entry_date)}
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono text-xs">{txn.entry_number}</span>
+                      </TableCell>
+                      <TableCell className="font-medium">{txn.narration}</TableCell>
+                      <TableCell className="text-right">
+                        {txn.debit > 0 ? formatCurrency(txn.debit) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {txn.credit > 0 ? formatCurrency(txn.credit) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {running.text}{' '}
+                        <span className="text-xs text-muted-foreground">
+                          {running.side}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">

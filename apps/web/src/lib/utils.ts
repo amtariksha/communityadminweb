@@ -16,6 +16,53 @@ export function formatCurrency(amount: number | string | null | undefined): stri
   }).format(num);
 }
 
+/**
+ * Tally-style balance rendering. Returns the absolute amount + the
+ * EFFECTIVE side (Dr / Cr) of the balance.
+ *
+ * Why this isn't `formatCurrency` with a minus sign: Tally never
+ * emits negative numbers in account ledger / chart-of-accounts views.
+ * Direction is always carried by the Dr / Cr suffix, never by sign:
+ *
+ *   Asset with credit balance (overpayment refund pending):
+ *     ours OLD: "-₹2,000 Dr"  ← confusing: minus + Dr disagree
+ *     Tally-style: "2,000.00 Cr"  ← the Dr→Cr flip says "anomalous"
+ *
+ *   Vendor (credit-normal) with our advance sitting in their account:
+ *     ours OLD: "-₹500 Cr"
+ *     Tally-style: "500.00 Dr"
+ *
+ * Inputs:
+ *   - amount: signed balance from the backend's natural-direction
+ *     calculation. Positive = in the natural direction, negative
+ *     = on the opposite side from the account's normal home.
+ *   - naturalSide: the account's normal home side. For ledger
+ *     accounts this matches `balance_type` ('debit' | 'credit'),
+ *     which itself reflects the parent group's account_type
+ *     (asset/expense → debit; liability/income/equity → credit).
+ */
+export function formatTallyBalance(
+  amount: number | string | null | undefined,
+  naturalSide: 'debit' | 'credit' | null | undefined,
+): { text: string; side: 'Dr' | 'Cr' } {
+  const num =
+    typeof amount === 'string' ? parseFloat(amount) : (amount ?? 0);
+  const safeNum = Number.isFinite(num) ? num : 0;
+  const abs = Math.abs(safeNum);
+  // When natural side is unknown (legacy data, missing group_id),
+  // fall back to "Dr if positive, Cr if negative" — the same
+  // signed-as-debit convention raw journal_lines use.
+  const home: 'debit' | 'credit' = naturalSide ?? 'debit';
+  // Negative number on the natural side → balance is on the OPPOSITE
+  // side; flip the suffix.
+  const effectiveSide: 'debit' | 'credit' =
+    safeNum < 0 ? (home === 'debit' ? 'credit' : 'debit') : home;
+  return {
+    text: formatCurrency(abs),
+    side: effectiveSide === 'debit' ? 'Dr' : 'Cr',
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Date input helpers
 // ---------------------------------------------------------------------------
