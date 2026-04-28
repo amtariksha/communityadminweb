@@ -189,17 +189,26 @@ export function useExpiringAMCs(days: number) {
   });
 }
 
+/**
+ * Fetch service logs for one asset, or for the whole tenant when
+ * `assetId` is empty / undefined. Previously the page sent the
+ * sentinel `_all` through `/assets/:id/services`, which tripped
+ * ParseUUIDPipe (QA #257). The empty-string branch now hits the
+ * dedicated `/assets/service-logs` route added for that case.
+ */
 export function useServiceLogs(assetId: string) {
   return useQuery({
-    queryKey: assetKeys.services(assetId),
+    queryKey: assetKeys.services(assetId || '_all'),
     queryFn: function fetchServiceLogs() {
+      const path = assetId
+        ? `/assets/${assetId}/services`
+        : `/assets/service-logs`;
       return api
-        .get<{ data: ServiceLog[] }>(`/assets/${assetId}/services`)
+        .get<{ data: ServiceLog[] }>(path)
         .then(function unwrap(res) {
           return res.data;
         });
     },
-    enabled: Boolean(assetId),
   });
 }
 

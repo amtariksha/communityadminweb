@@ -231,7 +231,10 @@ export default function AssetsContent(): ReactNode {
 
   // For service logs, show all when no specific asset is selected
   const [serviceFilterAssetId, setServiceFilterAssetId] = useState('');
-  const { data: serviceLogs, isLoading: servicesLoading } = useServiceLogs(serviceFilterAssetId || '_all');
+  // QA #257 — empty string asks the hook to hit the tenant-wide
+  // /assets/service-logs route. Sending the literal `_all` used to
+  // route through `/assets/:id/services` and trip ParseUUIDPipe.
+  const { data: serviceLogs, isLoading: servicesLoading } = useServiceLogs(serviceFilterAssetId);
 
   const assets = assetsData?.data ?? [];
   const amcs = amcsData?.data ?? [];
