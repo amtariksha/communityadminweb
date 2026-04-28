@@ -29,6 +29,10 @@ export interface Ticket {
   closed_at: string | null;
   created_at: string;
   updated_at: string;
+  // QA #231 — single optional attachment per ticket. Both populated
+  // together or both null.
+  attachment_url?: string | null;
+  attachment_name?: string | null;
 }
 
 export interface TicketComment {
@@ -73,6 +77,10 @@ interface CreateTicketInput {
   description?: string;
   priority?: string;
   unit_id?: string;
+  // QA #231 — populated by useUploadFileToS3 in the consumer page.
+  // Backend rejects partial payloads (refine: both or neither).
+  attachment_url?: string;
+  attachment_name?: string;
 }
 
 interface UpdateTicketInput {

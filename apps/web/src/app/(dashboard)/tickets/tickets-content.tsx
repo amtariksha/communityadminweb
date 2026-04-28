@@ -62,9 +62,12 @@ import {
   useAddTicketComment,
   useBulkCloseTickets,
   useBulkReassignTickets,
+  useUploadFileToS3,
+  fetchPresignedDownloadUrl,
 } from '@/hooks';
 import type { Ticket, TicketComment } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
+import { UploadProgress } from '@/components/ui/upload-progress';
 
 const TICKET_SORTS = [
   'created_at',
@@ -173,6 +176,12 @@ export default function TicketsContent(): ReactNode {
   const [newDescription, setNewDescription] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [newPriority, setNewPriority] = useState('medium');
+  // QA #231 — optional single attachment per ticket. The picker
+  // selects the File; on submit we upload via useUploadFileToS3 and
+  // pass the resulting URL + display name into createTicket.
+  const [newAttachment, setNewAttachment] = useState<File | null>(null);
+  const [newAttachmentPercent, setNewAttachmentPercent] = useState<number | null>(null);
+  const [newAttachmentFailed, setNewAttachmentFailed] = useState(false);
 
   // Detail dialog
   const [selectedTicketId, setSelectedTicketId] = useState('');
@@ -197,6 +206,7 @@ export default function TicketsContent(): ReactNode {
   const createMutation = useCreateTicket();
   const updateMutation = useUpdateTicket();
   const commentMutation = useAddTicketComment();
+  const uploadAttachment = useUploadFileToS3();
   const bulkCloseMutation = useBulkCloseTickets();
   const bulkReassignMutation = useBulkReassignTickets();
 
@@ -224,10 +234,38 @@ export default function TicketsContent(): ReactNode {
     setDetailOpen(true);
   }
 
-  function handleCreateTicket(): void {
+  async function handleCreateTicket(): Promise<void> {
     if (!newSubject.trim() || !newCategory.trim()) {
       addToast({ title: 'Subject and category are required', variant: 'destructive' });
       return;
+    }
+
+    // QA #231 — if the user picked an attachment, upload it via the
+    // presigned-PUT flow first and then create the ticket with the
+    // resulting URL + display name. The backend refuse-half-payload
+    // refine() pass enforces "both or neither" so we never persist an
+    // orphaned URL.
+    let attachmentUrl: string | undefined;
+    let attachmentName: string | undefined;
+    if (newAttachment) {
+      setNewAttachmentFailed(false);
+      setNewAttachmentPercent(0);
+      try {
+        const result = await uploadAttachment.mutateAsync({
+          file: newAttachment,
+          onProgress: setNewAttachmentPercent,
+        });
+        attachmentUrl = result.fileUrl;
+        attachmentName = newAttachment.name;
+      } catch (err) {
+        setNewAttachmentFailed(true);
+        addToast({
+          title: 'Attachment upload failed',
+          description: (err as Error).message ?? 'Could not upload the attached file.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     createMutation.mutate(
@@ -236,6 +274,8 @@ export default function TicketsContent(): ReactNode {
         description: newDescription.trim() || undefined,
         category: newCategory.trim(),
         priority: newPriority,
+        attachment_url: attachmentUrl,
+        attachment_name: attachmentName,
       },
       {
         onSuccess() {
@@ -245,6 +285,9 @@ export default function TicketsContent(): ReactNode {
           setNewDescription('');
           setNewCategory('');
           setNewPriority('medium');
+          setNewAttachment(null);
+          setNewAttachmentPercent(null);
+          setNewAttachmentFailed(false);
         },
         onError(error) {
           addToast({
@@ -774,6 +817,38 @@ export default function TicketsContent(): ReactNode {
                 </Select>
               </div>
             </div>
+
+            {/* QA #231 — optional single attachment per ticket. */}
+            <div className="space-y-2">
+              <Label htmlFor="new-attachment">Attachment (optional)</Label>
+              <Input
+                id="new-attachment"
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setNewAttachment(file);
+                  setNewAttachmentPercent(null);
+                  setNewAttachmentFailed(false);
+                }}
+              />
+              {newAttachment && (
+                <p className="text-xs text-muted-foreground">
+                  {newAttachment.name} — {(newAttachment.size / 1024).toFixed(1)} KB
+                </p>
+              )}
+              <UploadProgress
+                percent={newAttachmentPercent}
+                fileName={newAttachment?.name}
+                state={
+                  newAttachmentFailed
+                    ? 'error'
+                    : newAttachmentPercent === 100
+                      ? 'done'
+                      : 'uploading'
+                }
+              />
+            </div>
           </div>
 
           <DialogFooter>
@@ -781,10 +856,14 @@ export default function TicketsContent(): ReactNode {
               <Button variant="outline">Cancel</Button>
             </DialogClose>
             <Button
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || uploadAttachment.isPending}
               onClick={handleCreateTicket}
             >
-              {createMutation.isPending ? 'Creating...' : 'Create Ticket'}
+              {uploadAttachment.isPending
+                ? 'Uploading...'
+                : createMutation.isPending
+                  ? 'Creating...'
+                  : 'Create Ticket'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -850,6 +929,36 @@ export default function TicketsContent(): ReactNode {
                   <>
                     <span className="text-muted-foreground">SLA Due</span>
                     <span>{formatDate(detail.sla_due_at)}</span>
+                  </>
+                )}
+
+                {detail.attachment_url && (
+                  <>
+                    <span className="text-muted-foreground">Attachment</span>
+                    <span>
+                      <button
+                        type="button"
+                        className="text-primary hover:underline"
+                        onClick={async () => {
+                          try {
+                            const url = await fetchPresignedDownloadUrl({
+                              fileUrl: detail.attachment_url ?? '',
+                              disposition: 'inline',
+                              fileName: detail.attachment_name ?? undefined,
+                            });
+                            window.open(url, '_blank', 'noopener,noreferrer');
+                          } catch (err) {
+                            addToast({
+                              title: 'Could not open attachment',
+                              description: friendlyError(err),
+                              variant: 'destructive',
+                            });
+                          }
+                        }}
+                      >
+                        {detail.attachment_name ?? 'View attachment'}
+                      </button>
+                    </span>
                   </>
                 )}
               </div>
