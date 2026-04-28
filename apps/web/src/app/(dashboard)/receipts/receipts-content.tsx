@@ -41,9 +41,13 @@ import {
   useReceiptSummary,
   useCreateReceipt,
   useCreateCreditNote,
+  useCreditNotes,
+  downloadCreditNotePdf,
   useFinancialYears,
   useInvoices,
 } from '@/hooks';
+import { getToken, getCurrentTenant } from '@/lib/auth';
+import { Download } from 'lucide-react';
 import { useUnits } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
 import type { ReceiptMode } from '@communityos/shared';
@@ -170,6 +174,28 @@ export default function ReceiptsContent(): ReactNode {
   const invoicesQuery = useInvoices({ unit_id: cnUnitId || undefined, limit: 50 });
   const createReceipt = useCreateReceipt();
   const createCreditNote = useCreateCreditNote();
+  // QA #210 — load issued credit notes for the per-tenant Download
+  // PDF list rendered below the receipts table.
+  const creditNotesQuery = useCreditNotes({ limit: 50 });
+  const creditNotes = creditNotesQuery.data?.data ?? [];
+
+  async function handleDownloadCreditNotePdf(
+    creditNoteId: string,
+    creditNoteNumber: string,
+  ): Promise<void> {
+    try {
+      await downloadCreditNotePdf(creditNoteId, `credit-note-${creditNoteNumber}.pdf`, {
+        token: getToken() ?? undefined,
+        tenantId: getCurrentTenant() ?? undefined,
+      });
+    } catch (error) {
+      addToast({
+        title: 'Failed to download credit-note PDF',
+        description: friendlyError(error),
+        variant: 'destructive',
+      });
+    }
+  }
 
   const currentFY = fyQuery.data?.find((fy: { is_current: boolean }) => fy.is_current);
   const currentFYId = currentFY?.id ?? '';
@@ -623,6 +649,57 @@ export default function ReceiptsContent(): ReactNode {
           )}
         </CardContent>
       </Card>
+
+      {/* QA #210 — Issued credit notes with Download PDF action.
+          Rendered below the main receipts table so it doesn't
+          interfere with the existing flow; only shown when the
+          tenant has at least one credit note. */}
+      {creditNotes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Issued Credit Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Number</TableHead>
+                  <TableHead>Invoice</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Issued</TableHead>
+                  <TableHead className="text-right">PDF</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {creditNotes.map((cn) => (
+                  <TableRow key={cn.id}>
+                    <TableCell className="font-medium">{cn.credit_note_number}</TableCell>
+                    <TableCell>{cn.invoice_number ?? '—'}</TableCell>
+                    <TableCell>{cn.unit_number ?? '—'}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(Number(cn.amount))}</TableCell>
+                    <TableCell className="max-w-[300px] truncate" title={cn.reason}>
+                      {cn.reason}
+                    </TableCell>
+                    <TableCell>{formatDate(cn.created_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadCreditNotePdf(cn.id, cn.credit_note_number)}
+                      >
+                        <Download className="mr-1 h-4 w-4" />
+                        Download
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

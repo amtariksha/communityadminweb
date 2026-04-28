@@ -83,11 +83,13 @@ export {
   useUnallocatedCredits,
   useReceiptSummary,
   useCreateCreditNote,
+  useCreditNotes,
+  downloadCreditNotePdf,
   useRecalculateArrears,
   useAdvances,
   useApplyAdvance,
 } from './use-receipts';
-export type { Advance } from './use-receipts';
+export type { Advance, CreditNoteRow } from './use-receipts';
 
 // Vendors
 export {

@@ -274,6 +274,74 @@ export function useCreateCreditNote() {
   });
 }
 
+// QA #210 — list issued credit notes (admin-side). Returns the join
+// shape from the backend so the page can render invoice_number +
+// unit_number alongside each row.
+export interface CreditNoteRow {
+  id: string;
+  credit_note_number: string;
+  invoice_id: string | null;
+  invoice_number: string | null;
+  unit_number: string | null;
+  amount: number;
+  reason: string;
+  created_at: string;
+}
+
+export function useCreditNotes(opts?: { invoice_id?: string; limit?: number }) {
+  return useQuery({
+    queryKey: [...receiptKeys.all, 'credit-notes', opts ?? {}],
+    queryFn: async function fetchCreditNotes() {
+      const params: Record<string, string> = {};
+      if (opts?.invoice_id) params.invoice_id = opts.invoice_id;
+      if (opts?.limit) params.limit = String(opts.limit);
+      // api.get returns the parsed JSON envelope directly — i.e.
+      // { data: CreditNoteRow[]; total: number }.
+      return api.get<{ data: CreditNoteRow[]; total: number }>(
+        '/receipts/credit-notes',
+        { params },
+      );
+    },
+  });
+}
+
+// QA #210 — fetch a credit-note PDF blob from the backend so the
+// browser can save it to disk via an anchor click. Uses raw fetch
+// (matching the useDownloadInvoicePdf pattern in use-tally-import)
+// since the wrapped api client returns JSON, not blobs.
+export async function downloadCreditNotePdf(
+  creditNoteId: string,
+  filename: string,
+  authHeaders: { token?: string; tenantId?: string },
+): Promise<void> {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_API_URL ??
+    (typeof window !== 'undefined' &&
+    window.location.hostname === 'communityos.eassy.life'
+      ? 'https://community.eassy.life'
+      : 'http://localhost:4000');
+
+  const headers: Record<string, string> = {};
+  if (authHeaders.token) headers['Authorization'] = `Bearer ${authHeaders.token}`;
+  if (authHeaders.tenantId) headers['x-tenant-id'] = authHeaders.tenantId;
+
+  const response = await fetch(
+    `${baseUrl}/receipts/credit-notes/${creditNoteId}/pdf`,
+    { headers },
+  );
+  if (!response.ok) throw new Error('Failed to download credit-note PDF');
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
 export function useRecalculateArrears() {
   const queryClient = useQueryClient();
 
