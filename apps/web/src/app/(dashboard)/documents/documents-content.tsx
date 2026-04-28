@@ -58,6 +58,7 @@ import {
   useCreateCategory,
   useDeleteDocument,
   fetchPresignedDownloadUrl,
+  useUnits,
 } from '@/hooks';
 import type { DocumentCategory, Document as SocietyDocument } from '@communityos/shared';
 
@@ -150,12 +151,25 @@ export default function DocumentsContent(): ReactNode {
   // during multi-MB document uploads.
   const [uploadPercent, setUploadPercent] = useState<number | null>(null);
   const [uploadFailed, setUploadFailed] = useState(false);
+  // QA #238 — audience targeting. 'all' = no restriction (legacy),
+  // 'owner' / 'tenant_resident' / 'committee_member' restrict by
+  // role, 'unit' restricts to a specific unit (and the unit dropdown
+  // appears below).
+  const [uploadAudience, setUploadAudience] = useState<
+    'all' | 'owner' | 'tenant_resident' | 'committee_member' | 'unit'
+  >('all');
+  const [uploadAudienceUnitId, setUploadAudienceUnitId] = useState<string>('');
 
   // Category dialog
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [categoryName, setCategoryName] = useState('');
 
   const categoriesQuery = useDocumentCategories();
+  // QA #238 — load units for the audience-targeting unit picker. Cheap
+  // since the list page already pages units; the dialog only shows
+  // the dropdown when audience='unit', so this query is invoked
+  // alongside other dialog queries.
+  const unitsQuery = useUnits({ limit: 1000 });
   const documentsQuery = useDocuments({
     category_id: activeCategoryId || undefined,
     page,
@@ -189,6 +203,8 @@ export default function DocumentsContent(): ReactNode {
     setUploadFile(null);
     setUploadPercent(null);
     setUploadFailed(false);
+    setUploadAudience('all');
+    setUploadAudienceUnitId('');
   }
 
   async function handleUploadDocument(e: FormEvent): Promise<void> {
@@ -234,6 +250,23 @@ export default function DocumentsContent(): ReactNode {
     }
 
     // 2. Create the document row pointing at the freshly uploaded file.
+    // QA #238 — derive audience fields from the picker state. 'all'
+    // ⇒ both NULL (no restriction); 'unit' ⇒ unit-id only; specific
+    // role values map directly.
+    const audienceRole =
+      uploadAudience === 'all' || uploadAudience === 'unit'
+        ? null
+        : uploadAudience;
+    const audienceUnitId =
+      uploadAudience === 'unit' ? uploadAudienceUnitId || null : null;
+    if (uploadAudience === 'unit' && !audienceUnitId) {
+      addToast({
+        title: 'Please select a unit',
+        description: 'Choose a unit for the audience filter or pick another option.',
+        variant: 'destructive',
+      });
+      return;
+    }
     uploadDocument.mutate(
       {
         category_id: uploadCategoryId,
@@ -243,6 +276,8 @@ export default function DocumentsContent(): ReactNode {
         file_name: uploadFile.name,
         mime_type: uploadFile.type || 'application/octet-stream',
         file_size: uploadFile.size,
+        audience_role: audienceRole,
+        audience_unit_id: audienceUnitId,
       },
       {
         onSuccess() {
@@ -406,6 +441,43 @@ export default function DocumentsContent(): ReactNode {
                         value={uploadDescription}
                         onChange={(e) => setUploadDescription(e.target.value)}
                       />
+                    </div>
+                    {/* QA #238 — Audience picker. Defaults to "All
+                        residents" so existing flows stay unchanged.
+                        When set to "Specific unit" a unit dropdown
+                        renders below. The server stores both NULL on
+                        "All residents" (legacy parity). */}
+                    <div className="space-y-2">
+                      <Label htmlFor="upload-audience">Audience</Label>
+                      <Select
+                        id="upload-audience"
+                        value={uploadAudience}
+                        onChange={(e) =>
+                          setUploadAudience(e.target.value as typeof uploadAudience)
+                        }
+                      >
+                        <option value="all">All residents</option>
+                        <option value="owner">Owners only</option>
+                        <option value="tenant_resident">Tenants only</option>
+                        <option value="committee_member">Committee members only</option>
+                        <option value="unit">Specific unit</option>
+                      </Select>
+                      {uploadAudience === 'unit' && (
+                        <Select
+                          aria-label="Audience unit"
+                          required
+                          value={uploadAudienceUnitId}
+                          onChange={(e) => setUploadAudienceUnitId(e.target.value)}
+                        >
+                          <option value="">Select a unit</option>
+                          {(unitsQuery.data?.data ?? []).map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.unit_number}
+                              {u.block ? ` · Block ${u.block}` : ''}
+                            </option>
+                          ))}
+                        </Select>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="upload-file">File</Label>

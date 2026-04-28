@@ -34,6 +34,14 @@ interface CreateCategoryInput {
   sort_order?: number;
 }
 
+// QA #238 — audience targeting. NULL on either axis means
+// "no restriction on that axis" (admins see all; residents see
+// matching rows). Allowed roles match migration 065's CHECK.
+export type DocumentAudienceRole =
+  | 'owner'
+  | 'tenant_resident'
+  | 'committee_member';
+
 interface UploadDocumentInput {
   category_id: string;
   title: string;
@@ -47,6 +55,8 @@ interface UploadDocumentInput {
   entity_id?: string;
   expiry_date?: string;
   tags?: string[];
+  audience_role?: DocumentAudienceRole | null;
+  audience_unit_id?: string | null;
 }
 
 interface UpdateDocumentInput {
@@ -54,6 +64,8 @@ interface UpdateDocumentInput {
   description?: string | null;
   category_id?: string;
   access_level?: string;
+  audience_role?: DocumentAudienceRole | null;
+  audience_unit_id?: string | null;
 }
 
 // ---------------------------------------------------------------------------
