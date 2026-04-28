@@ -122,6 +122,7 @@ export {
   useBankAccount,
   useCreateBankAccount,
   useUpdateBankAccount,
+  useDeleteBankAccount,
   useBankTransfers,
   useCreateTransfer,
   useReconciliation,

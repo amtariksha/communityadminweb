@@ -13,6 +13,7 @@ import {
   Calendar,
   CreditCard,
   FileUp,
+  Trash2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ import { friendlyError } from '@/lib/api-error';
 import {
   useBankAccounts,
   useCreateBankAccount,
+  useDeleteBankAccount,
   useBankTransfers,
   useCreateTransfer,
   useReconciliation,
@@ -217,6 +219,9 @@ export default function BankContent(): ReactNode {
 
   // Accounts state
   const [createAccountDialogOpen, setCreateAccountDialogOpen] = useState(false);
+  const [deleteAccountDialogOpen, setDeleteAccountDialogOpen] = useState(false);
+  const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
+  const [deleteAccountReason, setDeleteAccountReason] = useState('');
   const [accountBankName, setAccountBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountIfsc, setAccountIfsc] = useState('');
@@ -292,6 +297,7 @@ export default function BankContent(): ReactNode {
 
   // Mutations
   const createAccount = useCreateBankAccount();
+  const deleteAccount = useDeleteBankAccount();
   const createTransfer = useCreateTransfer();
   const reconcileTransaction = useReconcileTransaction();
   const createFD = useCreateFD();
@@ -319,6 +325,35 @@ export default function BankContent(): ReactNode {
     setAccountType('savings');
     setAccountBranch('');
     setAccountOpeningBalance('');
+  }
+
+  // QA #203 — soft-delete a bank account. Backend rejects with a list of
+  // blockers (unmatched statement rows / open cheques / active FDs) when
+  // the account isn't safely removable; surface that as a toast.
+  function handleDeleteAccount(e: FormEvent): void {
+    e.preventDefault();
+    if (!deleteAccountId) return;
+    deleteAccount.mutate(
+      {
+        id: deleteAccountId,
+        reason: deleteAccountReason.trim() || undefined,
+      },
+      {
+        onSuccess() {
+          setDeleteAccountDialogOpen(false);
+          setDeleteAccountId(null);
+          setDeleteAccountReason('');
+          addToast({ title: 'Bank account removed', variant: 'success' });
+        },
+        onError(error) {
+          addToast({
+            title: 'Cannot delete bank account',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
   }
 
   function handleCreateAccount(e: FormEvent): void {
@@ -697,10 +732,25 @@ export default function BankContent(): ReactNode {
               {bankAccounts.map((acct) => (
                 <Card key={acct.id}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                      <Landmark className="h-4 w-4 text-muted-foreground" />
-                      {acct.bank_name}
-                    </CardTitle>
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                        <Landmark className="h-4 w-4 text-muted-foreground" />
+                        {acct.bank_name}
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        title="Delete bank account"
+                        onClick={() => {
+                          setDeleteAccountId(acct.id);
+                          setDeleteAccountReason('');
+                          setDeleteAccountDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-2xl font-bold">{formatCurrency(acct.current_balance ?? 0)}</p>
@@ -1469,6 +1519,49 @@ export default function BankContent(): ReactNode {
           </CardContent>
         </Card>
       )}
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Delete Bank Account Dialog (QA #203)                                 */}
+      {/* ------------------------------------------------------------------- */}
+      <Dialog open={deleteAccountDialogOpen} onOpenChange={setDeleteAccountDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleDeleteAccount}>
+            <DialogHeader>
+              <DialogTitle>Delete Bank Account</DialogTitle>
+              <DialogDescription>
+                The account is removed from pickers and lists, but historical
+                transactions, transfers, and reconciliations stay intact.
+                Delete is refused if there are unmatched statement rows,
+                issued cheques, or active fixed deposits tied to this account.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="delete-account-reason">Reason (optional)</Label>
+                <Textarea
+                  id="delete-account-reason"
+                  placeholder="e.g. closed by bank, switched primary account…"
+                  value={deleteAccountReason}
+                  onChange={(e) => setDeleteAccountReason(e.target.value)}
+                  maxLength={500}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={deleteAccount.isPending}
+              >
+                {deleteAccount.isPending ? 'Deleting…' : 'Delete Account'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* ------------------------------------------------------------------- */}
       {/* Reconcile Transaction Dialog                                         */}

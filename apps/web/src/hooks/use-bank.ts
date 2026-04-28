@@ -216,6 +216,25 @@ export function useUpdateBankAccount() {
   });
 }
 
+// QA #203 — soft-delete a bank account. Backend refuses if there are
+// unmatched statement rows, issued cheques, or active FDs tied to it.
+export function useDeleteBankAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function deleteBankAccount(params: { id: string; reason?: string }) {
+      return api.delete(
+        `/bank/accounts/${params.id}`,
+        params.reason ? { reason: params.reason } : {},
+      );
+    },
+    onSuccess: function invalidate(_data, variables) {
+      queryClient.invalidateQueries({ queryKey: bankKeys.account(variables.id) });
+      queryClient.invalidateQueries({ queryKey: bankKeys.accounts() });
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Transfer queries
 // ---------------------------------------------------------------------------
