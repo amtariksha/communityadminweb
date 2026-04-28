@@ -412,9 +412,13 @@ export default function GateContent(): ReactNode {
           addToast({ title: 'Visitor added successfully', variant: 'success' });
         },
         onError(err) {
+          // QA #252 — use friendlyError so ApiError fieldErrors surface
+          // a useful summary instead of "Validation failed". The dialog
+          // also renders <FormFieldError /> under each input below, so
+          // per-field details show up inline.
           addToast({
             title: 'Failed to add visitor',
-            description: (err as Error).message,
+            description: friendlyError(err),
             variant: 'destructive',
           });
         },
@@ -573,10 +577,23 @@ export default function GateContent(): ReactNode {
 
   function handleCollectParcel(e: FormEvent): void {
     e.preventDefault();
+    const trimmed = collectedBy.trim();
+    if (!trimmed) {
+      addToast({
+        title: 'Collected by is required',
+        description: 'Enter the name of the person collecting the parcel.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    // QA #224 — backend (migration 055) splits collector identity into
+    // `collected_by_user_id` (registered member) or `collected_by_name`
+    // (free-text fallback). The dialog only takes free text so we always
+    // send `collected_by_name`.
     collectParcel.mutate(
       {
         id: collectParcelId,
-        collected_by: collectedBy,
+        collected_by_name: trimmed,
       },
       {
         onSuccess() {
@@ -725,6 +742,9 @@ export default function GateContent(): ReactNode {
                             value={visitorName}
                             onChange={(e) => setVisitorName(e.target.value)}
                           />
+                          {/* QA #252 — backend rejects pure-junk names; show
+                              the field-specific message inline. */}
+                          <FormFieldError error={createVisitor.error} field="visitor_name" />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="visitor-phone">Phone</Label>
@@ -750,6 +770,7 @@ export default function GateContent(): ReactNode {
                             units={units}
                             placeholder="Search unit..."
                           />
+                          <FormFieldError error={createVisitor.error} field="unit_id" />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="visitor-purpose">Purpose</Label>
@@ -760,6 +781,9 @@ export default function GateContent(): ReactNode {
                             value={visitorPurpose}
                             onChange={(e) => setVisitorPurpose(e.target.value)}
                           />
+                          {/* QA #73 — surface "purpose must contain letters"
+                              from the server instead of a generic toast. */}
+                          <FormFieldError error={createVisitor.error} field="purpose" />
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -770,6 +794,7 @@ export default function GateContent(): ReactNode {
                           value={visitorVehicle}
                           onChange={(e) => setVisitorVehicle(e.target.value)}
                         />
+                        <FormFieldError error={createVisitor.error} field="vehicle_number" />
                       </div>
                     </div>
                     <DialogFooter>

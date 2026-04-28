@@ -183,7 +183,13 @@ interface CreateParcelInput {
 
 interface CollectParcelInput {
   id: string;
-  collected_by: string;
+  // Migration 055 split the legacy `collected_by` into `collected_by_user_id`
+  // (preferred — picks a member from the directory) and `collected_by_name`
+  // (free-text fallback for non-registered collectors). Backend Zod schema
+  // rejects payloads that have neither (QA #224 — was sending `collected_by`
+  // which the server silently dropped, surfacing as "Validation failed").
+  collected_by_user_id?: string;
+  collected_by_name?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -563,7 +569,8 @@ export function useCollectParcel() {
   return useMutation({
     mutationFn: function collectParcel(input: CollectParcelInput) {
       return api.patch<{ data: Parcel }>(`/gate/parcels/${input.id}/collect`, {
-        collected_by: input.collected_by,
+        collected_by_user_id: input.collected_by_user_id,
+        collected_by_name: input.collected_by_name,
       });
     },
     onSuccess: function invalidate() {
