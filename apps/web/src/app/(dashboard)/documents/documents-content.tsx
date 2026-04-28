@@ -57,6 +57,7 @@ import {
   useUploadFileToS3,
   useCreateCategory,
   useDeleteDocument,
+  fetchPresignedDownloadUrl,
 } from '@/hooks';
 import type { DocumentCategory, Document as SocietyDocument } from '@communityos/shared';
 
@@ -286,6 +287,30 @@ export default function DocumentsContent(): ReactNode {
         addToast({ title: 'Failed to delete document', description: friendlyError(error), variant: 'destructive' });
       },
     });
+  }
+
+  /**
+   * QA #258 — view button used to call window.open(file_url) which
+   * served whatever Content-Disposition the stored object had —
+   * which on E2E uploads is `attachment`, so the browser downloaded
+   * instead of rendering. Now we ask the API for a presigned GET
+   * signed with `ResponseContentDisposition: inline` and open that.
+   */
+  async function handleViewDocument(doc: SocietyDocument): Promise<void> {
+    try {
+      const url = await fetchPresignedDownloadUrl({
+        fileUrl: doc.file_url,
+        disposition: 'inline',
+        fileName: doc.file_name,
+      });
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      addToast({
+        title: 'Could not open document',
+        description: friendlyError(err),
+        variant: 'destructive',
+      });
+    }
   }
 
   return (
@@ -624,7 +649,7 @@ export default function DocumentsContent(): ReactNode {
                             variant="ghost"
                             size="icon"
                             title="View"
-                            onClick={() => window.open(doc.file_url, '_blank')}
+                            onClick={() => handleViewDocument(doc)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>

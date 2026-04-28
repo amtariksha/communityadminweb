@@ -156,6 +156,7 @@ export {
   useUpdateDocument,
   useDeleteDocument,
   useExpiringDocuments,
+  fetchPresignedDownloadUrl,
 } from './use-documents';
 
 // Payments

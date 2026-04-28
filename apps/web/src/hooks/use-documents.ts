@@ -257,6 +257,28 @@ function putFileWithProgress(
   });
 }
 
+/**
+ * QA #258 — fetch a presigned-GET URL the browser can open in a new
+ * tab. With `disposition: 'inline'` the object store responds with
+ * `Content-Disposition: inline`, so PDFs/images render in the browser
+ * instead of triggering a download. Returns the signed URL string for
+ * `window.open(...)`.
+ */
+export async function fetchPresignedDownloadUrl(input: {
+  fileUrl: string;
+  disposition?: 'inline' | 'attachment';
+  fileName?: string;
+}): Promise<string> {
+  const response = await api.post<{
+    data: { downloadUrl: string };
+  }>('/upload/download-url', {
+    file_url: input.fileUrl,
+    disposition: input.disposition,
+    file_name: input.fileName,
+  });
+  return response.data.downloadUrl;
+}
+
 export function useUploadFileToS3() {
   return useMutation({
     mutationFn: async function uploadFile(
