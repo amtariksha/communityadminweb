@@ -940,9 +940,17 @@ export default function AccountsContent(): ReactNode {
             <ExportButton
               data={accounts as unknown as Record<string, unknown>[]}
               filename={`accounts-${new Date().toISOString().split('T')[0]}`}
+              // QA #260 — adds the parent column the Tally / audit
+              // committee expect on a COA dump. The backend now ships
+              // `parent_group_name` + `parent_group_code` alongside
+              // `group_name` so the export captures the full
+              // Account → Group → Parent Group hierarchy.
               columns={[
                 { key: 'code', label: 'Code' },
                 { key: 'name', label: 'Account Name' },
+                { key: 'group_name', label: 'Group' },
+                { key: 'parent_group_code', label: 'Parent Group Code' },
+                { key: 'parent_group_name', label: 'Parent Group' },
                 { key: 'opening_balance', label: 'Opening Balance' },
                 { key: 'balance_type', label: 'Balance Type' },
               ]}
