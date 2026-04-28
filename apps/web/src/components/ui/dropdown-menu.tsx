@@ -1,13 +1,17 @@
 'use client';
 
 import {
+  Children,
+  cloneElement,
   createContext,
+  isValidElement,
   useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
   type HTMLAttributes,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
 import { cn } from '@/lib/utils';
@@ -38,12 +42,55 @@ function DropdownMenu({ children }: DropdownMenuProps): ReactNode {
 
 interface DropdownMenuTriggerProps {
   children: ReactNode;
+  /**
+   * When true, render the child element directly with the toggle
+   * onClick attached, instead of wrapping it in our own `<button>`.
+   * Required when the caller already passes a `<Button>` because the
+   * old wrapper-button pattern produced nested `<button>` elements
+   * (invalid HTML) and the inner button's `stopPropagation` blocked
+   * the outer's toggle handler — that's QA #255 ("3-dots menu
+   * unresponsive").
+   */
   asChild?: boolean;
   className?: string;
 }
 
-function DropdownMenuTrigger({ children, className }: DropdownMenuTriggerProps): ReactNode {
+interface ChildClickProps {
+  onClick?: (event: ReactMouseEvent<HTMLElement>) => void;
+  'aria-expanded'?: boolean;
+}
+
+function DropdownMenuTrigger({
+  children,
+  asChild,
+  className,
+}: DropdownMenuTriggerProps): ReactNode {
   const { open, setOpen } = useContext(DropdownContext);
+
+  if (asChild) {
+    // Find the only valid React element among children and merge our
+    // click + aria-expanded onto it. We deliberately call the child's
+    // existing onClick first — callers like tickets-content.tsx use
+    // `(e) => e.stopPropagation()` to keep the row click handler from
+    // firing. Then we toggle the menu, regardless of whether the child
+    // stops propagation.
+    const child = Children.toArray(children).find(isValidElement) as
+      | React.ReactElement<ChildClickProps>
+      | undefined;
+    if (!child) {
+      return null;
+    }
+
+    const childOnClick = child.props.onClick;
+    const merged: ChildClickProps = {
+      onClick: (event: ReactMouseEvent<HTMLElement>) => {
+        if (childOnClick) childOnClick(event);
+        setOpen(!open);
+      },
+      'aria-expanded': open,
+    };
+    return cloneElement(child, merged);
+  }
 
   return (
     <button
