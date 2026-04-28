@@ -59,6 +59,14 @@ interface AddMemberWithRolesInput {
   tenant_id: string;
   phone: string;
   roles: string[];
+  // QA #214 — surfaced on the Add Member dialog. Backfills the user's
+  // name on the freshly-created (or empty-named) row so the directory
+  // doesn't render "Unknown" until they log in via OTP.
+  name?: string;
+  // QA #215 — when one of the roles is a resident type, super-admin
+  // requires unit_id so the `members` row gets created and the unit
+  // detail page renders the owner instead of "Unassigned".
+  unit_id?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -179,9 +187,19 @@ export function useAddMemberWithRoles() {
     mutationFn: async function addMemberWithRoles(input: AddMemberWithRolesInput) {
       const results: AddMemberResult[] = [];
       for (const role of input.roles) {
+        // Pass name + unit_id on each call. Backend ignores name on the
+        // 2nd+ POST (already-set) and only honors unit_id on resident
+        // roles — non-resident roles silently drop it. Idempotency is
+        // safe: super-admin throws ConflictException on duplicate role,
+        // which the dialog surfaces as a toast.
         const result = await api.post<AddMemberResult>(
           `/super-admin/tenants/${input.tenant_id}/members`,
-          { phone: input.phone, role },
+          {
+            phone: input.phone,
+            role,
+            ...(input.name ? { name: input.name } : {}),
+            ...(input.unit_id ? { unit_id: input.unit_id } : {}),
+          },
         );
         results.push(result);
       }

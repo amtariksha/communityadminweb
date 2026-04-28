@@ -18,6 +18,13 @@ export { API_BASE_URL };
 interface ApiRequestOptions {
   headers?: Record<string, string>;
   params?: Record<string, string>;
+  // QA #37 — react-query passes a per-query AbortSignal to its queryFn.
+  // Wiring it through to fetch() lets stale paginated responses get
+  // cancelled when the user clicks Page 3 before Page 2 finishes.
+  // Without it, a slow Page-2 response can resolve AFTER a fast Page-3
+  // and clobber the visible list, leaving a gap. The retry-after-401
+  // path also honours this signal so a logout cancels the retry.
+  signal?: AbortSignal;
 }
 
 // ---------------------------------------------------------------------------
@@ -230,6 +237,10 @@ async function request<T>(
     // flag on uniformly avoids an accidental omission that would
     // silently break the refresh flow.
     credentials: 'include',
+    // QA #37 — propagate react-query's AbortSignal so stale paginated
+    // requests get cancelled when the user navigates away or clicks a
+    // newer page mid-fetch.
+    signal: options.signal,
   });
 
   if (response.status === 401 && !path.includes('/auth/')) {
@@ -244,6 +255,9 @@ async function request<T>(
         headers,
         body: fetchBody,
         credentials: 'include',
+        // QA #37 — same signal honoured on the post-refresh retry so a
+        // cancelled paginated request doesn't reach the server twice.
+        signal: options.signal,
       });
 
       // Retry succeeded → normal response flow.

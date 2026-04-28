@@ -16,12 +16,16 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
-import { useAddMemberWithRoles, useTenants } from '@/hooks';
+import {
+  useAddMemberWithRoles,
+  useTenants,
+  useSuperAdminUnitsForTenant,
+} from '@/hooks';
 import { normalizePhone } from '@/lib/validation';
 import { FormFieldError } from '@/components/ui/form-field-error';
 import { UserSearchSelect } from '@/components/ui/user-search-select';
 import type { UserSearchHit } from '@/hooks/use-user-search';
-import { ASSIGNABLE_ROLES } from '@/lib/role-catalogue';
+import { ASSIGNABLE_ROLES, isResidentRole } from '@/lib/role-catalogue';
 
 interface AddMemberDialogProps {
   open: boolean;
@@ -47,18 +51,32 @@ export default function AddMemberDialog({
   const [selectedUser, setSelectedUser] = useState<UserSearchHit | null>(null);
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  // QA #214 — captured at create time so the directory row doesn't
+  // render "Unknown" until the member logs in via OTP. Pre-fills from
+  // the directory hit when the operator picks an existing user.
+  const [name, setName] = useState('');
+  // QA #215 — when one selected role is resident-type, super-admin
+  // requires unit_id so the `members` row gets created. Disabled
+  // until the tenant is picked (super-admin units list keys off it).
+  const [selectedUnitId, setSelectedUnitId] = useState('');
 
   const tenantsQuery = useTenants({ limit: 100 });
   const addMember = useAddMemberWithRoles();
 
   const tenantsList = tenantsQuery.data?.data ?? [];
   const effectiveTenantId = preselectedTenantId ?? selectedTenantId;
+  const unitsQuery = useSuperAdminUnitsForTenant(effectiveTenantId || null);
+  const tenantUnits = unitsQuery.data ?? [];
+
+  const hasResidentRoleSelected = selectedRoles.some(isResidentRole);
 
   function resetForm(): void {
     setPhone('');
     setSelectedUser(null);
     setSelectedTenantId('');
     setSelectedRoles([]);
+    setName('');
+    setSelectedUnitId('');
   }
 
   function toggleRole(slug: string): void {
@@ -70,6 +88,33 @@ export default function AddMemberDialog({
   function handleSubmit(e: FormEvent): void {
     e.preventDefault();
     if (!effectiveTenantId || !phone || selectedRoles.length === 0) return;
+
+    // QA #215 — resident-type roles need a unit. Block client-side
+    // before the round-trip; backend assignUserRole would 400 anyway.
+    if (hasResidentRoleSelected && !selectedUnitId) {
+      addToast({
+        title: 'Unit required',
+        description:
+          'Owner / tenant / family roles need a unit. Pick one from the Unit dropdown.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // QA #214 — name only required when the user is brand-new
+    // (no directory hit AND no existing name). The dialog can't
+    // know "is this a new user" until the API responds, but the
+    // typical case is the operator typed a fresh phone — in which
+    // case the input was required by the form's HTML5 contract.
+    const trimmedName = name.trim();
+    if (!selectedUser && !trimmedName) {
+      addToast({
+        title: 'Name required',
+        description: 'Enter the new member\'s name so the directory shows them clearly.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     // Prefer the directory hit's exact phone — guarantees no duplicate
     // users row gets created when the operator just glanced past the
@@ -94,7 +139,15 @@ export default function AddMemberDialog({
     }
 
     addMember.mutate(
-      { tenant_id: effectiveTenantId, phone: normalized.value, roles: selectedRoles },
+      {
+        tenant_id: effectiveTenantId,
+        phone: normalized.value,
+        roles: selectedRoles,
+        ...(trimmedName ? { name: trimmedName } : {}),
+        ...(hasResidentRoleSelected && selectedUnitId
+          ? { unit_id: selectedUnitId }
+          : {}),
+      },
       {
         onSuccess(results) {
           const isNew = results[0]?.user.is_new;
@@ -146,7 +199,13 @@ export default function AddMemberDialog({
                 placeholder="Search every society by phone or name…"
                 onChange={(hit) => {
                   setSelectedUser(hit);
-                  if (hit) setPhone(hit.phone);
+                  if (hit) {
+                    setPhone(hit.phone);
+                    // Prefill the name input only when the form's
+                    // current value is empty — don't clobber what the
+                    // operator typed first.
+                    if (!name && hit.name) setName(hit.name);
+                  }
                 }}
                 onQueryChange={(q) => {
                   // Track typed value so the form submits cleanly when
@@ -164,6 +223,25 @@ export default function AddMemberDialog({
               <p className="text-xs text-muted-foreground">
                 Indian mobile number — 10 digits starting 6/7/8/9, with or without +91.
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="member-name">
+                Full name{' '}
+                {selectedUser?.name && (
+                  <span className="text-xs text-muted-foreground font-normal">
+                    (existing — leave blank to keep)
+                  </span>
+                )}
+              </Label>
+              <Input
+                id="member-name"
+                placeholder={selectedUser?.name ?? 'e.g. Rahul Sharma'}
+                value={name}
+                maxLength={200}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <FormFieldError error={addMember.error} field="name" />
             </div>
 
             {!preselectedTenantId && (
@@ -211,6 +289,42 @@ export default function AddMemberDialog({
                 <p className="text-xs text-destructive">Select at least one role</p>
               )}
             </div>
+
+            {hasResidentRoleSelected && (
+              <div className="space-y-2">
+                <Label htmlFor="member-unit">
+                  Unit <span className="text-xs text-destructive">*</span>
+                </Label>
+                <Select
+                  id="member-unit"
+                  required={hasResidentRoleSelected}
+                  value={selectedUnitId}
+                  disabled={!effectiveTenantId || unitsQuery.isLoading}
+                  onChange={(e) => setSelectedUnitId(e.target.value)}
+                >
+                  <option value="">
+                    {!effectiveTenantId
+                      ? 'Pick a society first…'
+                      : unitsQuery.isLoading
+                        ? 'Loading units…'
+                        : 'Select unit…'}
+                  </option>
+                  {tenantUnits.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.block ? `${u.block}-` : ''}
+                      {u.unit_number}
+                      {u.floor !== null ? ` (Floor ${u.floor})` : ''}
+                    </option>
+                  ))}
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Resident roles (owner / tenant / family) must be linked to a
+                  unit so the Member Directory and unit detail page render
+                  them correctly.
+                </p>
+                <FormFieldError error={addMember.error} field="unit_id" />
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -219,7 +333,13 @@ export default function AddMemberDialog({
             </DialogClose>
             <Button
               type="submit"
-              disabled={!effectiveTenantId || !phone || selectedRoles.length === 0 || addMember.isPending}
+              disabled={
+                !effectiveTenantId ||
+                !phone ||
+                selectedRoles.length === 0 ||
+                (hasResidentRoleSelected && !selectedUnitId) ||
+                addMember.isPending
+              }
             >
               {addMember.isPending ? 'Adding...' : `Add Member${selectedRoles.length > 1 ? ` (${selectedRoles.length} roles)` : ''}`}
             </Button>

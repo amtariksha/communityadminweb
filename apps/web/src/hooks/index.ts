@@ -216,8 +216,16 @@ export type {
 } from './use-role-delegation';
 
 // Tenant lifecycle (onboarding / renewal / exit)
-export { useRenewAgreement } from './use-tenant-lifecycle';
-export type { RenewAgreementInput, RenewAgreementResult } from './use-tenant-lifecycle';
+export {
+  useCreateOnboarding,
+  useRenewAgreement,
+} from './use-tenant-lifecycle';
+export type {
+  CreateOnboardingInput,
+  CreateOnboardingResult,
+  RenewAgreementInput,
+  RenewAgreementResult,
+} from './use-tenant-lifecycle';
 
 // Tenant Members (Super Admin)
 export {

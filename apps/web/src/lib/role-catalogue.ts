@@ -95,3 +95,24 @@ export const ROLE_LABELS: Record<string, string> = ASSIGNABLE_ROLES.reduce(
   },
   {} as Record<string, string>,
 );
+
+/**
+ * Resident-type roles — the ones that imply physical residence in a
+ * unit. Backend `super-admin.service.assignUserRole` rejects these
+ * without `unit_id` (and creates a `members` row when present).
+ *
+ * Keep this in sync with `residentMemberType()` in
+ * `apps/api/src/modules/super-admin/super-admin.service.ts`.
+ */
+export const RESIDENT_ROLE_SLUGS: ReadonlySet<string> = new Set([
+  'owner',
+  'tenant_resident',
+  'tenant',
+  'owner_family',
+  'tenant_family',
+  'family_member',
+]);
+
+export function isResidentRole(slug: string): boolean {
+  return RESIDENT_ROLE_SLUGS.has(slug);
+}

@@ -199,10 +199,14 @@ export function useUnitDetail(unitId: string) {
 export function useMemberDirectory(filters?: DirectoryFilters) {
   return useQuery({
     queryKey: unitMemberKeys.directoryList(filters),
-    queryFn: function fetchDirectory() {
+    // QA #37 — accept React Query's per-query AbortSignal and forward
+    // it to the API client. When the user clicks Page 3 mid-fetch of
+    // Page 2, RQ aborts the in-flight Page-2 request so its stale
+    // response can't resolve and clobber the visible Page-3 list.
+    queryFn: function fetchDirectory({ signal }) {
       return api.get<PaginatedResponse<DirectoryMember>>(
         '/units/directory/members',
-        { params: directoryFiltersToParams(filters) },
+        { params: directoryFiltersToParams(filters), signal },
       );
     },
   });

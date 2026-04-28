@@ -68,6 +68,7 @@ import {
   useTransferOwnership,
   useDisconnectTenant,
   useBulkImportMembers,
+  useCreateOnboarding,
 } from '@/hooks';
 import type { UnitDetailMember } from '@/hooks';
 import { useOcrIdDocument } from '@/hooks/use-ocr';
@@ -287,6 +288,21 @@ export default function UnitsContent(): ReactNode {
   const [addMemberType, setAddMemberType] = useState('owner_family');
   const [addMemberParentId, setAddMemberParentId] = useState('');
   const [addMemberMoveIn, setAddMemberMoveIn] = useState('');
+
+  // QA #219 / #222 — Onboard Tenant dialog. Captures the full lease
+  // packet (start/end, rent, deposit) and creates a tenant_onboarding
+  // record + approval request. Distinct from the lightweight Add Member
+  // (member_type='tenant') flow, which only writes a `members` row
+  // without a lease — kept for backwards compat but not surfaced from
+  // the tenant section anymore.
+  const [onboardTenantOpen, setOnboardTenantOpen] = useState(false);
+  const [onboardName, setOnboardName] = useState('');
+  const [onboardPhone, setOnboardPhone] = useState('');
+  const [onboardEmail, setOnboardEmail] = useState('');
+  const [onboardLeaseStart, setOnboardLeaseStart] = useState('');
+  const [onboardLeaseEnd, setOnboardLeaseEnd] = useState('');
+  const [onboardMonthlyRent, setOnboardMonthlyRent] = useState('');
+  const [onboardSecurityDeposit, setOnboardSecurityDeposit] = useState('');
   // Unified user-directory wiring (migration 056 / UserSearchSelect).
   // `addMemberSelected` is the directory hit picked from autocomplete;
   // when set, the form submits with that user's exact phone (and the
@@ -329,6 +345,7 @@ export default function UnitsContent(): ReactNode {
   const transferOwnership = useTransferOwnership();
   const disconnectTenant = useDisconnectTenant();
   const bulkImportMembers = useBulkImportMembers();
+  const createOnboarding = useCreateOnboarding();
 
   const units = unitsQuery.data?.data ?? [];
   const totalUnits = unitsQuery.data?.total ?? 0;
@@ -680,6 +697,115 @@ export default function UnitsContent(): ReactNode {
     setAddMemberSelected(null);
     setAddMemberNoPhone(false);
     setAddMemberOpen(true);
+  }
+
+  // QA #219 / #222 — full tenant onboarding with lease packet.
+  function openOnboardTenant(): void {
+    setOnboardName('');
+    setOnboardPhone('');
+    setOnboardEmail('');
+    // Sensible defaults: lease starts today, 11-month term (the
+    // standard Indian rental tenancy length).
+    const today = new Date();
+    const elevenMonths = new Date(today);
+    elevenMonths.setMonth(elevenMonths.getMonth() + 11);
+    setOnboardLeaseStart(today.toISOString().slice(0, 10));
+    setOnboardLeaseEnd(elevenMonths.toISOString().slice(0, 10));
+    setOnboardMonthlyRent('');
+    setOnboardSecurityDeposit('');
+    setOnboardTenantOpen(true);
+  }
+
+  function handleOnboardTenantSubmit(e: FormEvent): void {
+    e.preventDefault();
+    const phone = normalizePhone(onboardPhone);
+    if (!phone.ok || !phone.value) {
+      addToast({
+        title: 'Invalid tenant phone',
+        description: phone.ok ? 'Phone is required.' : phone.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!onboardName.trim()) {
+      addToast({
+        title: 'Name required',
+        description: 'Tenant name is required to start onboarding.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!onboardLeaseStart || !onboardLeaseEnd) {
+      addToast({
+        title: 'Lease dates required',
+        description: 'Pick both lease start and end dates.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (onboardLeaseEnd <= onboardLeaseStart) {
+      addToast({
+        title: 'Invalid lease window',
+        description: 'Lease end date must be after lease start date.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const monthlyRent = onboardMonthlyRent ? Number(onboardMonthlyRent) : null;
+    const securityDeposit = onboardSecurityDeposit
+      ? Number(onboardSecurityDeposit)
+      : null;
+    if (monthlyRent !== null && (!Number.isFinite(monthlyRent) || monthlyRent <= 0)) {
+      addToast({
+        title: 'Invalid monthly rent',
+        description: 'Monthly rent must be a positive number, or leave blank.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (
+      securityDeposit !== null &&
+      (!Number.isFinite(securityDeposit) || securityDeposit < 0)
+    ) {
+      addToast({
+        title: 'Invalid security deposit',
+        description: 'Security deposit must be zero or positive, or leave blank.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    createOnboarding.mutate(
+      {
+        unit_id: detailUnitId,
+        tenant_name: onboardName.trim(),
+        tenant_phone: phone.value,
+        tenant_email: onboardEmail.trim() || null,
+        lease_start_date: onboardLeaseStart,
+        lease_end_date: onboardLeaseEnd,
+        monthly_rent: monthlyRent,
+        security_deposit: securityDeposit,
+      },
+      {
+        onSuccess() {
+          setOnboardTenantOpen(false);
+          addToast({
+            title: 'Tenant onboarding submitted',
+            description:
+              'A pending approval was created. Once a community admin / committee member approves, the tenant becomes active on this unit.',
+            variant: 'success',
+          });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to start onboarding',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
   }
 
   async function handleScanIdDocument(
@@ -1104,6 +1230,10 @@ export default function UnitsContent(): ReactNode {
                 <TableHead>Owner</TableHead>
                 <TableHead>Resident</TableHead>
                 <TableHead>Occupied</TableHead>
+                {/* QA #104 — visual cue for editable rows. The whole row
+                    is also clickable but the pencil makes the affordance
+                    discoverable. */}
+                <TableHead className="w-12">Edit</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1155,6 +1285,23 @@ export default function UnitsContent(): ReactNode {
                       ) : (
                         <Badge variant="secondary">Vacant</Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      {/* QA #104 — Pencil icon advertises "this row is
+                          editable". Same handler as the row click so
+                          users get the same dialog either way. */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        title="Edit unit"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDetailDialog(unit);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -1457,14 +1604,31 @@ export default function UnitsContent(): ReactNode {
                             </Button>
                           </>
                         ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={openAddTenant}
-                          >
-                            <UserPlus className="mr-1 h-3 w-3" />
-                            Assign Tenant
-                          </Button>
+                          <>
+                            {/* QA #219 / #222 — primary action: full
+                                onboarding with lease packet + approval
+                                workflow. */}
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={openOnboardTenant}
+                            >
+                              <UserPlus className="mr-1 h-3 w-3" />
+                              Onboard Tenant
+                            </Button>
+                            {/* Legacy fallback: assign without a lease,
+                                e.g. owner's relative recorded as
+                                "tenant" administratively. No approval
+                                request, no lease dates. */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={openAddTenant}
+                              title="Assign without lease (no approval workflow)"
+                            >
+                              Quick assign
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -1904,6 +2068,131 @@ export default function UnitsContent(): ReactNode {
                     : addMemberType === 'tenant'
                       ? 'Assign Tenant'
                       : 'Add Member'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* QA #219 / #222 — Onboard Tenant dialog. Captures the lease
+          packet and POSTs to /tenant-lifecycle/onboard which creates a
+          tenant_onboarding row + approval request. The members row is
+          written when the approval is granted; until then the tenant
+          shows up under /approvals as a pending item. */}
+      <Dialog open={onboardTenantOpen} onOpenChange={setOnboardTenantOpen}>
+        <DialogContent className="max-w-lg">
+          <form onSubmit={handleOnboardTenantSubmit}>
+            <DialogHeader>
+              <DialogTitle>Onboard Tenant</DialogTitle>
+              <DialogDescription>
+                Submit a tenant onboarding request with the full lease
+                packet. The tenant becomes active once a community
+                admin or committee member approves.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="onboard-name">
+                  Tenant name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="onboard-name"
+                  required
+                  placeholder="Full name"
+                  value={onboardName}
+                  onChange={(e) => setOnboardName(e.target.value)}
+                />
+                <FormFieldError error={createOnboarding.error} field="tenant_name" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="onboard-phone">
+                  Phone <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="onboard-phone"
+                  required
+                  placeholder="10-digit mobile (optional +91)"
+                  maxLength={13}
+                  inputMode="tel"
+                  value={onboardPhone}
+                  onChange={(e) => setOnboardPhone(e.target.value)}
+                />
+                <FormFieldError error={createOnboarding.error} field="tenant_phone" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="onboard-email">Email</Label>
+                <Input
+                  id="onboard-email"
+                  type="email"
+                  placeholder="optional"
+                  value={onboardEmail}
+                  onChange={(e) => setOnboardEmail(e.target.value)}
+                />
+                <FormFieldError error={createOnboarding.error} field="tenant_email" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="onboard-lease-start">
+                  Lease start <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="onboard-lease-start"
+                  type="date"
+                  required
+                  value={onboardLeaseStart}
+                  onChange={(e) => setOnboardLeaseStart(e.target.value)}
+                />
+                <FormFieldError error={createOnboarding.error} field="lease_start_date" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="onboard-lease-end">
+                  Lease end <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="onboard-lease-end"
+                  type="date"
+                  required
+                  value={onboardLeaseEnd}
+                  onChange={(e) => setOnboardLeaseEnd(e.target.value)}
+                />
+                <FormFieldError error={createOnboarding.error} field="lease_end_date" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="onboard-rent">Monthly rent (₹)</Label>
+                <Input
+                  id="onboard-rent"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="optional"
+                  value={onboardMonthlyRent}
+                  onChange={(e) => setOnboardMonthlyRent(e.target.value)}
+                />
+                <FormFieldError error={createOnboarding.error} field="monthly_rent" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="onboard-deposit">Security deposit (₹)</Label>
+                <Input
+                  id="onboard-deposit"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="optional"
+                  value={onboardSecurityDeposit}
+                  onChange={(e) => setOnboardSecurityDeposit(e.target.value)}
+                />
+                <FormFieldError error={createOnboarding.error} field="security_deposit" />
+              </div>
+              <p className="col-span-2 text-xs text-muted-foreground">
+                The Aadhaar / lease document upload step is on the
+                Approvals page after the request is created.
+              </p>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={createOnboarding.isPending}>
+                {createOnboarding.isPending ? 'Submitting...' : 'Submit Onboarding'}
               </Button>
             </DialogFooter>
           </form>
