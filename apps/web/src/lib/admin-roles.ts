@@ -45,6 +45,18 @@ export const ADMIN_ELIGIBLE_ROLES = new Set<string>([
 ]);
 
 /**
+ * Sentinel value used in `User.societies[].role` for societies where
+ * the user holds ONLY resident-tier roles (no admin role). Lets the
+ * downstream filters (`getAdminSocieties`, `getSidebarAllowlist`,
+ * `pickDisplayRole`) reject these cleanly without leaking a real
+ * resident-role slug into UI gates.
+ *
+ * The leading underscore makes the slug invalid as a backend role —
+ * if it ever gets sent to the API, RBAC rejects it deterministically.
+ */
+export const NON_ADMIN_ROLE_SENTINEL = '_no_admin_role';
+
+/**
  * Priority ordering used to pick a single representative role when a
  * user holds many. Higher index = lower priority. Roles outside the
  * list rank infinitely low (i.e. only chosen when nothing else fits).
@@ -177,13 +189,29 @@ export function getAdminSocieties(user: Pick<User, 'societies'>): User['societie
  * the active tenant), return either a Set of allowed nav-item labels
  * or null to mean "show everything".
  *
- * null is the common case — any admin who isn't a pure supervisor
- * sees the full sidebar. The supervisor roles return the filtered
- * Set from SUPERVISOR_SIDEBAR_ALLOWLIST.
+ * Three tiers:
+ *   1. Broader admin role (community_admin, accountant, etc.) → null
+ *      i.e. show every nav item.
+ *   2. Supervisor role → filtered Set from SUPERVISOR_SIDEBAR_ALLOWLIST.
+ *   3. Anything else (resident roles, unknown roles, undefined) →
+ *      EMPTY Set, i.e. hide every nav item. Multi-role hardening
+ *      (2026-04-29): a user whose `currentRole` resolves to e.g.
+ *      `tenant_resident` because of a stale localStorage entry must
+ *      not see the full admin sidebar. The dashboard layout's
+ *      bootstrap also re-validates and bounces such users to
+ *      /no-access — this is defence-in-depth in case bootstrap is
+ *      bypassed (router cache, race, future regression).
  */
+const EMPTY_NAV_SET: ReadonlySet<string> = new Set();
+
 export function getSidebarAllowlist(role: string | undefined): Set<string> | null {
-  if (!role) return null;
-  // If user is a broader admin, no filter.
+  // No role / unrecognised role → show nothing. The bootstrap layer
+  // should have redirected to /no-access already; this is the safety
+  // net behind it.
+  if (!role || !ADMIN_ELIGIBLE_ROLES.has(role)) {
+    return EMPTY_NAV_SET as Set<string>;
+  }
+  // Broader admin roles → no filter (full sidebar).
   if (
     role === 'super_admin' ||
     role === 'community_admin' ||
@@ -194,6 +222,8 @@ export function getSidebarAllowlist(role: string | undefined): Set<string> | nul
   ) {
     return null;
   }
-  // Supervisor roles → filtered sidebar.
-  return SUPERVISOR_SIDEBAR_ALLOWLIST[role] ?? null;
+  // Supervisor role → filtered Set; if the slug is admin-eligible but
+  // missing from SUPERVISOR_SIDEBAR_ALLOWLIST, fall back to empty
+  // rather than null so we never accidentally widen the menu.
+  return SUPERVISOR_SIDEBAR_ALLOWLIST[role] ?? (EMPTY_NAV_SET as Set<string>);
 }

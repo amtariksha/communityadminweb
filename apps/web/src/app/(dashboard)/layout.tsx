@@ -10,10 +10,26 @@ import {
   getToken,
   purgeLegacyTokenStorage,
   setCurrentTenant,
+  clearCurrentTenant,
 } from '@/lib/auth';
 import { refreshAccessToken } from '@/lib/api';
+import { getAdminSocieties } from '@/lib/admin-roles';
+import type { User } from '@/lib/auth';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+
+/**
+ * Returns the existing tenant id ONLY if the user still has an
+ * admin-eligible role on it. Otherwise returns null so the bootstrap
+ * picks fresh from the filtered admin-society list.
+ */
+function stillAdminTenant(
+  tenantId: string | null,
+  adminSocieties: User['societies'],
+): string | null {
+  if (!tenantId) return null;
+  return adminSocieties.some((s) => s.id === tenantId) ? tenantId : null;
+}
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
@@ -73,15 +89,41 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): Rea
 
       const user = getUser();
       const tenant = getCurrentTenant();
-      if (!tenant && user && !user.isSuperAdmin) {
-        if (user.societies.length === 1) {
-          setCurrentTenant(user.societies[0].id);
-        } else if (user.societies.length > 1) {
-          router.replace('/select-tenant');
-          return;
-        } else {
-          router.replace('/no-access');
-          return;
+
+      // Multi-role hardening (2026-04-29): admin-web must only consider
+      // admin-eligible roles when picking the active tenant. A user
+      // who is `tenant_resident` of Society A AND `community_admin` of
+      // Society B previously got auto-routed into Society A on
+      // bootstrap (because `societies[0]` was Society A). All
+      // subsequent screens then read `currentRole = tenant_resident`
+      // and behaved like a resident on the admin panel. Filter by
+      // admin-eligibility everywhere bootstrap touches localStorage.
+      if (user && !user.isSuperAdmin) {
+        const adminSocieties = getAdminSocieties(user);
+
+        // Re-validate any pre-existing tenant in localStorage. If the
+        // session was set on a society where the user has only
+        // resident roles (e.g. role got revoked, or a stale entry
+        // from before the role-shape fix), drop it and re-route.
+        if (tenant) {
+          const stillAdmin = adminSocieties.some((s) => s.id === tenant);
+          if (!stillAdmin) {
+            clearCurrentTenant();
+          }
+        }
+
+        const effectiveTenant = stillAdminTenant(tenant, adminSocieties);
+        if (!effectiveTenant) {
+          if (adminSocieties.length === 0) {
+            router.replace('/no-access');
+            return;
+          }
+          if (adminSocieties.length === 1) {
+            setCurrentTenant(adminSocieties[0].id);
+          } else {
+            router.replace('/select-tenant');
+            return;
+          }
         }
       }
 

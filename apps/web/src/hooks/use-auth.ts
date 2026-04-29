@@ -10,7 +10,7 @@ import {
   setCurrentTenant,
 } from '@/lib/auth';
 import type { User } from '@/lib/auth';
-import { pickAdminRole } from '@/lib/admin-roles';
+import { pickAdminRole, NON_ADMIN_ROLE_SENTINEL } from '@/lib/admin-roles';
 
 // ---------------------------------------------------------------------------
 // Response types
@@ -112,7 +112,14 @@ export function useCurrentUser() {
           societies: res.tenants.map((t) => ({
             id: t.tenantId,
             name: t.tenantName,
-            role: pickAdminRole(t.roles) ?? t.roles[0] ?? 'member',
+            // Multi-role hardening (2026-04-29): if the user holds
+            // NO admin role on this society, mark it with a sentinel
+            // so getAdminSocieties / getSidebarAllowlist / route
+            // gates uniformly reject it. The previous `t.roles[0]`
+            // fallback put a real resident slug into society.role,
+            // which several downstream call-sites used to widen the
+            // sidebar incorrectly.
+            role: pickAdminRole(t.roles) ?? NON_ADMIN_ROLE_SENTINEL,
           })),
         };
       });
@@ -161,10 +168,13 @@ export function useVerifyOtp() {
         id: t.tenantId,
         name: t.tenantName,
         // Admin-eligible role for this society. If the user only has
-        // resident roles here, fall back to the first role so the
-        // entry isn't blank — but `getAdminSocieties()` will filter
-        // it out of admin-only UI.
-        role: pickAdminRole(t.roles) ?? t.roles[0] ?? 'member',
+        // resident roles here, mark it with NON_ADMIN_ROLE_SENTINEL
+        // so the entry is uniformly rejected by getAdminSocieties,
+        // getSidebarAllowlist, and bootstrap re-validation. The old
+        // `t.roles[0]` fallback leaked the resident slug and caused
+        // the multi-role bug where the admin sidebar widened to its
+        // full menu for a tenant_resident.
+        role: pickAdminRole(t.roles) ?? NON_ADMIN_ROLE_SENTINEL,
       }));
       const user: User = {
         id: data.user.id,
