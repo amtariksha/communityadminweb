@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserSearchSelect } from '@/components/ui/user-search-select';
 import {
   Table,
   TableBody,
@@ -342,6 +343,30 @@ export default function VendorsContent(): ReactNode {
                   <DialogDescription>Add a new vendor or service provider</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
+                  {/* QA #250 — society members can also be vendors
+                      (a resident running a plumbing business, a
+                      committee member's CA firm). Picking a member
+                      here prefills name + phone + email so the
+                      operator doesn't retype. They can edit any
+                      field after picking. */}
+                  <div className="space-y-2">
+                    <Label htmlFor="vendor-from-member">Pick from members (optional)</Label>
+                    <UserSearchSelect
+                      scope="tenant"
+                      value={null}
+                      onChange={(hit) => {
+                        if (!hit) return;
+                        if (hit.name) setFormName(hit.name);
+                        if (hit.phone) setFormPhone(hit.phone.replace(/^\+91/, ''));
+                        if (hit.email) setFormEmail(hit.email);
+                      }}
+                      placeholder="Search by name or phone\u2026"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Typing a brand-new vendor? Skip this picker and fill
+                      the fields below directly.
+                    </p>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="vendor-name">Vendor Name</Label>
                     <Input
