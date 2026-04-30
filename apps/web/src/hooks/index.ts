@@ -668,12 +668,15 @@ export {
   useCreateGasPlan,
   useRechargeWallet,
   useDispenseGas,
+  usePendingRecharges,
+  useDispenseRecharge,
 } from './use-gas';
 export type {
   GasPlan,
   GasWallet,
   GasTransaction,
   GasStats,
+  GasManualRecharge,
 } from './use-gas';
 
 // Marketplace

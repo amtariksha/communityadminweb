@@ -37,7 +37,11 @@ import {
   useGasStats,
   useCreateGasPlan,
   useRechargeWallet,
+  usePendingRecharges,
+  useDispenseRecharge,
 } from '@/hooks/use-gas';
+import { useUnits } from '@/hooks';
+import { CheckCircle2 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -62,12 +66,17 @@ function txnTypeVariant(
 // Tab constants
 // ---------------------------------------------------------------------------
 
-type Tab = 'plans' | 'wallets' | 'transactions';
+type Tab = 'plans' | 'wallets' | 'transactions' | 'pending-recharges';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'plans', label: 'Plans' },
   { key: 'wallets', label: 'Wallets' },
   { key: 'transactions', label: 'Transactions' },
+  // QA #107-admin — security desk view of resident-paid recharges
+  // awaiting physical dispense at the gate. Backend gates the
+  // endpoint to security_guard / accountant / community_admin /
+  // super_admin so this tab stays empty for residents anyway.
+  { key: 'pending-recharges', label: 'Pending Recharges' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -165,6 +174,7 @@ export default function GasContent(): ReactNode {
       {activeTab === 'plans' && <PlansTab />}
       {activeTab === 'wallets' && <WalletsTab />}
       {activeTab === 'transactions' && <TransactionsTab />}
+      {activeTab === 'pending-recharges' && <PendingRechargesTab />}
     </div>
   );
 }
@@ -542,6 +552,128 @@ function TransactionsTab(): ReactNode {
                   No transactions found.
                 </TableCell>
               </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pending Recharges tab (QA #107-admin)
+// ---------------------------------------------------------------------------
+//
+// Lists resident-paid recharges (gas_recharge_payments rows in the
+// `pending` state) that need the security desk to physically
+// dispense the gas card. "Mark Dispensed" calls
+// PATCH /gas/recharges/:id/dispense; backend stamps
+// dispensed_by_user_id + dispensed_at and refuses non-pending rows.
+//
+// Unit_number is enriched client-side via the existing useUnits()
+// cache (no backend join needed — keeps the endpoint small).
+// Resident name is shown as the truncated user_id for now; a
+// future backend enrichment can replace it without changing this
+// component's contract.
+
+function PendingRechargesTab(): ReactNode {
+  const { addToast } = useToast();
+  const rechargesQuery = usePendingRecharges('pending');
+  const unitsQuery = useUnits({ limit: 1000 });
+  const dispense = useDispenseRecharge();
+
+  const recharges = rechargesQuery.data ?? [];
+  const unitsById = new Map(
+    (unitsQuery.data?.data ?? []).map((u) => [u.id, u]),
+  );
+
+  function handleDispense(id: string): void {
+    dispense.mutate(id, {
+      onSuccess() {
+        addToast({ title: 'Recharge dispensed', variant: 'success' });
+      },
+      onError(error) {
+        addToast({
+          title: 'Failed to mark dispensed',
+          description: friendlyError(error),
+          variant: 'destructive',
+        });
+      },
+    });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Pending Recharges</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Unit</TableHead>
+              <TableHead>Resident</TableHead>
+              <TableHead className="text-right">Amount</TableHead>
+              <TableHead>Paid At</TableHead>
+              <TableHead>Razorpay Payment</TableHead>
+              <TableHead className="w-32">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rechargesQuery.isLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 6 }).map((__, j) => (
+                    <TableCell key={j}>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : recharges.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  No pending recharges. Everything dispensed!
+                </TableCell>
+              </TableRow>
+            ) : (
+              recharges.map((row) => {
+                const unit = unitsById.get(row.unit_id);
+                return (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium">
+                      {unit?.unit_number ?? row.unit_id.slice(0, 8)}
+                      {unit?.block ? ` · Block ${unit.block}` : ''}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {row.user_id.slice(0, 8)}…
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(Number(row.amount))}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(row.created_at)}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {row.razorpay_payment_id ?? '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        onClick={() => handleDispense(row.id)}
+                        disabled={
+                          dispense.isPending && dispense.variables === row.id
+                        }
+                      >
+                        <CheckCircle2 className="mr-1 h-4 w-4" />
+                        {dispense.isPending && dispense.variables === row.id
+                          ? 'Dispensing…'
+                          : 'Mark Dispensed'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
