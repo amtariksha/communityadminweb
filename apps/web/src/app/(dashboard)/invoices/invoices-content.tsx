@@ -587,152 +587,23 @@ export default function InvoicesContent(): ReactNode {
                             );
                           })}
                         </Select>
-                        <Dialog open={ruleDialogOpen} onOpenChange={setRuleDialogOpen}>
-                          <DialogTrigger>
-                            <Button type="button" variant="outline" size="sm" className="shrink-0">
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <form onSubmit={handleCreateRule}>
-                              <DialogHeader>
-                                <DialogTitle>Create Billing Rule</DialogTitle>
-                                <DialogDescription>Add a new billing rule for invoice generation</DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="rule-name">Name</Label>
-                                  <Input
-                                    id="rule-name"
-                                    placeholder="e.g., Maintenance Charge"
-                                    value={ruleName}
-                                    onChange={(e) => setRuleName(e.target.value)}
-                                    required
-                                  />
-                                  <FormFieldError error={createInvoiceRule.error} field="name" />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="rule-ledger-account">Ledger Account</Label>
-                                  <Select
-                                    id="rule-ledger-account"
-                                    value={ruleLedgerAccountId}
-                                    onChange={(e) => setRuleLedgerAccountId(e.target.value)}
-                                    required
-                                  >
-                                    <option value="">Select account</option>
-                                    {ledgerAccounts.map((account) => (
-                                      <option key={account.id} value={account.id}>
-                                        {account.name} ({account.code})
-                                      </option>
-                                    ))}
-                                  </Select>
-                                  <FormFieldError error={createInvoiceRule.error} field="ledger_account_id" />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="rule-charge-type" className="flex items-center gap-1">
-                                    Charge Type
-                                    <HelpTooltip text="Flat = one fixed amount per unit. Per Sq Ft = amount multiplied by unit's area_sqft at invoice generation." />
-                                  </Label>
-                                  <Select
-                                    id="rule-charge-type"
-                                    value={ruleChargeType}
-                                    onChange={(e) => setRuleChargeType(e.target.value as 'flat' | 'area_based')}
-                                    required
-                                  >
-                                    <option value="flat">Flat Amount (one fixed fee per unit)</option>
-                                    <option value="area_based">Per Sq Ft (rate × unit area)</option>
-                                  </Select>
-                                  <p className="text-xs text-muted-foreground">
-                                    {ruleChargeType === 'flat'
-                                      ? 'Every unit billed the same amount regardless of size.'
-                                      : 'Invoice amount = rate × unit.area_sqft. Units without area_sqft will bill zero.'}
-                                  </p>
-                                </div>
-                                {ruleChargeType === 'flat' ? (
-                                  <div className="space-y-2">
-                                    <Label htmlFor="rule-flat-amount">Amount (₹)</Label>
-                                    <Input
-                                      id="rule-flat-amount"
-                                      type="number"
-                                      placeholder="3000"
-                                      min="0.01"
-                                      max="10000000"
-                                      step="0.01"
-                                      title="Amount must be greater than zero (max ₹1 crore)"
-                                      value={ruleFlatAmount}
-                                      onChange={(e) => setRuleFlatAmount(e.target.value)}
-                                      required
-                                    />
-                                    <FormFieldError error={createInvoiceRule.error} field="flat_amount" />
-                                    <FormFieldError error={createInvoiceRule.error} field="amount" />
-                                  </div>
-                                ) : (
-                                  <div className="space-y-2">
-                                    <Label htmlFor="rule-rate-per-sqft">Rate per Sq Ft (₹)</Label>
-                                    <Input
-                                      id="rule-rate-per-sqft"
-                                      type="number"
-                                      placeholder="2.5"
-                                      min="0.01"
-                                      step="0.01"
-                                      value={ruleRatePerSqft}
-                                      onChange={(e) => setRuleRatePerSqft(e.target.value)}
-                                      required
-                                    />
-                                    <FormFieldError error={createInvoiceRule.error} field="rate_per_sqft" />
-                                    <p className="text-xs text-muted-foreground">
-                                      Example: rate = ₹2.5, unit = 1,200 sqft → invoice = ₹3,000
-                                    </p>
-                                  </div>
-                                )}
-                                <div className="space-y-2">
-                                  <Label htmlFor="rule-frequency">Frequency</Label>
-                                  <Select
-                                    id="rule-frequency"
-                                    value={ruleFrequency}
-                                    onChange={(e) => setRuleFrequency(e.target.value)}
-                                    required
-                                  >
-                                    <option value="monthly">Monthly</option>
-                                    <option value="quarterly">Quarterly</option>
-                                    <option value="half_yearly">Half Yearly</option>
-                                    <option value="yearly">Yearly</option>
-                                    <option value="one_time">One Time</option>
-                                  </Select>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    id="rule-gst"
-                                    type="checkbox"
-                                    checked={ruleGstApplicable}
-                                    onChange={(e) => setRuleGstApplicable(e.target.checked)}
-                                  />
-                                  <Label htmlFor="rule-gst">GST Applicable</Label>
-                                </div>
-                                {ruleGstApplicable && (
-                                  <div className="space-y-2">
-                                    <Label htmlFor="rule-gst-rate">GST Rate</Label>
-                                    <GstRateSelect
-                                      id="rule-gst-rate"
-                                      required
-                                      allowNone={false}
-                                      value={ruleGstRate ? Number(ruleGstRate) : null}
-                                      onChange={(v) => setRuleGstRate(v == null ? '' : String(v))}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                              <DialogFooter>
-                                <DialogClose>
-                                  <Button type="button" variant="outline">Cancel</Button>
-                                </DialogClose>
-                                <Button type="submit" disabled={createInvoiceRule.isPending}>
-                                  {createInvoiceRule.isPending ? 'Creating...' : 'Create Rule'}
-                                </Button>
-                              </DialogFooter>
-                            </form>
-                          </DialogContent>
-                        </Dialog>
+                        {/* QA #197 — the inline trigger only flips state.
+                            The actual Create Billing Rule <Dialog> is mounted
+                            at the component root (below) so it sits as a
+                            sibling of Generate Invoices, not nested inside
+                            its <DialogContent>. Nested Radix dialogs swallow
+                            the inner trigger via the outer overlay's
+                            pointer-event interception, which is why the
+                            "+" button silently did nothing. */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          onClick={() => setRuleDialogOpen(true)}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -1391,6 +1262,153 @@ export default function InvoicesContent(): ReactNode {
               <Button variant="outline">Close</Button>
             </DialogClose>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* QA #197 — Create Billing Rule dialog hoisted to a sibling of
+          the Generate Invoices dialog so the "+" trigger inside the
+          parent's <DialogContent> can reliably flip ruleDialogOpen
+          without Radix's overlay swallowing the click. handleCreateRule
+          already calls setRuleDialogOpen(false) on success (line 358).*/}
+      <Dialog open={ruleDialogOpen} onOpenChange={setRuleDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleCreateRule}>
+            <DialogHeader>
+              <DialogTitle>Create Billing Rule</DialogTitle>
+              <DialogDescription>Add a new billing rule for invoice generation</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="rule-name">Name</Label>
+                <Input
+                  id="rule-name"
+                  placeholder="e.g., Maintenance Charge"
+                  value={ruleName}
+                  onChange={(e) => setRuleName(e.target.value)}
+                  required
+                />
+                <FormFieldError error={createInvoiceRule.error} field="name" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="rule-ledger-account">Ledger Account</Label>
+                <Select
+                  id="rule-ledger-account"
+                  value={ruleLedgerAccountId}
+                  onChange={(e) => setRuleLedgerAccountId(e.target.value)}
+                  required
+                >
+                  <option value="">Select account</option>
+                  {ledgerAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name} ({account.code})
+                    </option>
+                  ))}
+                </Select>
+                <FormFieldError error={createInvoiceRule.error} field="ledger_account_id" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="rule-charge-type" className="flex items-center gap-1">
+                  Charge Type
+                  <HelpTooltip text="Flat = one fixed amount per unit. Per Sq Ft = amount multiplied by unit's area_sqft at invoice generation." />
+                </Label>
+                <Select
+                  id="rule-charge-type"
+                  value={ruleChargeType}
+                  onChange={(e) => setRuleChargeType(e.target.value as 'flat' | 'area_based')}
+                  required
+                >
+                  <option value="flat">Flat Amount (one fixed fee per unit)</option>
+                  <option value="area_based">Per Sq Ft (rate × unit area)</option>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {ruleChargeType === 'flat'
+                    ? 'Every unit billed the same amount regardless of size.'
+                    : 'Invoice amount = rate × unit.area_sqft. Units without area_sqft will bill zero.'}
+                </p>
+              </div>
+              {ruleChargeType === 'flat' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="rule-flat-amount">Amount (₹)</Label>
+                  <Input
+                    id="rule-flat-amount"
+                    type="number"
+                    placeholder="3000"
+                    min="0.01"
+                    max="10000000"
+                    step="0.01"
+                    title="Amount must be greater than zero (max ₹1 crore)"
+                    value={ruleFlatAmount}
+                    onChange={(e) => setRuleFlatAmount(e.target.value)}
+                    required
+                  />
+                  <FormFieldError error={createInvoiceRule.error} field="flat_amount" />
+                  <FormFieldError error={createInvoiceRule.error} field="amount" />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="rule-rate-per-sqft">Rate per Sq Ft (₹)</Label>
+                  <Input
+                    id="rule-rate-per-sqft"
+                    type="number"
+                    placeholder="2.5"
+                    min="0.01"
+                    step="0.01"
+                    value={ruleRatePerSqft}
+                    onChange={(e) => setRuleRatePerSqft(e.target.value)}
+                    required
+                  />
+                  <FormFieldError error={createInvoiceRule.error} field="rate_per_sqft" />
+                  <p className="text-xs text-muted-foreground">
+                    Example: rate = ₹2.5, unit = 1,200 sqft → invoice = ₹3,000
+                  </p>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="rule-frequency">Frequency</Label>
+                <Select
+                  id="rule-frequency"
+                  value={ruleFrequency}
+                  onChange={(e) => setRuleFrequency(e.target.value)}
+                  required
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="half_yearly">Half Yearly</option>
+                  <option value="yearly">Yearly</option>
+                  <option value="one_time">One Time</option>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="rule-gst"
+                  type="checkbox"
+                  checked={ruleGstApplicable}
+                  onChange={(e) => setRuleGstApplicable(e.target.checked)}
+                />
+                <Label htmlFor="rule-gst">GST Applicable</Label>
+              </div>
+              {ruleGstApplicable && (
+                <div className="space-y-2">
+                  <Label htmlFor="rule-gst-rate">GST Rate</Label>
+                  <GstRateSelect
+                    id="rule-gst-rate"
+                    required
+                    allowNone={false}
+                    value={ruleGstRate ? Number(ruleGstRate) : null}
+                    onChange={(v) => setRuleGstRate(v == null ? '' : String(v))}
+                  />
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={createInvoiceRule.isPending}>
+                {createInvoiceRule.isPending ? 'Creating...' : 'Create Rule'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
