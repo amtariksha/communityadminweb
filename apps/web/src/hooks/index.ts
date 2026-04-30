@@ -8,6 +8,17 @@ export {
   useSwitchTenant,
 } from './use-auth';
 
+// Tenant settings (per-society Help & Support — QA #350)
+export {
+  helpContactKeys,
+  useHelpContact,
+  useUpdateHelpContact,
+} from './use-tenant-settings';
+export type {
+  HelpContact,
+  HelpContactCustomLink,
+} from './use-tenant-settings';
+
 // Units
 export {
   unitKeys,

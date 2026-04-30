@@ -63,6 +63,7 @@ import { RoleDelegationCard } from './role-delegation-card';
 import { AutomatedReportsCard } from './automated-reports-card';
 import { TdsConfigCard } from './tds-config-card';
 import { NotificationPolicyCard } from './notification-policy-card';
+import { HelpContactCard } from './help-contact-card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1858,6 +1859,11 @@ export default function SettingsContent(): ReactNode {
       {/* (NotifPlan §"Phase 5")                                               */}
       {/* ------------------------------------------------------------------- */}
       <NotificationPolicyCard />
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Help & Support — per-society contact details (QA #350)              */}
+      {/* ------------------------------------------------------------------- */}
+      <HelpContactCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* TDS Configuration — platform default + per-tenant override            */}
