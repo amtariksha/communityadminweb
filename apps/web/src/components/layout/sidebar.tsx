@@ -188,8 +188,12 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
   return (
     <>
       {open && (
+        // QA #113 — backdrop visible at every viewport below md
+        // (768px). Was lg:hidden which kept the sidebar overlaid
+        // on tablets up to 1024px even though the layout has
+        // room for it inline.
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -197,7 +201,10 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0',
+          // QA #113 — sidebar collapses to drawer at <md (768px),
+          // sits inline at md+. Matches the hamburger toggle
+          // visibility in header.tsx so the two stay in sync.
+          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 md:static md:z-auto md:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >

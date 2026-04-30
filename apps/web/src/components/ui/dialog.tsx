@@ -100,14 +100,22 @@ const DialogContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>
   return (
     <dialog
       ref={dialogRef}
-      className="fixed inset-0 z-50 m-auto max-h-[85vh] overflow-visible rounded-lg border bg-background p-0 shadow-lg backdrop:bg-black/50 open:flex open:flex-col"
+      // QA #113 — mobile fit: dialog spans nearly the full viewport
+      // on phones (≤640px) so long forms don't clip; reverts to the
+      // narrow centred panel on tablets/desktops. max-h on mobile
+      // is taller (95vh) because phones have less vertical chrome.
+      className="fixed inset-0 z-50 m-auto max-h-[95vh] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-visible rounded-lg border bg-background p-0 shadow-lg backdrop:bg-black/50 open:flex open:flex-col sm:max-h-[85vh] sm:w-auto sm:max-w-lg"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           setOpen(false);
         }
       }}
     >
-      <div ref={ref} className={cn('w-full max-w-lg overflow-visible p-6', className)} {...props}>
+      {/* Inner padding tightens on mobile (p-4) and relaxes on
+          tablet+ (p-6) so the form fields aren't visually crammed
+          on a phone screen. The container's max-w cap above
+          governs panel width; this just controls inset. */}
+      <div ref={ref} className={cn('w-full overflow-visible p-4 sm:max-w-lg sm:p-6', className)} {...props}>
         {children}
       </div>
     </dialog>

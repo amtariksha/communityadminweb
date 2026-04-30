@@ -6,7 +6,14 @@ const Table = forwardRef<HTMLTableElement, HTMLAttributes<HTMLTableElement>>(fun
   ref,
 ) {
   return (
-    <div className="relative w-full overflow-auto">
+    // QA #113 — mobile horizontal-scroll wrapper. `overflow-x-auto`
+    // is the explicit name for what `overflow-auto` resolves to here;
+    // calling it out makes the intent obvious to the next reader.
+    // The table itself keeps `w-full` so on desktop it always fills
+    // the column; the wrapper engages the scrollbar only when
+    // content exceeds the viewport (typical on phones for tables
+    // with 5+ columns).
+    <div className="relative w-full overflow-x-auto">
       <table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />
     </div>
   );

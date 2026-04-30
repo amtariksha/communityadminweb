@@ -647,7 +647,7 @@ export default function StaffContent(): ReactNode {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="emp-name">Name</Label>
                             <Input
@@ -699,7 +699,7 @@ export default function StaffContent(): ReactNode {
                             />
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="emp-type">Staff Type</Label>
                             <Select
@@ -731,7 +731,7 @@ export default function StaffContent(): ReactNode {
                             onChange={(e) => setEmpAddress(e.target.value)}
                           />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="emp-emergency">Emergency Contact</Label>
                             <Input
@@ -895,7 +895,7 @@ export default function StaffContent(): ReactNode {
                             onChange={(e) => setShiftName(e.target.value)}
                           />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="shift-start">Start Time</Label>
                             <Input
@@ -1024,7 +1024,7 @@ export default function StaffContent(): ReactNode {
                             ))}
                           </Select>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="assign-from">From Date</Label>
                             <Input
@@ -1320,7 +1320,7 @@ export default function StaffContent(): ReactNode {
                             ))}
                           </Select>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="leave-from">From Date</Label>
                             <Input

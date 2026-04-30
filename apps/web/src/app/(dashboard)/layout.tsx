@@ -189,7 +189,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): Rea
           </div>
         )}
         <Header onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+        {/* QA #113 — tighten outer padding on phones (p-2),
+            relax to p-4 on tablet, full p-6 on desktop. Was
+            `p-4 lg:p-6` which gave phones 16px margins on top of
+            already-narrow viewport — content felt cramped. */}
+        <main className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6">{children}</main>
       </div>
     </div>
   );

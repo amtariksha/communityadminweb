@@ -80,12 +80,22 @@ export function Header({ onMenuClick }: HeaderProps): ReactNode {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 lg:px-6">
-      <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>
+      {/* QA #113 — hamburger appears on phones (<md=768px); the
+          sidebar primitive moved its breakpoint to md too, so the
+          two stay in lockstep. The button used to show on
+          tablets-and-below (lg:hidden), which left the sidebar
+          modal even when the screen had room for it inline. */}
+      <Button variant="ghost" size="icon" className="md:hidden" onClick={onMenuClick}>
         <Menu className="h-5 w-5" />
         <span className="sr-only">Toggle sidebar</span>
       </Button>
 
-      <nav className="hidden items-center gap-1 text-sm text-muted-foreground md:flex">
+      {/* QA #113 — breadcrumbs moved from md:flex to lg:flex so
+          tablets (768–1024px) no longer get a cramped breadcrumb
+          row alongside the inline sidebar. Phones still see the
+          hamburger; tablets see neither breadcrumb nor hamburger
+          (they have the static sidebar instead). */}
+      <nav className="hidden items-center gap-1 text-sm text-muted-foreground lg:flex">
         <span className="font-medium text-foreground">Home</span>
         {breadcrumbs.map((crumb) => (
           <span key={crumb.href} className="flex items-center gap-1">
