@@ -129,6 +129,19 @@ interface UpdateVehicleInput {
   is_active?: boolean;
 }
 
+// QA #357-admin — sublet creation. Schema mirrors backend's
+// createSubletSchema (parking.controller.ts). The slot_id is the
+// parking SLOT being sublet (not a vehicle); the sublettee_member_id
+// receives the slot for the date range. monthly_charge defaults to 0
+// at the backend if omitted.
+export interface CreateSubletInput {
+  parking_slot_id: string;
+  sublettee_member_id: string;
+  start_date: string; // YYYY-MM-DD
+  end_date?: string;  // YYYY-MM-DD optional
+  monthly_charge?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Query keys
 // ---------------------------------------------------------------------------
@@ -321,6 +334,41 @@ export function useRemoveVehicle() {
   return useMutation({
     mutationFn: function removeVehicle(id: string) {
       return api.delete(`/parking/vehicles/${id}`);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: parkingKeys.all });
+    },
+  });
+}
+
+// QA #357-admin — create a parking sublet.
+// Backend POST /parking/sublets accepts the CreateSubletInput
+// shape; returns the inserted parking_sublets row. The slot
+// transitions to 'sublet' status server-side once the approval
+// (if any) lands; the inserted row starts as 'pending' or
+// 'active' depending on the tenant's approval policy.
+export function useCreateSublet() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function createSublet(input: CreateSubletInput) {
+      return api.post<{ data: ParkingSublet }>('/parking/sublets', input);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: parkingKeys.all });
+    },
+  });
+}
+
+// QA #357-admin — cancel a sublet. Backend POST
+// /parking/sublets/:id/cancel only acts on pending|active rows;
+// it 4xxs on already-cancelled / completed.
+export function useCancelSublet() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function cancelSublet(id: string) {
+      return api.post<{ data: ParkingSublet }>(`/parking/sublets/${id}/cancel`);
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: parkingKeys.all });
