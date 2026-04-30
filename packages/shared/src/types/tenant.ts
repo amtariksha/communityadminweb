@@ -32,6 +32,29 @@ export interface TenantSettings {
     day_of_month?: number;
     time_of_day?: string;
   };
+
+  // NotifPlan §"Phase 5" — per-tenant notification policy. Two
+  // levers, both optional so an unset tenant continues to behave as
+  // it did before this field existed:
+  //
+  // 1. `allow_urgent_for[]` whitelists which categories may be sent
+  //    with urgency='urgent'. Empty / undefined = ALL categories may
+  //    be sent urgent (legacy behaviour). Non-empty = the urgent
+  //    toggle is rejected by the backend for any category not in
+  //    the list, even if the admin's role would otherwise allow it.
+  //
+  // 2. `default_quiet_hours` — applied to a new resident's user row
+  //    on create. Existing residents keep their personal settings.
+  //    Set to null to opt the tenant out of seeding new residents
+  //    with a quiet window.
+  notification_policy?: {
+    allow_urgent_for?: string[];
+    default_quiet_hours?: {
+      start: string; // 'HH:MM' 24h
+      end: string;   // 'HH:MM' 24h
+      tz: string;    // IANA, e.g. 'Asia/Kolkata'
+    } | null;
+  };
 }
 
 export interface Tenant {

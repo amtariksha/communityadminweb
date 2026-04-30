@@ -48,7 +48,10 @@ import {
   useCreateAmenity,
   useUpdateAmenity,
   useCancelBooking,
+  useCreateBooking,
   useGenerateBookingInvoice,
+  useUnits,
+  useUnitMembers,
 } from '@/hooks';
 import type { Amenity, AmenityBooking, AmenityBookingFilters } from '@/hooks';
 
@@ -713,6 +716,11 @@ function BookingsTab(): ReactNode {
   const [cancelTarget, setCancelTarget] = useState<AmenityBooking | null>(null);
   const [cancelReason, setCancelReason] = useState('');
 
+  // New Booking dialog (admin creates booking on behalf of resident).
+  // Mounted at the BookingsTab level so the dialog can read the
+  // existing amenitiesQuery / bookingsQuery caches.
+  const [newBookingOpen, setNewBookingOpen] = useState(false);
+
   // Compute month date range for data fetching
   const monthStart = useMemo(() => {
     const d = new Date(viewYear, viewMonth, 1);
@@ -890,6 +898,16 @@ function BookingsTab(): ReactNode {
                   </option>
                 ))}
               </Select>
+            </div>
+            {/* Push the New Booking action to the right of the
+                filter row. Lives next to the filters so the admin
+                doesn't have to scroll past the calendar to start a
+                booking on behalf of a resident. */}
+            <div className="ml-auto">
+              <Button onClick={() => setNewBookingOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Booking
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -1143,6 +1161,347 @@ function BookingsTab(): ReactNode {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Admin "New Booking" dialog — extracted into its own
+          component so the form state stays local + remounts (and
+          resets) every time the admin opens it. */}
+      <NewBookingDialog
+        open={newBookingOpen}
+        onOpenChange={setNewBookingOpen}
+        amenities={amenities}
+        defaultDate={selectedDate}
+      />
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// New Booking dialog (admin → resident)
+// ---------------------------------------------------------------------------
+//
+// Lets the community admin create an amenity booking on behalf of a
+// resident. Form picks a unit first, then a member of that unit (the
+// useUnitMembers query is gated on the unit_id so the dropdown stays
+// empty until selection). After save the dialog offers a one-click
+// "Generate invoice" if the amenity is billable — saves the admin a
+// second trip through the calendar to find the freshly created row.
+
+interface NewBookingDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  amenities: Amenity[];
+  defaultDate: Date | null;
+}
+
+function NewBookingDialog({
+  open,
+  onOpenChange,
+  amenities,
+  defaultDate,
+}: NewBookingDialogProps): ReactNode {
+  const { addToast } = useToast();
+  const createBooking = useCreateBooking();
+  const generateInvoice = useGenerateBookingInvoice();
+
+  // Form state. Initial date defaults to the calendar's selected day
+  // (if any) so the admin can land on a date in the calendar then
+  // open the dialog without retyping.
+  const initialDate = useMemo(() => {
+    if (defaultDate) return toDateKey(defaultDate);
+    const today = new Date();
+    return toDateKey(today);
+  }, [defaultDate]);
+
+  const [amenityId, setAmenityId] = useState('');
+  const [unitId, setUnitId] = useState('');
+  const [memberId, setMemberId] = useState('');
+  const [bookingDate, setBookingDate] = useState(initialDate);
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:00');
+  const [purpose, setPurpose] = useState('');
+  const [guestsCount, setGuestsCount] = useState('0');
+  const [autoInvoice, setAutoInvoice] = useState(true);
+
+  // Reset whenever the dialog opens. Avoids stale state from a
+  // previous open. We deliberately don't clear when closing so a
+  // failed save lets the admin tweak and retry without losing input.
+  useMemo(() => {
+    if (open) {
+      setAmenityId('');
+      setUnitId('');
+      setMemberId('');
+      setBookingDate(initialDate);
+      setStartTime('09:00');
+      setEndTime('10:00');
+      setPurpose('');
+      setGuestsCount('0');
+      setAutoInvoice(true);
+    }
+  }, [open, initialDate]);
+
+  const unitsQuery = useUnits({ limit: 1000 });
+  const units = unitsQuery.data?.data ?? [];
+
+  // Members query is gated on unitId — stays empty until the admin
+  // picks a unit, then loads that unit's roster.
+  const membersQuery = useUnitMembers(unitId);
+  const members = membersQuery.data ?? [];
+
+  const selectedAmenity = amenities.find((a) => a.id === amenityId) ?? null;
+  const isBillable =
+    selectedAmenity !== null &&
+    (Number(selectedAmenity.price) > 0 || Number(selectedAmenity.deposit) > 0);
+
+  function validate(): string | null {
+    if (!amenityId) return 'Please pick an amenity.';
+    if (!unitId) return 'Please pick a unit.';
+    if (!memberId) return 'Please pick a member.';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate))
+      return 'Date must be YYYY-MM-DD.';
+    if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime))
+      return 'Times must be HH:MM.';
+    if (startTime >= endTime) return 'End time must be after start time.';
+    return null;
+  }
+
+  function handleSubmit(): void {
+    const err = validate();
+    if (err) {
+      addToast({ title: err, variant: 'destructive' });
+      return;
+    }
+    createBooking.mutate(
+      {
+        amenity_id: amenityId,
+        unit_id: unitId,
+        member_id: memberId,
+        date: bookingDate,
+        start_time: startTime,
+        end_time: endTime,
+        notes: purpose.trim() || null,
+      },
+      {
+        onSuccess(response) {
+          const created = response.data;
+          // Optionally chain into invoice generation. We do it here
+          // (rather than in the mutation hook itself) so the admin
+          // can opt-out by unchecking the box for free amenities or
+          // ad-hoc waivers.
+          if (autoInvoice && isBillable) {
+            generateInvoice.mutate(
+              { id: created.id },
+              {
+                onSuccess(invRes) {
+                  addToast({
+                    title: 'Booking created + invoice generated',
+                    description: `Invoice ${invRes.data.invoice_number} sent to the resident.`,
+                    variant: 'success',
+                  });
+                  onOpenChange(false);
+                },
+                onError(invErr) {
+                  addToast({
+                    title: 'Booking created, but invoice failed',
+                    description: friendlyError(invErr),
+                    variant: 'destructive',
+                  });
+                  onOpenChange(false);
+                },
+              },
+            );
+          } else {
+            addToast({ title: 'Booking created', variant: 'success' });
+            onOpenChange(false);
+          }
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to create booking',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>New Booking on Behalf of Resident</DialogTitle>
+          <DialogDescription>
+            Reserve an amenity for a resident and (optionally) issue
+            them an invoice for the booking charge.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label htmlFor="nb-amenity">Amenity</Label>
+            <Select
+              id="nb-amenity"
+              value={amenityId}
+              onChange={(e) => setAmenityId(e.target.value)}
+            >
+              <option value="">Select an amenity</option>
+              {amenities.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {a.price > 0 ? ` · ${formatCurrency(a.price)}` : ' · Free'}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="nb-unit">Unit</Label>
+              <Select
+                id="nb-unit"
+                value={unitId}
+                onChange={(e) => {
+                  setUnitId(e.target.value);
+                  // Picking a different unit invalidates the
+                  // selected member (member belongs to the prior
+                  // unit), so reset it.
+                  setMemberId('');
+                }}
+              >
+                <option value="">Select a unit</option>
+                {units.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.unit_number}
+                    {u.block ? ` · Block ${u.block}` : ''}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nb-member">Member</Label>
+              <Select
+                id="nb-member"
+                value={memberId}
+                onChange={(e) => setMemberId(e.target.value)}
+                disabled={!unitId || membersQuery.isLoading}
+              >
+                <option value="">
+                  {!unitId
+                    ? 'Pick a unit first'
+                    : membersQuery.isLoading
+                      ? 'Loading…'
+                      : members.length === 0
+                        ? 'No members in this unit'
+                        : 'Select a member'}
+                </option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name ?? 'Unnamed'} · {m.member_type}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="nb-date">Date</Label>
+              <Input
+                id="nb-date"
+                type="date"
+                value={bookingDate}
+                onChange={(e) => setBookingDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nb-start">Start</Label>
+              <Input
+                id="nb-start"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nb-end">End</Label>
+              <Input
+                id="nb-end"
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="nb-purpose">Purpose / notes</Label>
+              <Input
+                id="nb-purpose"
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
+                placeholder="e.g. Birthday celebration"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nb-guests">Guests count</Label>
+              <Input
+                id="nb-guests"
+                type="number"
+                min={0}
+                value={guestsCount}
+                onChange={(e) => setGuestsCount(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Optional invoice generation. Hidden for free amenities
+              because there's nothing to invoice; visible-but-
+              checked-by-default for billable ones (the most common
+              admin flow). */}
+          {selectedAmenity && isBillable && (
+            <label className="flex items-start gap-2 rounded-md border bg-muted/30 p-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1 rounded border-input"
+                checked={autoInvoice}
+                onChange={(e) => setAutoInvoice(e.target.checked)}
+              />
+              <span>
+                <span className="font-medium">
+                  Generate invoice for this booking
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  Charges{' '}
+                  {formatCurrency(
+                    Number(selectedAmenity.price) +
+                      Number(selectedAmenity.deposit),
+                  )}{' '}
+                  ({formatCurrency(selectedAmenity.price)} usage +{' '}
+                  {formatCurrency(selectedAmenity.deposit)} deposit) to
+                  the resident's ledger.
+                </span>
+              </span>
+            </label>
+          )}
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button
+            onClick={handleSubmit}
+            disabled={createBooking.isPending || generateInvoice.isPending}
+          >
+            {createBooking.isPending
+              ? 'Creating booking…'
+              : generateInvoice.isPending
+                ? 'Generating invoice…'
+                : autoInvoice && isBillable
+                  ? 'Create + Invoice'
+                  : 'Create Booking'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

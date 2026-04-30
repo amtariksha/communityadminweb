@@ -62,6 +62,7 @@ import type { FinancialYear } from '@communityos/shared';
 import { RoleDelegationCard } from './role-delegation-card';
 import { AutomatedReportsCard } from './automated-reports-card';
 import { TdsConfigCard } from './tds-config-card';
+import { NotificationPolicyCard } from './notification-policy-card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1851,6 +1852,12 @@ export default function SettingsContent(): ReactNode {
       {/* Automated Reports — monthly email digest (Batch 15)                  */}
       {/* ------------------------------------------------------------------- */}
       <AutomatedReportsCard />
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Notification Policy — urgent allowlist + default quiet hours        */}
+      {/* (NotifPlan §"Phase 5")                                               */}
+      {/* ------------------------------------------------------------------- */}
+      <NotificationPolicyCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* TDS Configuration — platform default + per-tenant override            */}
