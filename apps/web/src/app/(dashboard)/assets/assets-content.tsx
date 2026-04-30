@@ -93,12 +93,20 @@ const CONDITIONS = [
   { value: 'critical', label: 'Critical' },
 ];
 
+// QA #342 — values must match the backend enum + DB CHECK exactly.
+// Backend: apps/api/src/modules/asset/asset.controller.ts (Zod) +
+// packages/db/src/migrations/070_asset_service_logs_emergency.sql
+// (CHECK constraint). The previous list (preventive / corrective /
+// calibration) wasn't accepted by the backend at all — the default
+// 'preventive' value made every Save click 400.
 const SERVICE_TYPES = [
-  { value: 'preventive', label: 'Preventive' },
-  { value: 'corrective', label: 'Corrective' },
+  { value: 'maintenance', label: 'Maintenance' },
+  { value: 'repair', label: 'Repair' },
   { value: 'emergency', label: 'Emergency' },
   { value: 'inspection', label: 'Inspection' },
-  { value: 'calibration', label: 'Calibration' },
+  { value: 'replacement', label: 'Replacement' },
+  { value: 'cleaning', label: 'Cleaning' },
+  { value: 'other', label: 'Other' },
 ];
 
 const AMC_FREQUENCIES = [
@@ -215,7 +223,9 @@ export default function AssetsContent(): ReactNode {
   // Service dialog
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [serviceAssetId, setServiceAssetId] = useState('');
-  const [serviceType, setServiceType] = useState('preventive');
+  // QA #342 — default to 'maintenance' (canonical backend value).
+  // The previous default 'preventive' was rejected by the backend.
+  const [serviceType, setServiceType] = useState('maintenance');
   const [serviceDate, setServiceDate] = useState('');
   const [serviceVendor, setServiceVendor] = useState('');
   const [serviceDescription, setServiceDescription] = useState('');
@@ -359,7 +369,7 @@ export default function AssetsContent(): ReactNode {
 
   function resetServiceForm(): void {
     setServiceAssetId('');
-    setServiceType('preventive');
+    setServiceType('maintenance');
     setServiceDate('');
     setServiceVendor('');
     setServiceDescription('');
@@ -819,7 +829,23 @@ export default function AssetsContent(): ReactNode {
                     <TableRow key={svc.id}>
                       <TableCell className="font-medium">{svc.asset_name}</TableCell>
                       <TableCell>
-                        <Badge variant={svc.service_type === 'emergency' ? 'destructive' : svc.service_type === 'preventive' ? 'success' : 'default'}>
+                        {/* QA #342 — variant map mirrors the canonical
+                            backend enum. 'emergency' / 'repair' are urgent
+                            (destructive); 'maintenance' / 'inspection' /
+                            'cleaning' are routine (success); the rest
+                            fall through to default. */}
+                        <Badge
+                          variant={
+                            svc.service_type === 'emergency' ||
+                            svc.service_type === 'repair'
+                              ? 'destructive'
+                              : svc.service_type === 'maintenance' ||
+                                  svc.service_type === 'inspection' ||
+                                  svc.service_type === 'cleaning'
+                                ? 'success'
+                                : 'default'
+                          }
+                        >
                           {svc.service_type}
                         </Badge>
                       </TableCell>
