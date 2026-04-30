@@ -1039,19 +1039,31 @@ export default function VotingContent(): ReactNode {
                   <span>Participation: {(pollDetail.participation_rate * 100).toFixed(1)}%</span>
                 </div>
                 <div className="space-y-3">
-                  {pollDetail.options.map((option) => (
-                    <div key={option.id} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{option.label}</span>
-                        <span className="text-muted-foreground">
-                          {option.votes} vote{option.votes !== 1 ? 's' : ''} ({option.percentage.toFixed(1)}%)
-                        </span>
+                  {/* QA #251 — guard against polls returned without an
+                      `options` array (or with one that's null). The
+                      previous unconditional .map() crashed with
+                      "Cannot read properties of undefined (reading
+                      'map')" the moment the eye-icon opened a poll
+                      whose options hadn't been populated yet. */}
+                  {Array.isArray(pollDetail.options) && pollDetail.options.length > 0 ? (
+                    pollDetail.options.map((option) => (
+                      <div key={option.id} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium">{option.label}</span>
+                          <span className="text-muted-foreground">
+                            {option.votes} vote{option.votes !== 1 ? 's' : ''} ({option.percentage.toFixed(1)}%)
+                          </span>
+                        </div>
+                        <div className="h-3 w-full rounded-full bg-muted">
+                          <div className="h-3 rounded-full bg-primary transition-all" style={{ width: `${option.percentage}%` }} />
+                        </div>
                       </div>
-                      <div className="h-3 w-full rounded-full bg-muted">
-                        <div className="h-3 rounded-full bg-primary transition-all" style={{ width: `${option.percentage}%` }} />
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="rounded border border-dashed border-muted-foreground/30 bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
+                      No options recorded for this poll yet.
+                    </p>
+                  )}
                 </div>
                 <div className="text-xs text-muted-foreground space-y-1">
                   <p>Status: <Badge variant={pollStatusVariant(pollDetail.poll.status)} className="ml-1">{pollDetail.poll.status}</Badge></p>
