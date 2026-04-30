@@ -490,6 +490,8 @@ export {
   useNotificationTemplates,
   useCreateTemplate,
   useSendTemplate,
+  useTestSendTemplate,
+  useSentNotifications,
   useMyNotifications,
   useUnreadCount,
   useMarkRead,
@@ -497,6 +499,7 @@ export {
 } from './use-notifications';
 export type {
   NotificationTemplate,
+  SentNotification,
   Notification,
   NotificationTemplateFilters,
   MyNotificationFilters,

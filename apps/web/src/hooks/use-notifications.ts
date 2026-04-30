@@ -20,6 +20,21 @@ export interface NotificationTemplate {
   created_by: string | null;
   created_at: string;
   creator_name?: string;
+  // Migration 076 — set when the admin picks a category in the
+  // editor. Drives the action set the recipient phone renders.
+  category?: string | null;
+  urgency?: 'normal' | 'urgent';
+}
+
+// NotifPlan §5 — per-template scorecard returned by GET
+// /notifications/sent. Joins delivery_logs + notifications.is_read
+// aggregates so the Sent tab can render a per-row dashboard.
+export interface SentNotification extends NotificationTemplate {
+  sent_count: number;
+  read_count: number;
+  delivered_count: number;
+  failed_count: number;
+  skipped_count: number;
 }
 
 export interface Notification {
@@ -59,6 +74,10 @@ interface CreateTemplateInput {
   body: string;
   channel: string;
   target_audience: string;
+  // Migration 076 — optional; admin can save a template without a
+  // category (sends as a generic announcement-style payload).
+  category?: string | null;
+  urgency?: 'normal' | 'urgent';
 }
 
 // ---------------------------------------------------------------------------
@@ -168,14 +187,47 @@ export function useCreateTemplate() {
 export function useSendTemplate() {
   const queryClient = useQueryClient();
 
+  // Backend returns `{ data: { sent: number } }` from
+  // POST /notifications/templates/:id/send (controller signature
+  // confirmed). The previous typing claimed NotificationTemplate
+  // which never matched the wire shape.
   return useMutation({
     mutationFn: function sendTemplate(id: string) {
-      return api.post<{ data: NotificationTemplate }>(
+      return api.post<{ data: { sent: number } }>(
         `/notifications/templates/${id}/send`,
       );
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+    },
+  });
+}
+
+// NotifPlan §1 — fire a template only to the calling user. Useful in
+// QA and for admins who want to preview the action set on their own
+// device without iterating recipients.
+export function useTestSendTemplate() {
+  return useMutation({
+    mutationFn: function testSendTemplate(id: string) {
+      return api.post<{ data: { sent: number } }>(
+        `/notifications/templates/${id}/test`,
+      );
+    },
+  });
+}
+
+// NotifPlan §5 — admin-side "what was sent" inbox. Fetches recent
+// templates with delivery aggregates already joined server-side.
+// Returns the full `{data, total?}` envelope so the page reads the
+// same shape as useNotificationTemplates above (consistency lets the
+// page code use `query.data?.data ?? []` uniformly).
+export function useSentNotifications(limit = 50) {
+  return useQuery({
+    queryKey: [...notificationKeys.all, 'sent', limit],
+    queryFn: function fetchSent() {
+      return api.get<{ data: SentNotification[] }>('/notifications/sent', {
+        params: { limit: String(limit) },
+      });
     },
   });
 }

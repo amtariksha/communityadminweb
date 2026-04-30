@@ -563,6 +563,10 @@ export default function AnnouncementsContent(): ReactNode {
                   <option value="owners">Owners</option>
                   <option value="tenants">Tenants</option>
                   <option value="committee">Committee</option>
+                  {/* NotifPlan §1 — 'staff' added per migration 075;
+                      reaches every active society_staff row. Use for
+                      shift change updates, training notices, etc. */}
+                  <option value="staff">Staff</option>
                 </Select>
               </div>
 
