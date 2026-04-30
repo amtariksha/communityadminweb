@@ -31,7 +31,17 @@ interface AvatarImageProps extends HTMLAttributes<HTMLImageElement> {
 
 function AvatarImage({ src, alt, className }: AvatarImageProps): ReactNode {
   return (
-    <img src={src} alt={alt} className={cn('aspect-square h-full w-full object-cover', className)} />
+    // QA #113 perf — lazy-load + async-decode all avatar images.
+    // Avatars are typically below the fold (member tables, comment
+    // rows) so eager loading was wasted bandwidth. Cascades to
+    // every Avatar usage across the admin web.
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      className={cn('aspect-square h-full w-full object-cover', className)}
+    />
   );
 }
 
