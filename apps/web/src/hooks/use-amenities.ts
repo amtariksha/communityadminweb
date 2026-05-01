@@ -7,18 +7,31 @@ import { api } from '@/lib/api';
 // Response types
 // ---------------------------------------------------------------------------
 
+// Backend returns the raw `amenities` row shape (migration 026):
+//   amenity_type, price_per_unit, deposit_amount.
+// Earlier interface declared `type / price / deposit` which silently
+// resolved to `undefined` at runtime — every list cell + form
+// hydration read undefined, so saved edits never reflected (the
+// PATCH did persist, but the next render showed stale values).
+// Field names now match the wire contract verbatim.
 export interface Amenity {
   id: string;
   tenant_id: string;
   name: string;
-  type: string;
+  amenity_type: string;
+  description: string | null;
   location: string | null;
   capacity: number | null;
   pricing_type: string;
-  price: number;
-  deposit: number;
+  price_per_unit: number;
+  deposit_amount: number;
   rules: string | null;
-  time_slots: string | null;
+  // Legacy field — current backend doesn't return this column on the
+  // amenities row (slot rows live in `amenity_slots` and are fetched
+  // via /amenities/:id/slots). Kept nullable so the settings page's
+  // hydration `amenity.time_slots ?? ''` doesn't crash; will be
+  // `undefined` at runtime today.
+  time_slots?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

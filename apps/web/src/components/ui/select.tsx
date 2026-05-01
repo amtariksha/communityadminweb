@@ -40,15 +40,36 @@ interface OptionItem {
   disabled?: boolean;
 }
 
+// Serialize React children to a flat string. JSX like `{icon} {label}`
+// produces an array of children (string, " ", string). Calling
+// String([...]) invokes Array.prototype.toString which joins with ","
+// → "🏊, ,Pool" (the bug visible in the amenity Type dropdown). We
+// recurse and concatenate without any separator instead.
+function childrenToLabel(children: ReactNode): string {
+  if (children == null) return '';
+  if (typeof children === 'string' || typeof children === 'number') {
+    return String(children);
+  }
+  if (Array.isArray(children)) {
+    return children.map(childrenToLabel).join('');
+  }
+  if (isValidElement(children)) {
+    const inner = (children.props as { children?: ReactNode }).children;
+    return childrenToLabel(inner);
+  }
+  return '';
+}
+
 function extractOptions(children: ReactNode): OptionItem[] {
   return Children.toArray(children).reduce<OptionItem[]>((acc, child) => {
     if (!isValidElement(child)) return acc;
     const type = child.type as string;
     if (type === 'option') {
       const p = child.props as { value?: string | number; children?: ReactNode; disabled?: boolean };
+      const labelText = childrenToLabel(p.children);
       acc.push({
         value: String(p.value ?? ''),
-        label: String(p.children ?? p.value ?? ''),
+        label: labelText || String(p.value ?? ''),
         disabled: p.disabled,
       });
     } else if (type === 'optgroup') {

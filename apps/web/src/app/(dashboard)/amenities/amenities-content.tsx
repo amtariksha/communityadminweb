@@ -273,12 +273,12 @@ function AmenitiesTab({ createOpen, setCreateOpen }: AmenitiesTabProps): ReactNo
   function openEdit(amenity: Amenity): void {
     setEditingAmenity(amenity);
     setFormName(amenity.name);
-    setFormType(amenity.type);
+    setFormType(amenity.amenity_type);
     setFormLocation(amenity.location ?? '');
     setFormCapacity(amenity.capacity !== null ? String(amenity.capacity) : '');
     setFormPricingType(amenity.pricing_type);
-    setFormPrice(amenity.price ? String(amenity.price) : '');
-    setFormDeposit(amenity.deposit ? String(amenity.deposit) : '');
+    setFormPrice(amenity.price_per_unit ? String(amenity.price_per_unit) : '');
+    setFormDeposit(amenity.deposit_amount ? String(amenity.deposit_amount) : '');
     setFormRules(amenity.rules ?? '');
     setEditOpen(true);
   }
@@ -518,8 +518,8 @@ function AmenitiesTab({ createOpen, setCreateOpen }: AmenitiesTabProps): ReactNo
                     <TableCell className="font-medium">{amenity.name}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span>{amenityTypeIcon(amenity.type)}</span>
-                        <span>{formatAmenityType(amenity.type)}</span>
+                        <span>{amenityTypeIcon(amenity.amenity_type)}</span>
+                        <span>{formatAmenityType(amenity.amenity_type)}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
@@ -531,10 +531,10 @@ function AmenitiesTab({ createOpen, setCreateOpen }: AmenitiesTabProps): ReactNo
                         <span className="capitalize">
                           {formatPricingType(amenity.pricing_type)}
                         </span>
-                        {amenity.pricing_type !== 'free' && amenity.price > 0 && (
+                        {amenity.pricing_type !== 'free' && amenity.price_per_unit > 0 && (
                           <span className="text-muted-foreground">
                             {' '}
-                            - {formatCurrency(amenity.price)}
+                            - {formatCurrency(amenity.price_per_unit)}
                           </span>
                         )}
                       </div>
@@ -989,7 +989,7 @@ function BookingsTab(): ReactNode {
                         <div className="mt-1 flex flex-col gap-0.5">
                           {dayBookings.slice(0, maxVisible).map((booking) => {
                             const amenity = amenityById.get(booking.amenity_id);
-                            const dotColor = amenity ? amenityColor(amenity.type) : 'bg-gray-400';
+                            const dotColor = amenity ? amenityColor(amenity.amenity_type) : 'bg-gray-400';
                             return (
                               <div
                                 key={booking.id}
@@ -1054,8 +1054,8 @@ function BookingsTab(): ReactNode {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2">
                           {amenity && (
-                            <span className="text-base" title={formatAmenityType(amenity.type)}>
-                              {amenityTypeIcon(amenity.type)}
+                            <span className="text-base" title={formatAmenityType(amenity.amenity_type)}>
+                              {amenityTypeIcon(amenity.amenity_type)}
                             </span>
                           )}
                           <span className="font-medium text-sm">
@@ -1250,7 +1250,7 @@ function NewBookingDialog({
   const selectedAmenity = amenities.find((a) => a.id === amenityId) ?? null;
   const isBillable =
     selectedAmenity !== null &&
-    (Number(selectedAmenity.price) > 0 || Number(selectedAmenity.deposit) > 0);
+    (Number(selectedAmenity.price_per_unit) > 0 || Number(selectedAmenity.deposit_amount) > 0);
 
   function validate(): string | null {
     if (!amenityId) return 'Please pick an amenity.';
@@ -1354,7 +1354,7 @@ function NewBookingDialog({
               {amenities.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
-                  {a.price > 0 ? ` · ${formatCurrency(a.price)}` : ' · Free'}
+                  {a.price_per_unit > 0 ? ` · ${formatCurrency(a.price_per_unit)}` : ' · Free'}
                 </option>
               ))}
             </Select>
@@ -1480,11 +1480,11 @@ function NewBookingDialog({
                 <span className="block text-xs text-muted-foreground">
                   Charges{' '}
                   {formatCurrency(
-                    Number(selectedAmenity.price) +
-                      Number(selectedAmenity.deposit),
+                    Number(selectedAmenity.price_per_unit) +
+                      Number(selectedAmenity.deposit_amount),
                   )}{' '}
-                  ({formatCurrency(selectedAmenity.price)} usage +{' '}
-                  {formatCurrency(selectedAmenity.deposit)} deposit) to
+                  ({formatCurrency(selectedAmenity.price_per_unit)} usage +{' '}
+                  {formatCurrency(selectedAmenity.deposit_amount)} deposit) to
                   the resident's ledger.
                 </span>
               </span>

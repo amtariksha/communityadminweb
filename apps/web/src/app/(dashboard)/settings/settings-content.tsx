@@ -653,12 +653,12 @@ export default function SettingsContent(): ReactNode {
     if (amenity) {
       setEditingAmenityId(amenity.id);
       setAmenityName(amenity.name);
-      setAmenityType(amenity.type);
+      setAmenityType(amenity.amenity_type);
       setAmenityLocation(amenity.location ?? '');
       setAmenityCapacity(amenity.capacity ? String(amenity.capacity) : '');
       setAmenityPricingType(amenity.pricing_type);
-      setAmenityPrice(amenity.price ? String(amenity.price) : '');
-      setAmenityDeposit(amenity.deposit ? String(amenity.deposit) : '');
+      setAmenityPrice(amenity.price_per_unit ? String(amenity.price_per_unit) : '');
+      setAmenityDeposit(amenity.deposit_amount ? String(amenity.deposit_amount) : '');
       setAmenityRules(amenity.rules ?? '');
       setAmenityTimeSlots(amenity.time_slots ?? '');
     } else {
@@ -1569,11 +1569,11 @@ export default function SettingsContent(): ReactNode {
                 {amenitiesList.map((amenity) => (
                   <TableRow key={amenity.id}>
                     <TableCell className="font-medium">{amenity.name}</TableCell>
-                    <TableCell className="capitalize">{amenity.type}</TableCell>
+                    <TableCell className="capitalize">{amenity.amenity_type}</TableCell>
                     <TableCell className="text-muted-foreground">{amenity.location ?? '-'}</TableCell>
                     <TableCell>{amenity.capacity ?? '-'}</TableCell>
                     <TableCell className="capitalize">{amenity.pricing_type}</TableCell>
-                    <TableCell className="text-right">{amenity.price > 0 ? formatCurrency(amenity.price) : 'Free'}</TableCell>
+                    <TableCell className="text-right">{amenity.price_per_unit > 0 ? formatCurrency(amenity.price_per_unit) : 'Free'}</TableCell>
                     <TableCell>
                       <Badge variant={amenity.is_active ? 'success' : 'secondary'}>
                         {amenity.is_active ? 'Active' : 'Inactive'}
