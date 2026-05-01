@@ -17,6 +17,7 @@ import { getAdminSocieties } from '@/lib/admin-roles';
 import type { User } from '@/lib/auth';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
 
 /**
  * Returns the existing tenant id ONLY if the user still has an
@@ -126,6 +127,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): Rea
         const effectiveTenant = stillAdminTenant(tenant, adminSocieties);
         if (!effectiveTenant) {
           if (adminSocieties.length === 0) {
+            // QA Round 14 #14-2e — defense-in-depth wrong-app block.
+            // The login flow (#14-2d) already routes non-admin users
+            // to /wrong-app, but a stale localStorage state (older
+            // pre-#14-2d login, deep-link bypass, browser back/forward
+            // shenanigans) could land them here with no admin
+            // societies. If `accessible_apps` tells us they belong on
+            // resident or guard, send them to /wrong-app with that
+            // context so the screen renders the right "use app X"
+            // copy instead of a generic /no-access.
+            const others = (user.accessible_apps ?? []).filter(
+              (a) => a !== 'admin',
+            );
+            if (others.length > 0) {
+              const search = new URLSearchParams();
+              others.forEach((a) => search.append('app', a));
+              router.replace(`/wrong-app?${search.toString()}`);
+              return;
+            }
             router.replace('/no-access');
             return;
           }
@@ -205,6 +224,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): Rea
             `p-4 lg:p-6` which gave phones 16px margins on top of
             already-narrow viewport — content felt cramped. */}
         <main className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6">{children}</main>
+        {/* QA Round 14 #14-2c — legal-links footer. Outside `<main>`
+            so it doesn't scroll with content; pins to bottom of the
+            column. Slim row, low visual weight. */}
+        <Footer />
       </div>
     </div>
   );

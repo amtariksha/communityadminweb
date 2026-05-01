@@ -38,6 +38,13 @@ interface VerifyOtpResponse {
     email: string | null;
     isSuperAdmin: boolean;
     tenants: TenantInfo[];
+    // QA Round 14 #14-1d/e — set of apps this user can sign into,
+    // computed server-side from the per-society role allowlist.
+    // Used by the admin web to short-circuit "wrong app" routing
+    // (#14-2d) without a second round-trip. Always present on
+    // current backend; typed optional for back-compat with stale
+    // dev environments where the field hasn't deployed yet.
+    accessible_apps?: Array<'admin' | 'resident' | 'guard'>;
   };
 }
 
@@ -87,6 +94,12 @@ interface MeResponse {
   isActive: boolean;
   createdAt: string;
   tenants: TenantInfo[];
+  // QA Round 14 #14-1d — same field as on the verify-otp response.
+  // The dashboard layout's bootstrap can read this to enforce the
+  // wrong-app block on a stale session that survives a token
+  // refresh. Optional for back-compat with deployed-but-not-yet
+  // backends.
+  accessible_apps?: Array<'admin' | 'resident' | 'guard'>;
 }
 
 export function useCurrentUser() {
@@ -121,6 +134,8 @@ export function useCurrentUser() {
             // sidebar incorrectly.
             role: pickAdminRole(t.roles) ?? NON_ADMIN_ROLE_SENTINEL,
           })),
+          // QA Round 14 #14-2e — see useVerifyOtp comment.
+          accessible_apps: res.accessible_apps,
         };
       });
     },
@@ -186,6 +201,10 @@ export function useVerifyOtp() {
           ? 'super_admin'
           : (pickAdminRole(data.user.tenants.flatMap((t) => t.roles)) ?? 'user'),
         societies,
+        // QA Round 14 #14-2e — persist the server-computed access set
+        // so the dashboard layout's bootstrap can reapply the
+        // wrong-app block on every reload (not just at login time).
+        accessible_apps: data.user.accessible_apps,
       };
       setUser(user);
 

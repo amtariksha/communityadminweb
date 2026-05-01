@@ -43,6 +43,15 @@ export interface User {
     name: string;
     role: string;
   }>;
+  // QA Round 14 #14-2d/2e — server-computed list of apps this user
+  // can sign into, derived from the per-society APP_ROLE_ACCESS
+  // allowlist on the backend (#14-1d). Persisted here so the
+  // dashboard layout's bootstrap can re-check on every reload
+  // (defense-in-depth for the wrong-app block — if /wrong-app
+  // somehow gets bypassed at login, the dashboard catches it on
+  // the next mount). Optional for back-compat with users whose
+  // last login pre-dated the field.
+  accessible_apps?: Array<'admin' | 'resident' | 'guard'>;
 }
 
 function isBrowser(): boolean {

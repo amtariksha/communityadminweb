@@ -1,3 +1,4 @@
+import { APP_ROLE_ACCESS } from '@communityos/shared';
 import type { User } from './auth';
 
 /**
@@ -23,26 +24,19 @@ import type { User } from './auth';
  * Role slugs that are eligible to log in to the admin panel.
  *
  * Pure resident roles (owner, tenant_resident, *_family, member) are
- * routed to the Flutter resident app — they get /no-access when they
- * land here.
+ * routed to the Flutter resident app — they get /no-access (or
+ * /wrong-app, when their actual app target is known) when they land
+ * here.
  *
- * Keep this in sync with the roles table in migration 003 + 018 + 048.
- * The allowlist lives client-side because the JWT still carries every
- * role the user has (the Flutter apps need the resident roles).
+ * QA Round 14 #14-2e — sourced from the shared `APP_ROLE_ACCESS.admin`
+ * allowlist (#14-1z). Replacing the previous hand-maintained set means
+ * the canonical role registry lives in one place; if a backend role
+ * gets reclassified, every consumer (admin web, resident Flutter,
+ * guard Flutter, admin Flutter) updates from a single source.
  */
-export const ADMIN_ELIGIBLE_ROLES = new Set<string>([
-  'super_admin',
-  'community_admin',
-  'committee_member',
-  'accountant',
-  'auditor',
-  'moderator',
-  'facility_supervisor',
-  'security_supervisor',
-  // Legacy gate-specialized roles retain admin access for now — they
-  // see a filtered sidebar via getSidebarAllowlist().
-  'guard_supervisor',
-]);
+export const ADMIN_ELIGIBLE_ROLES: ReadonlySet<string> = new Set<string>(
+  APP_ROLE_ACCESS.admin,
+);
 
 /**
  * Sentinel value used in `User.societies[].role` for societies where

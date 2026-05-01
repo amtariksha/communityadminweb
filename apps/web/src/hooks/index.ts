@@ -24,6 +24,20 @@ export type {
   OwnerDirectOnboardSetting,
 } from './use-tenant-settings';
 
+// CMS pages — Terms / Privacy per app target (QA Round 14 #14-2b)
+export {
+  cmsPageKeys,
+  useCmsPage,
+  useCmsPageHistory,
+  useUpdateCmsPage,
+} from './use-cms-pages';
+export type {
+  CmsAppTarget,
+  CmsPageType,
+  CmsPage,
+  SaveCmsPageInput,
+} from './use-cms-pages';
+
 // Units
 export {
   unitKeys,
