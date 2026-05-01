@@ -101,14 +101,25 @@ interface UpdateAmenityInput {
   is_active?: boolean;
 }
 
+// Backend Zod (amenity.controller.ts:43–52) requires:
+//   amenity_id, member_id, unit_id (uuid)
+//   booking_date (YYYY-MM-DD), start_time, end_time
+//   purpose (optional, nullable, max 200)
+//   guests_count (optional, non-negative int)
+//
+// The earlier shape used `date` + `notes`, which the backend Zod
+// silently rejected with a 400 "Validation failed" — those keys
+// were stripped and the required `booking_date` was missing. Names
+// now match the wire contract verbatim.
 interface CreateBookingInput {
   amenity_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
   member_id: string;
   unit_id: string;
-  notes?: string | null;
+  booking_date: string; // YYYY-MM-DD
+  start_time: string;
+  end_time: string;
+  purpose?: string | null;
+  guests_count?: number;
 }
 
 // ---------------------------------------------------------------------------

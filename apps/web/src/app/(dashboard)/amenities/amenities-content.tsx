@@ -1270,15 +1270,22 @@ function NewBookingDialog({
       addToast({ title: err, variant: 'destructive' });
       return;
     }
+    // Backend Zod expects booking_date + purpose + guests_count
+    // (amenity.controller.ts:43–52). Earlier shape used `date` +
+    // `notes`, which the backend dropped and 400'd on the missing
+    // booking_date. Keep field names in lockstep with the wire
+    // contract.
+    const guests = guestsCount ? Number(guestsCount) : 0;
     createBooking.mutate(
       {
         amenity_id: amenityId,
         unit_id: unitId,
         member_id: memberId,
-        date: bookingDate,
+        booking_date: bookingDate,
         start_time: startTime,
         end_time: endTime,
-        notes: purpose.trim() || null,
+        purpose: purpose.trim() || null,
+        guests_count: Number.isFinite(guests) && guests >= 0 ? guests : 0,
       },
       {
         onSuccess(response) {
