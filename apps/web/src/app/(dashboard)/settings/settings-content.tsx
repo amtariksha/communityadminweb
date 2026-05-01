@@ -64,6 +64,7 @@ import { AutomatedReportsCard } from './automated-reports-card';
 import { TdsConfigCard } from './tds-config-card';
 import { NotificationPolicyCard } from './notification-policy-card';
 import { HelpContactCard } from './help-contact-card';
+import { OwnerDirectOnboardCard } from './owner-direct-onboard-card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1864,6 +1865,13 @@ export default function SettingsContent(): ReactNode {
       {/* Help & Support — per-society contact details (QA #350)              */}
       {/* ------------------------------------------------------------------- */}
       <HelpContactCard />
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Owner-initiated tenant onboarding — per-society policy (QA #13-2a)  */}
+      {/* Placed adjacent to the help-contact + tds cards because it's        */}
+      {/* the same shape: a society-wide knob the community admin owns.       */}
+      {/* ------------------------------------------------------------------- */}
+      <OwnerDirectOnboardCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* TDS Configuration — platform default + per-tenant override            */}
