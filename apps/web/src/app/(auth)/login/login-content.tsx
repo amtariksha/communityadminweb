@@ -67,10 +67,33 @@ export default function LoginContent(): ReactNode {
     verifyOtp.mutate(
       { phone: `+91${phone}`, otp },
       {
-        onSuccess() {
+        onSuccess(response) {
           const user = getUser();
           if (!user) {
             router.push('/login');
+            return;
+          }
+
+          // QA Round 14 #14-2d — wrong-app block. Backend now returns
+          // `accessible_apps[]` on the verify-otp response (computed
+          // server-side via APP_ROLE_ACCESS, see auth.service.ts).
+          // A user whose qualifying roles are only on the resident or
+          // guard apps must NOT land on the admin dashboard — it'd
+          // blank-sidebar them anyway and confuse the message. Send
+          // them straight to /wrong-app with the list of apps they
+          // CAN sign into so the screen can render the right copy.
+          const accessibleApps = response.user.accessible_apps;
+          if (
+            !user.isSuperAdmin &&
+            Array.isArray(accessibleApps) &&
+            !accessibleApps.includes('admin')
+          ) {
+            const others = accessibleApps.filter((a) => a !== 'admin');
+            const search = new URLSearchParams();
+            others.forEach((a) => search.append('app', a));
+            router.push(
+              `/wrong-app${search.toString() ? `?${search.toString()}` : ''}`,
+            );
             return;
           }
 
@@ -80,6 +103,13 @@ export default function LoginContent(): ReactNode {
             // Admin panel is restricted to admin-eligible roles only.
             // Pure residents (owner, tenant_resident, etc.) land on
             // /no-access with a pointer to the Flutter app.
+            //
+            // Note: with #14-2d above in place this branch should
+            // only reach the admin-eligible cases, but leave the
+            // adminSocieties check as belt-and-braces for any role
+            // combo that slips past `accessible_apps` (e.g. a
+            // future role that's admin-eligible per allowlist but
+            // doesn't have a society membership yet).
             const adminSocieties = getAdminSocieties(user);
             if (adminSocieties.length === 0) {
               const reason = user.societies.length === 0 ? 'none' : 'resident';
