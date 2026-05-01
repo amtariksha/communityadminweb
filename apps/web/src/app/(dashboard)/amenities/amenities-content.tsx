@@ -137,15 +137,14 @@ function formatBookingStatus(status: string | null | undefined): string {
 }
 
 /**
- * Admin-web AmenityBooking type uses `amount`/`deposit`; the backend returns
- * `total_amount`/`deposit_amount`. Normalize so the Generate Invoice button
- * shows for any billable booking.
+ * Booking is billable if either component (usage charge + deposit)
+ * is non-zero. AmenityBooking now matches backend column names
+ * verbatim (`total_amount` / `deposit_amount`); the prior shim that
+ * read both `amount` and `total_amount` is no longer needed.
  */
-function bookingBillable(
-  booking: AmenityBooking & { total_amount?: number; deposit_amount?: number },
-): boolean {
-  const amount = Number(booking.total_amount ?? booking.amount ?? 0);
-  const deposit = Number(booking.deposit_amount ?? booking.deposit ?? 0);
+function bookingBillable(booking: AmenityBooking): boolean {
+  const amount = Number(booking.total_amount ?? 0);
+  const deposit = Number(booking.deposit_amount ?? 0);
   return amount + deposit > 0;
 }
 
@@ -761,7 +760,7 @@ function BookingsTab(): ReactNode {
   const bookingsByDate = useMemo(() => {
     const map = new Map<string, AmenityBooking[]>();
     for (const booking of bookings) {
-      const key = booking.date.slice(0, 10); // yyyy-mm-dd
+      const key = booking.booking_date.slice(0, 10); // yyyy-mm-dd
       const existing = map.get(key);
       if (existing) {
         existing.push(booking);
@@ -1071,8 +1070,8 @@ function BookingsTab(): ReactNode {
                           {booking.start_time} &mdash; {booking.end_time}
                         </div>
                         {booking.unit_number && <div>Unit {booking.unit_number}</div>}
-                        {booking.notes && <div>{booking.notes}</div>}
-                        {booking.amount > 0 && <div>{formatCurrency(booking.amount)}</div>}
+                        {booking.purpose && <div>{booking.purpose}</div>}
+                        {booking.total_amount > 0 && <div>{formatCurrency(booking.total_amount)}</div>}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         {booking.invoice_id ? (

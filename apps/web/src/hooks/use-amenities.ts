@@ -48,21 +48,27 @@ export interface AmenitySlot {
   booking_id: string | null;
 }
 
+// Backend BookingRow (amenity.service.ts:46) returns the raw
+// amenity_bookings columns: booking_date / total_amount /
+// deposit_amount / purpose. The earlier interface declared
+// `date / amount / deposit / notes` — those resolved to undefined
+// at runtime, which silently broke calendar grouping
+// (`booking.date.slice(0, 10)` threw) + suppressed the deposit /
+// notes display. Field names now match the wire contract.
 export interface AmenityBooking {
   id: string;
   tenant_id: string;
   amenity_id: string;
   member_id: string;
   unit_id: string;
-  date: string;
+  booking_date: string;
   start_time: string;
   end_time: string;
   status: string;
-  amount: number;
-  deposit: number;
-  notes: string | null;
-  cancelled_at: string | null;
-  cancel_reason: string | null;
+  total_amount: number;
+  deposit_amount: number;
+  guests_count?: number;
+  purpose: string | null;
   created_at: string;
   amenity_name?: string;
   member_name?: string;
