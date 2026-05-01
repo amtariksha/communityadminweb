@@ -66,6 +66,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): Rea
     // way to keep reloads seamless after the localStorage removal.
     purgeLegacyTokenStorage();
 
+    // TODO(QA #12-2 follow-up): a diagnostic console.log added during
+    // testing fired ~11 times in succession when a super-admin
+    // impersonates a tenant via /super-admin → tenant click. The
+    // bootstrap useEffect itself only re-runs when `router` changes,
+    // but downstream subscribers (Sidebar reading getUser() at every
+    // render, getCurrentTenant() reading localStorage on each mount,
+    // useEnabledFeatures' first refetch) cascade re-renders. Not
+    // user-visible but worth tracing — likely a missing
+    // useMemo/useCallback or a stale closure in the auth helpers.
+    // Don't fix in the QA #12-2 sidebar commit; track separately.
+
     async function bootstrap(): Promise<void> {
       const existingToken = getToken();
       if (!existingToken) {
