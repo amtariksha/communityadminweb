@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   Building2,
   Users,
@@ -14,6 +15,7 @@ import {
   Save,
   ExternalLink,
   Settings,
+  FileText,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -451,6 +453,21 @@ export default function SuperAdminContent(): ReactNode {
           <Settings className="mr-2 h-4 w-4 inline-block" />
           Platform Settings
         </button>
+        {/* QA Round 14 #14-2a — Legal Documents lives at its own
+            route (/super-admin/legal-documents) because the editor's
+            3×2 grid + markdown previews need the full page width.
+            Surfaced here as a Link-styled-as-tab so super-admins
+            still find it from their main nav. */}
+        <Link
+          href="/super-admin/legal-documents"
+          className={cn(
+            'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+            'border-transparent text-muted-foreground hover:text-foreground',
+          )}
+        >
+          <FileText className="mr-2 h-4 w-4 inline-block" />
+          Legal Documents
+        </Link>
       </div>
 
       {/* ------------------------------------------------------------------- */}
