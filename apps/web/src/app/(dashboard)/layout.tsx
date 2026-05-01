@@ -127,6 +127,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): Rea
         const effectiveTenant = stillAdminTenant(tenant, adminSocieties);
         if (!effectiveTenant) {
           if (adminSocieties.length === 0) {
+            // QA Round 14 #14-2e — defense-in-depth wrong-app block.
+            // The login flow (#14-2d) already routes non-admin users
+            // to /wrong-app, but a stale localStorage state (older
+            // pre-#14-2d login, deep-link bypass, browser back/forward
+            // shenanigans) could land them here with no admin
+            // societies. If `accessible_apps` tells us they belong on
+            // resident or guard, send them to /wrong-app with that
+            // context so the screen renders the right "use app X"
+            // copy instead of a generic /no-access.
+            const others = (user.accessible_apps ?? []).filter(
+              (a) => a !== 'admin',
+            );
+            if (others.length > 0) {
+              const search = new URLSearchParams();
+              others.forEach((a) => search.append('app', a));
+              router.replace(`/wrong-app?${search.toString()}`);
+              return;
+            }
             router.replace('/no-access');
             return;
           }

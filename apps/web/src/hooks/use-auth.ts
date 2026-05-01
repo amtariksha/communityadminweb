@@ -134,6 +134,8 @@ export function useCurrentUser() {
             // sidebar incorrectly.
             role: pickAdminRole(t.roles) ?? NON_ADMIN_ROLE_SENTINEL,
           })),
+          // QA Round 14 #14-2e — see useVerifyOtp comment.
+          accessible_apps: res.accessible_apps,
         };
       });
     },
@@ -199,6 +201,10 @@ export function useVerifyOtp() {
           ? 'super_admin'
           : (pickAdminRole(data.user.tenants.flatMap((t) => t.roles)) ?? 'user'),
         societies,
+        // QA Round 14 #14-2e — persist the server-computed access set
+        // so the dashboard layout's bootstrap can reapply the
+        // wrong-app block on every reload (not just at login time).
+        accessible_apps: data.user.accessible_apps,
       };
       setUser(user);
 
