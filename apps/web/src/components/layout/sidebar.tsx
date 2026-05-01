@@ -131,10 +131,49 @@ function formatRoleLabel(role: string | undefined): string {
     .join(' ');
 }
 
+/**
+ * Indian phone numbers come from the API as `+91XXXXXXXXXX`. Render
+ * them as `+91 XXXXX XXXXX` so the avatar fallback for users whose
+ * `name` is empty (super admins, freshly-onboarded staff) is at
+ * least visually parseable. Anything that doesn't match the +91+10
+ * shape is returned verbatim — we don't want to mangle international
+ * numbers we may pick up later.
+ */
+function formatPhone(phone: string | undefined): string | undefined {
+  if (!phone) return undefined;
+  const match = phone.match(/^\+91(\d{5})(\d{5})$/);
+  if (!match) return phone;
+  return `+91 ${match[1]} ${match[2]}`;
+}
+
+/**
+ * Display name with a graceful fallback chain — fixes QA #12-2
+ * where super-admins have `user.name === ""` (no membership row,
+ * no profile name set) and the previous `user?.name ?? 'Admin User'`
+ * dropped through to an empty string because `??` only catches
+ * null/undefined, not "".
+ *
+ * Priority:
+ *   1. user.name (if non-empty after trim)
+ *   2. formatted user.phone
+ *   3. "Super Admin" if isSuperAdmin
+ *   4. "Account" — last-resort, never blank
+ */
+function resolveDisplayName(
+  user: ReturnType<typeof getUser>,
+): string {
+  const trimmed = user?.name?.trim();
+  if (trimmed) return trimmed;
+  const phone = formatPhone(user?.phone);
+  if (phone) return phone;
+  if (user?.isSuperAdmin) return 'Super Admin';
+  return 'Account';
+}
+
 export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
   const pathname = usePathname();
   const user = getUser();
-  const userName = user?.name ?? 'Admin User';
+  const userName = resolveDisplayName(user);
   const { data: enabledFeatures } = useEnabledFeatures();
   const { isHelpMode } = useHelpMode();
 
@@ -144,8 +183,22 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
   // picked on /select-tenant) so a user who's community_admin at one
   // society and security_supervisor at another gets the right view
   // per society.
+  //
+  // QA #12-2 — super-admin escape hatch: when a super-admin is
+  // impersonating a tenant from /super-admin, `user.societies` is
+  // empty (super-admins have no per-tenant membership row), so
+  // `find()` returns undefined and `getSidebarAllowlist(undefined)`
+  // produces the defensive EMPTY_NAV_SET. Result: blank sidebar.
+  // Treat super-admin as if they hold the broadest admin role so
+  // the allowlist resolves to `null` (= show everything). This is
+  // UI-only; backend RBAC still re-derives roles from the JWT
+  // (super_admin role), so a tampered localStorage flag changes
+  // nothing on the wire (cf. the SECURITY STANCE comment in
+  // admin-roles.ts).
   const currentTenantId = getCurrentTenant();
-  const currentRole = user?.societies.find((s) => s.id === currentTenantId)?.role;
+  const currentRole = user?.isSuperAdmin
+    ? 'super_admin'
+    : user?.societies.find((s) => s.id === currentTenantId)?.role;
   const roleAllowlist = getSidebarAllowlist(currentRole);
   // Display role at the bottom of the sidebar — picks the user's
   // admin-eligible role for the current tenant, falling back to
