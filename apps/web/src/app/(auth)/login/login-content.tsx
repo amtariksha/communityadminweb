@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -181,6 +182,22 @@ export default function LoginContent(): ReactNode {
             </Button>
           </form>
         )}
+
+        {/* QA Round 14 #14-2c — legal-link footnote. Renders below
+            both phone-entry and OTP-entry steps so it's visible
+            before the user commits to signing in. Tap targets open
+            the public /legal/* routes (admin-flavour content). */}
+        <p className="mt-6 border-t pt-4 text-center text-xs text-muted-foreground">
+          By continuing, you agree to our{' '}
+          <Link href="/legal/terms" className="underline hover:text-foreground">
+            Terms
+          </Link>{' '}
+          and{' '}
+          <Link href="/legal/privacy" className="underline hover:text-foreground">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </CardContent>
     </Card>
   );

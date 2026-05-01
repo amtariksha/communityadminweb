@@ -17,6 +17,7 @@ import { getAdminSocieties } from '@/lib/admin-roles';
 import type { User } from '@/lib/auth';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
 
 /**
  * Returns the existing tenant id ONLY if the user still has an
@@ -205,6 +206,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): Rea
             `p-4 lg:p-6` which gave phones 16px margins on top of
             already-narrow viewport — content felt cramped. */}
         <main className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6">{children}</main>
+        {/* QA Round 14 #14-2c — legal-links footer. Outside `<main>`
+            so it doesn't scroll with content; pins to bottom of the
+            column. Slim row, low visual weight. */}
+        <Footer />
       </div>
     </div>
   );
