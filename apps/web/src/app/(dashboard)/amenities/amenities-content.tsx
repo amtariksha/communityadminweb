@@ -164,7 +164,12 @@ const TABS: { key: Tab; label: string }[] = [
 // ---------------------------------------------------------------------------
 
 export default function AmenitiesContent(): ReactNode {
-  const [activeTab, setActiveTab] = useState<Tab>('amenities');
+  // Bookings are the day-to-day workload (admin creates bookings on
+  // behalf of residents, generates invoices, handles cancellations);
+  // amenity CRUD is configured once and rarely revisited. Default the
+  // page to Bookings so admins land on the calendar without an
+  // extra click.
+  const [activeTab, setActiveTab] = useState<Tab>('bookings');
   const [createOpen, setCreateOpen] = useState(false);
 
   // Amenities data for export
@@ -714,6 +719,11 @@ function BookingsTab(): ReactNode {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<AmenityBooking | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+  // Refund-on-cancel: only meaningful when the booking has a paid
+  // invoice. Default true so the common case (booking → paid →
+  // cancel) issues a refund without an extra click; admin can
+  // uncheck for waivers / write-offs.
+  const [cancelWithRefund, setCancelWithRefund] = useState(true);
 
   // New Booking dialog (admin creates booking on behalf of resident).
   // Mounted at the BookingsTab level so the dialog can read the
@@ -815,6 +825,10 @@ function BookingsTab(): ReactNode {
   function openCancel(booking: AmenityBooking): void {
     setCancelTarget(booking);
     setCancelReason('');
+    // Default refund behaviour: tick the box only if the booking
+    // actually has an invoice attached. For free bookings (no
+    // invoice) the checkbox stays hidden and no refund is sent.
+    setCancelWithRefund(Boolean(booking.invoice_id));
     setCancelOpen(true);
   }
 
@@ -842,11 +856,43 @@ function BookingsTab(): ReactNode {
   function handleCancel(): void {
     if (!cancelTarget) return;
 
+    const wantsRefund = cancelWithRefund && Boolean(cancelTarget.invoice_id);
+
     cancelMutation.mutate(
-      { id: cancelTarget.id, reason: cancelReason.trim() || undefined },
       {
-        onSuccess() {
-          addToast({ title: 'Booking cancelled', variant: 'success' });
+        id: cancelTarget.id,
+        reason: cancelReason.trim() || undefined,
+        refund: wantsRefund,
+      },
+      {
+        onSuccess(response) {
+          // Surface the refund outcome explicitly so the admin
+          // knows what landed: refund issued / nothing-to-refund /
+          // refund failed mid-flight.
+          const result = response.data;
+          if (result.refunded_payment_order_ids.length > 0) {
+            addToast({
+              title: 'Booking cancelled · refund issued',
+              description: `Refund kicked off for ${result.refunded_payment_order_ids.length} payment(s). The resident's invoice is voided.`,
+              variant: 'success',
+            });
+          } else if (result.refund_failed) {
+            addToast({
+              title: 'Booking cancelled · refund failed',
+              description:
+                'The booking is cancelled but the Razorpay refund did not complete. Retry from the Payments page.',
+              variant: 'destructive',
+            });
+          } else if (result.refund_skipped_reason === 'not_paid') {
+            addToast({
+              title: 'Booking cancelled',
+              description:
+                'No payment found on this booking — invoice voided, nothing to refund.',
+              variant: 'success',
+            });
+          } else {
+            addToast({ title: 'Booking cancelled', variant: 'success' });
+          }
           setCancelOpen(false);
           setCancelTarget(null);
           setCancelReason('');
@@ -1145,6 +1191,33 @@ function BookingsTab(): ReactNode {
                 rows={2}
               />
             </div>
+            {/* Refund opt-in — only renders if the booking has an
+                invoice attached. Backend further verifies the
+                invoice's payment_orders are paid before issuing
+                the Razorpay refund; if no paid orders are found
+                the cancel still succeeds, just with a
+                "skipped: not_paid" toast. */}
+            {cancelTarget?.invoice_id ? (
+              <label className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900/50 dark:bg-amber-900/20">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={cancelWithRefund}
+                  onChange={(e) => setCancelWithRefund(e.target.checked)}
+                />
+                <span className="space-y-1">
+                  <span className="block font-medium text-amber-900 dark:text-amber-100">
+                    Issue refund to resident
+                  </span>
+                  <span className="block text-xs text-amber-800 dark:text-amber-200">
+                    Refunds every paid payment for invoice{' '}
+                    {cancelTarget.invoice_number ?? '#'} via Razorpay
+                    and voids the invoice. Leave unchecked to cancel
+                    the booking only.
+                  </span>
+                </span>
+              </label>
+            ) : null}
           </div>
           <DialogFooter>
             <DialogClose asChild>

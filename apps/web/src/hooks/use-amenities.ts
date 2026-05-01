@@ -263,18 +263,40 @@ export function useCreateBooking() {
   });
 }
 
+// Backend returns a structured envelope from cancelBooking so the
+// admin web can show specific status (refund kicked off, invoice
+// voided, etc.).
+export interface CancelBookingResult {
+  booking: AmenityBooking;
+  refunded_payment_order_ids: string[];
+  refund_failed: boolean;
+  refund_skipped_reason?: 'not_paid' | 'no_invoice' | 'caller_opted_out';
+}
+
 export function useCancelBooking() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: function cancelBooking(input: { id: string; reason?: string }) {
-      return api.post<{ data: AmenityBooking }>(
+    mutationFn: function cancelBooking(input: {
+      id: string;
+      reason?: string;
+      // When true, every paid payment_order linked to the booking's
+      // invoice gets refunded via Razorpay and the invoice is voided.
+      // When false / omitted, the booking is just marked cancelled.
+      refund?: boolean;
+    }) {
+      return api.post<{ data: CancelBookingResult }>(
         `/amenities/bookings/${input.id}/cancel`,
-        { reason: input.reason },
+        { reason: input.reason, refund: input.refund === true },
       );
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: amenityKeys.all });
+      // Refund flow may have changed invoice + payment-order rows
+      // outside the amenities cache — invalidate those too so the
+      // admin's invoices/payments lists refresh.
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
     },
   });
 }
