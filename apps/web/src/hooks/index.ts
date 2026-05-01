@@ -235,6 +235,7 @@ export type {
 export {
   useCreateOnboarding,
   useRenewAgreement,
+  isDuplicateOnboardError,
 } from './use-tenant-lifecycle';
 export type {
   CreateOnboardingInput,
