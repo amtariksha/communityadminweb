@@ -62,3 +62,66 @@ export function useUpdateHelpContact() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// QA #13-1c / #13-1d — owner direct-onboard policy toggle
+// ---------------------------------------------------------------------------
+//
+// Per-society flag controlling whether unit owners can onboard
+// their own tenants without going through the committee-approval
+// workflow. Persisted at
+// `tenants.settings_json.owners_can_direct_onboard`.
+//
+//   GET   /tenant-settings/owner-direct-onboard
+//         → readable by any authed tenant member (resident app
+//           uses it to decide whether to show the "Onboard
+//           Tenant" button).
+//   PATCH /tenant-settings/owner-direct-onboard
+//         → writable by `community_admin` or `super_admin`.
+//
+// NOTE: As of writing the backend endpoints (D1 #13-1c / #13-1d)
+// have not yet shipped. The admin web toggle will fail-soft
+// (loading skeleton; PATCH errors out via the standard
+// friendlyError toast) until they deploy. The contract here
+// matches the shape locked in qa-round13.md §C1 line by line.
+
+export interface OwnerDirectOnboardSetting {
+  enabled: boolean;
+}
+
+export const ownerDirectOnboardKeys = {
+  all: ['tenant-settings', 'owner-direct-onboard'] as const,
+};
+
+export function useOwnerDirectOnboardSetting() {
+  return useQuery({
+    queryKey: ownerDirectOnboardKeys.all,
+    queryFn: async () => {
+      const res = await api.get<{ data: OwnerDirectOnboardSetting }>(
+        '/tenant-settings/owner-direct-onboard',
+      );
+      return res.data;
+    },
+    // Default off if the backend hasn't shipped yet — the toggle
+    // card has its own loading state, but downstream consumers
+    // (e.g. the admin Onboard Tenant info chip mentioned in the
+    // plan) can rely on `data.enabled === true` without
+    // null-checking.
+  });
+}
+
+export function useUpdateOwnerDirectOnboardSetting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: OwnerDirectOnboardSetting) => {
+      const res = await api.patch<{ data: OwnerDirectOnboardSetting }>(
+        '/tenant-settings/owner-direct-onboard',
+        input,
+      );
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ownerDirectOnboardKeys.all });
+    },
+  });
+}

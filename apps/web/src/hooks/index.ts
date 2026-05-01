@@ -8,15 +8,20 @@ export {
   useSwitchTenant,
 } from './use-auth';
 
-// Tenant settings (per-society Help & Support — QA #350)
+// Tenant settings (per-society Help & Support — QA #350; owner
+// direct-onboard policy — QA #13-2a/2b)
 export {
   helpContactKeys,
   useHelpContact,
   useUpdateHelpContact,
+  ownerDirectOnboardKeys,
+  useOwnerDirectOnboardSetting,
+  useUpdateOwnerDirectOnboardSetting,
 } from './use-tenant-settings';
 export type {
   HelpContact,
   HelpContactCustomLink,
+  OwnerDirectOnboardSetting,
 } from './use-tenant-settings';
 
 // Units
@@ -235,6 +240,7 @@ export type {
 export {
   useCreateOnboarding,
   useRenewAgreement,
+  isDuplicateOnboardError,
 } from './use-tenant-lifecycle';
 export type {
   CreateOnboardingInput,

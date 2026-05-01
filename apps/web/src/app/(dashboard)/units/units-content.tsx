@@ -69,6 +69,7 @@ import {
   useDisconnectTenant,
   useBulkImportMembers,
   useCreateOnboarding,
+  isDuplicateOnboardError,
 } from '@/hooks';
 import type { UnitDetailMember } from '@/hooks';
 import { useOcrIdDocument } from '@/hooks/use-ocr';
@@ -798,6 +799,30 @@ export default function UnitsContent(): ReactNode {
           });
         },
         onError(error) {
+          // QA #13-2c (Round 12 #12-1d carry-over) — when the
+          // unit is already past the onboarding step (approval
+          // landed, or pending request still queued, or admin's
+          // role check fails because the precondition changed),
+          // the backend rejects with one of three specific
+          // BadRequest strings. Detect those and show a clearer
+          // "tenant already onboarded — refresh" message instead
+          // of forwarding what reads as a confusing
+          // permission-flavoured error. The hook's onSuccess
+          // already invalidates `['unit-members']` (covers
+          // useUnitDetail via prefix match), but the error path
+          // doesn't — so close the dialog AND tell the admin
+          // their view is stale, prompting a manual refresh that
+          // pulls the now-current member list.
+          if (isDuplicateOnboardError(error)) {
+            setOnboardTenantOpen(false);
+            addToast({
+              title: 'Tenant already onboarded',
+              description:
+                'This unit already has a tenant or a pending onboarding request. Refresh the page to see the current status.',
+              variant: 'destructive',
+            });
+            return;
+          }
           addToast({
             title: 'Failed to start onboarding',
             description: friendlyError(error),
