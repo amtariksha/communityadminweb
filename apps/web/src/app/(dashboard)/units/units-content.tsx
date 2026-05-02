@@ -81,28 +81,27 @@ import type { UserSearchHit } from '@/hooks/use-user-search';
 const ITEMS_PER_PAGE = 20;
 
 function getUnitTypeLabel(type: string | null | undefined): string {
-  // QA #70 — the units table stores the legacy column name `type` with
-  // values `residential` / `commercial` / `parking` (see unit.service.ts
-  // unitTypeMap). The admin-create form sends `flat` / `shop` / `office`
-  // which get mapped server-side on write, so we accept both shapes on
-  // read. Without the legacy cases the badge rendered blank for every
-  // unit already in prod (#70).
+  // 2026-05 — DTO + UI now share the canonical 3-value enum
+  // (residential / commercial / parking). Older legacy UI labels
+  // (flat / shop / office / other) are still mapped here for any
+  // residual data that might surface during migration / repair —
+  // they fall back to a sensible canonical-equivalent badge.
   if (!type) return 'Unit';
   switch (type) {
-    case 'flat':
-      return 'Flat';
-    case 'shop':
-      return 'Shop';
-    case 'office':
-      return 'Office';
-    case 'parking':
-      return 'Parking';
-    case 'other':
-      return 'Other';
     case 'residential':
       return 'Residential';
     case 'commercial':
       return 'Commercial';
+    case 'parking':
+      return 'Parking only';
+    // Legacy UI-label mappings (read-side fallback only).
+    case 'flat':
+      return 'Residential';
+    case 'shop':
+    case 'office':
+      return 'Commercial';
+    case 'other':
+      return 'Residential';
     default:
       return type;
   }
@@ -241,7 +240,7 @@ export default function UnitsContent(): ReactNode {
   const [formBlock, setFormBlock] = useState('');
   const [formFloor, setFormFloor] = useState('');
   const [formArea, setFormArea] = useState('');
-  const [formUnitType, setFormUnitType] = useState('flat');
+  const [formUnitType, setFormUnitType] = useState('residential');
 
   // Unit detail dialog state
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -253,7 +252,7 @@ export default function UnitsContent(): ReactNode {
   const [editBlock, setEditBlock] = useState('');
   const [editFloor, setEditFloor] = useState('');
   const [editArea, setEditArea] = useState('');
-  const [editUnitType, setEditUnitType] = useState('flat');
+  const [editUnitType, setEditUnitType] = useState('residential');
   const [editIsActive, setEditIsActive] = useState(true);
 
   // Edit member dialog state
@@ -1139,11 +1138,9 @@ export default function UnitsContent(): ReactNode {
                         value={formUnitType}
                         onChange={(e) => setFormUnitType(e.target.value)}
                       >
-                        <option value="flat">Flat</option>
-                        <option value="shop">Shop</option>
-                        <option value="office">Office</option>
-                        <option value="parking">Parking</option>
-                        <option value="other">Other</option>
+                        <option value="residential">Residential</option>
+                        <option value="commercial">Commercial</option>
+                        <option value="parking">Parking only</option>
                       </Select>
                     </div>
                   </div>
@@ -1484,11 +1481,9 @@ export default function UnitsContent(): ReactNode {
                   value={editUnitType}
                   onChange={(e) => setEditUnitType(e.target.value)}
                 >
-                  <option value="flat">Flat</option>
-                  <option value="shop">Shop</option>
-                  <option value="office">Office</option>
-                  <option value="parking">Parking</option>
-                  <option value="other">Other</option>
+                  <option value="residential">Residential</option>
+                  <option value="commercial">Commercial</option>
+                  <option value="parking">Parking only</option>
                 </Select>
               </div>
               <div className="flex items-center gap-2">
