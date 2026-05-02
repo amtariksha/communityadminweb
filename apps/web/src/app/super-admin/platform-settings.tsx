@@ -30,6 +30,7 @@ import {
 } from '@/hooks';
 import type { PlatformConfigItem, TdsConfig } from '@/hooks';
 import { TdsConfigEditor } from '@/components/tds/tds-config-editor';
+import { GstRatesEditor } from '@/components/super-admin/gst-rates-editor';
 
 // ---------------------------------------------------------------------------
 // Tab definitions
@@ -700,19 +701,29 @@ function TaxDefaultsSection({
   const tdsConfig = config as unknown as TdsConfig | null;
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        These are the TDS rules applied to every tenant&apos;s vendor bills
-        unless that tenant has set its own override on the
-        Community-Admin → Settings page. Update these whenever CBDT
-        notifies new thresholds or rates — changes propagate to every
-        tenant automatically (5-min Redis cache TTL).
-      </p>
-      <TdsConfigEditor
-        value={tdsConfig ?? null}
-        onSave={(cfg) => onSave(cfg as unknown as Record<string, unknown>)}
-        isPending={isPending}
-      />
+    <div className="space-y-6">
+      {/* QA Round 12 #12-3c — GST rates editor. Renders ABOVE TDS
+          because GST is the more frequently used config (every
+          invoice line touches it; TDS only kicks in on vendor bills
+          above the threshold). Self-contained: it wires to its own
+          PATCH endpoint and cache, so the parent doesn't need to
+          plumb config / onSave / isPending through. */}
+      <GstRatesEditor />
+
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          These are the TDS rules applied to every tenant&apos;s vendor bills
+          unless that tenant has set its own override on the
+          Community-Admin → Settings page. Update these whenever CBDT
+          notifies new thresholds or rates — changes propagate to every
+          tenant automatically (5-min Redis cache TTL).
+        </p>
+        <TdsConfigEditor
+          value={tdsConfig ?? null}
+          onSave={(cfg) => onSave(cfg as unknown as Record<string, unknown>)}
+          isPending={isPending}
+        />
+      </div>
     </div>
   );
 }
