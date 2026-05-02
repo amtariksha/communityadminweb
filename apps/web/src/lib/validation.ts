@@ -10,6 +10,13 @@
  */
 
 export const INDIAN_PHONE_REGEX = /^(\+91)?[6-9]\d{9}$/;
+/**
+ * Demo / E2E account phones — recognised server-side as bypass numbers
+ * (`auth.service.ts:isDemoPhone`). Range: +910000000007..+910000000100.
+ * Mirror of the same constant in `@communityos/shared`.
+ */
+export const DEMO_INDIAN_PHONE_REGEX =
+  /^\+910000000(00[7-9]|0[1-9]\d|100)$/;
 export const VEHICLE_NUMBER_REGEX = /^[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{1,4}$/;
 export const NAME_REGEX = /^[\p{L}][\p{L}\s.'-]{1,199}$/u;
 
@@ -29,15 +36,19 @@ export function normalizePhone(input: unknown): ValidationResult {
   const raw = typeof input === 'string' ? input : '';
   const stripped = raw.trim().replace(/[\s-]/g, '');
   if (stripped === '') return { ok: true, value: '' };
-  if (!INDIAN_PHONE_REGEX.test(stripped)) {
+  const canonicalCandidate = stripped.startsWith('+91')
+    ? stripped
+    : `+91${stripped}`;
+  const isReal = INDIAN_PHONE_REGEX.test(stripped);
+  const isDemo = DEMO_INDIAN_PHONE_REGEX.test(canonicalCandidate);
+  if (!isReal && !isDemo) {
     return {
       ok: false,
       error:
         'Phone must be a 10-digit Indian mobile starting 6-9 (optional +91 prefix).',
     };
   }
-  const canonical = stripped.startsWith('+91') ? stripped : `+91${stripped}`;
-  return { ok: true, value: canonical };
+  return { ok: true, value: canonicalCandidate };
 }
 
 /**
