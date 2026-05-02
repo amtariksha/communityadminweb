@@ -234,7 +234,12 @@ export {
 export type { SuperAdminUser, UserRoleDetail } from './use-super-admin-users';
 
 // Platform-level config (read-only for tenant users)
-export { useTaxRates } from './use-tax-rates';
+export {
+  useTaxRates,
+  useUpdateGstRates,
+  taxRatesKey,
+  DEFAULT_GST_RATES,
+} from './use-tax-rates';
 
 // Role delegation (per-tenant supervisor-role toggles + expiry enforcement)
 export {
