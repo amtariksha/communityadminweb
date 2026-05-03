@@ -150,22 +150,32 @@ export default function VendorsContent(): ReactNode {
   // posts `bank_name: null` which silently wiped the JSONB.
   // Read through the nested shape instead. Vendor service's
   // bank_details has keys: bank_name, bank_branch, account_number,
-  // ifsc.
+  // ifsc. Tolerate a couple of legacy spellings in case any older
+  // data path used different keys.
   useEffect(() => {
     if (editDialogOpen && vendorDetail) {
       setEditName(vendorDetail.name);
       setEditPan(vendorDetail.pan ?? '');
       setEditGstin(vendorDetail.gstin ?? '');
       const bd = (vendorDetail as unknown as {
-        bank_details?: {
-          bank_name?: string | null;
-          account_number?: string | null;
-          ifsc?: string | null;
-        } | null;
+        bank_details?: Record<string, unknown> | null;
       }).bank_details;
-      setEditBankName(bd?.bank_name ?? '');
-      setEditBankAccount(bd?.account_number ?? '');
-      setEditBankIfsc(bd?.ifsc ?? '');
+      setEditBankName(
+        ((bd?.bank_name as string | undefined) ??
+          (bd?.bankName as string | undefined) ??
+          '') as string,
+      );
+      setEditBankAccount(
+        ((bd?.account_number as string | undefined) ??
+          (bd?.bank_account_number as string | undefined) ??
+          (bd?.accountNumber as string | undefined) ??
+          '') as string,
+      );
+      setEditBankIfsc(
+        ((bd?.ifsc as string | undefined) ??
+          (bd?.bank_ifsc as string | undefined) ??
+          '') as string,
+      );
       setEditPhone(vendorDetail.phone ?? '');
       setEditEmail(vendorDetail.email ?? '');
     }
@@ -243,18 +253,26 @@ export default function VendorsContent(): ReactNode {
     setEditName(vendorDetail.name);
     setEditPan(vendorDetail.pan ?? '');
     setEditGstin(vendorDetail.gstin ?? '');
-    // Same fix as the useEffect above — bank info is in the
-    // bank_details JSONB blob, not flat columns.
+    // Same legacy-tolerant nested-shape read as the useEffect above.
     const bd = (vendorDetail as unknown as {
-      bank_details?: {
-        bank_name?: string | null;
-        account_number?: string | null;
-        ifsc?: string | null;
-      } | null;
+      bank_details?: Record<string, unknown> | null;
     }).bank_details;
-    setEditBankName(bd?.bank_name ?? '');
-    setEditBankAccount(bd?.account_number ?? '');
-    setEditBankIfsc(bd?.ifsc ?? '');
+    setEditBankName(
+      ((bd?.bank_name as string | undefined) ??
+        (bd?.bankName as string | undefined) ??
+        '') as string,
+    );
+    setEditBankAccount(
+      ((bd?.account_number as string | undefined) ??
+        (bd?.bank_account_number as string | undefined) ??
+        (bd?.accountNumber as string | undefined) ??
+        '') as string,
+    );
+    setEditBankIfsc(
+      ((bd?.ifsc as string | undefined) ??
+        (bd?.bank_ifsc as string | undefined) ??
+        '') as string,
+    );
     setEditPhone(vendorDetail.phone ?? '');
     setEditEmail(vendorDetail.email ?? '');
     setDetailDialogOpen(false);
@@ -1031,22 +1049,41 @@ export default function VendorsContent(): ReactNode {
                 </div>
               </div>
               {(() => {
-                // bank info is nested in bank_details JSONB; flatten
-                // here for display.
+                // bank info is nested in the bank_details JSONB,
+                // not as flat columns. Read through the nested
+                // shape; tolerate a couple of legacy key spellings
+                // (bank_account_number / bankAccountNumber / etc.)
+                // in case any data was inserted via an older path.
                 const bd = (vendorDetail as unknown as {
-                  bank_details?: {
-                    bank_name?: string | null;
-                    account_number?: string | null;
-                    ifsc?: string | null;
-                  } | null;
+                  bank_details?: Record<string, unknown> | null;
                 }).bank_details;
-                return (bd?.bank_name || bd?.account_number) ? (
+                const bankName =
+                  (bd?.bank_name as string | undefined) ??
+                  (bd?.bankName as string | undefined) ??
+                  null;
+                const accountNumber =
+                  (bd?.account_number as string | undefined) ??
+                  (bd?.bank_account_number as string | undefined) ??
+                  (bd?.accountNumber as string | undefined) ??
+                  null;
+                const ifsc =
+                  (bd?.ifsc as string | undefined) ??
+                  (bd?.bank_ifsc as string | undefined) ??
+                  null;
+                const branch =
+                  (bd?.bank_branch as string | undefined) ??
+                  (bd?.branch as string | undefined) ??
+                  null;
+                return bankName || accountNumber ? (
                   <div>
                     <p className="mb-1 text-sm font-medium text-muted-foreground">Bank Details</p>
                     <div className="rounded-md border p-3 text-sm">
-                      <p>{bd.bank_name ?? '-'}</p>
-                      <p className="font-mono">{bd.account_number ?? '-'}</p>
-                      <p>IFSC: {bd.ifsc ?? '-'}</p>
+                      <p>
+                        {bankName ?? '-'}
+                        {branch ? ` — ${branch}` : ''}
+                      </p>
+                      <p className="font-mono">{accountNumber ?? '-'}</p>
+                      <p>IFSC: {ifsc ?? '-'}</p>
                     </div>
                   </div>
                 ) : null;
