@@ -44,6 +44,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import type { VendorBill } from '@communityos/shared';
 import { DirectExpenseDialog } from './direct-expense-dialog';
 import { DebitNoteDialog } from './debit-note-dialog';
 import { ExportButton } from '@/components/ui/export-button';
@@ -58,6 +59,8 @@ import {
   useConvertPRToBill,
   useVendorBills,
   useCreateBill,
+  useEditBill,
+  useCancelBill,
   useRecordBillPayment,
   useVendorAging,
   useVendors,
@@ -269,6 +272,20 @@ export default function PurchasesContent(): ReactNode {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [agingDialogOpen, setAgingDialogOpen] = useState(false);
   const [selectedBillId, setSelectedBillId] = useState('');
+  // Phase D.1 — Edit + Cancel bill dialogs.
+  const [editBillDialogOpen, setEditBillDialogOpen] = useState(false);
+  const [cancelBillDialogOpen, setCancelBillDialogOpen] = useState(false);
+  const [editBillId, setEditBillId] = useState('');
+  const [editBillNumber, setEditBillNumber] = useState('');
+  const [editBillDate, setEditBillDate] = useState('');
+  const [editBillDueDate, setEditBillDueDate] = useState('');
+  const [editBillAmount, setEditBillAmount] = useState('');
+  const [editBillGstRate, setEditBillGstRate] = useState('');
+  const [editBillTdsRate, setEditBillTdsRate] = useState('');
+  const [editBillNarration, setEditBillNarration] = useState('');
+  const [cancelBillId, setCancelBillId] = useState('');
+  const [cancelBillNumberDisplay, setCancelBillNumberDisplay] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
 
   // Bill form state
   const [billVendorId, setBillVendorId] = useState('');
@@ -279,6 +296,7 @@ export default function PurchasesContent(): ReactNode {
   const [billLineDescription, setBillLineDescription] = useState('');
   const [billLineAmount, setBillLineAmount] = useState('');
   const [billLineGstRate, setBillLineGstRate] = useState('');
+  const [billTdsRate, setBillTdsRate] = useState('');
   const [billExpenseAccountId, setBillExpenseAccountId] = useState('');
   const [billPayableAccountId, setBillPayableAccountId] = useState('');
   // AI scan — populates the fields above from a vendor invoice photo/PDF.
@@ -367,6 +385,8 @@ export default function PurchasesContent(): ReactNode {
   const rejectPR = useRejectPR();
   const convertPR = useConvertPRToBill();
   const createBill = useCreateBill();
+  const editBill = useEditBill();
+  const cancelBill = useCancelBill();
   const recordPayment = useRecordBillPayment();
   const createVendorMut = useCreateVendor();
 
@@ -632,6 +652,7 @@ export default function PurchasesContent(): ReactNode {
     setBillLineDescription('');
     setBillLineAmount('');
     setBillLineGstRate('');
+    setBillTdsRate('');
     setBillExpenseAccountId('');
     setBillPayableAccountId('');
     setBillScanConfidence(null);
@@ -713,13 +734,26 @@ export default function PurchasesContent(): ReactNode {
 
   function handleCreateBill(e: FormEvent): void {
     e.preventDefault();
-    const gstRate = billLineGstRate ? Number(billLineGstRate) : undefined;
+    // Phase D.2 — derive gst_amount + tds_amount from the rates
+    // before posting. Previously we posted only the per-line gst_rate
+    // and the backend received gst_amount=0, leaving every bill
+    // recorded as zero-GST in the GL. The rates are computed against
+    // the line amount (which is the goods/services subtotal — Tally
+    // semantics — so total_amount on the bill becomes subtotal+GST).
+    const baseAmount = Number(billLineAmount) || 0;
+    const gstRate = billLineGstRate ? Number(billLineGstRate) : 0;
+    const tdsRate = billTdsRate ? Number(billTdsRate) : 0;
+    const gstAmount = Math.round(baseAmount * gstRate) / 100;
+    const totalAmount = Math.round((baseAmount + gstAmount) * 100) / 100;
+    const tdsAmount = Math.round(totalAmount * tdsRate) / 100;
     createBill.mutate(
       {
         vendor_id: billVendorId,
         bill_date: billDate,
         due_date: billDueDate,
-        total_amount: Number(billLineAmount),
+        total_amount: totalAmount,
+        gst_amount: gstAmount > 0 ? gstAmount : undefined,
+        tds_amount: tdsAmount > 0 ? tdsAmount : undefined,
         expense_account_id: billExpenseAccountId,
         payable_account_id: billPayableAccountId,
         narration: billNarration || undefined,
@@ -727,8 +761,8 @@ export default function PurchasesContent(): ReactNode {
           {
             ledger_account_id: billLineAccount,
             description: billLineDescription,
-            amount: Number(billLineAmount),
-            gst_rate: gstRate,
+            amount: baseAmount,
+            gst_rate: gstRate || undefined,
           },
         ],
       },
@@ -740,6 +774,136 @@ export default function PurchasesContent(): ReactNode {
         },
         onError(error) {
           addToast({ title: 'Failed to create bill', description: friendlyError(error), variant: 'destructive' });
+        },
+      },
+    );
+  }
+
+  // Phase D.1 — open the edit dialog. Pre-fills from the bill row;
+  // the operator can change any allowed metadata. The handler
+  // submits a PATCH to /purchases/bills/:id which reverses the old
+  // JE and posts a new one. Disabled at the row level when the bill
+  // already has a payment recorded.
+  function openEditBillDialog(bill: VendorBill): void {
+    setEditBillId(bill.id);
+    setEditBillNumber(bill.bill_number ?? '');
+    // The shared VendorBill type declares bill_date / due_date as
+    // Date, but the API actually serializes them as ISO strings.
+    // Coerce defensively without relying on the static type.
+    const billDateRaw = bill.bill_date as unknown as string | Date | null;
+    const dueDateRaw = bill.due_date as unknown as string | Date | null;
+    setEditBillDate(
+      typeof billDateRaw === 'string'
+        ? billDateRaw.slice(0, 10)
+        : billDateRaw instanceof Date
+          ? billDateRaw.toISOString().slice(0, 10)
+          : '',
+    );
+    setEditBillDueDate(
+      typeof dueDateRaw === 'string'
+        ? dueDateRaw.slice(0, 10)
+        : dueDateRaw instanceof Date
+          ? dueDateRaw.toISOString().slice(0, 10)
+          : '',
+    );
+    // Reverse-derive base + rates from the stored amounts. The
+    // backend stores absolute gst_amount / tds_amount, but the form
+    // is rate-driven for ergonomic re-entry. The shared VendorBill
+    // type is leaner than the actual API response (no subtotal /
+    // gst_amount / tds_amount); cast through unknown to read them.
+    const billExtras = bill as unknown as {
+      subtotal?: number | string;
+      gst_amount?: number | string;
+      tds_amount?: number | string;
+      total_amount?: number | string;
+    };
+    const subtotal = Number(billExtras.subtotal ?? 0);
+    const gstAmt = Number(billExtras.gst_amount ?? 0);
+    const tdsAmt = Number(billExtras.tds_amount ?? 0);
+    const total = Number(billExtras.total_amount ?? bill.total_amount ?? 0);
+    setEditBillAmount(subtotal > 0 ? String(subtotal) : '');
+    const gstRate = subtotal > 0 ? Math.round((gstAmt / subtotal) * 100) : 0;
+    const tdsRate = total > 0 ? Math.round((tdsAmt / total) * 1000) / 10 : 0;
+    setEditBillGstRate(gstRate ? String(gstRate) : '');
+    setEditBillTdsRate(tdsRate ? String(tdsRate) : '');
+    setEditBillNarration('');
+    setEditBillDialogOpen(true);
+  }
+
+  function handleEditBill(e: FormEvent): void {
+    e.preventDefault();
+    const baseAmount = Number(editBillAmount) || 0;
+    const gstRate = editBillGstRate ? Number(editBillGstRate) : 0;
+    const tdsRate = editBillTdsRate ? Number(editBillTdsRate) : 0;
+    const gstAmount = Math.round(baseAmount * gstRate) / 100;
+    const totalAmount = Math.round((baseAmount + gstAmount) * 100) / 100;
+    const tdsAmount = Math.round(totalAmount * tdsRate) / 100;
+    editBill.mutate(
+      {
+        id: editBillId,
+        data: {
+          bill_number: editBillNumber || undefined,
+          bill_date: editBillDate || undefined,
+          due_date: editBillDueDate || undefined,
+          total_amount: totalAmount > 0 ? totalAmount : undefined,
+          gst_amount: gstAmount > 0 ? gstAmount : undefined,
+          tds_amount: tdsAmount > 0 ? tdsAmount : undefined,
+          narration: editBillNarration || undefined,
+        },
+      },
+      {
+        onSuccess() {
+          setEditBillDialogOpen(false);
+          addToast({ title: 'Bill updated', variant: 'success' });
+        },
+        onError(err) {
+          addToast({
+            title: 'Failed to update bill',
+            description: friendlyError(err),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
+  }
+
+  function openCancelBillDialog(bill: VendorBill): void {
+    setCancelBillId(bill.id);
+    setCancelBillNumberDisplay(bill.bill_number ?? bill.id.slice(0, 8));
+    setCancelReason('');
+    setCancelBillDialogOpen(true);
+  }
+
+  function handleCancelBill(e: FormEvent): void {
+    e.preventDefault();
+    if (!cancelReason.trim()) {
+      addToast({
+        title: 'Cancellation reason required',
+        variant: 'destructive',
+      });
+      return;
+    }
+    cancelBill.mutate(
+      {
+        id: cancelBillId,
+        data: { reason: cancelReason.trim() },
+      },
+      {
+        onSuccess() {
+          setCancelBillDialogOpen(false);
+          setCancelBillId('');
+          addToast({
+            title: `Bill ${cancelBillNumberDisplay} cancelled`,
+            description: 'Reversal JE posted; AP and expense unwound.',
+            variant: 'success',
+          });
+        },
+        onError(err) {
+          addToast({
+            title: 'Failed to cancel bill',
+            description: friendlyError(err),
+            variant: 'destructive',
+          });
         },
       },
     );
@@ -1357,6 +1521,62 @@ export default function PurchasesContent(): ReactNode {
                             />
                           </div>
                         </div>
+                        {/* Phase D.2 — TDS rate field (was missing).
+                            Defaults to 0; the operator types a rate
+                            like 10 (for 194J) or 2 (for 194C). The
+                            handleCreateBill computes the absolute
+                            amount = total × rate / 100. */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="bill-tds-rate">
+                              TDS Rate (%){' '}
+                              <span className="text-xs font-normal text-muted-foreground">
+                                — leave 0 if not applicable
+                              </span>
+                            </Label>
+                            <Input
+                              id="bill-tds-rate"
+                              type="number"
+                              min="0"
+                              max="30"
+                              step="0.1"
+                              placeholder="0"
+                              value={billTdsRate}
+                              onChange={(e) => setBillTdsRate(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Computed totals</Label>
+                            {(() => {
+                              const base = Number(billLineAmount) || 0;
+                              const gstR = Number(billLineGstRate) || 0;
+                              const tdsR = Number(billTdsRate) || 0;
+                              const gst = Math.round(base * gstR) / 100;
+                              const total = Math.round((base + gst) * 100) / 100;
+                              const tds = Math.round(total * tdsR) / 100;
+                              const payable = total - tds;
+                              return (
+                                <div className="flex h-10 items-center gap-3 rounded-md border bg-muted/30 px-3 text-xs tabular-nums">
+                                  <span>
+                                    GST <strong>{formatCurrency(gst)}</strong>
+                                  </span>
+                                  <span>
+                                    Total <strong>{formatCurrency(total)}</strong>
+                                  </span>
+                                  <span>
+                                    TDS <strong>{formatCurrency(tds)}</strong>
+                                  </span>
+                                  <span>
+                                    Payable{' '}
+                                    <strong className="text-foreground">
+                                      {formatCurrency(payable)}
+                                    </strong>
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="bill-expense-account">Expense Account</Label>
@@ -1495,20 +1715,57 @@ export default function PurchasesContent(): ReactNode {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {(bill.status === 'approved' || bill.status === 'partially_paid') && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 p-1 text-xs"
-                            onClick={() => {
-                              setSelectedBillId(bill.id);
-                              setPaymentDialogOpen(true);
-                            }}
-                          >
-                            <CreditCard className="mr-1 h-3 w-3" />
-                            Pay
-                          </Button>
-                        )}
+                        <div className="flex flex-wrap gap-1">
+                          {(bill.status === 'received' ||
+                            bill.status === 'partially_paid' ||
+                            bill.status === 'overdue') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 p-1 text-xs"
+                              onClick={() => {
+                                setSelectedBillId(bill.id);
+                                setPaymentDialogOpen(true);
+                              }}
+                            >
+                              <CreditCard className="mr-1 h-3 w-3" />
+                              Pay
+                            </Button>
+                          )}
+                          {/* Phase D.1 — Edit + Cancel. Edit only
+                              shown before any payment lands; cancel
+                              only when not already cancelled and
+                              with no payments. */}
+                          {bill.status !== 'cancelled' &&
+                            bill.status !== 'paid' &&
+                            Number(
+                              (bill as unknown as { amount_paid?: number | string })
+                                .amount_paid ?? 0,
+                            ) === 0 && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 p-1 text-xs"
+                                  onClick={() =>
+                                    openEditBillDialog(bill as unknown as VendorBill)
+                                  }
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 p-1 text-xs text-destructive hover:text-destructive"
+                                  onClick={() =>
+                                    openCancelBillDialog(bill as unknown as VendorBill)
+                                  }
+                                >
+                                  Cancel
+                                </Button>
+                              </>
+                            )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -2029,6 +2286,161 @@ export default function PurchasesContent(): ReactNode {
         open={debitNoteDialogOpen}
         onOpenChange={setDebitNoteDialogOpen}
       />
+
+      {/* Phase D.1 — Edit bill dialog. Allowed only when no payment
+          has been recorded; backend re-validates and refuses
+          otherwise. */}
+      <Dialog open={editBillDialogOpen} onOpenChange={setEditBillDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleEditBill}>
+            <DialogHeader>
+              <DialogTitle>Edit bill</DialogTitle>
+              <DialogDescription>
+                Allowed only before any payment is recorded. The original
+                journal entry will be reversed and a fresh one posted with
+                the updated amounts.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="eb-number">Bill #</Label>
+                  <Input
+                    id="eb-number"
+                    value={editBillNumber}
+                    onChange={(e) => setEditBillNumber(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="eb-date">Bill date</Label>
+                  <Input
+                    id="eb-date"
+                    type="date"
+                    value={editBillDate}
+                    onChange={(e) => setEditBillDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="eb-due">Due date</Label>
+                  <Input
+                    id="eb-due"
+                    type="date"
+                    value={editBillDueDate}
+                    onChange={(e) => setEditBillDueDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="eb-amount">Base amount</Label>
+                  <Input
+                    id="eb-amount"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={editBillAmount}
+                    onChange={(e) => setEditBillAmount(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="eb-gst">GST rate (%)</Label>
+                  <Input
+                    id="eb-gst"
+                    type="number"
+                    min="0"
+                    max="28"
+                    step="0.1"
+                    value={editBillGstRate}
+                    onChange={(e) => setEditBillGstRate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="eb-tds">TDS rate (%)</Label>
+                  <Input
+                    id="eb-tds"
+                    type="number"
+                    min="0"
+                    max="30"
+                    step="0.1"
+                    value={editBillTdsRate}
+                    onChange={(e) => setEditBillTdsRate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="eb-narration">Narration</Label>
+                <Textarea
+                  id="eb-narration"
+                  rows={2}
+                  maxLength={500}
+                  placeholder="Optional notes on what changed"
+                  value={editBillNarration}
+                  onChange={(e) => setEditBillNarration(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={editBill.isPending}>
+                {editBill.isPending ? 'Saving…' : 'Save changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Phase D.1 — Cancel bill dialog. Reverses the original JE
+          and stamps the bill cancelled. Refused if any payment was
+          recorded — operator must reverse payments first or raise a
+          debit note. */}
+      <Dialog open={cancelBillDialogOpen} onOpenChange={setCancelBillDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleCancelBill}>
+            <DialogHeader>
+              <DialogTitle>Cancel bill {cancelBillNumberDisplay}</DialogTitle>
+              <DialogDescription>
+                Posts a reversal journal entry that unwinds the original
+                AP and expense entries. The bill stays in the system as
+                an audit record with status=&quot;cancelled&quot;.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="cb-reason">Reason</Label>
+                <Textarea
+                  id="cb-reason"
+                  required
+                  rows={3}
+                  maxLength={500}
+                  placeholder="e.g. Duplicate of bill BILL-00007 — recorded in error"
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">
+                  Keep bill
+                </Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={cancelBill.isPending}
+              >
+                {cancelBill.isPending ? 'Cancelling…' : 'Cancel bill'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

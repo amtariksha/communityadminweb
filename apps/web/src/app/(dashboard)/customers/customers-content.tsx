@@ -104,8 +104,13 @@ export default function CustomersContent(): ReactNode {
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(1);
 
-  // Create form state
+  // Create form state — Phase D.4 added legal_name, state_code,
+  // bank_branch for parity with the Vendor form and India invoicing
+  // requirements (GSTR-1 needs state_code; B2B invoices want the
+  // registered legal name distinct from the display name).
   const [formName, setFormName] = useState('');
+  const [formLegalName, setFormLegalName] = useState('');
+  const [formStateCode, setFormStateCode] = useState('');
   const [formContactPerson, setFormContactPerson] = useState('');
   const [formPhone, setFormPhone] = useState('');
   const [formEmail, setFormEmail] = useState('');
@@ -113,6 +118,7 @@ export default function CustomersContent(): ReactNode {
   const [formPan, setFormPan] = useState('');
   const [formAddress, setFormAddress] = useState('');
   const [formBankName, setFormBankName] = useState('');
+  const [formBankBranch, setFormBankBranch] = useState('');
   const [formBankAccount, setFormBankAccount] = useState('');
   const [formBankIfsc, setFormBankIfsc] = useState('');
   const [formNotes, setFormNotes] = useState('');
@@ -121,6 +127,8 @@ export default function CustomersContent(): ReactNode {
   // operator clicks Edit. Fields not in the list response (bank, etc.)
   // arrive on detail load; useEffect below syncs once data is ready.
   const [editName, setEditName] = useState('');
+  const [editLegalName, setEditLegalName] = useState('');
+  const [editStateCode, setEditStateCode] = useState('');
   const [editContactPerson, setEditContactPerson] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
@@ -128,6 +136,7 @@ export default function CustomersContent(): ReactNode {
   const [editPan, setEditPan] = useState('');
   const [editAddress, setEditAddress] = useState('');
   const [editBankName, setEditBankName] = useState('');
+  const [editBankBranch, setEditBankBranch] = useState('');
   const [editBankAccount, setEditBankAccount] = useState('');
   const [editBankIfsc, setEditBankIfsc] = useState('');
   const [editNotes, setEditNotes] = useState('');
@@ -153,6 +162,8 @@ export default function CustomersContent(): ReactNode {
   useEffect(() => {
     if (editDialogOpen && detail) {
       setEditName(detail.name);
+      setEditLegalName(detail.legal_name ?? '');
+      setEditStateCode(detail.state_code ?? '');
       setEditContactPerson(detail.contact_person ?? '');
       setEditPhone(detail.phone ?? '');
       setEditEmail(detail.email ?? '');
@@ -160,6 +171,7 @@ export default function CustomersContent(): ReactNode {
       setEditPan(detail.pan ?? '');
       setEditAddress(detail.address ?? '');
       setEditBankName(detail.bank_name ?? '');
+      setEditBankBranch(detail.bank_branch ?? '');
       setEditBankAccount(detail.bank_account_number ?? '');
       setEditBankIfsc(detail.bank_ifsc ?? '');
       setEditNotes(detail.notes ?? '');
@@ -168,6 +180,8 @@ export default function CustomersContent(): ReactNode {
 
   function resetCreateForm(): void {
     setFormName('');
+    setFormLegalName('');
+    setFormStateCode('');
     setFormContactPerson('');
     setFormPhone('');
     setFormEmail('');
@@ -175,6 +189,7 @@ export default function CustomersContent(): ReactNode {
     setFormPan('');
     setFormAddress('');
     setFormBankName('');
+    setFormBankBranch('');
     setFormBankAccount('');
     setFormBankIfsc('');
     setFormNotes('');
@@ -204,6 +219,8 @@ export default function CustomersContent(): ReactNode {
     createCustomer.mutate(
       {
         name: formName,
+        legal_name: formLegalName || null,
+        state_code: formStateCode || null,
         contact_person: formContactPerson || null,
         phone: phone.value || null,
         email: formEmail || null,
@@ -211,6 +228,7 @@ export default function CustomersContent(): ReactNode {
         pan: formPan || null,
         address: formAddress || null,
         bank_name: formBankName || null,
+        bank_branch: formBankBranch || null,
         bank_account_number: formBankAccount || null,
         bank_ifsc: formBankIfsc || null,
         notes: formNotes || null,
@@ -254,6 +272,8 @@ export default function CustomersContent(): ReactNode {
         id: selectedId,
         data: {
           name: editName,
+          legal_name: editLegalName || null,
+          state_code: editStateCode || null,
           contact_person: editContactPerson || null,
           phone: phone.value || null,
           email: editEmail || null,
@@ -261,6 +281,7 @@ export default function CustomersContent(): ReactNode {
           pan: editPan || null,
           address: editAddress || null,
           bank_name: editBankName || null,
+          bank_branch: editBankBranch || null,
           bank_account_number: editBankAccount || null,
           bank_ifsc: editBankIfsc || null,
           notes: editNotes || null,
@@ -461,13 +482,33 @@ export default function CustomersContent(): ReactNode {
             </DialogHeader>
             <div className="grid grid-cols-2 gap-4 py-4">
               <div className="col-span-2 space-y-2">
-                <Label htmlFor="cust-name">Name *</Label>
+                <Label htmlFor="cust-name">
+                  Display name *{' '}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    (shown in dropdowns + reports)
+                  </span>
+                </Label>
                 <Input
                   id="cust-name"
                   required
                   maxLength={255}
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
+                />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="cust-legal-name">
+                  Legal name{' '}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    (registered entity name — used on invoice PDFs)
+                  </span>
+                </Label>
+                <Input
+                  id="cust-legal-name"
+                  maxLength={255}
+                  placeholder="e.g. Acme Properties Pvt Ltd"
+                  value={formLegalName}
+                  onChange={(e) => setFormLegalName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -513,7 +554,24 @@ export default function CustomersContent(): ReactNode {
                   onChange={(e) => setFormPan(e.target.value.toUpperCase())}
                 />
               </div>
-              <div className="col-span-2 space-y-2">
+              <div className="space-y-2">
+                <Label htmlFor="cust-state">
+                  State code{' '}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    (2-digit GST code)
+                  </span>
+                </Label>
+                <Input
+                  id="cust-state"
+                  maxLength={2}
+                  placeholder="e.g. 29 (Karnataka), 27 (Maharashtra)"
+                  value={formStateCode}
+                  onChange={(e) =>
+                    setFormStateCode(e.target.value.replace(/\D/g, '').slice(0, 2))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="cust-address">Address</Label>
                 <Input
                   id="cust-address"
@@ -521,12 +579,20 @@ export default function CustomersContent(): ReactNode {
                   onChange={(e) => setFormAddress(e.target.value)}
                 />
               </div>
-              <div className="col-span-2 space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="cust-bank-name">Bank name</Label>
                 <Input
                   id="cust-bank-name"
                   value={formBankName}
                   onChange={(e) => setFormBankName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cust-bank-branch">Branch</Label>
+                <Input
+                  id="cust-bank-branch"
+                  value={formBankBranch}
+                  onChange={(e) => setFormBankBranch(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -743,13 +809,23 @@ export default function CustomersContent(): ReactNode {
             </DialogHeader>
             <div className="grid grid-cols-2 gap-4 py-4">
               <div className="col-span-2 space-y-2">
-                <Label htmlFor="edit-name">Name *</Label>
+                <Label htmlFor="edit-name">Display name *</Label>
                 <Input
                   id="edit-name"
                   required
                   maxLength={255}
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
+                />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="edit-legal-name">Legal name</Label>
+                <Input
+                  id="edit-legal-name"
+                  maxLength={255}
+                  placeholder="Registered entity name (used on invoice PDFs)"
+                  value={editLegalName}
+                  onChange={(e) => setEditLegalName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -795,7 +871,23 @@ export default function CustomersContent(): ReactNode {
                   onChange={(e) => setEditPan(e.target.value.toUpperCase())}
                 />
               </div>
-              <div className="col-span-2 space-y-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-state">
+                  State code{' '}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    (2-digit)
+                  </span>
+                </Label>
+                <Input
+                  id="edit-state"
+                  maxLength={2}
+                  value={editStateCode}
+                  onChange={(e) =>
+                    setEditStateCode(e.target.value.replace(/\D/g, '').slice(0, 2))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="edit-address">Address</Label>
                 <Input
                   id="edit-address"
@@ -803,12 +895,20 @@ export default function CustomersContent(): ReactNode {
                   onChange={(e) => setEditAddress(e.target.value)}
                 />
               </div>
-              <div className="col-span-2 space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="edit-bank-name">Bank name</Label>
                 <Input
                   id="edit-bank-name"
                   value={editBankName}
                   onChange={(e) => setEditBankName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-bank-branch">Branch</Label>
+                <Input
+                  id="edit-bank-branch"
+                  value={editBankBranch}
+                  onChange={(e) => setEditBankBranch(e.target.value)}
                 />
               </div>
               <div className="space-y-2">

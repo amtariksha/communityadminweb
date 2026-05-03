@@ -80,9 +80,29 @@ interface CreateBillInput {
   expense_account_id: string;
   payable_account_id: string;
   bill_number?: string;
+  // Phase D.2 — gst_amount was missing from the type even though
+  // the backend has always accepted it. Bills now post their GST.
+  gst_amount?: number;
   tds_amount?: number;
   narration?: string;
   lines?: BillLine[];
+}
+
+// Phase D.1 — edit bill metadata (only allowed before any payment).
+interface EditBillInput {
+  bill_number?: string;
+  bill_date?: string;
+  due_date?: string;
+  total_amount?: number;
+  expense_account_id?: string;
+  payable_account_id?: string;
+  gst_amount?: number;
+  tds_amount?: number;
+  narration?: string;
+}
+
+interface CancelBillInput {
+  reason: string;
 }
 
 interface RecordBillPaymentInput {
@@ -322,6 +342,52 @@ export function useCreateBill() {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.bills() });
       queryClient.invalidateQueries({ queryKey: purchaseKeys.aging() });
       queryClient.invalidateQueries({ queryKey: vendorKeys.all });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+    },
+  });
+}
+
+// Phase D.1 — edit a bill (allowed before any payment).
+export function useEditBill() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function editBill(params: { id: string; data: EditBillInput }) {
+      return api.patch<{ data: VendorBill }>(
+        `/purchases/bills/${params.id}`,
+        params.data,
+      );
+    },
+    onSuccess: function invalidate(_data, variables) {
+      queryClient.invalidateQueries({
+        queryKey: purchaseKeys.bill(variables.id),
+      });
+      queryClient.invalidateQueries({ queryKey: purchaseKeys.bills() });
+      queryClient.invalidateQueries({ queryKey: purchaseKeys.aging() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+    },
+  });
+}
+
+// Phase D.1 — cancel a bill (reverses the JE).
+export function useCancelBill() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function cancelBill(params: { id: string; data: CancelBillInput }) {
+      return api.post<{ data: VendorBill }>(
+        `/purchases/bills/${params.id}/cancel`,
+        params.data,
+      );
+    },
+    onSuccess: function invalidate(_data, variables) {
+      queryClient.invalidateQueries({
+        queryKey: purchaseKeys.bill(variables.id),
+      });
+      queryClient.invalidateQueries({ queryKey: purchaseKeys.bills() });
+      queryClient.invalidateQueries({ queryKey: purchaseKeys.aging() });
       queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
       queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
     },

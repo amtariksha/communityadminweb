@@ -2,6 +2,10 @@ export interface Customer {
   id: string;
   tenant_id: string;
   name: string;
+  // Migration 091 parity fields. legal_name = registered legal name;
+  // state_code = 2-digit GST state code.
+  legal_name: string | null;
+  state_code: string | null;
   contact_person: string | null;
   phone: string | null;
   email: string | null;
@@ -9,6 +13,7 @@ export interface Customer {
   gstin: string | null;
   pan: string | null;
   bank_name: string | null;
+  bank_branch: string | null;
   bank_account_number: string | null;
   bank_ifsc: string | null;
   // FK to the customer's receivable ledger under Sundry Debtors. The

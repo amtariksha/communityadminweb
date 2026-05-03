@@ -24,6 +24,8 @@ interface CustomerFilters {
 
 interface CreateCustomerInput {
   name: string;
+  legal_name?: string | null;
+  state_code?: string | null;
   contact_person?: string | null;
   phone?: string | null;
   email?: string | null;
@@ -31,6 +33,7 @@ interface CreateCustomerInput {
   gstin?: string | null;
   pan?: string | null;
   bank_name?: string | null;
+  bank_branch?: string | null;
   bank_account_number?: string | null;
   bank_ifsc?: string | null;
   notes?: string | null;
