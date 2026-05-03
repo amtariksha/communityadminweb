@@ -117,10 +117,11 @@ export default function CustomersContent(): ReactNode {
   const [formGstin, setFormGstin] = useState('');
   const [formPan, setFormPan] = useState('');
   const [formAddress, setFormAddress] = useState('');
-  const [formBankName, setFormBankName] = useState('');
-  const [formBankBranch, setFormBankBranch] = useState('');
-  const [formBankAccount, setFormBankAccount] = useState('');
-  const [formBankIfsc, setFormBankIfsc] = useState('');
+  // Customer is the party WE invoice — we don't need their bank
+  // details. (Vendor needs them because we PAY the vendor.) Bank
+  // fields removed from the create + edit forms; the columns stay
+  // in the schema for legacy data + Tally imports that might carry
+  // them through, but the operator never enters them by hand.
   const [formNotes, setFormNotes] = useState('');
 
   // Edit form state — preloaded from the detail query when the
@@ -135,10 +136,6 @@ export default function CustomersContent(): ReactNode {
   const [editGstin, setEditGstin] = useState('');
   const [editPan, setEditPan] = useState('');
   const [editAddress, setEditAddress] = useState('');
-  const [editBankName, setEditBankName] = useState('');
-  const [editBankBranch, setEditBankBranch] = useState('');
-  const [editBankAccount, setEditBankAccount] = useState('');
-  const [editBankIfsc, setEditBankIfsc] = useState('');
   const [editNotes, setEditNotes] = useState('');
 
   const customersQuery = useCustomers({
@@ -170,10 +167,6 @@ export default function CustomersContent(): ReactNode {
       setEditGstin(detail.gstin ?? '');
       setEditPan(detail.pan ?? '');
       setEditAddress(detail.address ?? '');
-      setEditBankName(detail.bank_name ?? '');
-      setEditBankBranch(detail.bank_branch ?? '');
-      setEditBankAccount(detail.bank_account_number ?? '');
-      setEditBankIfsc(detail.bank_ifsc ?? '');
       setEditNotes(detail.notes ?? '');
     }
   }, [editDialogOpen, detail]);
@@ -188,10 +181,6 @@ export default function CustomersContent(): ReactNode {
     setFormGstin('');
     setFormPan('');
     setFormAddress('');
-    setFormBankName('');
-    setFormBankBranch('');
-    setFormBankAccount('');
-    setFormBankIfsc('');
     setFormNotes('');
   }
 
@@ -227,10 +216,6 @@ export default function CustomersContent(): ReactNode {
         gstin: formGstin || null,
         pan: formPan || null,
         address: formAddress || null,
-        bank_name: formBankName || null,
-        bank_branch: formBankBranch || null,
-        bank_account_number: formBankAccount || null,
-        bank_ifsc: formBankIfsc || null,
         notes: formNotes || null,
       },
       {
@@ -280,10 +265,6 @@ export default function CustomersContent(): ReactNode {
           gstin: editGstin || null,
           pan: editPan || null,
           address: editAddress || null,
-          bank_name: editBankName || null,
-          bank_branch: editBankBranch || null,
-          bank_account_number: editBankAccount || null,
-          bank_ifsc: editBankIfsc || null,
           notes: editNotes || null,
         },
       },
@@ -571,46 +552,12 @@ export default function CustomersContent(): ReactNode {
                   }
                 />
               </div>
-              <div className="space-y-2">
+              <div className="col-span-2 space-y-2">
                 <Label htmlFor="cust-address">Address</Label>
                 <Input
                   id="cust-address"
                   value={formAddress}
                   onChange={(e) => setFormAddress(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cust-bank-name">Bank name</Label>
-                <Input
-                  id="cust-bank-name"
-                  value={formBankName}
-                  onChange={(e) => setFormBankName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cust-bank-branch">Branch</Label>
-                <Input
-                  id="cust-bank-branch"
-                  value={formBankBranch}
-                  onChange={(e) => setFormBankBranch(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cust-bank-acc">Account number</Label>
-                <Input
-                  id="cust-bank-acc"
-                  value={formBankAccount}
-                  onChange={(e) => setFormBankAccount(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cust-bank-ifsc">IFSC</Label>
-                <Input
-                  id="cust-bank-ifsc"
-                  value={formBankIfsc}
-                  onChange={(e) =>
-                    setFormBankIfsc(e.target.value.toUpperCase())
-                  }
                 />
               </div>
               <div className="col-span-2 space-y-2">
@@ -654,6 +601,12 @@ export default function CustomersContent(): ReactNode {
           ) : detail ? (
             <div className="space-y-4 py-2 text-sm">
               <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                {detail.legal_name && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Legal name:</span>{' '}
+                    {detail.legal_name}
+                  </div>
+                )}
                 <div>
                   <span className="text-muted-foreground">Contact:</span>{' '}
                   {detail.contact_person ?? '—'}
@@ -675,20 +628,12 @@ export default function CustomersContent(): ReactNode {
                   {detail.pan ?? '—'}
                 </div>
                 <div>
+                  <span className="text-muted-foreground">State code:</span>{' '}
+                  {detail.state_code ?? '—'}
+                </div>
+                <div className="col-span-2">
                   <span className="text-muted-foreground">Address:</span>{' '}
                   {detail.address ?? '—'}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Bank:</span>{' '}
-                  {detail.bank_name ?? '—'}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">A/C:</span>{' '}
-                  {detail.bank_account_number ?? '—'}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">IFSC:</span>{' '}
-                  {detail.bank_ifsc ?? '—'}
                 </div>
               </div>
 
@@ -887,46 +832,12 @@ export default function CustomersContent(): ReactNode {
                   }
                 />
               </div>
-              <div className="space-y-2">
+              <div className="col-span-2 space-y-2">
                 <Label htmlFor="edit-address">Address</Label>
                 <Input
                   id="edit-address"
                   value={editAddress}
                   onChange={(e) => setEditAddress(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-bank-name">Bank name</Label>
-                <Input
-                  id="edit-bank-name"
-                  value={editBankName}
-                  onChange={(e) => setEditBankName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-bank-branch">Branch</Label>
-                <Input
-                  id="edit-bank-branch"
-                  value={editBankBranch}
-                  onChange={(e) => setEditBankBranch(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-bank-acc">Account number</Label>
-                <Input
-                  id="edit-bank-acc"
-                  value={editBankAccount}
-                  onChange={(e) => setEditBankAccount(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-bank-ifsc">IFSC</Label>
-                <Input
-                  id="edit-bank-ifsc"
-                  value={editBankIfsc}
-                  onChange={(e) =>
-                    setEditBankIfsc(e.target.value.toUpperCase())
-                  }
                 />
               </div>
               <div className="col-span-2 space-y-2">

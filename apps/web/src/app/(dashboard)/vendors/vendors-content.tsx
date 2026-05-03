@@ -144,15 +144,28 @@ export default function VendorsContent(): ReactNode {
   const vendorDetail = vendorDetailQuery.data;
 
   // Sync edit form with full vendor detail when dialog is open and data loads
-  // This ensures bank fields (absent from list data) are populated once detail arrives
+  // QA — bank fields live inside the JSONB blob `bank_details`,
+  // not as flat columns. Reading `vendorDetail.bank_name` directly
+  // returns undefined → form starts blank → on save the payload
+  // posts `bank_name: null` which silently wiped the JSONB.
+  // Read through the nested shape instead. Vendor service's
+  // bank_details has keys: bank_name, bank_branch, account_number,
+  // ifsc.
   useEffect(() => {
     if (editDialogOpen && vendorDetail) {
       setEditName(vendorDetail.name);
       setEditPan(vendorDetail.pan ?? '');
       setEditGstin(vendorDetail.gstin ?? '');
-      setEditBankName(vendorDetail.bank_name ?? '');
-      setEditBankAccount(vendorDetail.bank_account_number ?? '');
-      setEditBankIfsc(vendorDetail.bank_ifsc ?? '');
+      const bd = (vendorDetail as unknown as {
+        bank_details?: {
+          bank_name?: string | null;
+          account_number?: string | null;
+          ifsc?: string | null;
+        } | null;
+      }).bank_details;
+      setEditBankName(bd?.bank_name ?? '');
+      setEditBankAccount(bd?.account_number ?? '');
+      setEditBankIfsc(bd?.ifsc ?? '');
       setEditPhone(vendorDetail.phone ?? '');
       setEditEmail(vendorDetail.email ?? '');
     }
@@ -230,9 +243,18 @@ export default function VendorsContent(): ReactNode {
     setEditName(vendorDetail.name);
     setEditPan(vendorDetail.pan ?? '');
     setEditGstin(vendorDetail.gstin ?? '');
-    setEditBankName(vendorDetail.bank_name ?? '');
-    setEditBankAccount(vendorDetail.bank_account_number ?? '');
-    setEditBankIfsc(vendorDetail.bank_ifsc ?? '');
+    // Same fix as the useEffect above — bank info is in the
+    // bank_details JSONB blob, not flat columns.
+    const bd = (vendorDetail as unknown as {
+      bank_details?: {
+        bank_name?: string | null;
+        account_number?: string | null;
+        ifsc?: string | null;
+      } | null;
+    }).bank_details;
+    setEditBankName(bd?.bank_name ?? '');
+    setEditBankAccount(bd?.account_number ?? '');
+    setEditBankIfsc(bd?.ifsc ?? '');
     setEditPhone(vendorDetail.phone ?? '');
     setEditEmail(vendorDetail.email ?? '');
     setDetailDialogOpen(false);
@@ -1008,16 +1030,27 @@ export default function VendorsContent(): ReactNode {
                   <p><ClickableEmail email={vendorDetail.email} /></p>
                 </div>
               </div>
-              {(vendorDetail.bank_name || vendorDetail.bank_account_number) && (
-                <div>
-                  <p className="mb-1 text-sm font-medium text-muted-foreground">Bank Details</p>
-                  <div className="rounded-md border p-3 text-sm">
-                    <p>{vendorDetail.bank_name ?? '-'}</p>
-                    <p className="font-mono">{vendorDetail.bank_account_number ?? '-'}</p>
-                    <p>IFSC: {vendorDetail.bank_ifsc ?? '-'}</p>
+              {(() => {
+                // bank info is nested in bank_details JSONB; flatten
+                // here for display.
+                const bd = (vendorDetail as unknown as {
+                  bank_details?: {
+                    bank_name?: string | null;
+                    account_number?: string | null;
+                    ifsc?: string | null;
+                  } | null;
+                }).bank_details;
+                return (bd?.bank_name || bd?.account_number) ? (
+                  <div>
+                    <p className="mb-1 text-sm font-medium text-muted-foreground">Bank Details</p>
+                    <div className="rounded-md border p-3 text-sm">
+                      <p>{bd.bank_name ?? '-'}</p>
+                      <p className="font-mono">{bd.account_number ?? '-'}</p>
+                      <p>IFSC: {bd.ifsc ?? '-'}</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : null;
+              })()}
               <div className="flex items-center justify-between">
                 <Badge variant={vendorDetail.is_active ? 'success' : 'secondary'}>
                   {vendorDetail.is_active ? 'Active' : 'Inactive'}

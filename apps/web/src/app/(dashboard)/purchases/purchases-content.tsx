@@ -686,7 +686,17 @@ export default function PurchasesContent(): ReactNode {
           ? vendors.find((v) => v.name.toLowerCase().includes(result.vendor_name!.toLowerCase()))
           : undefined;
       const matchedVendor = byGstin ?? byName;
-      if (matchedVendor) setBillVendorId(matchedVendor.id);
+      if (matchedVendor) {
+        setBillVendorId(matchedVendor.id);
+        // Phase D.5 — mirror what the vendor-dropdown onChange does:
+        // pre-fill the payable account from the matched vendor's
+        // linked Sundry Creditors ledger. Without this, the operator
+        // had to scroll to the Payable Account picker after every
+        // OCR scan to set it manually — defeats the auto-fill.
+        if (matchedVendor.ledger_account_id) {
+          setBillPayableAccountId(matchedVendor.ledger_account_id);
+        }
+      }
       setBillScanVendorName(result.vendor_name ?? null);
 
       if (result.invoice_date) {
