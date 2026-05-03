@@ -32,6 +32,7 @@ export type {
   VendorPaymentMode,
   VendorPayment,
 } from './vendor';
+export type { Customer, CustomerWithOutstanding } from './customer';
 export type {
   BankAccountType,
   BankAccount,

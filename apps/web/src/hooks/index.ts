@@ -131,6 +131,16 @@ export {
   useDeactivateVendor,
 } from './use-vendors';
 
+// Customers (AR-side mirror of vendors — see migration 070)
+export {
+  customerKeys,
+  useCustomers,
+  useCustomer,
+  useCreateCustomer,
+  useUpdateCustomer,
+  useDeactivateCustomer,
+} from './use-customers';
+
 // Purchases
 export {
   purchaseKeys,
