@@ -5,13 +5,15 @@ import { QueryProvider, QueryToastBridge } from '@/lib/query-provider';
 import { ThemeProvider } from '@/lib/theme-provider';
 import { HelpModeProvider } from '@/lib/help-mode-context';
 import { ToastProvider } from '@/components/ui/toast';
+import { BRAND } from '@/config/branding';
+import { BrandStyles } from '@/config/branding/brand-styles';
 import '@/styles/globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'Eassy Society',
-  description: 'Society Management Platform',
+  title: BRAND.appName,
+  description: BRAND.tagline,
 };
 
 interface RootLayoutProps {
@@ -20,7 +22,10 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps): ReactNode {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-brand={BRAND.id} suppressHydrationWarning>
+      <head>
+        <BrandStyles />
+      </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <ThemeProvider>
           <HelpModeProvider>

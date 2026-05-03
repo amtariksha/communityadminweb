@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { type ReactNode } from 'react';
+import { BRAND } from '@/config/branding';
 
 // QA Round 14 #14-2c — slim dashboard footer that surfaces the legal
 // links residents can otherwise only reach by remembering the URL.
@@ -12,7 +13,7 @@ export function Footer(): ReactNode {
   return (
     <footer className="border-t bg-background px-4 py-3 text-xs text-muted-foreground sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span>© Eassy Society — Society Management Platform</span>
+        <span>© {BRAND.legalEntity} — {BRAND.tagline}</span>
         <div className="flex items-center gap-4">
           <Link href="/legal/terms" className="hover:text-foreground">
             Terms

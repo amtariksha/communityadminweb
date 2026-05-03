@@ -22,6 +22,13 @@
   --color-sidebar-foreground: #0f172a;
   --color-success: #22c55e;
   --color-warning: #f59e0b;
+  /*
+   * Logo accent — used by the small "letter" logo tile on the auth
+   * layout, sidebar header, and legal pages. Distinct from `primary`
+   * because brands can have a contrasting logo color (e.g. blue
+   * primary + orange logo). Overridden per-brand by `<BrandStyles>`.
+   */
+  --color-logo-accent: #F5A623;
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
@@ -57,5 +64,6 @@
     --color-sidebar-foreground: #f8fafc;
     --color-success: #22c55e;
     --color-warning: #f59e0b;
+    --color-logo-accent: #F5A623;
   }
 }

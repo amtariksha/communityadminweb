@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { BRAND } from '@/config/branding';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -147,7 +148,7 @@ export default function PassContent({ code }: { code: string }): ReactNode {
 
         {/* Footer */}
         <p className="mt-6 text-center text-xs text-gray-600">
-          Powered by Eassy Society
+          Powered by {BRAND.appName}
         </p>
       </div>
     </div>
