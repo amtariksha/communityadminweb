@@ -32,6 +32,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { CustomInvoiceDialog } from './custom-invoice-dialog';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
@@ -170,6 +171,7 @@ export default function InvoicesContent(): ReactNode {
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [customInvoiceOpen, setCustomInvoiceOpen] = useState(false);
   const [viewInvoiceId, setViewInvoiceId] = useState('');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -548,6 +550,13 @@ export default function InvoicesContent(): ReactNode {
                 </Button>
               </>
             )}
+            <Button
+              variant="outline"
+              onClick={() => setCustomInvoiceOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Custom Invoice
+            </Button>
             <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
               <DialogTrigger>
                 <Button>
@@ -1411,6 +1420,13 @@ export default function InvoicesContent(): ReactNode {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Custom (non-unit) invoice dialog — for sponsors, external
+          clubhouse renters, retainers, etc. (Phase B accounting reorg) */}
+      <CustomInvoiceDialog
+        open={customInvoiceOpen}
+        onOpenChange={setCustomInvoiceOpen}
+      />
     </div>
   );
 }

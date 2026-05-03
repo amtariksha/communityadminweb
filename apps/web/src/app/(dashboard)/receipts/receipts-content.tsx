@@ -29,6 +29,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { DirectIncomeDialog } from './direct-income-dialog';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
@@ -146,6 +147,7 @@ export default function ReceiptsContent(): ReactNode {
   const setPage = listState.setPage;
   const [modeFilter, setModeFilter] = useState('');
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
+  const [directIncomeDialogOpen, setDirectIncomeDialogOpen] = useState(false);
   const [creditNoteDialogOpen, setCreditNoteDialogOpen] = useState(false);
 
   // Form state for receipt
@@ -365,6 +367,14 @@ export default function ReceiptsContent(): ReactNode {
                 </form>
               </DialogContent>
             </Dialog>
+
+            <Button
+              variant="outline"
+              onClick={() => setDirectIncomeDialogOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Direct Income
+            </Button>
 
             <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
               <DialogTrigger>
@@ -700,6 +710,14 @@ export default function ReceiptsContent(): ReactNode {
           </CardContent>
         </Card>
       )}
+
+      {/* Direct-income receipt dialog — for FD interest, donation,
+          scrap sale, and other cash that doesn't tie to an invoice
+          (Phase B accounting reorg) */}
+      <DirectIncomeDialog
+        open={directIncomeDialogOpen}
+        onOpenChange={setDirectIncomeDialogOpen}
+      />
     </div>
   );
 }

@@ -44,6 +44,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { DirectExpenseDialog } from './direct-expense-dialog';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
@@ -243,6 +244,7 @@ export default function PurchasesContent(): ReactNode {
   const [prSearch, setPrSearch] = useState('');
   const [prSearchInput, setPrSearchInput] = useState('');
   const [createPRDialogOpen, setCreatePRDialogOpen] = useState(false);
+  const [directExpenseDialogOpen, setDirectExpenseDialogOpen] = useState(false);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedPRId, setSelectedPRId] = useState('');
@@ -785,19 +787,27 @@ export default function PurchasesContent(): ReactNode {
         title="Purchases"
         description="Track purchase requests, vendor bills, and approvals"
         actions={
-          <ExportButton
-            data={[...purchaseRequests, ...bills] as unknown as Record<string, unknown>[]}
-            filename={`purchases-${new Date().toISOString().split('T')[0]}`}
-            columns={[
-              { key: 'pr_number', label: 'PR #' },
-              { key: 'bill_number', label: 'Bill #' },
-              { key: 'title', label: 'Title' },
-              { key: 'vendor_name', label: 'Vendor' },
-              { key: 'estimated_amount', label: 'Amount' },
-              { key: 'status', label: 'Status' },
-              { key: 'created_at', label: 'Date' },
-            ]}
-          />
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setDirectExpenseDialogOpen(true)}
+            >
+              Direct Expense
+            </Button>
+            <ExportButton
+              data={[...purchaseRequests, ...bills] as unknown as Record<string, unknown>[]}
+              filename={`purchases-${new Date().toISOString().split('T')[0]}`}
+              columns={[
+                { key: 'pr_number', label: 'PR #' },
+                { key: 'bill_number', label: 'Bill #' },
+                { key: 'title', label: 'Title' },
+                { key: 'vendor_name', label: 'Vendor' },
+                { key: 'estimated_amount', label: 'Amount' },
+                { key: 'status', label: 'Status' },
+                { key: 'created_at', label: 'Date' },
+              ]}
+            />
+          </>
         }
       />
 
@@ -1996,6 +2006,14 @@ export default function PurchasesContent(): ReactNode {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Direct-expense payment dialog — for petty cash, freight,
+          courier, one-off reimbursements that don't go through the
+          vendor-bill workflow (Phase B accounting reorg) */}
+      <DirectExpenseDialog
+        open={directExpenseDialogOpen}
+        onOpenChange={setDirectExpenseDialogOpen}
+      />
     </div>
   );
 }
