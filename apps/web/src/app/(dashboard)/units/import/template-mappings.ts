@@ -1,4 +1,5 @@
 import type { CsvImportRow } from '@/hooks';
+import { BRAND } from '@/config/branding';
 
 /** Source app identifiers */
 export type ImportSource = 'adda' | 'nobroker' | 'mygate' | 'apnacomplex' | 'custom';
@@ -57,7 +58,7 @@ export const TEMPLATES: TemplateInfo[] = [
   {
     id: 'custom',
     name: 'Custom CSV',
-    description: 'Upload any CSV and manually map columns to Eassy Society fields. Use this if your data is from a different app or a custom spreadsheet.',
+    description: `Upload any CSV and manually map columns to ${BRAND.appName} fields. Use this if your data is from a different app or a custom spreadsheet.`,
     sampleColumns: [],
   },
 ];

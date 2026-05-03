@@ -44,6 +44,7 @@ import { Avatar, AvatarFallback, getInitials } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { getUser, getCurrentTenant, logout } from '@/lib/auth';
 import { getSidebarAllowlist, pickDisplayRole } from '@/lib/admin-roles';
+import { BRAND } from '@/config/branding';
 
 interface NavItem {
   label: string;
@@ -263,10 +264,10 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
         )}
       >
         <div className="flex h-16 items-center gap-2 px-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F5A623]">
-            <span className="text-lg font-bold text-white">e</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-logo-accent">
+            <span className="text-lg font-bold text-white">{BRAND.logoLetter}</span>
           </div>
-          <span className="text-lg font-bold">Eassy Society</span>
+          <span className="text-lg font-bold">{BRAND.appName}</span>
         </div>
 
         <Separator />
