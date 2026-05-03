@@ -30,6 +30,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { JournalEntryDialog } from './journal-entry-dialog';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, formatTallyBalance, financialDateBounds } from '@/lib/utils';
@@ -186,8 +187,10 @@ function TreeNodeView({ node, depth, onEditGroup, onEditAccount }: TreeNodeViewP
                 href={`/accounts/${account.id}`}
                 className="flex flex-1 items-center gap-2"
               >
+                {/* Operator asked to drop the (code) suffix — codes
+                    are visible in the edit dialog + export columns.
+                    The COA tree only needs the name. */}
                 <span className="text-sm">{account.name}</span>
-                <span className="text-xs text-muted-foreground">({account.code})</span>
                 {/* Tally-style balance — never a minus sign. The Dr/Cr
                     suffix flips when the balance moved to the
                     anomalous side (asset gone credit, liability gone
@@ -259,6 +262,9 @@ export default function AccountsContent(): ReactNode {
   // Clamp date inputs to prev FY start → next month end.
   const dateBounds = useMemo(() => financialDateBounds(), []);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  // Free-form Journal Entry dialog. Backend was always there
+  // (POST /ledger/journal-entries); this is the missing UI.
+  const [journalDialogOpen, setJournalDialogOpen] = useState(false);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
 
   const { data: groups, isLoading: groupsLoading } = useAccountGroups();
@@ -999,6 +1005,10 @@ export default function AccountsContent(): ReactNode {
               <FileDown className="mr-2 h-4 w-4" />
               Export to Tally
             </Button>
+            <Button variant="outline" onClick={() => setJournalDialogOpen(true)}>
+              <BookOpen className="mr-2 h-4 w-4" />
+              New Journal Entry
+            </Button>
             <ExportButton
               data={accounts as unknown as Record<string, unknown>[]}
               filename={`accounts-${new Date().toISOString().split('T')[0]}`}
@@ -1064,7 +1074,7 @@ export default function AccountsContent(): ReactNode {
                         <option value="">No parent (root group)</option>
                         {flatGroups.map((g) => (
                           <option key={g.id} value={g.id}>
-                            {g.name} ({g.code})
+                            {g.name}
                           </option>
                         ))}
                       </Select>
@@ -1232,7 +1242,7 @@ export default function AccountsContent(): ReactNode {
                           <option value="">Select group</option>
                           {flatGroups.map((g) => (
                             <option key={g.id} value={g.id}>
-                              {g.name} ({g.code})
+                              {g.name}
                             </option>
                           ))}
                         </Select>
@@ -1298,7 +1308,7 @@ export default function AccountsContent(): ReactNode {
                                     <option value="">No parent (root group)</option>
                                     {flatGroups.map((g) => (
                                       <option key={g.id} value={g.id}>
-                                        {g.name} ({g.code})
+                                        {g.name}
                                       </option>
                                     ))}
                                   </Select>
@@ -1482,7 +1492,7 @@ export default function AccountsContent(): ReactNode {
                   <option value="">Select group</option>
                   {flatGroups.map((g) => (
                     <option key={g.id} value={g.id}>
-                      {g.name} ({g.code})
+                      {g.name}
                     </option>
                   ))}
                 </Select>
@@ -2027,6 +2037,15 @@ export default function AccountsContent(): ReactNode {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Manual Journal Entry — backend always supported it; this is
+          the new UI surface that lets the accountant post a free-form
+          DR/CR balanced entry without going through the
+          invoice/receipt/bill templates. */}
+      <JournalEntryDialog
+        open={journalDialogOpen}
+        onOpenChange={setJournalDialogOpen}
+      />
 
       {/* Tally Export Dialog */}
       <Dialog open={tallyExportDialogOpen} onOpenChange={setTallyExportDialogOpen}>

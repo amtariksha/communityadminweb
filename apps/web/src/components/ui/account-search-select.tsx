@@ -200,10 +200,14 @@ export function AccountSearchSelect({
                   }}
                 >
                   <div className="font-medium">{acc.name}</div>
+                  {/* QA — operator asked to drop the account code from
+                      every "pick an account" surface; group name is
+                      retained because it disambiguates same-named
+                      ledgers (e.g. "Cash" under Bank Accounts vs
+                      Cash-in-Hand). */}
                   {acc.group_name && (
                     <div className="text-xs text-muted-foreground">
                       {acc.group_name}
-                      {acc.code ? ` · ${acc.code}` : ''}
                     </div>
                   )}
                 </button>

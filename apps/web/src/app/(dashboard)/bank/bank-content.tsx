@@ -1278,7 +1278,7 @@ export default function BankContent(): ReactNode {
                           <option value="">Select FD ledger account</option>
                           {ledgerAccounts.map((account) => (
                             <option key={account.id} value={account.id}>
-                              {account.code} - {account.name}
+                              {account.name}
                             </option>
                           ))}
                         </Select>
@@ -1742,7 +1742,7 @@ export default function BankContent(): ReactNode {
                   <option value="">Select ledger account</option>
                   {ledgerAccounts.map((account) => (
                     <option key={account.id} value={account.id}>
-                      {account.code} - {account.name}
+                      {account.name}
                     </option>
                   ))}
                 </Select>
