@@ -705,8 +705,38 @@ export default function PurchasesContent(): ReactNode {
       if (result.due_date) {
         setBillDueDate(clampDateString(result.due_date, dateBounds.min, dateBounds.max));
       }
-      if (result.total_amount != null) {
-        setBillLineAmount(String(result.total_amount));
+      // QA — the bill form's `Amount` is the pre-GST goods/services
+      // value. handleCreateBill multiplies it by gst_rate to derive
+      // gst_amount, then total = base + gst. The OCR previously
+      // populated `Amount` from `result.total_amount` (the grand
+      // total INCLUDING GST), which produced double-counted GST in
+      // the computed totals strip — e.g. ₹6,880 base + 18% GST
+      // landed as Amount=8,118 → recomputed Total=9,579 with
+      // GST=1,461. Use the line item's pre-GST amount (matches the
+      // "Rate × Quantity = Amount" cell on standard India invoices).
+      // Fall back to result.subtotal (also pre-GST), then derive
+      // base = total − gst_amount, and only as a last resort use
+      // total_amount with a warning.
+      let baseAmount: number | null = null;
+      if (
+        result.line_items?.length > 0 &&
+        result.line_items[0].amount != null
+      ) {
+        baseAmount = result.line_items[0].amount;
+      } else if (result.subtotal != null) {
+        baseAmount = result.subtotal;
+      } else if (
+        result.total_amount != null &&
+        result.gst_amount != null
+      ) {
+        baseAmount = Math.max(0, result.total_amount - result.gst_amount);
+      } else if (result.total_amount != null) {
+        baseAmount = result.total_amount;
+      }
+      if (baseAmount != null) {
+        // Round to 2 decimals — Gemini sometimes returns numbers
+        // like 6880.000001 from float math.
+        setBillLineAmount(String(Math.round(baseAmount * 100) / 100));
       }
       // Best-effort description: first line item, else invoice_number
       if (result.line_items?.length > 0 && result.line_items[0].description) {
@@ -714,12 +744,23 @@ export default function PurchasesContent(): ReactNode {
       } else if (result.invoice_number) {
         setBillLineDescription(`Invoice ${result.invoice_number}`);
       }
-      // GST rate lifted from the first line item if present
+      // GST rate priority: line item rate first, else derive from
+      // (gst_amount / subtotal) — rounds to whole percent because
+      // India GST is always integer (5/12/18/28).
       if (
         result.line_items?.length > 0 &&
         result.line_items[0].gst_rate != null
       ) {
         setBillLineGstRate(String(result.line_items[0].gst_rate));
+      } else if (
+        result.gst_amount != null &&
+        baseAmount != null &&
+        baseAmount > 0
+      ) {
+        const derivedRate = Math.round((result.gst_amount / baseAmount) * 100);
+        if (derivedRate >= 0 && derivedRate <= 28) {
+          setBillLineGstRate(String(derivedRate));
+        }
       }
       setBillScanConfidence(result.confidence);
 
