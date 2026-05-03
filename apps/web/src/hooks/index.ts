@@ -139,6 +139,7 @@ export {
   useCreateCustomer,
   useUpdateCustomer,
   useDeactivateCustomer,
+  useConvertCustomerToUnit,
 } from './use-customers';
 
 // Purchases

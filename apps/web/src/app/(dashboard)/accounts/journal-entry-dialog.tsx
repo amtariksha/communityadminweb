@@ -86,6 +86,12 @@ export function JournalEntryDialog({
   const [financialYearId, setFinancialYearId] = useState('');
   const [entryDate, setEntryDate] = useState('');
   const [narration, setNarration] = useState('');
+  // Phase C round-trip — operator-picked Tally voucher type. Defaults
+  // to "Journal" which is what Tally uses for free-form bookkeeping
+  // entries. The other options match what Tally exposes natively;
+  // the export emits this verbatim as VCHTYPE so the JE round-trips
+  // back into Tally as the right kind of voucher.
+  const [voucherType, setVoucherType] = useState<string>('Journal');
   // Two lines is the minimum (per backend schema); seed with one
   // debit + one credit so the operator sees the balanced template
   // immediately.
@@ -101,6 +107,7 @@ export function JournalEntryDialog({
     setFinancialYearId(defaultFyId);
     setEntryDate(new Date().toISOString().slice(0, 10));
     setNarration('');
+    setVoucherType('Journal');
     setLines([
       { ...newLine(), side: 'debit' },
       { ...newLine(), side: 'credit' },
@@ -147,6 +154,7 @@ export function JournalEntryDialog({
       financial_year_id: financialYearId,
       entry_date: entryDate,
       narration: narration.trim(),
+      voucher_type_name: voucherType,
       lines: lines.map((l) => ({
         ledger_account_id: l.ledger_account_id,
         debit: l.side === 'debit' ? Number(l.amount) || 0 : 0,
@@ -220,6 +228,36 @@ export function JournalEntryDialog({
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Tally voucher type — Phase C round-trip. Defaults to
+                "Journal" (free-form bookkeeping), but the operator can
+                pick "Contra" for bank-to-bank transfers,
+                "Debit Note" for vendor returns / payable adjustments,
+                etc. The export emits VCHTYPE = this value, so the JE
+                round-trips back into Tally as the right voucher kind. */}
+            <div className="space-y-2">
+              <Label htmlFor="je-voucher-type">
+                Voucher type{' '}
+                <span className="text-xs font-normal text-muted-foreground">
+                  (controls how Tally classifies this entry on export)
+                </span>
+              </Label>
+              <select
+                id="je-voucher-type"
+                value={voucherType}
+                onChange={(e) => setVoucherType(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              >
+                <option value="Journal">Journal — free-form bookkeeping</option>
+                <option value="Contra">Contra — bank ↔ bank / cash ↔ bank</option>
+                <option value="Payment">Payment — outgoing cash</option>
+                <option value="Receipt">Receipt — incoming cash</option>
+                <option value="Credit Note">Credit Note — sales reversal</option>
+                <option value="Debit Note">Debit Note — vendor return</option>
+                <option value="Sales">Sales</option>
+                <option value="Purchase">Purchase</option>
+              </select>
             </div>
 
             <div className="space-y-2">

@@ -135,3 +135,42 @@ export function useDeactivateCustomer() {
     },
   });
 }
+
+// Phase C.3 — Sundry-Debtor → unit converter (Tally migration helper).
+// Converts a customer (typically a Tally-imported Sundry Debtors child)
+// into a unit-linked opening balance: posts a transfer JE, creates an
+// opening invoice on the unit, deactivates the customer.
+interface ConvertToUnitInput {
+  unit_id: string;
+  opening_income_account_id?: string;
+  invoice_date?: string;
+}
+
+interface ConvertToUnitResult {
+  invoice_id: string | null;
+  invoice_number: string | null;
+  transferred_amount: number;
+  customer_deactivated: boolean;
+}
+
+export function useConvertCustomerToUnit() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function convert(params: {
+      id: string;
+      data: ConvertToUnitInput;
+    }) {
+      return api.post<{ data: ConvertToUnitResult }>(
+        `/customers/${params.id}/convert-to-unit`,
+        params.data,
+      );
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: customerKeys.all });
+      // The conversion creates an opening invoice — invalidate the
+      // invoices list so it surfaces immediately.
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    },
+  });
+}

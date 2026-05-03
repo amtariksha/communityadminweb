@@ -35,6 +35,8 @@ export const createJournalEntrySchema = z
     narration: z.string().min(1, 'Narration is required').max(1000),
     source_type: z.string().max(50).default('manual'),
     source_id: z.string().uuid().nullable().default(null),
+    // Phase C round-trip — see api-side schema for rationale.
+    voucher_type_name: z.string().max(50).nullable().optional(),
     lines: z
       .array(journalLineSchema)
       .min(2, 'Journal entry must have at least two lines'),

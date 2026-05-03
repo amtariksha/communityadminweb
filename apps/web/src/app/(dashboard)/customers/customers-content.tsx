@@ -56,6 +56,7 @@ import {
   useUpdateCustomer,
   useDeactivateCustomer,
 } from '@/hooks';
+import { ConvertToUnitDialog } from './convert-to-unit-dialog';
 
 // ---------------------------------------------------------------------------
 // Customers — non-resident parties the society raises invoices against
@@ -96,6 +97,7 @@ export default function CustomersContent(): ReactNode {
   const { addToast } = useToast();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedId, setSelectedId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -676,15 +678,31 @@ export default function CustomersContent(): ReactNode {
             </p>
           )}
           <DialogFooter className="flex justify-between sm:justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDeactivate}
-              disabled={!detail?.is_active || deactivateCustomer.isPending}
-            >
-              <XCircle className="mr-2 h-4 w-4" />
-              Deactivate
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDeactivate}
+                disabled={!detail?.is_active || deactivateCustomer.isPending}
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Deactivate
+              </Button>
+              {/* Phase C.3 — Tally migration helper. Hidden when the
+                  customer has no balance OR is already inactive. */}
+              {detail?.is_active && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDetailDialogOpen(false);
+                    setConvertOpen(true);
+                  }}
+                >
+                  Convert to unit
+                </Button>
+              )}
+            </div>
             <div className="flex gap-2">
               <DialogClose>
                 <Button variant="outline">Close</Button>
@@ -697,6 +715,20 @@ export default function CustomersContent(): ReactNode {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Convert-to-unit dialog (Phase C.3 Tally migration helper) */}
+      {detail && (
+        <ConvertToUnitDialog
+          customerId={detail.id}
+          customerName={detail.name}
+          customerOutstanding={detail.total_outstanding}
+          open={convertOpen}
+          onOpenChange={setConvertOpen}
+          onConverted={() => {
+            setSelectedId('');
+          }}
+        />
+      )}
 
       {/* Edit dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

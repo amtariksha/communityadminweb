@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { DirectExpenseDialog } from './direct-expense-dialog';
+import { DebitNoteDialog } from './debit-note-dialog';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
@@ -245,6 +246,7 @@ export default function PurchasesContent(): ReactNode {
   const [prSearchInput, setPrSearchInput] = useState('');
   const [createPRDialogOpen, setCreatePRDialogOpen] = useState(false);
   const [directExpenseDialogOpen, setDirectExpenseDialogOpen] = useState(false);
+  const [debitNoteDialogOpen, setDebitNoteDialogOpen] = useState(false);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedPRId, setSelectedPRId] = useState('');
@@ -793,6 +795,12 @@ export default function PurchasesContent(): ReactNode {
               onClick={() => setDirectExpenseDialogOpen(true)}
             >
               Direct Expense
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setDebitNoteDialogOpen(true)}
+            >
+              Debit Note
             </Button>
             <ExportButton
               data={[...purchaseRequests, ...bills] as unknown as Record<string, unknown>[]}
@@ -2013,6 +2021,13 @@ export default function PurchasesContent(): ReactNode {
       <DirectExpenseDialog
         open={directExpenseDialogOpen}
         onOpenChange={setDirectExpenseDialogOpen}
+      />
+
+      {/* Debit Note dialog (Phase C.4) — for vendor returns / refund
+          credits / post-billing discounts */}
+      <DebitNoteDialog
+        open={debitNoteDialogOpen}
+        onOpenChange={setDebitNoteDialogOpen}
       />
     </div>
   );
