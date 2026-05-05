@@ -22,12 +22,14 @@ import {
   Download,
   AlertCircle,
   CheckCircle2,
+  CalendarPlus,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
@@ -70,6 +72,7 @@ import {
   useBulkImportMembers,
   useCreateOnboarding,
   useExtendLease,
+  useUnitOnboardings,
   isDuplicateOnboardError,
   useUploadFileToS3,
 } from '@/hooks';
@@ -326,6 +329,15 @@ export default function UnitsContent(): ReactNode {
   const [onboardUploadPercent, setOnboardUploadPercent] = useState<number | null>(
     null,
   );
+
+  // FeatPlan #OW-2 — Extend Lease modal state. Visible from the
+  // Tenant card when an active onboarding exists and the lease is
+  // active OR expired ≤30d. Backend (tenant-lifecycle.service.ts:1631)
+  // enforces the same window; client-side check is a UX gate.
+  const [extendLeaseOpen, setExtendLeaseOpen] = useState(false);
+  const [extendOnboardingId, setExtendOnboardingId] = useState('');
+  const [extendNewEndDate, setExtendNewEndDate] = useState('');
+  const [extendReason, setExtendReason] = useState('');
   // Unified user-directory wiring (migration 056 / UserSearchSelect).
   // `addMemberSelected` is the directory hit picked from autocomplete;
   // when set, the form submits with that user's exact phone (and the
@@ -391,6 +403,32 @@ export default function UnitsContent(): ReactNode {
   const tenantFamily = detail?.current_members.filter(
     (m) => m.member_type === 'tenant_family' || (m.member_type === 'family_member' && m.parent_member_id === tenant?.id),
   ) ?? [];
+
+  // FeatPlan #OW-2 — find the current onboarding row for the active
+  // tenant. The endpoint returns rows ORDER BY created_at DESC, so
+  // the FIRST status='approved' row is the active lease. Only fetch
+  // when both (a) we're rendering a unit detail panel and (b) a
+  // tenant member exists — otherwise we'd burn a request on units
+  // with no tenant to extend.
+  const onboardingsQuery = useUnitOnboardings(detailUnitId, {
+    enabled: detailUnitId !== '' && tenant !== null,
+    status: 'approved',
+  });
+  const activeOnboarding =
+    onboardingsQuery.data?.find((o) => o.status === 'approved') ?? null;
+  // Lease window: active (end_date >= today) or expired ≤30 days
+  // (today - end_date <= 30). Mirror of the backend window check.
+  const canExtendLease = (() => {
+    if (!tenant || !activeOnboarding) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(activeOnboarding.lease_end_date);
+    end.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor(
+      (today.getTime() - end.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    return diffDays <= 30; // ≤30d expired OR active (negative diff)
+  })();
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -726,6 +764,81 @@ export default function UnitsContent(): ReactNode {
     setAddMemberSelected(null);
     setAddMemberNoPhone(false);
     setAddMemberOpen(true);
+  }
+
+  // FeatPlan #OW-2 — open the Extend Lease dialog for the unit's
+  // current onboarding. Pre-fills the new end-date with end+90 days
+  // as a starting point; admin can edit before submit.
+  function openExtendLease(): void {
+    if (!activeOnboarding) {
+      addToast({
+        title: 'No active lease found',
+        description: 'There is no current lease on file to extend.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const proposed = new Date(activeOnboarding.lease_end_date);
+    proposed.setDate(proposed.getDate() + 90);
+    setExtendOnboardingId(activeOnboarding.id);
+    setExtendNewEndDate(proposed.toISOString().slice(0, 10));
+    setExtendReason('');
+    setExtendLeaseOpen(true);
+  }
+
+  function handleExtendLease(e: FormEvent): void {
+    e.preventDefault();
+    if (!extendOnboardingId) return;
+    if (!extendNewEndDate) {
+      addToast({
+        title: 'New end date required',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (
+      activeOnboarding &&
+      extendNewEndDate <= activeOnboarding.lease_end_date.slice(0, 10)
+    ) {
+      addToast({
+        title: 'Invalid new end date',
+        description: 'New end date must be after the current lease end.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!extendReason.trim()) {
+      addToast({
+        title: 'Reason required',
+        description: 'Capture the reason for the extension (audit log).',
+        variant: 'destructive',
+      });
+      return;
+    }
+    extendLease.mutate(
+      {
+        onboarding_id: extendOnboardingId,
+        new_end_date: extendNewEndDate,
+        reason: extendReason.trim(),
+      },
+      {
+        onSuccess() {
+          setExtendLeaseOpen(false);
+          addToast({
+            title: 'Lease extended',
+            description: `New lease end date: ${formatDate(extendNewEndDate)}.`,
+            variant: 'success',
+          });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to extend lease',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
   }
 
   // QA #219 / #222 — full tenant onboarding with lease packet.
@@ -1695,6 +1808,22 @@ export default function UnitsContent(): ReactNode {
                       <div className="flex gap-1">
                         {tenant ? (
                           <>
+                            {/* FeatPlan #OW-2 — visible only when an
+                                active onboarding row exists AND the
+                                lease is in the active or expired-≤30d
+                                window. Backend enforces the same
+                                window server-side. */}
+                            {canExtendLease && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={openExtendLease}
+                                title="Extend the current lease without going through full renewal"
+                              >
+                                <CalendarPlus className="mr-1 h-3 w-3" />
+                                Extend lease
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -2178,6 +2307,72 @@ export default function UnitsContent(): ReactNode {
                     : addMemberType === 'tenant'
                       ? 'Assign Tenant'
                       : 'Add Member'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* FeatPlan #OW-2 — Extend Lease dialog. Modal opens from the
+          Tenant card. Calls PATCH /tenant-lifecycle/:id/extend-lease
+          which bumps lease_end_date without going through the full
+          renewal+approval workflow. Reason captured for the audit
+          trail since this skips approval. */}
+      <Dialog open={extendLeaseOpen} onOpenChange={setExtendLeaseOpen}>
+        <DialogContent className="max-w-md">
+          <form onSubmit={handleExtendLease}>
+            <DialogHeader>
+              <DialogTitle>Extend lease</DialogTitle>
+              <DialogDescription>
+                Bump the current lease&rsquo;s end date without a full
+                renewal. Action is logged to the audit trail.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {activeOnboarding && (
+                <p className="text-xs text-muted-foreground">
+                  Current end:{' '}
+                  <span className="font-medium text-foreground">
+                    {formatDate(activeOnboarding.lease_end_date)}
+                  </span>
+                </p>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="extend-end-date">
+                  New end date <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="extend-end-date"
+                  type="date"
+                  required
+                  value={extendNewEndDate}
+                  onChange={(e) => setExtendNewEndDate(e.target.value)}
+                  min={activeOnboarding?.lease_end_date.slice(0, 10)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="extend-reason">
+                  Reason <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="extend-reason"
+                  required
+                  rows={3}
+                  placeholder="e.g. Tenant requested 3-month extension; both parties agreed."
+                  value={extendReason}
+                  onChange={(e) => setExtendReason(e.target.value)}
+                  maxLength={500}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={extendLease.isPending}>
+                {extendLease.isPending ? 'Extending…' : 'Extend lease'}
               </Button>
             </DialogFooter>
           </form>

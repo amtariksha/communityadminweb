@@ -273,6 +273,7 @@ export {
   useCreateOnboarding,
   useRenewAgreement,
   useExtendLease,
+  useUnitOnboardings,
   isDuplicateOnboardError,
 } from './use-tenant-lifecycle';
 export type {
@@ -282,6 +283,7 @@ export type {
   RenewAgreementResult,
   ExtendLeaseInput,
   ExtendLeaseResult,
+  OnboardingSummary,
 } from './use-tenant-lifecycle';
 
 // Tenant Members (Super Admin)

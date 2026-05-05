@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { ApiError } from '@/lib/api-error';
 
@@ -165,6 +165,56 @@ export function useRenewAgreement() {
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
       queryClient.invalidateQueries({ queryKey: ['unit-members'] });
     },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// GET /tenant-lifecycle/onboardings — list rows for the unit detail page
+// ---------------------------------------------------------------------------
+//
+// Returned rows are sorted `created_at DESC` server-side. The unit's
+// CURRENT tenant onboarding is the first row with `status='approved'`
+// — used by the "Extend lease" button to know which onboarding row
+// to PATCH.
+
+export interface OnboardingSummary {
+  id: string;
+  unit_id: string;
+  tenant_name: string;
+  tenant_phone: string;
+  tenant_email: string | null;
+  lease_start_date: string;
+  lease_end_date: string;
+  monthly_rent: number | null;
+  security_deposit: number | null;
+  agreement_document_url: string | null;
+  status: string;
+  approval_request_id: string | null;
+  created_at: string;
+  tenancy_type?: 'short_term' | 'long_term';
+  occupancy_type?: 'full' | 'shared';
+  maintenance_payer?: 'owner' | 'tenant';
+  unit_number?: string;
+  owner_name?: string;
+}
+
+export function useUnitOnboardings(
+  unitId: string,
+  options: { enabled?: boolean; status?: string } = {},
+) {
+  const { enabled = true, status } = options;
+  return useQuery({
+    queryKey: ['tenant-onboardings', { unitId, status }] as const,
+    queryFn: async () => {
+      const params: Record<string, string> = { unit_id: unitId };
+      if (status) params.status = status;
+      const res = await api.get<{ data: OnboardingSummary[] }>(
+        '/tenant-lifecycle/onboardings',
+        { params },
+      );
+      return res.data;
+    },
+    enabled: enabled && unitId !== '',
   });
 }
 
