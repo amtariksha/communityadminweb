@@ -106,6 +106,13 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Analytics', href: '/analytics', icon: <BarChart3 className="h-4 w-4" /> },
       { label: 'Approvals', href: '/approvals', icon: <ClipboardCheck className="h-4 w-4" /> },
+      // FeatPlan #OW-3 — vehicle approval queue. Backend
+      // (parking.controller.ts:234) gates approve/reject to
+      // community_admin / committee_member; non-allowlisted roles
+      // see the link but get a 403 toast on attempt. Sidebar
+      // doesn't role-gate today; visibility refinement is a
+      // follow-up.
+      { label: 'Vehicle Approvals', href: '/approvals/vehicles', icon: <Car className="h-4 w-4" /> },
       { label: 'Notifications', href: '/notifications', icon: <Bell className="h-4 w-4" /> },
       { label: 'Audit Trail', href: '/audit', icon: <ScrollText className="h-4 w-4" /> },
       { label: 'Settings', href: '/settings', icon: <Settings className="h-4 w-4" /> },

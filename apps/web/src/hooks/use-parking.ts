@@ -39,6 +39,12 @@ export interface Vehicle {
   member_name?: string;
   unit_number?: string;
   slot_number?: string;
+  // FeatPlan #OW-3 — approval workflow. POST /vehicles defaults to
+  // approval_status='pending' + is_active=false; community_admin /
+  // committee_member must PATCH approve to flip is_active=true.
+  approval_status?: 'pending' | 'approved' | 'rejected';
+  approved_by_user_id?: string | null;
+  approved_at?: string | null;
 }
 
 export interface ParkingSublet {
@@ -77,6 +83,10 @@ export interface SlotFilters {
 export interface VehicleFilters {
   vehicle_type?: string;
   unit_id?: string;
+  // FeatPlan #OW-3 — when set, the backend (parking.controller.ts:191)
+  // bypasses the legacy is_active=true predicate and selects rows by
+  // approval_status. Use 'pending' to populate the approval queue.
+  approval_status?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface SubletFilters {
@@ -174,6 +184,7 @@ function vehicleFiltersToParams(filters?: VehicleFilters): Record<string, string
   const params: Record<string, string> = {};
   if (filters.vehicle_type) params.vehicle_type = filters.vehicle_type;
   if (filters.unit_id) params.unit_id = filters.unit_id;
+  if (filters.approval_status) params.approval_status = filters.approval_status;
   return params;
 }
 
@@ -369,6 +380,43 @@ export function useCancelSublet() {
   return useMutation({
     mutationFn: function cancelSublet(id: string) {
       return api.post<{ data: ParkingSublet }>(`/parking/sublets/${id}/cancel`);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: parkingKeys.all });
+    },
+  });
+}
+
+// FeatPlan #OW-3 — approve / reject a pending vehicle. Backend
+// (parking.controller.ts:234, 249) gates both endpoints to
+// community_admin / committee_member / super_admin.
+//
+// Approve flips approval_status='approved' + is_active=true. After
+// approval the vehicle returns from the standard `useVehicles` query
+// (which still filters is_active=true unless approval_status is
+// passed). Reject pins approval_status='rejected' + the reason in
+// metadata for audit; row stays for history.
+
+export function useApproveVehicle() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: function approveVehicle(id: string) {
+      return api.patch<{ data: Vehicle }>(`/parking/vehicles/${id}/approve`);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: parkingKeys.all });
+    },
+  });
+}
+
+export function useRejectVehicle() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: function rejectVehicle(input: { id: string; reason: string }) {
+      return api.patch<{ data: Vehicle }>(
+        `/parking/vehicles/${input.id}/reject`,
+        { reason: input.reason },
+      );
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: parkingKeys.all });

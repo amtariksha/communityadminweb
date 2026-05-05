@@ -473,6 +473,8 @@ export {
   useRemoveVehicle,
   useCreateSublet,
   useCancelSublet,
+  useApproveVehicle,
+  useRejectVehicle,
 } from './use-parking';
 export type {
   ParkingSlot,
