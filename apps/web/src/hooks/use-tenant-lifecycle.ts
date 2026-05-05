@@ -23,6 +23,15 @@ export interface CreateOnboardingInput {
   ev_charging?: boolean;
   water_meter_id?: string | null;
   electricity_meter_id?: string | null;
+  // FeatPlan #OW-1 — onboarding-v2 fields. Backend (controller line
+  // 61-63) defaults all three server-side to {long_term, full,
+  // owner} when omitted, but the admin dialog now exposes them as
+  // explicit radios so the operator captures intent at create time.
+  // `agreement_required` is computed by the DB CHECK from
+  // tenancy_type — long_term enforces upload, short_term doesn't.
+  tenancy_type?: 'short_term' | 'long_term';
+  occupancy_type?: 'full' | 'shared';
+  maintenance_payer?: 'owner' | 'tenant';
 }
 
 export interface CreateOnboardingResult {
@@ -155,6 +164,58 @@ export function useRenewAgreement() {
       // request shows up immediately.
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
       queryClient.invalidateQueries({ queryKey: ['unit-members'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /tenant-lifecycle/:onboarding_id/extend-lease — FeatPlan #OW-2
+// ---------------------------------------------------------------------------
+//
+// Lightweight lease extension: bumps `lease_end_date` on an active
+// onboarding (or one expired ≤30 days) without going through the full
+// renewal + approval workflow. Backend (tenant-lifecycle.controller:281)
+// enforces RBAC server-side: owner of the unit OR community_admin OR
+// committee_member.
+//
+// Reason is mandatory — captured for the audit trail since this skips
+// the approval step.
+
+export interface ExtendLeaseInput {
+  onboarding_id: string;
+  new_end_date: string; // yyyy-mm-dd
+  reason: string;
+}
+
+export interface ExtendLeaseResult {
+  id: string;
+  unit_id: string;
+  tenant_name: string;
+  lease_start_date: string;
+  lease_end_date: string;
+  status: string;
+}
+
+export function useExtendLease() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ExtendLeaseInput): Promise<ExtendLeaseResult> => {
+      const res = await api.patch<{ data: ExtendLeaseResult }>(
+        `/tenant-lifecycle/${input.onboarding_id}/extend-lease`,
+        {
+          new_end_date: input.new_end_date,
+          reason: input.reason,
+        },
+      );
+      return res.data;
+    },
+    onSuccess: () => {
+      // Lease end date is the only field that flips — no approvals
+      // queue impact, but the unit-detail panel + tenant card need
+      // to refresh so the new end date renders without a manual
+      // page reload.
+      queryClient.invalidateQueries({ queryKey: ['unit-members'] });
+      queryClient.invalidateQueries({ queryKey: ['tenant-onboardings'] });
     },
   });
 }

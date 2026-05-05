@@ -69,7 +69,9 @@ import {
   useDisconnectTenant,
   useBulkImportMembers,
   useCreateOnboarding,
+  useExtendLease,
   isDuplicateOnboardError,
+  useUploadFileToS3,
 } from '@/hooks';
 import type { UnitDetailMember } from '@/hooks';
 import { useOcrIdDocument } from '@/hooks/use-ocr';
@@ -303,6 +305,27 @@ export default function UnitsContent(): ReactNode {
   const [onboardLeaseEnd, setOnboardLeaseEnd] = useState('');
   const [onboardMonthlyRent, setOnboardMonthlyRent] = useState('');
   const [onboardSecurityDeposit, setOnboardSecurityDeposit] = useState('');
+  // FeatPlan #OW-1 — onboarding-v2 captures intent at create time
+  // instead of inferring from blank fields downstream. Defaults
+  // mirror the backend's CHECK + DEFAULT in migration 092
+  // (long_term / full / owner). Agreement upload is gated behind
+  // tenancy_type === 'long_term' since short-term lets often skip
+  // a formal lease document — DB CHECK enforces that requirement.
+  const [onboardTenancyType, setOnboardTenancyType] = useState<
+    'short_term' | 'long_term'
+  >('long_term');
+  const [onboardOccupancyType, setOnboardOccupancyType] = useState<
+    'full' | 'shared'
+  >('full');
+  const [onboardMaintenancePayer, setOnboardMaintenancePayer] = useState<
+    'owner' | 'tenant'
+  >('owner');
+  const [onboardAgreementFile, setOnboardAgreementFile] = useState<File | null>(
+    null,
+  );
+  const [onboardUploadPercent, setOnboardUploadPercent] = useState<number | null>(
+    null,
+  );
   // Unified user-directory wiring (migration 056 / UserSearchSelect).
   // `addMemberSelected` is the directory hit picked from autocomplete;
   // when set, the form submits with that user's exact phone (and the
@@ -346,6 +369,12 @@ export default function UnitsContent(): ReactNode {
   const disconnectTenant = useDisconnectTenant();
   const bulkImportMembers = useBulkImportMembers();
   const createOnboarding = useCreateOnboarding();
+  // FeatPlan #OW-1 — agreement upload (long-term tenancies only).
+  // Three-step flow lifted from renew-lease-dialog.tsx: pick file →
+  // pre-signed PUT to S3 → POST /onboard with the returned URL+key.
+  const uploadAgreement = useUploadFileToS3();
+  // FeatPlan #OW-2 — extend the active (or expired-≤30d) lease.
+  const extendLease = useExtendLease();
 
   const units = unitsQuery.data?.data ?? [];
   const totalUnits = unitsQuery.data?.total ?? 0;
@@ -713,10 +742,18 @@ export default function UnitsContent(): ReactNode {
     setOnboardLeaseEnd(elevenMonths.toISOString().slice(0, 10));
     setOnboardMonthlyRent('');
     setOnboardSecurityDeposit('');
+    // FeatPlan #OW-1 — defaults match the backend CHECK + DEFAULT
+    // (long_term / full / owner) so a quick submit without touching
+    // the radios produces the canonical case.
+    setOnboardTenancyType('long_term');
+    setOnboardOccupancyType('full');
+    setOnboardMaintenancePayer('owner');
+    setOnboardAgreementFile(null);
+    setOnboardUploadPercent(null);
     setOnboardTenantOpen(true);
   }
 
-  function handleOnboardTenantSubmit(e: FormEvent): void {
+  async function handleOnboardTenantSubmit(e: FormEvent): Promise<void> {
     e.preventDefault();
     const phone = normalizePhone(onboardPhone);
     if (!phone.ok || !phone.value) {
@@ -776,6 +813,49 @@ export default function UnitsContent(): ReactNode {
       return;
     }
 
+    // FeatPlan #OW-1 — long-term tenancies require the agreement
+    // upload (DB CHECK enforces this; server returns 400 if the
+    // upload is missing). Short-term tenancies skip the upload
+    // entirely. Hard-block the submit on the client so we don't
+    // burn a round-trip waiting for the rejection.
+    const isLongTerm = onboardTenancyType === 'long_term';
+    if (isLongTerm && !onboardAgreementFile) {
+      addToast({
+        title: 'Lease agreement required',
+        description:
+          'Long-term tenancies must upload a signed lease agreement (PDF or image).',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Step 1 — upload agreement if present. Bytes go direct to S3
+    // via a presigned PUT; the backend never sees them. Captured
+    // url+key are persisted on the tenant_onboarding row so the
+    // approval queue surfaces a download link.
+    let agreementUrl: string | null = null;
+    let agreementKey: string | null = null;
+    if (onboardAgreementFile) {
+      try {
+        setOnboardUploadPercent(0);
+        const uploaded = await uploadAgreement.mutateAsync({
+          file: onboardAgreementFile,
+          onProgress: setOnboardUploadPercent,
+        });
+        agreementUrl = uploaded.fileUrl;
+        agreementKey = uploaded.key;
+      } catch (err) {
+        setOnboardUploadPercent(null);
+        addToast({
+          title: 'Agreement upload failed',
+          description:
+            err instanceof Error ? err.message : 'Try again or remove the file.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     createOnboarding.mutate(
       {
         unit_id: detailUnitId,
@@ -786,10 +866,20 @@ export default function UnitsContent(): ReactNode {
         lease_end_date: onboardLeaseEnd,
         monthly_rent: monthlyRent,
         security_deposit: securityDeposit,
+        // FeatPlan #OW-1 — onboarding-v2 fields. Backend defaults
+        // these server-side when omitted, but always sending them
+        // makes the audit trail crisp.
+        tenancy_type: onboardTenancyType,
+        occupancy_type: onboardOccupancyType,
+        maintenance_payer: onboardMaintenancePayer,
+        agreement_document_url: agreementUrl,
+        agreement_document_key: agreementKey,
       },
       {
         onSuccess() {
           setOnboardTenantOpen(false);
+          setOnboardUploadPercent(null);
+          setOnboardAgreementFile(null);
           addToast({
             title: 'Tenant onboarding submitted',
             description:
@@ -2202,17 +2292,149 @@ export default function UnitsContent(): ReactNode {
                 />
                 <FormFieldError error={createOnboarding.error} field="security_deposit" />
               </div>
-              <p className="col-span-2 text-xs text-muted-foreground">
-                The Aadhaar / lease document upload step is on the
-                Approvals page after the request is created.
-              </p>
+              {/* FeatPlan #OW-1 — three onboarding-v2 radios. Each
+                  is a small group inline so the form stays at two
+                  columns. Server-side defaults if omitted; we always
+                  send them so the audit trail captures intent. */}
+              <div className="col-span-2 space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Tenancy type
+                </Label>
+                <div className="flex gap-4 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="tenancy-type"
+                      value="long_term"
+                      checked={onboardTenancyType === 'long_term'}
+                      onChange={() => setOnboardTenancyType('long_term')}
+                      className="h-4 w-4"
+                    />
+                    Long-term (requires lease agreement)
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="tenancy-type"
+                      value="short_term"
+                      checked={onboardTenancyType === 'short_term'}
+                      onChange={() => setOnboardTenancyType('short_term')}
+                      className="h-4 w-4"
+                    />
+                    Short-term
+                  </label>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Occupancy
+                </Label>
+                <div className="flex gap-4 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="occupancy-type"
+                      value="full"
+                      checked={onboardOccupancyType === 'full'}
+                      onChange={() => setOnboardOccupancyType('full')}
+                      className="h-4 w-4"
+                    />
+                    Full unit
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="occupancy-type"
+                      value="shared"
+                      checked={onboardOccupancyType === 'shared'}
+                      onChange={() => setOnboardOccupancyType('shared')}
+                      className="h-4 w-4"
+                    />
+                    Shared
+                  </label>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Maintenance paid by
+                </Label>
+                <div className="flex gap-4 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="maintenance-payer"
+                      value="owner"
+                      checked={onboardMaintenancePayer === 'owner'}
+                      onChange={() => setOnboardMaintenancePayer('owner')}
+                      className="h-4 w-4"
+                    />
+                    Owner
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="maintenance-payer"
+                      value="tenant"
+                      checked={onboardMaintenancePayer === 'tenant'}
+                      onChange={() => setOnboardMaintenancePayer('tenant')}
+                      className="h-4 w-4"
+                    />
+                    Tenant
+                  </label>
+                </div>
+              </div>
+
+              {/* FeatPlan #OW-1 — agreement upload. Visible only on
+                  long-term; backend DB CHECK enforces presence on the
+                  same condition. Bytes go direct to S3 via the
+                  presigned-PUT pattern (see useUploadFileToS3). */}
+              {onboardTenancyType === 'long_term' && (
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="onboard-agreement">
+                    Lease agreement <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="onboard-agreement"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) =>
+                      setOnboardAgreementFile(e.target.files?.[0] ?? null)
+                    }
+                  />
+                  {onboardAgreementFile && (
+                    <p className="text-xs text-muted-foreground">
+                      Selected: {onboardAgreementFile.name} (
+                      {(onboardAgreementFile.size / 1024).toFixed(0)} KB)
+                    </p>
+                  )}
+                  {onboardUploadPercent !== null && (
+                    <p className="text-xs text-muted-foreground">
+                      Uploading… {onboardUploadPercent}%
+                    </p>
+                  )}
+                </div>
+              )}
+              {onboardTenancyType === 'short_term' && (
+                <p className="col-span-2 text-xs text-muted-foreground">
+                  Short-term tenancies don&rsquo;t require a formal
+                  lease document. Other ID/document uploads are on the
+                  Approvals page after the request is created.
+                </p>
+              )}
             </div>
             <DialogFooter>
               <DialogClose>
                 <Button type="button" variant="outline">Cancel</Button>
               </DialogClose>
-              <Button type="submit" disabled={createOnboarding.isPending}>
-                {createOnboarding.isPending ? 'Submitting...' : 'Submit Onboarding'}
+              <Button
+                type="submit"
+                disabled={createOnboarding.isPending || uploadAgreement.isPending}
+              >
+                {uploadAgreement.isPending
+                  ? `Uploading… ${onboardUploadPercent ?? 0}%`
+                  : createOnboarding.isPending
+                    ? 'Submitting...'
+                    : 'Submit Onboarding'}
               </Button>
             </DialogFooter>
           </form>

@@ -268,10 +268,11 @@ export type {
   ExpiryEnforcement,
 } from './use-role-delegation';
 
-// Tenant lifecycle (onboarding / renewal / exit)
+// Tenant lifecycle (onboarding / renewal / exit / extension)
 export {
   useCreateOnboarding,
   useRenewAgreement,
+  useExtendLease,
   isDuplicateOnboardError,
 } from './use-tenant-lifecycle';
 export type {
@@ -279,6 +280,8 @@ export type {
   CreateOnboardingResult,
   RenewAgreementInput,
   RenewAgreementResult,
+  ExtendLeaseInput,
+  ExtendLeaseResult,
 } from './use-tenant-lifecycle';
 
 // Tenant Members (Super Admin)
