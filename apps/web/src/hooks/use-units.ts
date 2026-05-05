@@ -253,7 +253,13 @@ export function useAddMember() {
     mutationFn: function addMember(input: AddMemberInput) {
       return api.post<{ data: Member }>(`/units/${input.unit_id}/members`, input);
     },
+    // 2026-05 fix — also invalidate `unitKeys.lists()` so the Units
+    // page table re-fetches and shows the new owner/tenant name in
+    // the row immediately. Pre-fix the only invalidation targets
+    // were the unit detail / members / stats queries, leaving the
+    // main list stale until a hard refresh.
     onSuccess: function invalidate(_data, variables) {
+      queryClient.invalidateQueries({ queryKey: unitKeys.lists() });
       queryClient.invalidateQueries({ queryKey: unitKeys.members(variables.unit_id) });
       queryClient.invalidateQueries({ queryKey: unitKeys.detail(variables.unit_id) });
       queryClient.invalidateQueries({ queryKey: unitKeys.stats() });
@@ -270,7 +276,12 @@ export function useRemoveMember() {
         `/units/${params.unitId}/members/${params.memberId}`,
       );
     },
+    // 2026-05 fix — also invalidate `unitKeys.lists()` so removing
+    // an owner / tenant updates the Units table row (Owner column
+    // back to "No owner", is_occupied flag, etc.) without a manual
+    // refresh.
     onSuccess: function invalidate(_data, variables) {
+      queryClient.invalidateQueries({ queryKey: unitKeys.lists() });
       queryClient.invalidateQueries({ queryKey: unitKeys.members(variables.unitId) });
       queryClient.invalidateQueries({ queryKey: unitKeys.detail(variables.unitId) });
       queryClient.invalidateQueries({ queryKey: unitKeys.stats() });
