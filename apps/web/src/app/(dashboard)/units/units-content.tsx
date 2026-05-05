@@ -349,6 +349,14 @@ export default function UnitsContent(): ReactNode {
   // own mobile. members.user_id stays NULL; the parent_member_id link
   // is what represents them in visitor logs and resident lists.
   const [addMemberNoPhone, setAddMemberNoPhone] = useState(false);
+  // FeatPlan #OW-4 — birthdate + ID-proof state. Backend (paired
+  // commit on amtariksha/communityos) extends `addMemberSchema` to
+  // accept these. Auto-filled from the OCR result; admin can edit
+  // before submit (Aadhaar masked numbers, low-confidence reads,
+  // etc.).
+  const [addMemberBirthdate, setAddMemberBirthdate] = useState('');
+  const [addMemberIdProofType, setAddMemberIdProofType] = useState('');
+  const [addMemberIdProofNumber, setAddMemberIdProofNumber] = useState('');
   // ID scan (Aadhaar / PAN / Passport / Voter / DL). Auto-fills Name;
   // other fields (document_number, DOB, gender) are surfaced in a
   // toast for the admin to record manually — the lightweight
@@ -752,6 +760,12 @@ export default function UnitsContent(): ReactNode {
     setAddMemberMoveIn('');
     setAddMemberSelected(null);
     setAddMemberNoPhone(false);
+    // FeatPlan #OW-4 — clear OCR-driven fields so a stale scan from
+    // a previous open doesn't leak into a fresh add.
+    setAddMemberBirthdate('');
+    setAddMemberIdProofType('');
+    setAddMemberIdProofNumber('');
+    setIdScanSummary(null);
     setAddMemberOpen(true);
   }
 
@@ -763,6 +777,11 @@ export default function UnitsContent(): ReactNode {
     setAddMemberMoveIn('');
     setAddMemberSelected(null);
     setAddMemberNoPhone(false);
+    // FeatPlan #OW-4 — see openAddFamilyMember.
+    setAddMemberBirthdate('');
+    setAddMemberIdProofType('');
+    setAddMemberIdProofNumber('');
+    setIdScanSummary(null);
     setAddMemberOpen(true);
   }
 
@@ -1052,6 +1071,22 @@ export default function UnitsContent(): ReactNode {
     try {
       const result = await ocrIdDoc.mutateAsync(file);
       if (result.name) setAddMemberName(result.name);
+      // FeatPlan #OW-4 — persist the OCR-extracted fields into the
+      // form state instead of just rendering a summary. Birthdate
+      // requires a YYYY-MM-DD shape (backend Zod regex); the OCR
+      // already returns that format. Document type + number land in
+      // the (now-visible) inputs below the scan card so the admin
+      // can review and edit before submit (Aadhaar's pre-masked
+      // numbers, low-confidence reads, etc.).
+      if (result.date_of_birth) {
+        setAddMemberBirthdate(result.date_of_birth);
+      }
+      if (result.document_type && result.document_type !== 'unknown') {
+        setAddMemberIdProofType(result.document_type);
+      }
+      if (result.document_number) {
+        setAddMemberIdProofNumber(result.document_number);
+      }
       // Compose a summary of everything else so the admin can record
       // what didn't auto-fill. document_number for Aadhaar comes pre-
       // masked from the backend (middle 8 digits hidden).
@@ -1125,6 +1160,13 @@ export default function UnitsContent(): ReactNode {
         member_type: addMemberType,
         move_in_date: addMemberMoveIn,
         ...(addMemberParentId ? { parent_member_id: addMemberParentId } : {}),
+        // FeatPlan #OW-4 — birthdate + id_proof land on the
+        // members row. Empty strings coerced to null so the backend
+        // Zod's preprocess hits the null branch instead of a regex
+        // failure on the empty string.
+        birthdate: addMemberBirthdate || null,
+        id_proof_type: addMemberIdProofType || null,
+        id_proof_number: addMemberIdProofNumber || null,
       } as Parameters<typeof addMember.mutate>[0],
       {
         onSuccess() {
@@ -2284,15 +2326,71 @@ export default function UnitsContent(): ReactNode {
                 />
                 <FormFieldError error={addMember.error} field="name" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-m-movein">Move-in Date</Label>
-                <Input
-                  id="add-m-movein"
-                  type="date"
-                  required
-                  value={addMemberMoveIn}
-                  onChange={(e) => setAddMemberMoveIn(e.target.value)}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="add-m-movein">Move-in Date</Label>
+                  <Input
+                    id="add-m-movein"
+                    type="date"
+                    required
+                    value={addMemberMoveIn}
+                    onChange={(e) => setAddMemberMoveIn(e.target.value)}
+                  />
+                </div>
+                {/* FeatPlan #OW-4 — birthdate picker. Auto-fills from
+                    the OCR scan (date_of_birth) when present. Optional
+                    field — covers minors / seniors plus age-gated
+                    notification routing downstream. */}
+                <div className="space-y-2">
+                  <Label htmlFor="add-m-birthdate">Birthdate</Label>
+                  <Input
+                    id="add-m-birthdate"
+                    type="date"
+                    value={addMemberBirthdate}
+                    onChange={(e) => setAddMemberBirthdate(e.target.value)}
+                  />
+                  <FormFieldError error={addMember.error} field="birthdate" />
+                </div>
+              </div>
+              {/* FeatPlan #OW-4 — id_proof type + number. Auto-filled
+                  from the OCR result (document_type + document_number);
+                  Aadhaar numbers land pre-masked from the backend.
+                  Both optional. */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="add-m-id-proof-type">ID proof type</Label>
+                  <Select
+                    id="add-m-id-proof-type"
+                    value={addMemberIdProofType}
+                    onChange={(e) => setAddMemberIdProofType(e.target.value)}
+                  >
+                    <option value="">— None —</option>
+                    <option value="aadhaar">Aadhaar</option>
+                    <option value="pan">PAN</option>
+                    <option value="passport">Passport</option>
+                    <option value="voter_id">Voter ID</option>
+                    <option value="driving_license">Driving License</option>
+                    <option value="other">Other</option>
+                  </Select>
+                  <FormFieldError
+                    error={addMember.error}
+                    field="id_proof_type"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-m-id-proof-number">ID proof #</Label>
+                  <Input
+                    id="add-m-id-proof-number"
+                    placeholder="optional"
+                    value={addMemberIdProofNumber}
+                    onChange={(e) => setAddMemberIdProofNumber(e.target.value)}
+                    maxLength={64}
+                  />
+                  <FormFieldError
+                    error={addMember.error}
+                    field="id_proof_number"
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter>
