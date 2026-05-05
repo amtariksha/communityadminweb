@@ -106,6 +106,15 @@ interface AddMemberInput {
   member_type: string;
   move_in_date: string;
   is_primary_contact?: boolean;
+  parent_member_id?: string;
+  // FeatPlan #OW-4 — birthdate (YYYY-MM-DD) + ID proof. Auto-filled
+  // from the OCR scan path; admin can edit before submit. Backend
+  // (unit.controller.ts addMemberSchema, paired commit on
+  // amtariksha/communityos) validates the shape; null clears the
+  // value, undefined leaves the existing value untouched.
+  birthdate?: string | null;
+  id_proof_type?: string | null;
+  id_proof_number?: string | null;
 }
 
 // ---------------------------------------------------------------------------

@@ -22,12 +22,14 @@ import {
   Download,
   AlertCircle,
   CheckCircle2,
+  CalendarPlus,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
@@ -69,7 +71,10 @@ import {
   useDisconnectTenant,
   useBulkImportMembers,
   useCreateOnboarding,
+  useExtendLease,
+  useUnitOnboardings,
   isDuplicateOnboardError,
+  useUploadFileToS3,
 } from '@/hooks';
 import type { UnitDetailMember } from '@/hooks';
 import { useOcrIdDocument } from '@/hooks/use-ocr';
@@ -303,6 +308,36 @@ export default function UnitsContent(): ReactNode {
   const [onboardLeaseEnd, setOnboardLeaseEnd] = useState('');
   const [onboardMonthlyRent, setOnboardMonthlyRent] = useState('');
   const [onboardSecurityDeposit, setOnboardSecurityDeposit] = useState('');
+  // FeatPlan #OW-1 — onboarding-v2 captures intent at create time
+  // instead of inferring from blank fields downstream. Defaults
+  // mirror the backend's CHECK + DEFAULT in migration 092
+  // (long_term / full / owner). Agreement upload is gated behind
+  // tenancy_type === 'long_term' since short-term lets often skip
+  // a formal lease document — DB CHECK enforces that requirement.
+  const [onboardTenancyType, setOnboardTenancyType] = useState<
+    'short_term' | 'long_term'
+  >('long_term');
+  const [onboardOccupancyType, setOnboardOccupancyType] = useState<
+    'full' | 'shared'
+  >('full');
+  const [onboardMaintenancePayer, setOnboardMaintenancePayer] = useState<
+    'owner' | 'tenant'
+  >('owner');
+  const [onboardAgreementFile, setOnboardAgreementFile] = useState<File | null>(
+    null,
+  );
+  const [onboardUploadPercent, setOnboardUploadPercent] = useState<number | null>(
+    null,
+  );
+
+  // FeatPlan #OW-2 — Extend Lease modal state. Visible from the
+  // Tenant card when an active onboarding exists and the lease is
+  // active OR expired ≤30d. Backend (tenant-lifecycle.service.ts:1631)
+  // enforces the same window; client-side check is a UX gate.
+  const [extendLeaseOpen, setExtendLeaseOpen] = useState(false);
+  const [extendOnboardingId, setExtendOnboardingId] = useState('');
+  const [extendNewEndDate, setExtendNewEndDate] = useState('');
+  const [extendReason, setExtendReason] = useState('');
   // Unified user-directory wiring (migration 056 / UserSearchSelect).
   // `addMemberSelected` is the directory hit picked from autocomplete;
   // when set, the form submits with that user's exact phone (and the
@@ -314,6 +349,14 @@ export default function UnitsContent(): ReactNode {
   // own mobile. members.user_id stays NULL; the parent_member_id link
   // is what represents them in visitor logs and resident lists.
   const [addMemberNoPhone, setAddMemberNoPhone] = useState(false);
+  // FeatPlan #OW-4 — birthdate + ID-proof state. Backend (paired
+  // commit on amtariksha/communityos) extends `addMemberSchema` to
+  // accept these. Auto-filled from the OCR result; admin can edit
+  // before submit (Aadhaar masked numbers, low-confidence reads,
+  // etc.).
+  const [addMemberBirthdate, setAddMemberBirthdate] = useState('');
+  const [addMemberIdProofType, setAddMemberIdProofType] = useState('');
+  const [addMemberIdProofNumber, setAddMemberIdProofNumber] = useState('');
   // ID scan (Aadhaar / PAN / Passport / Voter / DL). Auto-fills Name;
   // other fields (document_number, DOB, gender) are surfaced in a
   // toast for the admin to record manually — the lightweight
@@ -346,6 +389,12 @@ export default function UnitsContent(): ReactNode {
   const disconnectTenant = useDisconnectTenant();
   const bulkImportMembers = useBulkImportMembers();
   const createOnboarding = useCreateOnboarding();
+  // FeatPlan #OW-1 — agreement upload (long-term tenancies only).
+  // Three-step flow lifted from renew-lease-dialog.tsx: pick file →
+  // pre-signed PUT to S3 → POST /onboard with the returned URL+key.
+  const uploadAgreement = useUploadFileToS3();
+  // FeatPlan #OW-2 — extend the active (or expired-≤30d) lease.
+  const extendLease = useExtendLease();
 
   const units = unitsQuery.data?.data ?? [];
   const totalUnits = unitsQuery.data?.total ?? 0;
@@ -362,6 +411,32 @@ export default function UnitsContent(): ReactNode {
   const tenantFamily = detail?.current_members.filter(
     (m) => m.member_type === 'tenant_family' || (m.member_type === 'family_member' && m.parent_member_id === tenant?.id),
   ) ?? [];
+
+  // FeatPlan #OW-2 — find the current onboarding row for the active
+  // tenant. The endpoint returns rows ORDER BY created_at DESC, so
+  // the FIRST status='approved' row is the active lease. Only fetch
+  // when both (a) we're rendering a unit detail panel and (b) a
+  // tenant member exists — otherwise we'd burn a request on units
+  // with no tenant to extend.
+  const onboardingsQuery = useUnitOnboardings(detailUnitId, {
+    enabled: detailUnitId !== '' && tenant !== null,
+    status: 'approved',
+  });
+  const activeOnboarding =
+    onboardingsQuery.data?.find((o) => o.status === 'approved') ?? null;
+  // Lease window: active (end_date >= today) or expired ≤30 days
+  // (today - end_date <= 30). Mirror of the backend window check.
+  const canExtendLease = (() => {
+    if (!tenant || !activeOnboarding) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(activeOnboarding.lease_end_date);
+    end.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor(
+      (today.getTime() - end.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    return diffDays <= 30; // ≤30d expired OR active (negative diff)
+  })();
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -685,6 +760,12 @@ export default function UnitsContent(): ReactNode {
     setAddMemberMoveIn('');
     setAddMemberSelected(null);
     setAddMemberNoPhone(false);
+    // FeatPlan #OW-4 — clear OCR-driven fields so a stale scan from
+    // a previous open doesn't leak into a fresh add.
+    setAddMemberBirthdate('');
+    setAddMemberIdProofType('');
+    setAddMemberIdProofNumber('');
+    setIdScanSummary(null);
     setAddMemberOpen(true);
   }
 
@@ -696,7 +777,87 @@ export default function UnitsContent(): ReactNode {
     setAddMemberMoveIn('');
     setAddMemberSelected(null);
     setAddMemberNoPhone(false);
+    // FeatPlan #OW-4 — see openAddFamilyMember.
+    setAddMemberBirthdate('');
+    setAddMemberIdProofType('');
+    setAddMemberIdProofNumber('');
+    setIdScanSummary(null);
     setAddMemberOpen(true);
+  }
+
+  // FeatPlan #OW-2 — open the Extend Lease dialog for the unit's
+  // current onboarding. Pre-fills the new end-date with end+90 days
+  // as a starting point; admin can edit before submit.
+  function openExtendLease(): void {
+    if (!activeOnboarding) {
+      addToast({
+        title: 'No active lease found',
+        description: 'There is no current lease on file to extend.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const proposed = new Date(activeOnboarding.lease_end_date);
+    proposed.setDate(proposed.getDate() + 90);
+    setExtendOnboardingId(activeOnboarding.id);
+    setExtendNewEndDate(proposed.toISOString().slice(0, 10));
+    setExtendReason('');
+    setExtendLeaseOpen(true);
+  }
+
+  function handleExtendLease(e: FormEvent): void {
+    e.preventDefault();
+    if (!extendOnboardingId) return;
+    if (!extendNewEndDate) {
+      addToast({
+        title: 'New end date required',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (
+      activeOnboarding &&
+      extendNewEndDate <= activeOnboarding.lease_end_date.slice(0, 10)
+    ) {
+      addToast({
+        title: 'Invalid new end date',
+        description: 'New end date must be after the current lease end.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!extendReason.trim()) {
+      addToast({
+        title: 'Reason required',
+        description: 'Capture the reason for the extension (audit log).',
+        variant: 'destructive',
+      });
+      return;
+    }
+    extendLease.mutate(
+      {
+        onboarding_id: extendOnboardingId,
+        new_end_date: extendNewEndDate,
+        reason: extendReason.trim(),
+      },
+      {
+        onSuccess() {
+          setExtendLeaseOpen(false);
+          addToast({
+            title: 'Lease extended',
+            description: `New lease end date: ${formatDate(extendNewEndDate)}.`,
+            variant: 'success',
+          });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to extend lease',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
   }
 
   // QA #219 / #222 — full tenant onboarding with lease packet.
@@ -713,10 +874,18 @@ export default function UnitsContent(): ReactNode {
     setOnboardLeaseEnd(elevenMonths.toISOString().slice(0, 10));
     setOnboardMonthlyRent('');
     setOnboardSecurityDeposit('');
+    // FeatPlan #OW-1 — defaults match the backend CHECK + DEFAULT
+    // (long_term / full / owner) so a quick submit without touching
+    // the radios produces the canonical case.
+    setOnboardTenancyType('long_term');
+    setOnboardOccupancyType('full');
+    setOnboardMaintenancePayer('owner');
+    setOnboardAgreementFile(null);
+    setOnboardUploadPercent(null);
     setOnboardTenantOpen(true);
   }
 
-  function handleOnboardTenantSubmit(e: FormEvent): void {
+  async function handleOnboardTenantSubmit(e: FormEvent): Promise<void> {
     e.preventDefault();
     const phone = normalizePhone(onboardPhone);
     if (!phone.ok || !phone.value) {
@@ -776,6 +945,49 @@ export default function UnitsContent(): ReactNode {
       return;
     }
 
+    // FeatPlan #OW-1 — long-term tenancies require the agreement
+    // upload (DB CHECK enforces this; server returns 400 if the
+    // upload is missing). Short-term tenancies skip the upload
+    // entirely. Hard-block the submit on the client so we don't
+    // burn a round-trip waiting for the rejection.
+    const isLongTerm = onboardTenancyType === 'long_term';
+    if (isLongTerm && !onboardAgreementFile) {
+      addToast({
+        title: 'Lease agreement required',
+        description:
+          'Long-term tenancies must upload a signed lease agreement (PDF or image).',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Step 1 — upload agreement if present. Bytes go direct to S3
+    // via a presigned PUT; the backend never sees them. Captured
+    // url+key are persisted on the tenant_onboarding row so the
+    // approval queue surfaces a download link.
+    let agreementUrl: string | null = null;
+    let agreementKey: string | null = null;
+    if (onboardAgreementFile) {
+      try {
+        setOnboardUploadPercent(0);
+        const uploaded = await uploadAgreement.mutateAsync({
+          file: onboardAgreementFile,
+          onProgress: setOnboardUploadPercent,
+        });
+        agreementUrl = uploaded.fileUrl;
+        agreementKey = uploaded.key;
+      } catch (err) {
+        setOnboardUploadPercent(null);
+        addToast({
+          title: 'Agreement upload failed',
+          description:
+            err instanceof Error ? err.message : 'Try again or remove the file.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     createOnboarding.mutate(
       {
         unit_id: detailUnitId,
@@ -786,10 +998,20 @@ export default function UnitsContent(): ReactNode {
         lease_end_date: onboardLeaseEnd,
         monthly_rent: monthlyRent,
         security_deposit: securityDeposit,
+        // FeatPlan #OW-1 — onboarding-v2 fields. Backend defaults
+        // these server-side when omitted, but always sending them
+        // makes the audit trail crisp.
+        tenancy_type: onboardTenancyType,
+        occupancy_type: onboardOccupancyType,
+        maintenance_payer: onboardMaintenancePayer,
+        agreement_document_url: agreementUrl,
+        agreement_document_key: agreementKey,
       },
       {
         onSuccess() {
           setOnboardTenantOpen(false);
+          setOnboardUploadPercent(null);
+          setOnboardAgreementFile(null);
           addToast({
             title: 'Tenant onboarding submitted',
             description:
@@ -849,6 +1071,22 @@ export default function UnitsContent(): ReactNode {
     try {
       const result = await ocrIdDoc.mutateAsync(file);
       if (result.name) setAddMemberName(result.name);
+      // FeatPlan #OW-4 — persist the OCR-extracted fields into the
+      // form state instead of just rendering a summary. Birthdate
+      // requires a YYYY-MM-DD shape (backend Zod regex); the OCR
+      // already returns that format. Document type + number land in
+      // the (now-visible) inputs below the scan card so the admin
+      // can review and edit before submit (Aadhaar's pre-masked
+      // numbers, low-confidence reads, etc.).
+      if (result.date_of_birth) {
+        setAddMemberBirthdate(result.date_of_birth);
+      }
+      if (result.document_type && result.document_type !== 'unknown') {
+        setAddMemberIdProofType(result.document_type);
+      }
+      if (result.document_number) {
+        setAddMemberIdProofNumber(result.document_number);
+      }
       // Compose a summary of everything else so the admin can record
       // what didn't auto-fill. document_number for Aadhaar comes pre-
       // masked from the backend (middle 8 digits hidden).
@@ -922,6 +1160,13 @@ export default function UnitsContent(): ReactNode {
         member_type: addMemberType,
         move_in_date: addMemberMoveIn,
         ...(addMemberParentId ? { parent_member_id: addMemberParentId } : {}),
+        // FeatPlan #OW-4 — birthdate + id_proof land on the
+        // members row. Empty strings coerced to null so the backend
+        // Zod's preprocess hits the null branch instead of a regex
+        // failure on the empty string.
+        birthdate: addMemberBirthdate || null,
+        id_proof_type: addMemberIdProofType || null,
+        id_proof_number: addMemberIdProofNumber || null,
       } as Parameters<typeof addMember.mutate>[0],
       {
         onSuccess() {
@@ -1605,6 +1850,22 @@ export default function UnitsContent(): ReactNode {
                       <div className="flex gap-1">
                         {tenant ? (
                           <>
+                            {/* FeatPlan #OW-2 — visible only when an
+                                active onboarding row exists AND the
+                                lease is in the active or expired-≤30d
+                                window. Backend enforces the same
+                                window server-side. */}
+                            {canExtendLease && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={openExtendLease}
+                                title="Extend the current lease without going through full renewal"
+                              >
+                                <CalendarPlus className="mr-1 h-3 w-3" />
+                                Extend lease
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -2065,15 +2326,71 @@ export default function UnitsContent(): ReactNode {
                 />
                 <FormFieldError error={addMember.error} field="name" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="add-m-movein">Move-in Date</Label>
-                <Input
-                  id="add-m-movein"
-                  type="date"
-                  required
-                  value={addMemberMoveIn}
-                  onChange={(e) => setAddMemberMoveIn(e.target.value)}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="add-m-movein">Move-in Date</Label>
+                  <Input
+                    id="add-m-movein"
+                    type="date"
+                    required
+                    value={addMemberMoveIn}
+                    onChange={(e) => setAddMemberMoveIn(e.target.value)}
+                  />
+                </div>
+                {/* FeatPlan #OW-4 — birthdate picker. Auto-fills from
+                    the OCR scan (date_of_birth) when present. Optional
+                    field — covers minors / seniors plus age-gated
+                    notification routing downstream. */}
+                <div className="space-y-2">
+                  <Label htmlFor="add-m-birthdate">Birthdate</Label>
+                  <Input
+                    id="add-m-birthdate"
+                    type="date"
+                    value={addMemberBirthdate}
+                    onChange={(e) => setAddMemberBirthdate(e.target.value)}
+                  />
+                  <FormFieldError error={addMember.error} field="birthdate" />
+                </div>
+              </div>
+              {/* FeatPlan #OW-4 — id_proof type + number. Auto-filled
+                  from the OCR result (document_type + document_number);
+                  Aadhaar numbers land pre-masked from the backend.
+                  Both optional. */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="add-m-id-proof-type">ID proof type</Label>
+                  <Select
+                    id="add-m-id-proof-type"
+                    value={addMemberIdProofType}
+                    onChange={(e) => setAddMemberIdProofType(e.target.value)}
+                  >
+                    <option value="">— None —</option>
+                    <option value="aadhaar">Aadhaar</option>
+                    <option value="pan">PAN</option>
+                    <option value="passport">Passport</option>
+                    <option value="voter_id">Voter ID</option>
+                    <option value="driving_license">Driving License</option>
+                    <option value="other">Other</option>
+                  </Select>
+                  <FormFieldError
+                    error={addMember.error}
+                    field="id_proof_type"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-m-id-proof-number">ID proof #</Label>
+                  <Input
+                    id="add-m-id-proof-number"
+                    placeholder="optional"
+                    value={addMemberIdProofNumber}
+                    onChange={(e) => setAddMemberIdProofNumber(e.target.value)}
+                    maxLength={64}
+                  />
+                  <FormFieldError
+                    error={addMember.error}
+                    field="id_proof_number"
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter>
@@ -2088,6 +2405,72 @@ export default function UnitsContent(): ReactNode {
                     : addMemberType === 'tenant'
                       ? 'Assign Tenant'
                       : 'Add Member'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* FeatPlan #OW-2 — Extend Lease dialog. Modal opens from the
+          Tenant card. Calls PATCH /tenant-lifecycle/:id/extend-lease
+          which bumps lease_end_date without going through the full
+          renewal+approval workflow. Reason captured for the audit
+          trail since this skips approval. */}
+      <Dialog open={extendLeaseOpen} onOpenChange={setExtendLeaseOpen}>
+        <DialogContent className="max-w-md">
+          <form onSubmit={handleExtendLease}>
+            <DialogHeader>
+              <DialogTitle>Extend lease</DialogTitle>
+              <DialogDescription>
+                Bump the current lease&rsquo;s end date without a full
+                renewal. Action is logged to the audit trail.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {activeOnboarding && (
+                <p className="text-xs text-muted-foreground">
+                  Current end:{' '}
+                  <span className="font-medium text-foreground">
+                    {formatDate(activeOnboarding.lease_end_date)}
+                  </span>
+                </p>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="extend-end-date">
+                  New end date <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="extend-end-date"
+                  type="date"
+                  required
+                  value={extendNewEndDate}
+                  onChange={(e) => setExtendNewEndDate(e.target.value)}
+                  min={activeOnboarding?.lease_end_date.slice(0, 10)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="extend-reason">
+                  Reason <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="extend-reason"
+                  required
+                  rows={3}
+                  placeholder="e.g. Tenant requested 3-month extension; both parties agreed."
+                  value={extendReason}
+                  onChange={(e) => setExtendReason(e.target.value)}
+                  maxLength={500}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={extendLease.isPending}>
+                {extendLease.isPending ? 'Extending…' : 'Extend lease'}
               </Button>
             </DialogFooter>
           </form>
@@ -2202,17 +2585,149 @@ export default function UnitsContent(): ReactNode {
                 />
                 <FormFieldError error={createOnboarding.error} field="security_deposit" />
               </div>
-              <p className="col-span-2 text-xs text-muted-foreground">
-                The Aadhaar / lease document upload step is on the
-                Approvals page after the request is created.
-              </p>
+              {/* FeatPlan #OW-1 — three onboarding-v2 radios. Each
+                  is a small group inline so the form stays at two
+                  columns. Server-side defaults if omitted; we always
+                  send them so the audit trail captures intent. */}
+              <div className="col-span-2 space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Tenancy type
+                </Label>
+                <div className="flex gap-4 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="tenancy-type"
+                      value="long_term"
+                      checked={onboardTenancyType === 'long_term'}
+                      onChange={() => setOnboardTenancyType('long_term')}
+                      className="h-4 w-4"
+                    />
+                    Long-term (requires lease agreement)
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="tenancy-type"
+                      value="short_term"
+                      checked={onboardTenancyType === 'short_term'}
+                      onChange={() => setOnboardTenancyType('short_term')}
+                      className="h-4 w-4"
+                    />
+                    Short-term
+                  </label>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Occupancy
+                </Label>
+                <div className="flex gap-4 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="occupancy-type"
+                      value="full"
+                      checked={onboardOccupancyType === 'full'}
+                      onChange={() => setOnboardOccupancyType('full')}
+                      className="h-4 w-4"
+                    />
+                    Full unit
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="occupancy-type"
+                      value="shared"
+                      checked={onboardOccupancyType === 'shared'}
+                      onChange={() => setOnboardOccupancyType('shared')}
+                      className="h-4 w-4"
+                    />
+                    Shared
+                  </label>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Maintenance paid by
+                </Label>
+                <div className="flex gap-4 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="maintenance-payer"
+                      value="owner"
+                      checked={onboardMaintenancePayer === 'owner'}
+                      onChange={() => setOnboardMaintenancePayer('owner')}
+                      className="h-4 w-4"
+                    />
+                    Owner
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="maintenance-payer"
+                      value="tenant"
+                      checked={onboardMaintenancePayer === 'tenant'}
+                      onChange={() => setOnboardMaintenancePayer('tenant')}
+                      className="h-4 w-4"
+                    />
+                    Tenant
+                  </label>
+                </div>
+              </div>
+
+              {/* FeatPlan #OW-1 — agreement upload. Visible only on
+                  long-term; backend DB CHECK enforces presence on the
+                  same condition. Bytes go direct to S3 via the
+                  presigned-PUT pattern (see useUploadFileToS3). */}
+              {onboardTenancyType === 'long_term' && (
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="onboard-agreement">
+                    Lease agreement <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="onboard-agreement"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) =>
+                      setOnboardAgreementFile(e.target.files?.[0] ?? null)
+                    }
+                  />
+                  {onboardAgreementFile && (
+                    <p className="text-xs text-muted-foreground">
+                      Selected: {onboardAgreementFile.name} (
+                      {(onboardAgreementFile.size / 1024).toFixed(0)} KB)
+                    </p>
+                  )}
+                  {onboardUploadPercent !== null && (
+                    <p className="text-xs text-muted-foreground">
+                      Uploading… {onboardUploadPercent}%
+                    </p>
+                  )}
+                </div>
+              )}
+              {onboardTenancyType === 'short_term' && (
+                <p className="col-span-2 text-xs text-muted-foreground">
+                  Short-term tenancies don&rsquo;t require a formal
+                  lease document. Other ID/document uploads are on the
+                  Approvals page after the request is created.
+                </p>
+              )}
             </div>
             <DialogFooter>
               <DialogClose>
                 <Button type="button" variant="outline">Cancel</Button>
               </DialogClose>
-              <Button type="submit" disabled={createOnboarding.isPending}>
-                {createOnboarding.isPending ? 'Submitting...' : 'Submit Onboarding'}
+              <Button
+                type="submit"
+                disabled={createOnboarding.isPending || uploadAgreement.isPending}
+              >
+                {uploadAgreement.isPending
+                  ? `Uploading… ${onboardUploadPercent ?? 0}%`
+                  : createOnboarding.isPending
+                    ? 'Submitting...'
+                    : 'Submit Onboarding'}
               </Button>
             </DialogFooter>
           </form>

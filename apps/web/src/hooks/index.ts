@@ -268,10 +268,12 @@ export type {
   ExpiryEnforcement,
 } from './use-role-delegation';
 
-// Tenant lifecycle (onboarding / renewal / exit)
+// Tenant lifecycle (onboarding / renewal / exit / extension)
 export {
   useCreateOnboarding,
   useRenewAgreement,
+  useExtendLease,
+  useUnitOnboardings,
   isDuplicateOnboardError,
 } from './use-tenant-lifecycle';
 export type {
@@ -279,6 +281,9 @@ export type {
   CreateOnboardingResult,
   RenewAgreementInput,
   RenewAgreementResult,
+  ExtendLeaseInput,
+  ExtendLeaseResult,
+  OnboardingSummary,
 } from './use-tenant-lifecycle';
 
 // Tenant Members (Super Admin)
@@ -468,6 +473,8 @@ export {
   useRemoveVehicle,
   useCreateSublet,
   useCancelSublet,
+  useApproveVehicle,
+  useRejectVehicle,
 } from './use-parking';
 export type {
   ParkingSlot,
