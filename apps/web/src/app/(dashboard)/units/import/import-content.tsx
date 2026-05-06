@@ -158,7 +158,14 @@ export default function ImportContent(): ReactNode {
       'A',
       '1',
       '1200',
-      'flat',
+      // QA #units-import — emit canonical unit_type. The API
+      // tightened the enum to {residential, commercial, parking}
+      // on May 2 2026 (commit 76f84c1) and the legacy 'flat' /
+      // 'shop' / 'office' labels no longer pass the strict create
+      // path. Backend ships a tolerance shim on /units/import-csv,
+      // but the in-app downloadable template should produce a CSV
+      // that imports cleanly even on the strict create path.
+      'residential',
       '2BHK',
       '101',
       'P-12',
@@ -176,7 +183,7 @@ export default function ImportContent(): ReactNode {
       'B',
       '3',
       '1450',
-      'flat',
+      'residential',
       '3BHK',
       '304',
       'P-25',

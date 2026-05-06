@@ -93,6 +93,37 @@ function parseNumber(value: string | undefined): number | null {
   return isNaN(num) ? null : num;
 }
 
+/**
+ * QA #units-import — backend tightened the unit_type enum to the
+ * canonical {residential, commercial, parking} set on May 2 (commit
+ * 76f84c1). The mappers here used to emit 'flat' which the API now
+ * 400s on — every CSV row failed. Centralise the canonicalisation so
+ * future templates / hand-typed columns can't reintroduce the bug.
+ *
+ * The backend ships an equivalent shim (csvUnitTypeSchema) that
+ * tolerates legacy values too, so the system stays correct even if
+ * a stale admin-web build talks to a fresh API and vice-versa. This
+ * function is just the client-side belt to the backend's braces.
+ */
+const CANONICAL_UNIT_TYPE: Record<string, string> = {
+  flat: 'residential',
+  apartment: 'residential',
+  villa: 'residential',
+  house: 'residential',
+  residential: 'residential',
+  shop: 'commercial',
+  office: 'commercial',
+  retail: 'commercial',
+  commercial: 'commercial',
+  parking: 'parking',
+};
+
+function toCanonicalUnitType(raw?: string | null): string {
+  if (!raw) return 'residential';
+  const lower = raw.trim().toLowerCase();
+  return CANONICAL_UNIT_TYPE[lower] ?? 'residential';
+}
+
 function parseDateDDMMYYYY(value: string | undefined): string | null {
   if (!value) return null;
   const trimmed = value.trim();
@@ -146,7 +177,7 @@ function mapAddaRow(row: Record<string, string>): CsvImportRow {
     block,
     floor: null,
     area_sqft: parseNumber(row['sq_ft_1']),
-    unit_type: 'flat',
+    unit_type: toCanonicalUnitType(row['type'] ?? row['unit_type']),
     apartment_number: row['apartment'] || row['apartment_number'] || null,
     bhk_type: row['type_of_apartment'] || null,
     garden_area: parseNumber(row['sq_ft_2']),
@@ -181,7 +212,7 @@ function mapNoBrokerRow(row: Record<string, string>): CsvImportRow {
     unit_number: row['flat_number'] || row['flat_no'] || '',
     block: row['wing'] || row['tower'] || null,
     area_sqft: parseNumber(row['sq_ft'] || row['area']),
-    unit_type: 'flat',
+    unit_type: toCanonicalUnitType(row['type'] ?? row['unit_type']),
     bhk_type: row['number_of_bedrooms'] || row['bhk'] || null,
     occupancy_status: parseOccupancy(row['occupancy_status']),
     parking_slot: row['parking_slot'] || row['parking'] || null,
@@ -204,7 +235,7 @@ function mapMyGateRow(row: Record<string, string>): CsvImportRow {
   return {
     unit_number: row['flat_number'] || row['flat_no'] || '',
     block: row['building_name'] || row['building'] || null,
-    unit_type: 'flat',
+    unit_type: toCanonicalUnitType(row['type'] ?? row['unit_type']),
     bhk_type: row['flat_type'] || null,
     occupancy_status: parseOccupancy(row['occupancy_status']),
     owner_name: isOwner ? name : null,
@@ -221,7 +252,7 @@ function mapApnaComplexRow(row: Record<string, string>): CsvImportRow {
     unit_number: row['unit_no'] || row['unit_number'] || '',
     block: row['block'] || row['tower'] || null,
     area_sqft: parseNumber(row['super_built_up_area'] || row['area']),
-    unit_type: 'flat',
+    unit_type: toCanonicalUnitType(row['type'] ?? row['unit_type']),
     bhk_type: row['bhk'] || null,
     parking_slot: row['parking'] || null,
     intercom: row['intercom'] || null,
@@ -238,7 +269,7 @@ function mapCustomRow(row: Record<string, string>): CsvImportRow {
     block: row['block'] || row['wing'] || row['tower'] || row['building'] || null,
     floor: parseNumber(row['floor']),
     area_sqft: parseNumber(row['area_sqft'] || row['area'] || row['sq_ft'] || row['sqft']),
-    unit_type: 'flat',
+    unit_type: toCanonicalUnitType(row['type'] ?? row['unit_type']),
     bhk_type: row['bhk'] || row['bhk_type'] || row['type'] || null,
     occupancy_status: parseOccupancy(row['occupancy_status'] || row['status']),
     maintenance_amount: parseNumber(row['maintenance'] || row['maintenance_amount']),
