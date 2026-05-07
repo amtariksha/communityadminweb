@@ -6,6 +6,7 @@ import { type ReactNode } from 'react';
 import {
   LayoutDashboard,
   BookOpen,
+  Sparkles,
   FileText,
   Receipt,
   Users,
@@ -68,6 +69,10 @@ const navGroups: NavGroup[] = [
     label: 'Finance',
     items: [
       { label: 'Accounts', href: '/accounts', icon: <BookOpen className="h-4 w-4" />, feature: 'accounts' },
+      // FeatPlan — backfill Tally-imported sundry-debtor ledgers
+      // that have no customer / unit / member link. AI-parses
+      // names like "1001 Mr X" and prompts the admin to approve.
+      { label: 'Reconcile Debtors', href: '/accounts/reconcile-debtors', icon: <Sparkles className="h-4 w-4" />, feature: 'accounts' },
       { label: 'Invoices', href: '/invoices', icon: <FileText className="h-4 w-4" />, feature: 'invoices' },
       { label: 'Receipts', href: '/receipts', icon: <Receipt className="h-4 w-4" />, feature: 'receipts' },
       { label: 'Vendors', href: '/vendors', icon: <Users className="h-4 w-4" />, feature: 'vendors' },
