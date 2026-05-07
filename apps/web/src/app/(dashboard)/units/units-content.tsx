@@ -329,6 +329,15 @@ export default function UnitsContent(): ReactNode {
   const [onboardUploadPercent, setOnboardUploadPercent] = useState<number | null>(
     null,
   );
+  // Bug fix 2026-05-07 — directory autocomplete on Onboard Tenant.
+  // Mirrors the Add Member dialog pattern: when the admin picks a
+  // hit, the form pre-fills name + phone + email so they don't
+  // re-type details for someone already in the directory.
+  // `onboardSelected` is the hit; `onboardPhone` carries the typed
+  // value when there's no match (silent no-match flow).
+  const [onboardSelected, setOnboardSelected] = useState<UserSearchHit | null>(
+    null,
+  );
 
   // FeatPlan #OW-2 — Extend Lease modal state. Visible from the
   // Tenant card when an active onboarding exists and the lease is
@@ -757,7 +766,21 @@ export default function UnitsContent(): ReactNode {
     setAddMemberType(memberType);
     setAddMemberName('');
     setAddMemberPhone('');
-    setAddMemberMoveIn('');
+    // Bug fix 2026-05-07 — family members effectively share the
+    // parent's tenancy. Default the move-in date to the parent's
+    // own move-in (tenant's lease for tenant_family, owner's
+    // join-date for owner_family). The admin can still edit this
+    // before submit if a kid moved in later, etc. Falls back to
+    // empty string when the parent record is somehow missing
+    // (defensive — `openAddFamilyMember` is reached from buttons
+    // that already required `tenant`/`owner` to exist).
+    const parentMember =
+      memberType === 'tenant_family'
+        ? tenant
+        : memberType === 'owner_family'
+          ? owner
+          : detail?.current_members.find((m) => m.id === parentId) ?? null;
+    setAddMemberMoveIn(parentMember?.move_in_date ?? '');
     setAddMemberSelected(null);
     setAddMemberNoPhone(false);
     // FeatPlan #OW-4 — clear OCR-driven fields so a stale scan from
@@ -882,6 +905,7 @@ export default function UnitsContent(): ReactNode {
     setOnboardMaintenancePayer('owner');
     setOnboardAgreementFile(null);
     setOnboardUploadPercent(null);
+    setOnboardSelected(null);
     setOnboardTenantOpen(true);
   }
 
@@ -2494,6 +2518,43 @@ export default function UnitsContent(): ReactNode {
               </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-4 py-4">
+              {/* Bug fix 2026-05-07 — directory search at the top.
+                  When the tenant is already on file (lived at another
+                  society on the platform, or had a previous tenancy
+                  here), picking the hit pre-fills name + phone +
+                  email so the admin doesn't re-type. Mirrors the
+                  Add Member dialog's pattern. Silent no-match flow:
+                  if the typed value doesn't match anyone, the form
+                  still uses the typed phone/name verbatim. */}
+              <div className="col-span-2 space-y-2">
+                <Label>Search existing residents</Label>
+                <UserSearchSelect
+                  scope="tenant"
+                  value={onboardSelected}
+                  placeholder="Type at least 3 characters of phone or name…"
+                  onChange={(hit) => {
+                    setOnboardSelected(hit);
+                    if (hit) {
+                      setOnboardPhone(hit.phone);
+                      if (hit.name) setOnboardName(hit.name);
+                      // UserSearchHit doesn't carry email; leave the
+                      // existing onboardEmail value alone (admin can
+                      // type it).
+                    }
+                  }}
+                  onQueryChange={(q) => {
+                    // Track the typed value so the form falls back
+                    // to it cleanly when the operator types a brand
+                    // new phone (silent no-match flow).
+                    setOnboardPhone(q);
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Already a resident elsewhere? Pick them to auto-fill
+                  details. Or skip and type a new tenant&rsquo;s
+                  details manually.
+                </p>
+              </div>
               <div className="col-span-2 space-y-2">
                 <Label htmlFor="onboard-name">
                   Tenant name <span className="text-destructive">*</span>

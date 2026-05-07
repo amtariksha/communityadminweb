@@ -267,11 +267,23 @@ export function useAddMember() {
     // the row immediately. Pre-fix the only invalidation targets
     // were the unit detail / members / stats queries, leaving the
     // main list stale until a hard refresh.
+    //
+    // 2026-05-07 fix — also invalidate the `['unit-members']`
+    // prefix. The Units page's detail dialog reads via
+    // `useUnitDetail` (queryKey `['unit-members', 'detail', unitId]`)
+    // — a DIFFERENT namespace from `unitKeys.detail()`
+    // (`['units', 'detail', unitId]`) which we already invalidated.
+    // Without this line, the Members tab in the open detail dialog
+    // stayed stale after adding an owner/tenant until close +
+    // reopen. Sister hooks (useUpdateMemberDetail / useTransferOwnership
+    // / useDisconnectTenant) already invalidate the right key;
+    // useAddMember + useRemoveMember are the late stragglers.
     onSuccess: function invalidate(_data, variables) {
       queryClient.invalidateQueries({ queryKey: unitKeys.lists() });
       queryClient.invalidateQueries({ queryKey: unitKeys.members(variables.unit_id) });
       queryClient.invalidateQueries({ queryKey: unitKeys.detail(variables.unit_id) });
       queryClient.invalidateQueries({ queryKey: unitKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: ['unit-members'] });
     },
   });
 }
@@ -289,11 +301,15 @@ export function useRemoveMember() {
     // an owner / tenant updates the Units table row (Owner column
     // back to "No owner", is_occupied flag, etc.) without a manual
     // refresh.
+    //
+    // 2026-05-07 fix — also invalidate `['unit-members']` prefix
+    // for the unit detail dialog. See useAddMember above for why.
     onSuccess: function invalidate(_data, variables) {
       queryClient.invalidateQueries({ queryKey: unitKeys.lists() });
       queryClient.invalidateQueries({ queryKey: unitKeys.members(variables.unitId) });
       queryClient.invalidateQueries({ queryKey: unitKeys.detail(variables.unitId) });
       queryClient.invalidateQueries({ queryKey: unitKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: ['unit-members'] });
     },
   });
 }
@@ -307,6 +323,11 @@ export function useCsvImportUnits() {
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: unitKeys.all });
+      // 2026-05-07 fix — bulk imports can land owner/tenant rows
+      // for any number of units. Refresh every open unit detail
+      // dialog by invalidating the cross-cutting `['unit-members']`
+      // prefix. See useAddMember for the namespace explanation.
+      queryClient.invalidateQueries({ queryKey: ['unit-members'] });
     },
   });
 }
@@ -331,6 +352,8 @@ export function useBulkImportMembers() {
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: unitKeys.all });
+      // 2026-05-07 fix — see useCsvImportUnits.
+      queryClient.invalidateQueries({ queryKey: ['unit-members'] });
     },
   });
 }
