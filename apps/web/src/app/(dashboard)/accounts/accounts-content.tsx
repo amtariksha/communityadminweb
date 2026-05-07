@@ -54,11 +54,21 @@ import {
 import {
   useTallyEnqueueCommit,
   useTallyCommitJob,
+  useParseImportDebtors,
 } from '@/hooks/use-tally-import';
 import type {
   TallyImportParseResult,
   TallyCommitResult,
+  TallyDebtorParseResult,
+  TallyDebtorLinkInput,
 } from '@/hooks/use-tally-import';
+import {
+  DebtorReviewTable,
+  buildInitialDecisions,
+  validateDecision,
+  type DebtorDecisionMap,
+} from '@/components/tally/debtor-review-table';
+import { useUnits } from '@/hooks';
 import { useTallyExportPreview, useTallyExport } from '@/hooks/use-tally-export';
 import type { TallyExportOptions } from '@/hooks/use-tally-export';
 import type { AccountGroup, LedgerAccount, AccountType } from '@communityos/shared';
@@ -287,6 +297,13 @@ export default function AccountsContent(): ReactNode {
   // (The polling hook is declared below the tallyJobId state so its
   // arg can reference it.)
   const tallyEnqueueCommit = useTallyEnqueueCommit();
+  // FeatPlan — sundry-debtor parse + commit-with-links. The
+  // commit-with-links path reuses tallyCommitImport (sync) since
+  // the BullMQ job row's selection_json doesn't carry debtor_links.
+  const parseImportDebtors = useParseImportDebtors();
+  // Driver list for the "Pick existing unit" autocomplete on the
+  // review table. limit=2000 is generous for any single tenant.
+  const unitsQuery = useUnits({ limit: 2000 });
 
   const isLoading = groupsLoading || accountsLoading;
   const accounts = accountsResponse?.data ?? [];
@@ -344,8 +361,18 @@ export default function AccountsContent(): ReactNode {
   const [tallyCommitResult, setTallyCommitResult] =
     useState<TallyCommitResult | null>(null);
   const [tallyStep, setTallyStep] = useState<
-    'input' | 'preview' | 'running' | 'done'
+    'input' | 'preview' | 'review-debtors' | 'running' | 'done'
   >('input');
+  // FeatPlan — review-debtors step state. Populated when admin
+  // clicks Import on a preview that contains sundry-debtor ledgers.
+  // The parser runs server-side; results land here, decisions live
+  // in tallyDebtorDecisions, and Confirm fires the sync /commit
+  // path with debtor_links.
+  const [tallyDebtorRows, setTallyDebtorRows] = useState<
+    TallyDebtorParseResult[]
+  >([]);
+  const [tallyDebtorDecisions, setTallyDebtorDecisions] =
+    useState<DebtorDecisionMap>({});
   // Phase 2 — async commit. When the operator clicks Import, we
   // enqueue a BullMQ job server-side and stash the job_id here.
   // The polling hook (useTallyCommitJob) takes over from there:
@@ -431,6 +458,8 @@ export default function AccountsContent(): ReactNode {
     setTallyCommitVoucherTypesChanged(true);
     setTallyForceCommit(false);
     setTallyJobId('');
+    setTallyDebtorRows([]);
+    setTallyDebtorDecisions({});
   }
 
   /**
@@ -473,11 +502,13 @@ export default function AccountsContent(): ReactNode {
         setTallyCommitVouchersChanged(true);
         setTallyCommitCostCentresChanged(true);
         setTallyCommitVoucherTypesChanged(true);
-        setTallyForceCommit(false);
+        // FeatPlan — auto-tick Force when this file was already
+        // committed recently. See handleTallyParse for rationale.
+        setTallyForceCommit(parsed.duplicate_of != null);
         setTallyStep('preview');
         addToast({
           title: parsed.duplicate_of
-            ? 'Parsed — same file imported recently'
+            ? 'Parsed — same file imported recently (Force pre-ticked)'
             : `Tally XML uploaded (${(file.size / 1024 / 1024).toFixed(1)} MB)`,
           variant: 'success',
         });
@@ -525,13 +556,18 @@ export default function AccountsContent(): ReactNode {
             setTallyCommitVouchersChanged(true);
             setTallyCommitCostCentresChanged(true);
             setTallyCommitVoucherTypesChanged(true);
-            // If the server flagged a duplicate, default Force off
-            // — operator explicitly opts in.
-            setTallyForceCommit(false);
+            // FeatPlan — when the server flagged a duplicate (the
+            // common "I closed the dialog mid-run, now I'm
+            // re-importing" path), pre-tick Force so the admin
+            // can submit immediately. Pre-fix the operator had to
+            // hunt for the small Force checkbox at the bottom of
+            // the preview pane and missed it. Audit trail still
+            // preserved server-side via per-voucher hash.
+            setTallyForceCommit(parsed.duplicate_of != null);
             setTallyStep('preview');
             addToast({
               title: parsed.duplicate_of
-                ? 'Parsed — same file imported recently'
+                ? 'Parsed — same file imported recently (Force pre-ticked)'
                 : 'Tally XML parsed successfully',
               variant: 'success',
             });
@@ -564,7 +600,7 @@ export default function AccountsContent(): ReactNode {
    * Called from the Commit button on the preview step. The preview
    * step is a dry-run; nothing actually changes until this fires.
    */
-  function handleTallyCommit(): void {
+  async function handleTallyCommit(): Promise<void> {
     if (!tallyParseResult?.import_id) {
       addToast({
         title: 'Nothing to commit',
@@ -616,21 +652,67 @@ export default function AccountsContent(): ReactNode {
       });
       return;
     }
-    // Phase 2 — async commit. Enqueue the job, switch to the
-    // 'running' step, and let the polling hook drive the rest.
-    // Even small commits go through this path now: it strictly
-    // beats the sync flow (no nginx 120s timeout, no JWT-mid-
-    // import expiry, polled progress visibility).
+
+    // FeatPlan — when ledgers are being committed, run the AI
+    // sundry-debtor parser and route to the Review Debtors step
+    // when any debtor rows are detected. The strict-gate decision
+    // baked into the plan: every sundry-debtor row needs an
+    // explicit Approve+Link or Skip before the masters commit.
+    // Skip the parser entirely when ledgers are unticked (no
+    // debtor rows can land) — saves a Gemini round-trip.
+    if (tallyCommitLedgers && tallyParseResult.import_id) {
+      try {
+        const debtors = await parseImportDebtors.mutateAsync({
+          import_id: tallyParseResult.import_id,
+        });
+        if (debtors.length > 0) {
+          setTallyDebtorRows(debtors);
+          setTallyDebtorDecisions(buildInitialDecisions(debtors));
+          setTallyStep('review-debtors');
+          return;
+        }
+      } catch (err) {
+        // Defensive — if Gemini / parser fails, fall through to
+        // the legacy commit path so the operator's import isn't
+        // blocked. The toast tells them what happened.
+        addToast({
+          title: 'Could not auto-parse debtor names',
+          description:
+            'Continuing with a regular masters import. You can use the Reconcile Debtors page to link them later. ' +
+            (err as Error).message,
+          variant: 'default',
+        });
+      }
+    }
+
+    // Default path — masters-only commit via async (BullMQ).
+    fireMastersCommit(commit, undefined);
+  }
+
+  /**
+   * Fire the masters commit in async mode. Used by:
+   *   • The default path (no sundry debtors detected, or operator
+   *     unticked Ledgers).
+   *   • Edge fallback when the AI parse failed and the operator
+   *     still wanted to proceed.
+   *
+   * `debtorLinks` is intentionally NOT supported here — the async
+   * /commit-async endpoint rejects it (server-side). Any
+   * commit-with-links flow goes through `fireSyncCommitWithLinks`.
+   */
+  function fireMastersCommit(
+    commit: Parameters<typeof tallyCommitImport.mutate>[0]['commit'],
+    overrideForce?: boolean,
+  ): void {
+    if (!tallyParseResult?.import_id) return;
     tallyEnqueueCommit.mutate(
       {
         import_id: tallyParseResult.import_id,
         commit,
-        force: tallyForceCommit,
+        force: overrideForce ?? tallyForceCommit,
       },
       {
         onSuccess(data) {
-          // Hook unwraps `{ data: ... }` for us; the response is
-          // `{ job_id, status }` directly.
           setTallyJobId(data.job_id);
           setTallyCommitResult(null);
           setTallyStep('running');
@@ -638,6 +720,111 @@ export default function AccountsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to enqueue import',
+            description: friendlyError(error),
+            variant: 'destructive',
+          });
+        },
+      },
+    );
+  }
+
+  /**
+   * FeatPlan — Review Debtors step "Confirm & Commit". Validates
+   * each decision client-side, then fires the SYNC /commit
+   * endpoint with debtor_links. Sync because the BullMQ job row
+   * doesn't carry the link payload (see backend
+   * tally-import.controller.ts comment on /commit-async).
+   *
+   * For ~200 debtors this completes in ~30-60s — within nginx's
+   * 120s timeout. Heavier imports remain on the legacy bare-
+   * ledger path until a follow-up migration lands the
+   * debtor-links column on tally_import_jobs.
+   */
+  function handleConfirmDebtorReview(): void {
+    if (!tallyParseResult?.import_id) return;
+
+    // Validate every approved decision before we burn a request.
+    const debtorLinks: TallyDebtorLinkInput[] = [];
+    const errors: string[] = [];
+    for (const row of tallyDebtorRows) {
+      const key = row.ledger_id ?? row.name;
+      const d = tallyDebtorDecisions[key];
+      if (!d) continue;
+      const err = validateDecision(d);
+      if (d.action === 'approve' && err) {
+        errors.push(`${row.name}: ${err}`);
+        continue;
+      }
+      debtorLinks.push({
+        ledger_name: row.name,
+        skip: d.action === 'skip',
+        unit_id: d.unit_id ?? undefined,
+        unit_number: d.unit_id ? undefined : d.unit_number || undefined,
+        owners:
+          d.action === 'approve'
+            ? d.owners
+                .map((n) => n.trim())
+                .filter((n) => n.length > 0)
+                .map((name) => ({ name }))
+            : undefined,
+      });
+    }
+    if (errors.length > 0) {
+      addToast({
+        title: 'Some rows need attention',
+        description: errors.slice(0, 3).join(' · ') +
+          (errors.length > 3 ? ` (+${errors.length - 3} more)` : ''),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Build the commit selection from the existing checkboxes.
+    const commit: NonNullable<Parameters<typeof tallyCommitImport.mutate>[0]['commit']> = {};
+    if (tallyCommitGroups)
+      commit.groups = { include_new: true, include_changed: tallyCommitGroupsChanged };
+    if (tallyCommitLedgers)
+      commit.ledgers = { include_new: true, include_changed: tallyCommitLedgersChanged };
+    if (tallyCommitVouchers)
+      commit.vouchers = { include_new: true, include_changed: tallyCommitVouchersChanged };
+    if (tallyCommitCostCentres)
+      commit.cost_centres = { include_new: true, include_changed: tallyCommitCostCentresChanged };
+    if (tallyCommitVoucherTypes)
+      commit.voucher_types = { include_new: true, include_changed: tallyCommitVoucherTypesChanged };
+
+    // Sync /commit with debtor_links. The hook unwraps to
+    // TallyCommitResult including debtor_links result rows.
+    tallyCommitImport.mutate(
+      {
+        import_id: tallyParseResult.import_id,
+        commit,
+        force: tallyForceCommit,
+        debtor_links: debtorLinks,
+      },
+      {
+        onSuccess(response) {
+          const result = response.data;
+          setTallyCommitResult(result);
+          setTallyStep('done');
+          const linked =
+            result.debtor_links?.filter((l) => l.status === 'linked').length ?? 0;
+          const skipped =
+            result.debtor_links?.filter((l) => l.status === 'skipped').length ?? 0;
+          const failed =
+            result.debtor_links?.filter((l) => l.status === 'failed').length ?? 0;
+          addToast({
+            title: `Imported ${result.records_imported} records`,
+            description:
+              `Debtors: ${linked} linked, ${skipped} skipped, ${failed} failed.` +
+              (result.errors.length > 0
+                ? ` ${result.errors.length} ledger errors.`
+                : ''),
+            variant: failed > 0 ? 'default' : 'success',
+          });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to commit import',
             description: friendlyError(error),
             variant: 'destructive',
           });
@@ -1642,19 +1829,50 @@ export default function AccountsContent(): ReactNode {
                 yet — Commit fires the actual writes. */}
             {tallyStep === 'preview' && tallyParseResult && (
               <div className="space-y-4">
-                {/* Duplicate-file warning */}
+                {/* FeatPlan — duplicate-file banner with one-click
+                    "Replace previous import" CTA. The original UX
+                    showed only a small warning + a Force checkbox at
+                    the bottom of the preview pane; operators missed
+                    it and got confused 409s on re-attempt. Now the
+                    Force checkbox is auto-ticked when this banner
+                    renders (see handleTallyParse / handleTallyFileSelect)
+                    and the prominent button below short-circuits
+                    straight into a force-commit. */}
                 {tallyParseResult.duplicate_of && (
-                  <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-3 flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
-                    <div className="text-xs text-amber-700 dark:text-amber-400 space-y-1 flex-1">
-                      <p className="font-medium">Same file imported recently</p>
-                      <p>
-                        This file was committed{' '}
-                        {new Date(tallyParseResult.duplicate_of.created_at).toLocaleString()}.
-                        The commit endpoint will reject this re-upload unless you tick
-                        the Force option below. The per-voucher hash check still applies —
-                        unchanged vouchers will be skipped automatically even with Force on.
+                  <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-4 flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+                    <div className="text-sm text-amber-800 dark:text-amber-300 space-y-2 flex-1">
+                      <p className="font-semibold text-amber-900 dark:text-amber-200">
+                        Same file imported recently — Force is pre-ticked
                       </p>
+                      <p className="text-xs">
+                        Last committed{' '}
+                        <span className="font-medium">
+                          {new Date(tallyParseResult.duplicate_of.created_at).toLocaleString()}
+                        </span>
+                        . Click the button below to re-commit (per-voucher
+                        hash check still skips unchanged rows).
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="border-amber-400 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50"
+                        onClick={() => {
+                          setTallyForceCommit(true);
+                          // Use a microtask so the state update lands
+                          // before the commit fires; tallyForceCommit
+                          // is read inside fireMastersCommit closure.
+                          void Promise.resolve().then(() => handleTallyCommit());
+                        }}
+                        disabled={
+                          tallyEnqueueCommit.isPending ||
+                          parseImportDebtors.isPending ||
+                          tallyCommitImport.isPending
+                        }
+                      >
+                        Replace previous import
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -1824,6 +2042,45 @@ export default function AccountsContent(): ReactNode {
                 latest stage + progress. The hook stops polling
                 automatically when status flips to done/failed; the
                 useEffect above transitions to the done step. */}
+            {/* FeatPlan — Review Debtors step. Shows the parsed
+                sundry-debtor rows with editable inputs; admin
+                approves / skips per row before commit fires.
+                Strict-gate per Decision (b): every row must be
+                reviewed (Approve+Link or Skip) before "Confirm &
+                Commit" enables. */}
+            {tallyStep === 'review-debtors' && (
+              <div className="space-y-4">
+                <div className="rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/20 p-3 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                  <div className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
+                    <p className="font-medium">
+                      Review {tallyDebtorRows.length} sundry-debtor{' '}
+                      {tallyDebtorRows.length === 1 ? 'ledger' : 'ledgers'} before commit
+                    </p>
+                    <p>
+                      Each ledger should map to a flat owner. We&rsquo;ve
+                      auto-parsed the unit number and owner names from the
+                      ledger string &mdash; verify and approve, or skip
+                      rows that aren&rsquo;t actual residents (common-area
+                      ledgers, GST-paid accounts, etc.). Approved rows
+                      will create the unit (if missing), the owner
+                      member rows, and the linked customer record.
+                    </p>
+                  </div>
+                </div>
+                <DebtorReviewTable
+                  rows={tallyDebtorRows}
+                  decisions={tallyDebtorDecisions}
+                  onChange={setTallyDebtorDecisions}
+                  existingUnits={(unitsQuery.data?.data ?? []).map((u) => ({
+                    id: u.id,
+                    unit_number: u.unit_number,
+                  }))}
+                  disabled={tallyCommitImport.isPending}
+                />
+              </div>
+            )}
+
             {tallyStep === 'running' && (
               <div className="space-y-4">
                 {(() => {
@@ -2010,15 +2267,46 @@ export default function AccountsContent(): ReactNode {
                     setTallyParseResult(null);
                     setTallyStep('input');
                   }}
-                  disabled={tallyEnqueueCommit.isPending}
+                  disabled={
+                    tallyEnqueueCommit.isPending || parseImportDebtors.isPending
+                  }
                 >
                   Back
                 </Button>
                 <Button
                   onClick={handleTallyCommit}
-                  disabled={tallyEnqueueCommit.isPending}
+                  disabled={
+                    tallyEnqueueCommit.isPending || parseImportDebtors.isPending
+                  }
                 >
-                  {tallyEnqueueCommit.isPending ? 'Queuing…' : 'Import'}
+                  {parseImportDebtors.isPending
+                    ? 'Parsing debtors…'
+                    : tallyEnqueueCommit.isPending
+                      ? 'Queuing…'
+                      : 'Import'}
+                </Button>
+              </>
+            )}
+            {/* FeatPlan — Review Debtors footer. Back returns to the
+                preview without losing decisions in case admin wants
+                to retick types. Confirm fires the sync /commit with
+                debtor_links. */}
+            {tallyStep === 'review-debtors' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setTallyStep('preview')}
+                  disabled={tallyCommitImport.isPending}
+                >
+                  Back to Preview
+                </Button>
+                <Button
+                  onClick={handleConfirmDebtorReview}
+                  disabled={tallyCommitImport.isPending}
+                >
+                  {tallyCommitImport.isPending
+                    ? 'Importing…'
+                    : 'Confirm & Commit'}
                 </Button>
               </>
             )}

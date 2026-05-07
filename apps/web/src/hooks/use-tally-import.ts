@@ -72,6 +72,64 @@ export interface TallyDispositionCounts {
 }
 
 /**
+ * FeatPlan — Gemini-parsed sundry-debtor ledger row. The review
+ * screen pre-fills its inputs from this; admin can edit before
+ * submit.
+ */
+export interface TallyDebtorParseResult {
+  /** Original ledger name as stored in Tally / committed. */
+  name: string;
+  /** Backfill path includes the ledger_id; new-import path omits it. */
+  ledger_id?: string;
+  parsed: {
+    unit_number: string | null;
+    owner_names: string[];
+    confidence: number;
+    raw?: string;
+  };
+}
+
+/**
+ * FeatPlan — operator decision for one sundry-debtor row at commit
+ * time. `ledger_name` matches against the committed ledger by
+ * case-insensitive name (the row may not have an id at request time
+ * — id-based matching is the backfill path's `ledger_id`).
+ */
+export interface TallyDebtorLinkInput {
+  ledger_name: string;
+  skip?: boolean;
+  unit_id?: string;
+  unit_number?: string;
+  owners?: { name: string }[];
+}
+
+/**
+ * FeatPlan — backfill path's link payload. Same shape as
+ * TallyDebtorLinkInput but keyed by id.
+ */
+export interface TallyDebtorLinkByIdInput {
+  ledger_id: string;
+  skip?: boolean;
+  unit_id?: string;
+  unit_number?: string;
+  owners?: { name: string }[];
+}
+
+/**
+ * FeatPlan — per-row result returned by both the inline commit
+ * (alongside masters' DispositionCounts) and the standalone
+ * /debtors/link endpoint.
+ */
+export interface TallyDebtorLinkResult {
+  ledger_name: string;
+  status: 'linked' | 'skipped' | 'failed';
+  unit_id?: string;
+  customer_id?: string;
+  member_ids?: string[];
+  error?: string;
+}
+
+/**
  * Response from `POST /tally-import/commit` — the real results once
  * the parsed records have been written.
  */
@@ -87,6 +145,12 @@ export interface TallyCommitResult {
   records_skipped: number;
   /** Concatenated per-type error messages. */
   errors: string[];
+  /**
+   * FeatPlan — per-row outcome of the sundry-debtor auto-link
+   * pass that runs after the masters commit. Empty array when the
+   * commit didn't include `debtor_links`.
+   */
+  debtor_links?: TallyDebtorLinkResult[];
 }
 
 /**
@@ -236,6 +300,11 @@ export function useTallyCommitImport() {
       import_id: string;
       commit?: TallyCommitSelection;
       force?: boolean;
+      // FeatPlan — debtor auto-link decisions. Posted alongside the
+      // per-type selection so the auto-link runs in the same call as
+      // the masters commit. Omit (or empty array) for masters-only
+      // imports — preserves legacy behaviour.
+      debtor_links?: TallyDebtorLinkInput[];
     }) {
       return api.post<{ data: TallyCommitResult }>(
         '/tally-import/commit',
@@ -250,6 +319,106 @@ export function useTallyCommitImport() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['receipts'] });
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      // FeatPlan — units + members + customers may have been
+      // created via the debtor_links path. Refresh those too so
+      // the Members directory and Units page show new rows
+      // immediately.
+      queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ['unit-members'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// FeatPlan — sundry-debtor auto-link hooks
+// ---------------------------------------------------------------------------
+
+/**
+ * Trigger the Gemini parser on a Tally import preview's
+ * sundry-debtor ledgers. Result is cached on the preview row so a
+ * second call is a no-op DB read.
+ */
+export function useParseImportDebtors() {
+  return useMutation({
+    mutationFn: function parseImportDebtors(input: { import_id: string }) {
+      return api
+        .post<{ data: TallyDebtorParseResult[] }>(
+          `/tally-import/imports/${input.import_id}/debtors/parse`,
+          {},
+        )
+        .then((res) => res.data);
+    },
+  });
+}
+
+/**
+ * Backfill — list every existing sundry-debtor ledger that has no
+ * customers row pointing at it. Drives the
+ * /accounts/reconcile-debtors page.
+ */
+export function useUnlinkedDebtors(enabled = true) {
+  return useQuery({
+    queryKey: [...tallyImportKeys.all, 'unlinked-debtors'],
+    enabled,
+    queryFn: async () => {
+      const res = await api.get<{ data: Array<{ id: string; name: string }> }>(
+        '/tally-import/debtors/unlinked',
+      );
+      return res.data;
+    },
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * Backfill — run the parser on a selection of existing ledger rows.
+ * Returns parsed (unit_number, owner_names) per row plus the
+ * ledger_id so the caller can post link decisions back without a
+ * second lookup.
+ */
+export function useParseExistingDebtors() {
+  return useMutation({
+    mutationFn: function parseExisting(input: { ledger_ids: string[] }) {
+      return api
+        .post<{ data: TallyDebtorParseResult[] }>(
+          '/tally-import/debtors/parse',
+          input,
+        )
+        .then((res) => res.data);
+    },
+  });
+}
+
+/**
+ * Backfill — commit link decisions for existing ledger rows.
+ * Server creates units / members / customers per the same shape as
+ * the inline commit path.
+ */
+export function useLinkExistingDebtors() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: function linkExisting(input: {
+      links: TallyDebtorLinkByIdInput[];
+    }) {
+      return api
+        .post<{ data: TallyDebtorLinkResult[] }>(
+          '/tally-import/debtors/link',
+          input,
+        )
+        .then((res) => res.data);
+    },
+    onSuccess() {
+      // Refresh the unlinked list (the linked ones drop off) plus
+      // every downstream cache that may have new rows.
+      queryClient.invalidateQueries({
+        queryKey: [...tallyImportKeys.all, 'unlinked-debtors'],
+      });
+      queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ['unit-members'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['ledger'] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
     },
   });
