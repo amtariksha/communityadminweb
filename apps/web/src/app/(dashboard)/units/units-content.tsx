@@ -757,7 +757,21 @@ export default function UnitsContent(): ReactNode {
     setAddMemberType(memberType);
     setAddMemberName('');
     setAddMemberPhone('');
-    setAddMemberMoveIn('');
+    // Bug fix 2026-05-07 — family members effectively share the
+    // parent's tenancy. Default the move-in date to the parent's
+    // own move-in (tenant's lease for tenant_family, owner's
+    // join-date for owner_family). The admin can still edit this
+    // before submit if a kid moved in later, etc. Falls back to
+    // empty string when the parent record is somehow missing
+    // (defensive — `openAddFamilyMember` is reached from buttons
+    // that already required `tenant`/`owner` to exist).
+    const parentMember =
+      memberType === 'tenant_family'
+        ? tenant
+        : memberType === 'owner_family'
+          ? owner
+          : detail?.current_members.find((m) => m.id === parentId) ?? null;
+    setAddMemberMoveIn(parentMember?.move_in_date ?? '');
     setAddMemberSelected(null);
     setAddMemberNoPhone(false);
     // FeatPlan #OW-4 — clear OCR-driven fields so a stale scan from
