@@ -27,6 +27,52 @@ interface ApiRequestOptions {
   signal?: AbortSignal;
 }
 
+/**
+ * 2026-05-08 — token-timeout-disguised-as-403 recovery.
+ *
+ * Backend AuthGuard returns 401 for expired JWTs in most paths, but
+ * a small set of role-gated endpoints surface as 403 when the JWT
+ * payload's role lookup fails server-side (the token signature is
+ * valid but the user record / role row underneath has changed or
+ * the access-token TTL passed). Pure 401-recovery doesn't catch
+ * these — the user sees a stack of "You do not have permission"
+ * toasts, but the actual problem is a stale token.
+ *
+ * Heuristic: parse the JWT's `exp` claim client-side. If the token
+ * has elapsed past its expiry by the time the request lands, treat
+ * the 403 as a recoverable auth failure (refresh + retry). Real
+ * RBAC denials (token still valid but user genuinely lacks the
+ * role) bypass this branch and surface the toast as before.
+ *
+ * Edge cases:
+ *  - No token in memory → treat as expired (force refresh path).
+ *  - Malformed token → treat as expired (refresh handles the
+ *    pathological case; if refresh also fails, logout fires).
+ *  - Token with no `exp` claim → treat as not-expired (we can't
+ *    prove anything; defer to backend's response).
+ */
+function isAccessTokenExpired(): boolean {
+  const token = getToken();
+  if (!token) return true;
+  try {
+    const segments = token.split('.');
+    if (segments.length !== 3) return true;
+    const payload = segments[1];
+    // base64url → base64. Append `=` padding so atob() doesn't throw.
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const json = atob(padded);
+    const claims = JSON.parse(json) as { exp?: number };
+    if (typeof claims.exp !== 'number') return false;
+    // exp is seconds-since-epoch. Compare to current time. No skew
+    // allowance — a token that's exactly at exp is treated as
+    // expired (server clock typically agrees).
+    return claims.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Token refresh coordination
 // ---------------------------------------------------------------------------
@@ -243,7 +289,17 @@ async function request<T>(
     signal: options.signal,
   });
 
-  if (response.status === 401 && !path.includes('/auth/')) {
+  // 2026-05-08 — recover from 401 OR 403-with-expired-token.
+  // The 403 branch is gated on `isAccessTokenExpired()` so real
+  // RBAC denials (token still valid, user simply lacks the role)
+  // skip the refresh round-trip and surface the toast as usual.
+  // See `isAccessTokenExpired` docstring for the rationale.
+  const isAuthRecoverable =
+    !path.includes('/auth/') &&
+    (response.status === 401 ||
+      (response.status === 403 && isAccessTokenExpired()));
+
+  if (isAuthRecoverable) {
     // Single-flight refresh — every parallel 401 awaits the same
     // in-flight /auth/refresh so they don't stomp on each other's
     // refresh tokens.
