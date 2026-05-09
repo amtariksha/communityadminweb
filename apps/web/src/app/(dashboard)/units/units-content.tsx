@@ -81,6 +81,7 @@ import { useOcrIdDocument } from '@/hooks/use-ocr';
 import { cn, formatDate } from '@/lib/utils';
 import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
 import { UserSearchSelect } from '@/components/ui/user-search-select';
+import { getUser } from '@/lib/auth';
 import type { UserSearchHit } from '@/hooks/use-user-search';
 
 const ITEMS_PER_PAGE = 20;
@@ -969,21 +970,17 @@ export default function UnitsContent(): ReactNode {
       return;
     }
 
-    // FeatPlan #OW-1 — long-term tenancies require the agreement
-    // upload (DB CHECK enforces this; server returns 400 if the
-    // upload is missing). Short-term tenancies skip the upload
-    // entirely. Hard-block the submit on the client so we don't
-    // burn a round-trip waiting for the rejection.
-    const isLongTerm = onboardTenancyType === 'long_term';
-    if (isLongTerm && !onboardAgreementFile) {
-      addToast({
-        title: 'Lease agreement required',
-        description:
-          'Long-term tenancies must upload a signed lease agreement (PDF or image).',
-        variant: 'destructive',
-      });
-      return;
-    }
+    // FeatPlan #OW-1 — agreement upload is OPTIONAL on both
+    // tenancies. Long-term tenancies typically come with a signed
+    // lease (and the dialog still shows the file picker so the
+    // admin can attach it), but the backend never enforced a
+    // CHECK on agreement_document_url — and the user explicitly
+    // wants to be able to onboard a long-term tenant without the
+    // PDF on file (e.g. when the agreement is sitting in physical
+    // form and gets uploaded later via the Approvals page).
+    // My earlier "DB CHECK enforces" comment was wrong: migration
+    // 092 only adds a generated `agreement_required` boolean, no
+    // NOT NULL constraint on the URL.
 
     // Step 1 — upload agreement if present. Bytes go direct to S3
     // via a presigned PUT; the backend never sees them. Captured
@@ -2529,7 +2526,21 @@ export default function UnitsContent(): ReactNode {
               <div className="col-span-2 space-y-2">
                 <Label>Search existing residents</Label>
                 <UserSearchSelect
-                  scope="tenant"
+                  // Bug fix 2026-05-08 — `scope='tenant'` hits
+                  // `/users/search` which filters by an EXISTS
+                  // (user_tenant_roles OR members) join on the
+                  // current tenant. Super-admins impersonating a
+                  // tenant search for residents who often belong
+                  // to OTHER tenants (the whole point of "are
+                  // they already on the platform?") so the
+                  // in-tenant filter excludes them and the search
+                  // returns []. Detect super-admin and route to
+                  // the cross-tenant `/super-admin/users` endpoint
+                  // (already wired in `use-user-search.ts` under
+                  // scope='super-admin'). Community-admins keep
+                  // the tenant scope — privacy: they shouldn't
+                  // enumerate users from other tenants by name.
+                  scope={getUser()?.isSuperAdmin ? 'super-admin' : 'tenant'}
                   value={onboardSelected}
                   placeholder="Type at least 3 characters of phone or name…"
                   onChange={(hit) => {
@@ -2664,7 +2675,7 @@ export default function UnitsContent(): ReactNode {
                       onChange={() => setOnboardTenancyType('long_term')}
                       className="h-4 w-4"
                     />
-                    Long-term (requires lease agreement)
+                    Long-term
                   </label>
                   <label className="flex items-center gap-2">
                     <input
@@ -2745,7 +2756,10 @@ export default function UnitsContent(): ReactNode {
               {onboardTenancyType === 'long_term' && (
                 <div className="col-span-2 space-y-2">
                   <Label htmlFor="onboard-agreement">
-                    Lease agreement <span className="text-destructive">*</span>
+                    Lease agreement{' '}
+                    <span className="text-xs font-normal text-muted-foreground">
+                      (optional — attach now or upload later via Approvals)
+                    </span>
                   </Label>
                   <Input
                     id="onboard-agreement"
