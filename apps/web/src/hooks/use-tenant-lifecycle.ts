@@ -74,7 +74,7 @@ export interface RenewAgreementResult {
 // Duplicate-onboard error detection — QA #13-2c (Round 12 #12-1d carry-over)
 // ---------------------------------------------------------------------------
 //
-// Backend `tenant-lifecycle.service.ts#createOnboarding` throws three
+// Backend `tenant-lifecycle.service.ts#createOnboarding` throws two
 // BadRequestException strings the admin form should treat as
 // "the unit's already past the onboarding step, your view is stale":
 //
@@ -82,11 +82,19 @@ export interface RenewAgreementResult {
 //        — `members` row already created (approval landed).
 //   2. "A tenant onboarding request is already pending for this unit"
 //        — second submit while approval is still queued.
-//   3. "You must be an active owner of this unit to onboard a tenant"
-//        — caller isn't the unit's owner; ALSO surfaces when an admin
-//          re-submits after a successful approval (the caller hasn't
-//          changed, the precondition has — the tenant slot is now
-//          taken so the service falls through this earlier guard).
+//
+// 2026-05-09 — REMOVED `/must be an active owner/i`. That pattern
+// was added on the assumption it surfaced as a "stale view"
+// duplicate after approval landed. In practice it ALSO surfaces
+// for legitimate permission failures: a community_admin or
+// super_admin trying to onboard for any unit they don't personally
+// own would hit this branch, and the regex would mis-classify it
+// as a duplicate submit, showing a misleading
+// "Tenant already onboarded — refresh the page" toast even though
+// nothing was onboarded. The backend now defaults `direct=true`
+// for admin callers (so the owner gate is bypassed), and any
+// owner-check failure that DOES surface is a real permission
+// error — let it through with its native server message.
 //
 // Match on the message via `ApiError.userMessage` (which is what the
 // admin's toast renders today). Looser substring match keeps the
@@ -94,7 +102,6 @@ export interface RenewAgreementResult {
 const DUPLICATE_ONBOARD_PATTERNS = [
   /already has an active tenant/i,
   /already pending for this unit/i,
-  /must be an active owner/i,
 ];
 
 export function isDuplicateOnboardError(err: unknown): boolean {
