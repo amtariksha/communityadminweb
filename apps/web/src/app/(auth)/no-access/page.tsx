@@ -6,6 +6,7 @@ import { ShieldX, Smartphone } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { logout } from '@/lib/auth';
+import { BRAND } from '@/config/branding';
 
 function NoAccessBody(): ReactNode {
   const params = useSearchParams();
@@ -26,8 +27,8 @@ function NoAccessBody(): ReactNode {
             <span className="block">
               Your account is registered as a resident. The resident
               features — raising tickets, paying dues, viewing gate
-              passes, voting on resolutions — live in the Eassy Society
-              resident app.
+              passes, voting on resolutions — live in the {BRAND.appLabels.resident}
+              {' '}resident app.
             </span>
             <span className="block text-xs">
               Please contact your community admin if you believe you should

@@ -7,6 +7,7 @@ import { ShieldAlert, LogOut } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { logout } from '@/lib/auth';
+import { BRAND } from '@/config/branding';
 
 // QA Round 14 #14-2d — wrong-app screen.
 //
@@ -20,9 +21,11 @@ import { logout } from '@/lib/auth';
 // httpOnly refresh cookie via POST /auth/logout, then sends the
 // user back to /login.
 
+// Brand-driven app labels — kept in the centralized branding config
+// so a Resident-app rename only requires editing `BRAND.appLabels`.
 const APP_LABELS: Record<string, string> = {
-  resident: 'Resident',
-  guard: 'Guard',
+  resident: BRAND.appLabels.resident,
+  guard: BRAND.appLabels.guard,
 };
 
 function joinHumanList(items: string[]): string {
@@ -45,7 +48,7 @@ export default function WrongAppContent(): ReactNode {
   const otherAppsLabel =
     accessibleApps.length > 0
       ? joinHumanList(
-          accessibleApps.map((a) => `Eassy ${APP_LABELS[a] ?? a}`),
+          accessibleApps.map((a) => APP_LABELS[a] ?? a),
         )
       : null;
 
@@ -88,13 +91,13 @@ export default function WrongAppContent(): ReactNode {
               </p>
               {accessibleApps.includes('resident') && (
                 <p>
-                  <strong>Eassy Resident</strong> — Google Play / App
-                  Store. Search &ldquo;Eassy Society&rdquo;.
+                  <strong>{BRAND.appLabels.resident}</strong> — Google Play / App
+                  Store. Search &ldquo;{BRAND.appName}&rdquo;.
                 </p>
               )}
               {accessibleApps.includes('guard') && (
                 <p>
-                  <strong>Eassy Guard</strong> — provided by your
+                  <strong>{BRAND.appLabels.guard}</strong> — provided by your
                   society&rsquo;s administrator. Contact them for the
                   install link.
                 </p>

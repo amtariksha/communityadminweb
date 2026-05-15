@@ -6,6 +6,7 @@ import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getToken, logout, purgeLegacyTokenStorage } from '@/lib/auth';
 import { refreshAccessToken } from '@/lib/api';
+import { BRAND } from '@/config/branding';
 
 interface SuperAdminLayoutProps {
   children: ReactNode;
@@ -81,10 +82,10 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps): R
       <header className="sticky top-0 z-30 border-b bg-background">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 lg:px-6">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F5A623]">
-              <span className="text-sm font-bold text-white">e</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-logo-accent">
+              <span className="text-sm font-bold text-white">{BRAND.logoLetter}</span>
             </div>
-            <span className="text-lg font-bold">Eassy Society — Super Admin</span>
+            <span className="text-lg font-bold">{BRAND.appName} — Super Admin</span>
           </div>
           {/*
             The "Back to Dashboard" shortcut was removed — super-admins

@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { BRAND } from '@/config/branding';
 import WrongAppContent from './wrong-app-content';
 
 export const metadata: Metadata = {
-  title: 'Wrong app · Eassy Society',
+  title: `Wrong app · ${BRAND.appName}`,
 };
 
 // useSearchParams() inside the client content needs a Suspense

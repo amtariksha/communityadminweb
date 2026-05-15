@@ -22,6 +22,7 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { BRAND } from '@/config/branding';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import {
@@ -662,7 +663,7 @@ function EmailSection({
         <Input
           value={fromName}
           onChange={(e) => setFromName(e.target.value)}
-          placeholder="CommunityOS"
+          placeholder={BRAND.appName}
         />
       </div>
 
@@ -760,7 +761,7 @@ function BrandingSection({
         <Input
           value={appName}
           onChange={(e) => setAppName(e.target.value)}
-          placeholder="CommunityOS"
+          placeholder={BRAND.appName}
         />
       </div>
       <div className="space-y-2">
