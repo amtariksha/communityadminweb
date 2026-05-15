@@ -90,12 +90,20 @@ interface BankTransferRow {
   id: string;
   from_account_id: string;
   to_account_id: string;
-  from_account_name?: string;
-  to_account_name?: string;
+  // 2026-05-09 (QA #293) — backend `bank_transfers.notes` is the
+  // DB column, and the GET query returns it as `notes`. The form
+  // accepts a `narration` field which the service routes into
+  // `notes` server-side. The list previously read `narration`,
+  // which doesn't exist on the row → every Narration cell showed
+  // "—". Keeping both keys typed so the list reads `notes` and
+  // any legacy callers reading `narration` still type-check.
+  from_account_name?: string | null;
+  to_account_name?: string | null;
   amount: number;
   transfer_date: Date;
   reference_number: string | null;
-  narration: string;
+  notes?: string | null;
+  narration?: string | null;
 }
 
 interface FixedDepositRow {
@@ -944,7 +952,11 @@ export default function BankContent(): ReactNode {
                         {xfer.reference_number ?? '-'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {xfer.narration ?? '-'}
+                        {/* QA #293 — backend column is `notes`; the
+                            form sends `narration` which the service
+                            persists into `notes`. Prefer `notes`,
+                            fall back to legacy. */}
+                        {xfer.notes ?? xfer.narration ?? '-'}
                       </TableCell>
                     </TableRow>
                   ))
