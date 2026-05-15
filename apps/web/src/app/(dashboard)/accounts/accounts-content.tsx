@@ -34,6 +34,8 @@ import { JournalEntryDialog } from './journal-entry-dialog';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, formatTallyBalance, financialDateBounds } from '@/lib/utils';
+// QA #284 — hierarchical XLS export that mirrors the on-screen tree.
+import { downloadHierarchicalCoa } from '@/lib/coa-export';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import {
@@ -1214,6 +1216,27 @@ export default function AccountsContent(): ReactNode {
                 { key: 'balance_type', label: 'Balance Type' },
               ]}
             />
+            {/* 2026-05-09 (QA #284) — flat CSV/Excel above loses the
+                parent → child structure shown on screen. This new
+                action emits a styled XLS that mirrors the tree:
+                bold group headers, indented account rows, type
+                pills. See `apps/web/src/lib/coa-export.ts`. */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                downloadHierarchicalCoa(tree, {
+                  filename: `chart-of-accounts-${new Date().toISOString().split('T')[0]}`,
+                  societyLabel: currentFY?.label
+                    ? `Financial Year: ${currentFY.label}`
+                    : undefined,
+                });
+              }}
+              title="Excel export preserving the on-screen tree"
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              Export Tree (XLS)
+            </Button>
             <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
               <DialogTrigger>
                 <Button variant="outline">
