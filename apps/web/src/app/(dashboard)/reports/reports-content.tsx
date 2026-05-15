@@ -476,11 +476,19 @@ function GeneralLedgerView({
   if (isLoading) return <ReportSkeleton />;
   if (!data) return <p className="py-8 text-center text-muted-foreground">Select an account to view its ledger</p>;
 
+  // 2026-05-09 (QA #245) — production crash: when the GL endpoint
+  // returned a row whose `account_name` was null (e.g. a stub bank
+  // ledger created pre-migration 023 backfill), the next line
+  // tried `undefined.replace(...)` and threw a runtime TypeError
+  // that broke the entire page. Render-safe fallbacks below.
+  const accountName = data.account_name ?? 'account';
+  const filenameSafeAccount = accountName.replace(/\s+/g, '-');
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">{data.account_name}</h3>
+          <h3 className="text-lg font-semibold">{accountName}</h3>
           <p className="text-sm text-muted-foreground">
             {formatDate(data.start_date)} to {formatDate(data.end_date)}
           </p>
@@ -492,7 +500,7 @@ function GeneralLedgerView({
           </div>
           <ExportButton
             data={data.transactions as unknown as Record<string, unknown>[]}
-            filename={`general-ledger-${data.account_name.replace(/\s+/g, '-')}-${data.start_date}-to-${data.end_date}`}
+            filename={`general-ledger-${filenameSafeAccount}-${data.start_date}-to-${data.end_date}`}
             columns={[
               { key: 'date', label: 'Date' },
               { key: 'entry_number', label: 'Entry #' },
@@ -550,7 +558,17 @@ function DefaultersView(): ReactNode {
     return <p className="py-8 text-center text-muted-foreground">No defaulters found</p>;
   }
 
-  const totalOverdue = data.reduce((sum, d) => sum + d.total_overdue, 0);
+  // 2026-05-09 (QA #91) — backend `invoice.service.ts#getDefaulters`
+  // returns `total_due` and `invoice_count`, not `total_overdue` /
+  // `overdue_months`. The interface in `use-invoices.ts` was
+  // realigned with the server; this report view was previously
+  // typo'd to match the old interface and showed "NaN" / blank
+  // cells. Decimal strings from `numeric` PG columns need a
+  // `Number(...)` cast before arithmetic.
+  const totalOverdue = data.reduce(
+    (sum, d) => sum + Number(d.total_due ?? 0),
+    0,
+  );
 
   return (
     <div>
@@ -566,10 +584,10 @@ function DefaultersView(): ReactNode {
             columns={[
               { key: 'unit_number', label: 'Unit' },
               { key: 'block', label: 'Block' },
-              { key: 'member_name', label: 'Member' },
-              { key: 'total_overdue', label: 'Overdue Amount' },
-              { key: 'overdue_months', label: 'Overdue Months' },
+              { key: 'total_due', label: 'Overdue Amount' },
+              { key: 'invoice_count', label: 'Overdue Invoices' },
               { key: 'oldest_due_date', label: 'Oldest Due Date' },
+              { key: 'days_overdue', label: 'Days Overdue' },
             ]}
           />
         </div>
@@ -580,8 +598,9 @@ function DefaultersView(): ReactNode {
             <TableHead>Unit</TableHead>
             <TableHead>Block</TableHead>
             <TableHead className="text-right">Overdue Amount</TableHead>
-            <TableHead className="text-right">Overdue Months</TableHead>
+            <TableHead className="text-right">Overdue Invoices</TableHead>
             <TableHead>Oldest Due Date</TableHead>
+            <TableHead className="text-right">Days Overdue</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -590,12 +609,13 @@ function DefaultersView(): ReactNode {
               <TableCell className="font-medium">{row.unit_number}</TableCell>
               <TableCell>{row.block ?? '-'}</TableCell>
               <TableCell className="text-right font-medium text-destructive">
-                {formatCurrency(row.total_overdue)}
+                {formatCurrency(row.total_due)}
               </TableCell>
-              <TableCell className="text-right">{row.overdue_months}</TableCell>
+              <TableCell className="text-right">{row.invoice_count}</TableCell>
               <TableCell className="text-muted-foreground">
                 {formatDate(row.oldest_due_date)}
               </TableCell>
+              <TableCell className="text-right">{row.days_overdue ?? '-'}</TableCell>
             </TableRow>
           ))}
         </TableBody>

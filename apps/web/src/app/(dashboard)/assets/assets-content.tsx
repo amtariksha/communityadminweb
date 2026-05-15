@@ -56,33 +56,48 @@ import { useVendors } from '@/hooks';
 // Constants
 // ---------------------------------------------------------------------------
 
+// 2026-05-09 (QA #350) \u2014 Asset type list must match the backend
+// Zod enum exactly:
+//   apps/api/src/modules/asset/asset.controller.ts \u2192
+//   z.enum(['equipment','furniture','vehicle','infrastructure',
+//           'electrical','plumbing','fire_safety','security','hvac',
+//           'elevator','generator','cctv','other'])
+// The previous UI exposed `heater`, `stp`, `pump`, `ac`, `gas_bank`,
+// `transformer`, `fire_system`, `gym_equipment`, `lift` \u2014 none of
+// which the backend accepts \u2192 every Save click 400'd with an enum
+// validation error. We could have expanded the backend enum but
+// the user preferred tightening the UI to the 13 sanctioned
+// values (per the bug-triage decision log). The label is the
+// human-readable label; the value is the wire format.
 const ASSET_TYPES = [
+  { value: 'equipment', label: 'Equipment' },
+  { value: 'furniture', label: 'Furniture' },
+  { value: 'vehicle', label: 'Vehicle' },
+  { value: 'infrastructure', label: 'Infrastructure' },
+  { value: 'electrical', label: 'Electrical' },
+  { value: 'plumbing', label: 'Plumbing' },
+  { value: 'fire_safety', label: 'Fire Safety' },
+  { value: 'security', label: 'Security' },
+  { value: 'hvac', label: 'HVAC' },
+  { value: 'elevator', label: 'Elevator' },
   { value: 'generator', label: 'Generator' },
-  { value: 'stp', label: 'STP' },
-  { value: 'pump', label: 'Pump' },
-  { value: 'lift', label: 'Lift' },
-  { value: 'ac', label: 'AC' },
-  { value: 'heater', label: 'Heater' },
-  { value: 'gas_bank', label: 'Gas Bank' },
-  { value: 'transformer', label: 'Transformer' },
   { value: 'cctv', label: 'CCTV' },
-  { value: 'fire_system', label: 'Fire System' },
-  { value: 'gym_equipment', label: 'Gym Equipment' },
   { value: 'other', label: 'Other' },
 ];
 
 const ASSET_TYPE_ICONS: Record<string, string> = {
+  equipment: '\uD83D\uDD27',
+  furniture: '\uD83D\uDECB',
+  vehicle: '\uD83D\uDE97',
+  infrastructure: '\uD83C\uDFD7',
+  electrical: '\u26A1',
+  plumbing: '\uD83D\uDD27',
+  fire_safety: '\uD83D\uDD25',
+  security: '\uD83D\uDD12',
+  hvac: '\u2744\uFE0F',
+  elevator: '\uD83D\uDED7',
   generator: '\u26A1',
-  stp: '\uD83D\uDD04',
-  pump: '\uD83D\uDCA7',
-  lift: '\uD83D\uDED7',
-  ac: '\u2744\uFE0F',
-  heater: '\uD83D\uDD25',
-  gas_bank: '\uD83D\uDD35',
-  transformer: '\u26A1',
   cctv: '\uD83D\uDCF9',
-  fire_system: '\uD83D\uDD25',
-  gym_equipment: '\uD83D\uDCAA',
 };
 
 const CONDITIONS = [

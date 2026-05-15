@@ -260,7 +260,14 @@ export default function InvoicesContent(): ReactNode {
   // QA #92 — bulk-update-due-date toolbar action
   const bulkUpdateDueDates = useBulkUpdateDueDates();
   const { data: viewInvoiceData } = useInvoice(viewInvoiceId);
-  const lpiData = lpiQuery.data ?? [];
+  // 2026-05-09 (QA #90) — backend now returns
+  // `{ details: [...], totalInterest: number }` (not a bare array).
+  // `useCalculateLPI` enforces the wrapped shape; the legacy
+  // array-fallback in the hook protects us if the API ever
+  // regresses. We render `details`; the modal footer can show
+  // `totalInterest` as a sanity check.
+  const lpiResponse = lpiQuery.data ?? { details: [], totalInterest: 0 };
+  const lpiData = lpiResponse.details;
   const defaulters = defaultersQuery.data ?? [];
   const units = unitsQuery.data?.data ?? [];
 
@@ -1198,19 +1205,23 @@ export default function InvoicesContent(): ReactNode {
                   <TableRow>
                     <TableHead>Unit</TableHead>
                     <TableHead>Invoice #</TableHead>
-                    <TableHead className="text-right">Principal</TableHead>
+                    <TableHead className="text-right">Balance Due</TableHead>
                     <TableHead className="text-right">Days Overdue</TableHead>
-                    <TableHead className="text-right">LPI Amount</TableHead>
+                    <TableHead className="text-right">Interest</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {/* 2026-05-09 (QA #90) — backend returns
+                      balance_due / interest_amount, not principal /
+                      lpi_amount. Old field names left the modal
+                      blank on a successful 200. */}
                   {lpiData.map((lpi, idx) => (
                     <TableRow key={`${lpi.invoice_id}-${idx}`}>
                       <TableCell>{lpi.unit_number}</TableCell>
                       <TableCell className="font-mono text-xs">{lpi.invoice_number}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(lpi.principal)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(lpi.balance_due)}</TableCell>
                       <TableCell className="text-right">{lpi.days_overdue}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(lpi.lpi_amount)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatCurrency(lpi.interest_amount)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1264,6 +1275,69 @@ export default function InvoicesContent(): ReactNode {
                   {postLPI.isPending ? 'Posting...' : 'Post LPI'}
                 </Button>
               </div>
+            )}
+          </div>
+          <DialogFooter>
+            <DialogClose>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 2026-05-09 (QA #91) — Defaulters Dialog. State + button were
+          already wired but the actual <Dialog> was never rendered, so
+          clicking "Defaulters" or hitting /invoices?filter=defaulters
+          did nothing visible despite the API returning rows. Mirrors
+          the LPI dialog above. */}
+      <Dialog open={defaultersDialogOpen} onOpenChange={setDefaultersDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Defaulters</DialogTitle>
+            <DialogDescription>
+              Units with overdue balances. Click a row to drill into the unit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {defaultersQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-3/4" />
+              </div>
+            ) : defaulters.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Block</TableHead>
+                    <TableHead className="text-right">Invoices</TableHead>
+                    <TableHead className="text-right">Total Due</TableHead>
+                    <TableHead>Oldest Due</TableHead>
+                    <TableHead className="text-right">Days Overdue</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {defaulters.map((d) => (
+                    <TableRow key={d.unit_id}>
+                      <TableCell className="font-medium">{d.unit_number}</TableCell>
+                      <TableCell>{d.block ?? '-'}</TableCell>
+                      <TableCell className="text-right">{d.invoice_count}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(d.total_due)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(d.oldest_due_date)}
+                      </TableCell>
+                      <TableCell className="text-right">{d.days_overdue ?? '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="py-8 text-center text-muted-foreground">
+                No defaulters — every unit is current on its dues.
+              </p>
             )}
           </div>
           <DialogFooter>

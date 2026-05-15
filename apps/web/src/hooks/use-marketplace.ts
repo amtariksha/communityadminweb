@@ -3,7 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
-export interface MarketplaceListing { id: string; title: string; description: string; price: number; category: string; condition: string; seller_name: string; unit_number: string; status: string; created_at: string }
+// QA #362 — backend includes uploaded image URLs in `images: string[]`
+// (resident uploads from the Flutter app). The admin list was
+// silently dropping them; adding the field so the table can show
+// a thumbnail. Optional because legacy listings may not have any.
+export interface MarketplaceListing { id: string; title: string; description: string; price: number; category: string; condition: string; seller_name: string; unit_number: string; status: string; created_at: string; images?: string[] }
 export interface ServiceRating { id: string; provider_name: string; provider_phone: string; service_type: string; rating: number; review: string; reviewer_name: string; is_verified: boolean; created_at: string }
 
 export const marketplaceKeys = {

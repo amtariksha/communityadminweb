@@ -76,10 +76,15 @@ const POLL_TYPES = [
   { value: 'multiple_choice', label: 'Multiple Choice' },
 ] as const;
 
+// 2026-05-09 (QA #433) — backend Zod enum
+// (apps/api/src/modules/voting/voting.controller.ts#who_can_vote)
+// is: 'owners_only' | 'all_members' | 'committee_only'. The UI
+// previously offered `tenants_only`, which the backend rejected
+// with a 400 enum-validation error → poll creation was broken
+// for anyone who picked it. Per triage decision: tighten UI.
 const VOTE_AUDIENCES = [
   { value: 'all_members', label: 'All Members' },
   { value: 'owners_only', label: 'Owners Only' },
-  { value: 'tenants_only', label: 'Tenants Only' },
   { value: 'committee_only', label: 'Committee Only' },
 ] as const;
 

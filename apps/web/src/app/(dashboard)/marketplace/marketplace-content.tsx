@@ -174,6 +174,10 @@ function ListingsTab(): ReactNode {
         <Table>
           <TableHeader>
             <TableRow>
+              {/* QA #362 — image column. Residents upload photos via
+                  the Flutter app; the API already returns them in
+                  `images[]` but the admin table was hiding them. */}
+              <TableHead className="w-16">Image</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Category</TableHead>
@@ -187,7 +191,7 @@ function ListingsTab(): ReactNode {
             {listingsQuery.isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 7 }).map((__, j) => (
+                  {Array.from({ length: 8 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
@@ -197,6 +201,24 @@ function ListingsTab(): ReactNode {
             ) : listings.length > 0 ? (
               listings.map((listing) => (
                 <TableRow key={listing.id}>
+                  <TableCell>
+                    {/* QA #362 — show the first image if uploaded.
+                        Native <img> over Next/Image because the
+                        object-store host is not in next.config
+                        remotePatterns; switching to next/image
+                        would require updating that allowlist. */}
+                    {listing.images && listing.images.length > 0 ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={listing.images[0]}
+                        alt={listing.title}
+                        className="h-10 w-10 rounded object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded bg-muted" aria-hidden />
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium">{listing.title}</TableCell>
                   <TableCell>{formatCurrency(listing.price)}</TableCell>
                   <TableCell className="capitalize">{listing.category}</TableCell>
@@ -228,7 +250,9 @@ function ListingsTab(): ReactNode {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                {/* QA #362 — colspan bumped from 7 to 8 to match
+                    the new Image column. */}
+                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                   No listings found.
                 </TableCell>
               </TableRow>

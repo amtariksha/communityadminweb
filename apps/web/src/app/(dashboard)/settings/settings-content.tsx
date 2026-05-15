@@ -1434,6 +1434,15 @@ export default function SettingsContent(): ReactNode {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="gate-type">Type</Label>
+                      {/* 2026-05-09 (QA #461) — backend Zod enum
+                          (apps/api/src/modules/gate/gate.controller.ts)
+                          accepts only:
+                            vehicle_and_pedestrian | vehicle_only |
+                            pedestrian_only | service | main
+                          The previous list (parking, emergency) was
+                          rejected with a 400 enum-validation error.
+                          Per the triage decision log we tighten the
+                          UI rather than extending the backend. */}
                       <Select
                         id="gate-type"
                         value={gateType}
@@ -1441,8 +1450,9 @@ export default function SettingsContent(): ReactNode {
                       >
                         <option value="main">Main</option>
                         <option value="service">Service</option>
-                        <option value="parking">Parking</option>
-                        <option value="emergency">Emergency</option>
+                        <option value="vehicle_and_pedestrian">Vehicle &amp; Pedestrian</option>
+                        <option value="vehicle_only">Vehicle Only</option>
+                        <option value="pedestrian_only">Pedestrian Only</option>
                       </Select>
                     </div>
                   </div>

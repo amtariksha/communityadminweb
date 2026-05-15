@@ -975,7 +975,11 @@ export default function PurchasesContent(): ReactNode {
         bill_id: selectedBillId,
         payment_date: paymentDate,
         amount: Number(paymentAmount),
-        mode: paymentMode,
+        // 2026-05-09 (QA #456) — backend Zod schema accepts only
+        // `payment_mode`, not `mode`. Sending `mode` failed
+        // validation with "payment_mode: Required" → bill payment
+        // recording was broken. Use the canonical key.
+        payment_mode: paymentMode,
         reference_number: paymentReference || null,
         bank_account_id: paymentBankAccountId || null,
       },

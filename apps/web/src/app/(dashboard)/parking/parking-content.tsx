@@ -62,7 +62,14 @@ import type { ParkingSlot, Vehicle, ParkingSublet } from '@/hooks/use-parking';
 // Helpers
 // ---------------------------------------------------------------------------
 
-const SLOT_TYPES = ['car', 'bike', 'both'] as const;
+// 2026-05-09 (QA #462) — backend Zod enum
+// (apps/api/src/modules/parking/parking.controller.ts) accepts:
+//   'car' | 'bike' | 'ev' | 'other'
+// The previous list had 'both' which the backend never accepted →
+// every Save click 400'd. 'ev' covers an EV-only slot (independent
+// of `has_ev_charger` which is set on car/bike slots that happen
+// to have a charger). Per triage decision: tighten UI to match.
+const SLOT_TYPES = ['car', 'bike', 'ev', 'other'] as const;
 const VEHICLE_TYPES = ['car', 'bike', 'ev'] as const;
 
 function slotTypeIcon(type: string): ReactNode {

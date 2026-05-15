@@ -14,23 +14,43 @@ interface PaginatedResponse<T> {
   total: number;
 }
 
+// 2026-05-09 (QA #91) — backend `invoice.service.ts#getDefaulters`
+// returns `total_due` (not `total_overdue`) and `invoice_count`
+// (not `overdue_months`). The previous interface didn't match the
+// server response, so React Query unwrapped fine but the dialog
+// rendered "—" for every column. Aligning field names here.
 interface Defaulter {
   unit_id: string;
   unit_number: string;
   block: string | null;
-  total_overdue: number;
-  overdue_months: number;
+  floor?: number | null;
+  total_due: string | number;
+  invoice_count: number;
   oldest_due_date: string;
+  days_overdue?: number;
 }
 
+// 2026-05-09 (QA #90) — backend `invoice.service.ts#calculateLPI`
+// returns `{ details: LpiRow[]; totalInterest: number }` (object,
+// not array) where each detail carries `balance_due` /
+// `interest_amount` (not `principal` / `lpi_amount`). The previous
+// interface assumed the array-shape from an older API version,
+// which left the modal showing the "no overdue invoices" empty
+// state even on a 200 with rows. Aligning the type + unwrap.
 interface LpiCalculation {
   unit_id: string;
   unit_number: string;
   invoice_id: string;
   invoice_number: string;
-  principal: number;
+  balance_due: string | number;
+  due_date: string;
   days_overdue: number;
-  lpi_amount: number;
+  interest_amount: string | number;
+}
+
+interface LpiResponse {
+  details: LpiCalculation[];
+  totalInterest: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -183,8 +203,16 @@ export function useCalculateLPI(asOfDate?: string) {
     queryKey: invoiceKeys.lpi(date),
     queryFn: function fetchLpi() {
       return api
-        .get<{ data: LpiCalculation[] }>(`/invoices/lpi?as_of_date=${date}`)
-        .then(function unwrap(res) {
+        .get<{ data: LpiResponse }>(`/invoices/lpi?as_of_date=${date}`)
+        .then(function unwrap(res): LpiResponse {
+          // Defensive: older API shape returned `data: LpiCalculation[]`
+          // directly. If we ever roll back, don't crash — wrap it.
+          if (Array.isArray(res.data)) {
+            return {
+              details: res.data as unknown as LpiCalculation[],
+              totalInterest: 0,
+            };
+          }
           return res.data;
         });
     },
