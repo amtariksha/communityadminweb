@@ -471,8 +471,29 @@ export default function UnitsContent(): ReactNode {
   }, []);
 
   function handleImportMembers(): void {
+    // 2026-05-09 (QA #459) — the previous parser split each row by
+    // comma and indexed positionally:
+    //     [0]=unit_number [1]=name [2]=phone [3]=member_type
+    //     [4]=email      [5]=move_in_date
+    //
+    // That worked for the template we ship, but the operator pasted
+    // a unit-bulk-import CSV (16-column shape with `block`, `floor`,
+    // `area_sqft`, `unit_type`, `bhk_type`, ..., `owner_name`,
+    // `owner_phone`, `tenant_name`, ...). Positional indexing read:
+    //   name = "A" (block)
+    //   phone = "1" (floor)
+    //   email = "residential" (unit_type)
+    //   move_in_date = "2BHK" (bhk_type)
+    // → every row failed at the backend with "Unit X not found"
+    // (the units don't exist yet either; the right tool for that
+    // file is /units/import, not /units → Import Members).
+    //
+    // Rewritten to be header-aware and to refuse early with a
+    // clear "use /units/import instead" hint when the CSV looks
+    // like a unit-bulk-import shape.
+
     const lines = importCsvText
-      .split('\n')
+      .split(/\r?\n/)
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
 
@@ -481,31 +502,108 @@ export default function UnitsContent(): ReactNode {
       return;
     }
 
-    // Skip header row if it looks like headers
-    const firstLine = lines[0].toLowerCase();
-    const dataLines =
-      firstLine.includes('unit_number') || firstLine.includes('name')
-        ? lines.slice(1)
-        : lines;
+    // Quoted-CSV-aware splitter — the unit-bulk-import templates
+    // often quote name fields that contain commas.
+    function splitCsvLine(line: string): string[] {
+      const out: string[] = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === ',' && !inQuotes) {
+          out.push(cur.trim());
+          cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      out.push(cur.trim());
+      return out;
+    }
 
-    if (dataLines.length === 0) {
-      addToast({ title: 'No data rows found in CSV', variant: 'destructive' });
+    function normalizeHeader(h: string): string {
+      return h.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+    }
+
+    const headerCells = splitCsvLine(lines[0]).map(normalizeHeader);
+    const headerSet = new Set(headerCells);
+
+    // Detect the wrong-CSV-format case. Columns that only ever show
+    // up on a unit-bulk-import sheet; if any are present alongside
+    // missing `name`/`phone` we know the operator picked the wrong
+    // dialog.
+    const unitOnlyHeaders = [
+      'block',
+      'floor',
+      'area_sqft',
+      'unit_type',
+      'bhk_type',
+      'owner_name',
+      'tenant_name',
+    ];
+    const looksLikeUnitImport = unitOnlyHeaders.some((h) => headerSet.has(h));
+
+    const requiredHeaders = ['unit_number', 'name', 'phone'];
+    const missingRequired = requiredHeaders.filter((h) => !headerSet.has(h));
+
+    if (looksLikeUnitImport && missingRequired.length > 0) {
+      addToast({
+        title: 'This looks like a Unit-Import CSV, not a Member-Import CSV',
+        description:
+          'Use Units → Import (the "Import from App" button at the top of this page) — it creates units along with their owners and tenants in one go. The Member-Import dialog only adds members to units that already exist.',
+        variant: 'destructive',
+      });
       return;
     }
 
-    const validTypes = ['owner', 'tenant', 'owner_family', 'tenant_family'] as const;
+    if (missingRequired.length > 0) {
+      addToast({
+        title: `Missing required column(s): ${missingRequired.join(', ')}`,
+        description:
+          'The first row of the CSV must include unit_number, name, and phone headers. Click "Download Template" to see the expected layout.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
-    const members = dataLines.map(function parseLine(line) {
-      const parts = line.split(',').map((p) => p.trim());
+    // Build a header → index map so we can look up cells by name
+    // regardless of column order.
+    const headerIndex = new Map<string, number>();
+    headerCells.forEach((h, idx) => {
+      if (!headerIndex.has(h)) headerIndex.set(h, idx);
+    });
+
+    function cell(parts: string[], name: string): string {
+      const idx = headerIndex.get(name);
+      return idx !== undefined ? (parts[idx] ?? '').trim() : '';
+    }
+
+    const validTypes = [
+      'owner',
+      'tenant',
+      'owner_family',
+      'tenant_family',
+    ] as const;
+
+    const members = lines.slice(1).map(function parseLine(line) {
+      const parts = splitCsvLine(line);
+      const memberTypeRaw = cell(parts, 'member_type').toLowerCase();
       return {
-        unit_number: parts[0] ?? '',
-        name: parts[1] ?? '',
-        phone: parts[2] ?? '',
-        member_type: (validTypes.includes(parts[3] as typeof validTypes[number])
-          ? parts[3]
+        unit_number: cell(parts, 'unit_number'),
+        name: cell(parts, 'name'),
+        phone: cell(parts, 'phone'),
+        member_type: (validTypes.includes(memberTypeRaw as typeof validTypes[number])
+          ? memberTypeRaw
           : 'owner') as 'owner' | 'tenant' | 'owner_family' | 'tenant_family',
-        email: parts[4] || undefined,
-        move_in_date: parts[5] || undefined,
+        email: cell(parts, 'email') || undefined,
+        move_in_date: cell(parts, 'move_in_date') || undefined,
       };
     });
 
@@ -1253,8 +1351,21 @@ export default function UnitsContent(): ReactNode {
               <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Bulk Import Members</DialogTitle>
+                  {/* QA #459 — clarify scope. The previous copy
+                      didn't mention that this dialog requires the
+                      units to already exist; operators kept pasting
+                      a unit-bulk-import CSV here and hitting "Unit
+                      X not found" on every row. */}
                   <DialogDescription>
-                    Paste CSV data to import members into units. Format: unit_number, name, phone, member_type, email, move_in_date
+                    Adds members to units that already exist. Required headers:
+                    {' '}
+                    <code>unit_number, name, phone</code>. Optional:{' '}
+                    <code>member_type, email, move_in_date</code>.
+                    <br />
+                    To create units along with their owners and tenants in
+                    one go, use{' '}
+                    <span className="font-medium">Units → Import from App</span>{' '}
+                    instead.
                   </DialogDescription>
                 </DialogHeader>
 
