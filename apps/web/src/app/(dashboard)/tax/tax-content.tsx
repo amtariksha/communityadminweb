@@ -36,8 +36,14 @@ import {
   useChallans,
   useRemittances,
   useComplianceCalendar,
+  // QA #232 — Form 16A picker now has a vendor + FY selector and a
+  // printable view that the operator can browser-print to PDF.
+  useForm16A,
+  useFinancialYears,
+  useVendors,
 } from '@/hooks';
-import type { ComplianceItem } from '@/hooks';
+import type { ComplianceItem, Form16AData } from '@/hooks';
+import { Select } from '@/components/ui/select';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -662,6 +668,266 @@ function ComplianceCalendar(): ReactNode {
 }
 
 // ---------------------------------------------------------------------------
+// 2026-05-09 (QA #232) — Form 16A certificate generator
+// ---------------------------------------------------------------------------
+// Picks a vendor + financial year and renders the TDS data the backend
+// returns (`GET /tax/tds/form16a/:vendorId?financial_year_id=…`) as a
+// print-friendly card. The operator clicks "Print" to drop a PDF via
+// the browser's native print-to-PDF — no extra dependency, satisfies
+// the compliance "I need a copy of this on letterhead" use case.
+// ---------------------------------------------------------------------------
+
+function Form16ACertificateSection(): ReactNode {
+  const fyQuery = useFinancialYears();
+  const vendorsQuery = useVendors({ limit: 500 });
+  const [vendorId, setVendorId] = useState<string>('');
+  const [fyId, setFyId] = useState<string>('');
+
+  const currentFy = fyQuery.data?.find((fy) => fy.is_current);
+  const effectiveFyId = fyId || currentFy?.id || '';
+
+  const form16Query = useForm16A(vendorId, effectiveFyId);
+  const enabled = !!vendorId && !!effectiveFyId;
+
+  const certificate = enabled ? form16Query.data : null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FileText className="h-4 w-4" />
+          Form 16A — TDS Certificate
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Picker row */}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="form16a-vendor">Vendor</Label>
+            <Select
+              id="form16a-vendor"
+              value={vendorId}
+              onChange={(e) => setVendorId(e.target.value)}
+              className="w-72"
+            >
+              <option value="">Select vendor…</option>
+              {vendorsQuery.data?.data?.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                  {v.pan ? ` · PAN ${v.pan}` : ''}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="form16a-fy">Financial Year</Label>
+            <Select
+              id="form16a-fy"
+              value={effectiveFyId}
+              onChange={(e) => setFyId(e.target.value)}
+              className="w-56"
+            >
+              {(fyQuery.data ?? []).map((fy) => (
+                <option key={fy.id} value={fy.id}>
+                  {fy.label}
+                  {fy.is_current ? ' (current)' : ''}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!certificate}
+            onClick={() => window.print()}
+            title="Use 'Save as PDF' in the print dialog"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Print / Save PDF
+          </Button>
+        </div>
+
+        {/* Status messages */}
+        {!enabled && (
+          <p className="text-sm text-muted-foreground">
+            Pick a vendor and financial year to generate the certificate.
+          </p>
+        )}
+        {enabled && form16Query.isLoading && (
+          <Skeleton className="h-32 w-full" />
+        )}
+        {enabled && form16Query.isError && (
+          <p className="text-sm text-destructive">
+            Failed to load certificate —{' '}
+            {(form16Query.error as Error)?.message ?? 'unknown error'}.
+          </p>
+        )}
+        {certificate && (
+          <Form16ACertificatePreview data={certificate} />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function Form16ACertificatePreview({ data }: { data: Form16AData }): ReactNode {
+  // Print-friendly: white background, dark text, plain table layout.
+  // Used together with `window.print()` for an on-letterhead PDF.
+  return (
+    <div className="rounded-lg border bg-white p-6 text-foreground shadow-sm print:border-0 print:shadow-none">
+      <h2 className="text-center text-xl font-bold uppercase tracking-wide">
+        Form 16A
+      </h2>
+      <p className="mb-4 text-center text-xs text-muted-foreground">
+        Certificate of Tax Deducted at Source under section 203 of the
+        Income-tax Act, 1961
+      </p>
+
+      <div className="mb-4 grid grid-cols-2 gap-4 text-sm">
+        <div className="rounded border p-3">
+          <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
+            Deductor (Society)
+          </p>
+          <p className="font-medium">{data.deductor.name}</p>
+          {data.deductor.tan && (
+            <p className="text-xs">TAN: {data.deductor.tan}</p>
+          )}
+          {data.deductor.pan && (
+            <p className="text-xs">PAN: {data.deductor.pan}</p>
+          )}
+        </div>
+        <div className="rounded border p-3">
+          <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
+            Deductee (Vendor)
+          </p>
+          <p className="font-medium">{data.vendor.name}</p>
+          {data.vendor.pan && (
+            <p className="text-xs">PAN: {data.vendor.pan}</p>
+          )}
+          {data.vendor.address && (
+            <p className="text-xs text-muted-foreground">{data.vendor.address}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mb-4 rounded border p-3 text-sm">
+        <p className="text-xs font-semibold uppercase text-muted-foreground">
+          Financial Year
+        </p>
+        <p className="font-medium">
+          {data.financial_year.label} ({formatDate(data.financial_year.start_date)}{' '}
+          – {formatDate(data.financial_year.end_date)})
+        </p>
+      </div>
+
+      {/* Deductions table */}
+      <p className="mb-2 text-sm font-semibold">Deductions</p>
+      <table className="w-full border-collapse text-xs">
+        <thead>
+          <tr className="bg-muted">
+            <th className="border p-2 text-left">Bill #</th>
+            <th className="border p-2 text-left">Bill Date</th>
+            <th className="border p-2 text-right">Amount Paid</th>
+            <th className="border p-2 text-left">Section</th>
+            <th className="border p-2 text-right">Rate</th>
+            <th className="border p-2 text-right">TDS Deducted</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.deductions.map((d, idx) => (
+            <tr key={`${d.bill_number}-${idx}`}>
+              <td className="border p-2 font-mono">{d.bill_number}</td>
+              <td className="border p-2">{formatDate(d.bill_date)}</td>
+              <td className="border p-2 text-right">{formatCurrency(d.amount)}</td>
+              <td className="border p-2">{d.tds_section}</td>
+              <td className="border p-2 text-right">{d.tds_rate}%</td>
+              <td className="border p-2 text-right font-medium">
+                {formatCurrency(d.tds_amount)}
+              </td>
+            </tr>
+          ))}
+          {data.deductions.length === 0 && (
+            <tr>
+              <td colSpan={6} className="border p-4 text-center text-muted-foreground">
+                No deductions recorded for this vendor in this FY.
+              </td>
+            </tr>
+          )}
+        </tbody>
+        {data.deductions.length > 0 && (
+          <tfoot>
+            <tr className="font-semibold">
+              <td colSpan={2} className="border p-2 text-right">
+                Total
+              </td>
+              <td className="border p-2 text-right">
+                {formatCurrency(data.total_amount_paid)}
+              </td>
+              <td colSpan={2} className="border p-2"></td>
+              <td className="border p-2 text-right">
+                {formatCurrency(data.total_tds_deducted)}
+              </td>
+            </tr>
+          </tfoot>
+        )}
+      </table>
+
+      {/* Challans table */}
+      <p className="mt-6 mb-2 text-sm font-semibold">Challans (TDS Deposited)</p>
+      <table className="w-full border-collapse text-xs">
+        <thead>
+          <tr className="bg-muted">
+            <th className="border p-2 text-left">Challan #</th>
+            <th className="border p-2 text-left">Payment Date</th>
+            <th className="border p-2 text-left">BSR Code</th>
+            <th className="border p-2 text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.challans.map((c, idx) => (
+            <tr key={`${c.challan_number}-${idx}`}>
+              <td className="border p-2 font-mono">{c.challan_number}</td>
+              <td className="border p-2">{formatDate(c.payment_date)}</td>
+              <td className="border p-2 font-mono">{c.bsr_code ?? '—'}</td>
+              <td className="border p-2 text-right">{formatCurrency(c.amount)}</td>
+            </tr>
+          ))}
+          {data.challans.length === 0 && (
+            <tr>
+              <td colSpan={4} className="border p-4 text-center text-muted-foreground">
+                No challans recorded yet.
+              </td>
+            </tr>
+          )}
+        </tbody>
+        {data.challans.length > 0 && (
+          <tfoot>
+            <tr className="font-semibold">
+              <td colSpan={3} className="border p-2 text-right">
+                Total Deposited
+              </td>
+              <td className="border p-2 text-right">
+                {formatCurrency(data.total_tds_deposited)}
+              </td>
+            </tr>
+          </tfoot>
+        )}
+      </table>
+
+      <div className="mt-6 flex items-center justify-between text-xs text-muted-foreground">
+        <p>
+          This is a system-generated certificate based on bills and
+          payment records on file as of today.
+        </p>
+        <p>
+          Signature: ____________________
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -758,22 +1024,16 @@ export default function TaxContent(): ReactNode {
           <TdsSummaryTable from={fromDate} to={toDate} />
           <TdsVendorsTable from={fromDate} to={toDate} />
           <ChallansAndRemittances />
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Form 16A
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Form 16A certificates are generated per vendor. Go to{' '}
-                <span className="font-medium">Vendors → Vendor detail</span>{' '}
-                and click the Form 16A action for the financial year you
-                need — the PDF is emailed to the vendor contact on file.
-              </p>
-            </CardContent>
-          </Card>
+          {/* 2026-05-09 (QA #232) — Form 16A picker. The previous
+              UI just told operators to "go to Vendors → Vendor
+              detail" — that page never had the action wired. Now
+              the operator picks a vendor + FY here, the
+              certificate preview renders inline, and a "Print"
+              button opens the browser's print dialog (Save as
+              PDF works out of the box). A native PDF generator
+              endpoint can come later; the print path unblocks
+              compliance today. */}
+          <Form16ACertificateSection />
         </div>
       )}
 

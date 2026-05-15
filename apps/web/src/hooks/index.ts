@@ -115,6 +115,7 @@ export {
   useCreateCreditNote,
   useCreditNotes,
   downloadCreditNotePdf,
+  downloadReceiptPdf,
   useRecalculateArrears,
   useAdvances,
   useApplyAdvance,

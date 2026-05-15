@@ -22,6 +22,9 @@ import { ExportButton } from '@/components/ui/export-button';
 import { useAuditLog } from '@/hooks/use-audit';
 import type { AuditEntry, AuditFilters } from '@/hooks/use-audit';
 import { EntityHistoryModal } from './entity-history-modal';
+// QA #358 — human-readable side-by-side diff replaces the raw
+// JSON `<pre>` blocks below.
+import { DiffTable } from './diff-table';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -138,20 +141,46 @@ function ExpandableRow({ entry, onViewHistory }: ExpandableRowProps): ReactNode 
       {expanded && (
         <TableRow>
           <TableCell colSpan={8} className="bg-muted/30 p-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <p className="mb-1 text-xs font-semibold text-muted-foreground">Old Data</p>
-                <pre className="max-h-64 overflow-auto rounded bg-background p-3 text-xs">
-                  {entry.old_data ? JSON.stringify(entry.old_data, null, 2) : '(none)'}
-                </pre>
+            {/* 2026-05-09 (QA #358) — replaced the raw-JSON
+                pre-blocks (which always showed "(none)" for the
+                Old column on create rows and confused operators)
+                with a structured Field/Old/New diff table. The
+                DiffTable component formats values for the top-10
+                entity types (units, members, invoices, receipts,
+                journal entries, ledger accounts, account groups,
+                vendors, tickets, tenant onboardings) and falls
+                back to a generic key/value rendering for the rest.
+                The raw JSON is kept available in a collapsed
+                `<details>` for the occasional case where the
+                operator needs the literal blob. */}
+            <DiffTable
+              entityType={entry.entity_type}
+              oldData={entry.old_data as Record<string, unknown> | null}
+              newData={entry.new_data as Record<string, unknown> | null}
+            />
+            <details className="mt-3 text-xs">
+              <summary className="cursor-pointer text-muted-foreground">
+                Show raw JSON
+              </summary>
+              <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div>
+                  <p className="mb-1 text-[11px] font-semibold text-muted-foreground">
+                    Old Data
+                  </p>
+                  <pre className="max-h-48 overflow-auto rounded bg-background p-2 text-[11px]">
+                    {entry.old_data ? JSON.stringify(entry.old_data, null, 2) : '(none)'}
+                  </pre>
+                </div>
+                <div>
+                  <p className="mb-1 text-[11px] font-semibold text-muted-foreground">
+                    New Data
+                  </p>
+                  <pre className="max-h-48 overflow-auto rounded bg-background p-2 text-[11px]">
+                    {entry.new_data ? JSON.stringify(entry.new_data, null, 2) : '(none)'}
+                  </pre>
+                </div>
               </div>
-              <div>
-                <p className="mb-1 text-xs font-semibold text-muted-foreground">New Data</p>
-                <pre className="max-h-64 overflow-auto rounded bg-background p-3 text-xs">
-                  {entry.new_data ? JSON.stringify(entry.new_data, null, 2) : '(none)'}
-                </pre>
-              </div>
-            </div>
+            </details>
           </TableCell>
         </TableRow>
       )}

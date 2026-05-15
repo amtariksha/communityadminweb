@@ -342,6 +342,40 @@ export async function downloadCreditNotePdf(
   window.URL.revokeObjectURL(url);
 }
 
+// QA #463 — receipt PDF download (mirrors `downloadCreditNotePdf`
+// above). The admin Receipts list now has a Download action per row.
+export async function downloadReceiptPdf(
+  receiptId: string,
+  filename: string,
+  authHeaders: { token?: string; tenantId?: string },
+): Promise<void> {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_API_URL ??
+    (typeof window !== 'undefined' &&
+    window.location.hostname === 'communityos.eassy.life'
+      ? 'https://community.eassy.life'
+      : 'http://localhost:4000');
+
+  const headers: Record<string, string> = {};
+  if (authHeaders.token) headers['Authorization'] = `Bearer ${authHeaders.token}`;
+  if (authHeaders.tenantId) headers['x-tenant-id'] = authHeaders.tenantId;
+
+  const response = await fetch(`${baseUrl}/receipts/${receiptId}/pdf`, {
+    headers,
+  });
+  if (!response.ok) throw new Error('Failed to download receipt PDF');
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
 export function useRecalculateArrears() {
   const queryClient = useQueryClient();
 

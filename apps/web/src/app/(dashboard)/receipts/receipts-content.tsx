@@ -44,6 +44,7 @@ import {
   useCreateCreditNote,
   useCreditNotes,
   downloadCreditNotePdf,
+  downloadReceiptPdf,
   useFinancialYears,
   useInvoices,
 } from '@/hooks';
@@ -193,6 +194,27 @@ export default function ReceiptsContent(): ReactNode {
     } catch (error) {
       addToast({
         title: 'Failed to download credit-note PDF',
+        description: friendlyError(error),
+        variant: 'destructive',
+      });
+    }
+  }
+
+  // QA #463 — per-row Receipt PDF download. Mirrors the credit-note
+  // handler above; both backend endpoints stream a generated PDFKit
+  // document with Content-Disposition: attachment.
+  async function handleDownloadReceiptPdf(
+    receiptId: string,
+    receiptNumber: string,
+  ): Promise<void> {
+    try {
+      await downloadReceiptPdf(receiptId, `receipt-${receiptNumber}.pdf`, {
+        token: getToken() ?? undefined,
+        tenantId: getCurrentTenant() ?? undefined,
+      });
+    } catch (error) {
+      addToast({
+        title: 'Failed to download receipt PDF',
         description: friendlyError(error),
         variant: 'destructive',
       });
@@ -550,6 +572,10 @@ export default function ReceiptsContent(): ReactNode {
                 <TableHead>Date</TableHead>
                 <TableHead>Reference</TableHead>
                 <TableHead>Allocated To</TableHead>
+                {/* QA #463 — actions column (Download PDF) added so the
+                    operator can hand the payer a printed receipt
+                    immediately after recording cash / cheque / UPI. */}
+                <TableHead className="w-24 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -615,6 +641,22 @@ export default function ReceiptsContent(): ReactNode {
                           </div>
                         );
                       })()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {/* QA #463 — per-row PDF download. Generates
+                          a styled receipt with society header,
+                          amount-in-words, and the allocation
+                          breakdown. */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          handleDownloadReceiptPdf(receipt.id, receipt.receipt_number)
+                        }
+                        title="Download receipt PDF"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
