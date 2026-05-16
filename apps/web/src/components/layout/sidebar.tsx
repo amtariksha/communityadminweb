@@ -43,6 +43,7 @@ import { HELP_MODE_TEXT } from '@/lib/tooltip-content';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, getInitials } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { SocietyLogo } from '@/components/society-logo';
 import { getUser, getCurrentTenant, logout } from '@/lib/auth';
 import { getSidebarAllowlist, pickDisplayRole } from '@/lib/admin-roles';
 
@@ -274,12 +275,7 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <div className="flex h-16 items-center gap-2 px-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F5A623]">
-            <span className="text-lg font-bold text-white">e</span>
-          </div>
-          <span className="text-lg font-bold">Eassy Society</span>
-        </div>
+        <SocietyLogo />
 
         <Separator />
 

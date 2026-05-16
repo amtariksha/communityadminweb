@@ -64,6 +64,10 @@ interface CreateTenantInput {
 interface UpdateTenantInput extends Partial<CreateTenantInput> {
   is_active?: boolean;
   settings_json?: TenantSettings;
+  // White-label runtime branding (backend migration 099). Super-admin
+  // set. Nullable — null clears the field back to the default.
+  logo_url?: string | null;
+  display_name?: string | null;
 }
 
 interface UpdateTenantSettingsInput {
