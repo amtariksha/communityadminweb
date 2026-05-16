@@ -42,6 +42,12 @@ export interface User {
     id: string;
     name: string;
     role: string;
+    // White-label runtime branding (backend migration 099) — super-admin
+    // set per society. `logo_url` renders as the society's logo in the
+    // sidebar; `display_name` overrides the wordmark. Optional — null /
+    // absent for unbranded societies and pre-099 cached payloads.
+    logo_url?: string | null;
+    display_name?: string | null;
   }>;
   // QA Round 14 #14-2d/2e — server-computed list of apps this user
   // can sign into, derived from the per-society APP_ROLE_ACCESS

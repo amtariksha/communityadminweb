@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -16,6 +16,7 @@ import {
   ExternalLink,
   Settings,
   FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,7 @@ import {
   useUpdateTenant,
   useTenantSettings,
   useUpdateFeatures,
+  useUploadFileToS3,
 } from '@/hooks';
 import { Separator } from '@/components/ui/separator';
 import { setCurrentTenant } from '@/lib/auth';
@@ -180,6 +182,12 @@ export default function SuperAdminContent(): ReactNode {
   const [editSocietyCity, setEditSocietyCity] = useState('');
   const [editSocietyState, setEditSocietyState] = useState('');
 
+  // White-label branding (migration 099) — super-admin sets the
+  // society's runtime logo + in-app display name.
+  const [editLogoUrl, setEditLogoUrl] = useState<string | null>(null);
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [logoUploading, setLogoUploading] = useState(false);
+
   // Feature toggles dialog
   const [featuresDialogOpen, setFeaturesDialogOpen] = useState(false);
   const [featuresTenantId, setFeaturesTenantId] = useState('');
@@ -200,6 +208,7 @@ export default function SuperAdminContent(): ReactNode {
   const updateTenant = useUpdateTenant();
   const updateSettings = useTenantSettings();
   const updateFeatures = useUpdateFeatures();
+  const uploadLogo = useUploadFileToS3();
 
   // Derived data
   const dashboard = dashboardQuery.data;
@@ -231,6 +240,14 @@ export default function SuperAdminContent(): ReactNode {
     );
     setEditSocietyState(
       (tenantDetail as unknown as { state?: string | null }).state ?? '',
+    );
+    setEditLogoUrl(
+      (tenantDetail as unknown as { logo_url?: string | null }).logo_url ??
+        null,
+    );
+    setEditDisplayName(
+      (tenantDetail as unknown as { display_name?: string | null })
+        .display_name ?? '',
     );
   }
 
@@ -345,6 +362,62 @@ export default function SuperAdminContent(): ReactNode {
     );
   }
 
+  // White-label branding (migration 099) — upload a logo to S3, then
+  // persist logo_url + display_name via PATCH /tenants/:id.
+  async function handleLogoFile(
+    e: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      addToast({ title: 'Pick an image file', variant: 'destructive' });
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const { fileUrl } = await uploadLogo.mutateAsync({ file });
+      setEditLogoUrl(fileUrl);
+      addToast({
+        title: 'Logo uploaded — Save Branding to apply',
+        variant: 'success',
+      });
+    } catch (error) {
+      addToast({
+        title: 'Logo upload failed',
+        description: error instanceof Error ? error.message : 'Try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
+  function handleUpdateBranding(e: FormEvent): void {
+    e.preventDefault();
+    updateTenant.mutate(
+      {
+        id: selectedTenantId,
+        data: {
+          logo_url: editLogoUrl,
+          display_name: editDisplayName.trim() || null,
+        },
+      },
+      {
+        onSuccess() {
+          addToast({ title: 'Branding updated', variant: 'success' });
+        },
+        onError(error) {
+          addToast({
+            title: 'Failed to update branding',
+            description: error.message,
+            variant: 'destructive',
+          });
+        },
+      },
+    );
+  }
+
   function handleSaveFeatures(): void {
     updateSettings.mutate(
       { tenant_id: selectedTenantId, settings: editFeatures as Record<string, boolean> },
@@ -369,6 +442,9 @@ export default function SuperAdminContent(): ReactNode {
     setEditSocietyAddress('');
     setEditSocietyCity('');
     setEditSocietyState('');
+    setEditLogoUrl(null);
+    setEditDisplayName('');
+    setLogoUploading(false);
   }
 
   function handleOpenFeaturesDialog(tenant: TenantRow): void {
@@ -882,6 +958,84 @@ export default function SuperAdminContent(): ReactNode {
                   <Button type="submit" size="sm" disabled={updateTenant.isPending}>
                     <Save className="mr-2 h-4 w-4" />
                     {updateTenant.isPending ? 'Saving...' : 'Update Society Info'}
+                  </Button>
+                </div>
+              </form>
+
+              <Separator />
+
+              {/* White-label branding (migration 099) — runtime logo +
+                  display name shown across the resident app + admin
+                  panels without an app rebuild. */}
+              <form onSubmit={handleUpdateBranding} className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">Branding</h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Shown as the society&apos;s logo + name across the
+                  resident app and admin panels. Applied at runtime — no
+                  app rebuild needed.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-display-name">In-app Display Name</Label>
+                  <Input
+                    id="edit-display-name"
+                    placeholder="Defaults to the society name"
+                    value={editDisplayName}
+                    onChange={(e) => setEditDisplayName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Logo</Label>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+                      {editLogoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={editLogoUrl}
+                          alt="Society logo"
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="inline-flex">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleLogoFile}
+                          disabled={logoUploading}
+                        />
+                        <span className="inline-flex cursor-pointer items-center rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
+                          {logoUploading ? 'Uploading…' : 'Upload logo'}
+                        </span>
+                      </label>
+                      {editLogoUrl && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setEditLogoUrl(null)}
+                        >
+                          Remove logo
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={updateTenant.isPending || logoUploading}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {updateTenant.isPending ? 'Saving...' : 'Save Branding'}
                   </Button>
                 </div>
               </form>
