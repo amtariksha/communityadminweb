@@ -42,6 +42,7 @@ import {
   useAccountGroups,
   useLedgerAccounts,
   useFinancialYears,
+  useSetCurrentYear,
   useCreateAccountGroup,
   useUpdateAccountGroup,
   useCreateLedgerAccount,
@@ -284,6 +285,7 @@ export default function AccountsContent(): ReactNode {
   const { data: groups, isLoading: groupsLoading } = useAccountGroups();
   const { data: accountsResponse, isLoading: accountsLoading } = useLedgerAccounts({ limit: 500 });
   const { data: financialYears } = useFinancialYears();
+  const setCurrentYear = useSetCurrentYear();
 
   const createGroup = useCreateAccountGroup();
   const updateGroup = useUpdateAccountGroup();
@@ -1190,10 +1192,43 @@ export default function AccountsContent(): ReactNode {
       <PageHeader
         breadcrumbs={[{ label: 'Accounts' }]}
         title="Chart of Accounts"
+        // Inline FY picker — `currentFY` drives every FY-scoped query
+        // and report across the app (it reads `is_current` from
+        // financial_years). Changing it here flips the tenant-wide
+        // current-year via useSetCurrentYear; the surrounding queries
+        // invalidate and refresh automatically.
         description={
-          currentFY
-            ? `Financial Year: ${currentFY.label}`
-            : 'Manage your account groups and ledger accounts'
+          financialYears && financialYears.length > 0 ? (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Financial Year:</span>
+              <select
+                value={currentFY?.id ?? ''}
+                disabled={setCurrentYear.isPending}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id || id === currentFY?.id) return;
+                  setCurrentYear.mutate(id);
+                }}
+                className="h-7 rounded-md border border-input bg-background px-2 text-xs font-medium ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label="Switch financial year"
+              >
+                {!currentFY && <option value="">Pick FY</option>}
+                {financialYears.map((fy) => (
+                  <option key={fy.id} value={fy.id}>
+                    {fy.label}
+                    {fy.is_frozen ? ' — frozen' : ''}
+                  </option>
+                ))}
+              </select>
+              {setCurrentYear.isPending && (
+                <span className="text-[11px] text-muted-foreground">
+                  Switching…
+                </span>
+              )}
+            </div>
+          ) : (
+            'Manage your account groups and ledger accounts'
+          )
         }
         actions={
           <>

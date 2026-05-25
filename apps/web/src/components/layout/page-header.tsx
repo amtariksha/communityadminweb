@@ -12,7 +12,10 @@ interface BreadcrumbItem {
 
 interface PageHeaderProps {
   title: string;
-  description?: string;
+  // ReactNode rather than string so callers can drop inline controls
+  // into the subtitle slot (e.g. an FY selector on the Accounts page).
+  // Plain strings still work — they render exactly as before.
+  description?: ReactNode;
   actions?: ReactNode;
   className?: string;
   breadcrumbs?: BreadcrumbItem[];
@@ -55,9 +58,12 @@ export function PageHeader({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
+          {description &&
+            (typeof description === 'string' ? (
+              <p className="text-sm text-muted-foreground">{description}</p>
+            ) : (
+              <div className="text-sm text-muted-foreground">{description}</div>
+            ))}
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
