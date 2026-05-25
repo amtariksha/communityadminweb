@@ -1899,14 +1899,17 @@ export default function AccountsContent(): ReactNode {
                                 {row.source_type?.toUpperCase()} ·{' '}
                                 {row.import_type}
                               </span>
-                              <span className="text-muted-foreground">
-                                · {row.records_imported} imported
-                                {row.records_skipped > 0
-                                  ? `, ${row.records_skipped} skipped`
-                                  : ''}
-                                {row.records_failed > 0
-                                  ? `, ${row.records_failed} failed`
-                                  : ''}
+                              {/* Always show parsed → imported / skipped /
+                                  failed so the operator can reconcile the
+                                  preview's "N records" count against what
+                                  actually landed. Zero values are kept
+                                  visible so a clean run reads "N parsed
+                                  → N imported · 0 skipped · 0 failed". */}
+                              <span className="text-muted-foreground tabular-nums">
+                                · parsed {row.records_parsed} →
+                                imported {row.records_imported} ·
+                                skipped {row.records_skipped} ·
+                                failed {row.records_failed}
                               </span>
                             </div>
                             <div className="text-[10px] text-muted-foreground">
