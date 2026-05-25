@@ -82,7 +82,16 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
       <PageHeader
         breadcrumbs={[{ label: 'Accounts', href: '/accounts' }, { label: 'Account Detail' }]}
         title={accountLoading ? 'Loading...' : (account?.name ?? 'Account Detail')}
-        description={account ? `Account Code: ${account.code}` : undefined}
+        description={
+          account
+            ? account.code
+              ? `Account Code: ${account.code}`
+              : // Tally-imported ledgers commonly have no code — Tally
+                // identifies by name. Show a non-noisy fallback so the
+                // header doesn't render the literal "null".
+                'No account code (Tally-style ledger)'
+            : undefined
+        }
         actions={
           <Link href="/accounts">
             <Button variant="outline">
