@@ -1796,6 +1796,33 @@ export default function AccountsContent(): ReactNode {
             <DialogDescription>Import account groups, ledgers, and vouchers from Tally ERP</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Upload-in-flight placeholder — neither the active-jobs
+                table nor tally_imports has a row during the
+                multipart upload + parse phase, but the operator
+                still wants to see "something is happening" in the
+                strip area they just learned to watch. Renders only
+                while the upload mutation is pending. */}
+            {tallyStep === 'input' &&
+              (tallyXmlUpload.isPending || tallyXmlImport.isPending) && (
+                <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                  <div className="text-sm font-medium">
+                    Uploading + parsing
+                  </div>
+                  <div className="flex items-center gap-3 rounded border bg-card px-2 py-1.5 text-xs">
+                    <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-blue-500" />
+                    <div className="flex-1 space-y-0.5">
+                      <div className="font-medium">
+                        Parsing your XML…
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        The commit job will appear here once you confirm
+                        the preview. Large files (30+ MB) take 10–20s.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             {/* Active jobs strip — shows queued / running / just-
                 completed commits across all of the operator's tabs.
                 Always visible at the input step so re-opening the
