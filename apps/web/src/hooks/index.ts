@@ -631,6 +631,7 @@ export type { PlatformConfigItem } from './use-platform-config';
 export {
   tallyImportKeys,
   useTallyImportHistory,
+  useTallyActiveJobs,
   useTallyXmlImport,
   useTallyXmlUpload,
   useTallyCsvImport,
@@ -642,6 +643,7 @@ export type {
   TallyImportParseResult,
   TallyCommitResult,
   TallyImportHistory,
+  TallyActiveJob,
 } from './use-tally-import';
 
 // Unit Members (Detail, Directory, Occupancy)

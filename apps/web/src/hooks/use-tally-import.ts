@@ -202,11 +202,49 @@ export interface TallyImportHistory {
 export const tallyImportKeys = {
   all: ['tally-import'] as const,
   history: () => [...tallyImportKeys.all, 'history'] as const,
+  activeJobs: () => [...tallyImportKeys.all, 'active-jobs'] as const,
 };
+
+export interface TallyActiveJob {
+  id: string;
+  status: 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
+  stage: string | null;
+  processed: number;
+  total_records: number;
+  queued_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
 
 // ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
+
+/**
+ * List queued / running / just-completed Tally commit jobs for the
+ * tenant. Polls every 3 s while there's an active job so the
+ * "Currently running" strip live-updates.
+ */
+export function useTallyActiveJobs(enabled = true) {
+  return useQuery({
+    queryKey: tallyImportKeys.activeJobs(),
+    enabled,
+    queryFn: async () => {
+      const res = await api.get<{ data: TallyActiveJob[] }>(
+        '/tally-import/active-jobs',
+      );
+      return res.data;
+    },
+    refetchInterval: (query) => {
+      const data = query.state.data as TallyActiveJob[] | undefined;
+      if (!data || data.length === 0) return false;
+      const hasInFlight = data.some(
+        (j) => j.status === 'queued' || j.status === 'running',
+      );
+      return hasInFlight ? 3_000 : false;
+    },
+  });
+}
 
 export function useTallyImportHistory() {
   return useQuery({
@@ -215,6 +253,20 @@ export function useTallyImportHistory() {
       return api
         .get<{ data: TallyImportHistory[] }>('/tally-import/history')
         .then((res) => res.data);
+    },
+    // Auto-poll while any import is still running so the history
+    // strip live-updates without the operator hitting refresh. React
+    // Query stops the interval as soon as everything settles.
+    refetchInterval: (query) => {
+      const data = query.state.data as TallyImportHistory[] | undefined;
+      if (!data) return false;
+      const hasRunning = data.some(
+        (row) =>
+          row.status === 'running' ||
+          row.status === 'queued' ||
+          row.status === 'pending',
+      );
+      return hasRunning ? 3_000 : false;
     },
   });
 }

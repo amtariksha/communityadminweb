@@ -52,6 +52,7 @@ import {
   useTallyXmlUpload,
   useTallyCsvImport,
   useTallyCommitImport,
+  useTallyActiveJobs,
 } from '@/hooks';
 import {
   useTallyEnqueueCommit,
@@ -382,6 +383,10 @@ export default function AccountsContent(): ReactNode {
   // (done | failed) we transition to the done step with the result.
   const [tallyJobId, setTallyJobId] = useState('');
   const tallyJobQuery = useTallyCommitJob(tallyJobId, tallyJobId !== '');
+  // Active jobs strip — polls only while the dialog is open so we
+  // don't run a 3s interval against the API forever just because
+  // someone left the tab open on /accounts.
+  const tallyActiveJobsQuery = useTallyActiveJobs(tallyDialogOpen);
 
   // Per-type commit selection (Phase 1 of the import revamp). Each
   // entity type has two flags — include_new and include_changed —
@@ -1750,6 +1755,97 @@ export default function AccountsContent(): ReactNode {
             <DialogDescription>Import account groups, ledgers, and vouchers from Tally ERP</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Active jobs strip — shows queued / running / just-
+                completed commits across all of the operator's tabs.
+                Always visible at the input step so re-opening the
+                dialog after closing it doesn't lose the in-flight
+                import. */}
+            {tallyStep === 'input' &&
+              (tallyActiveJobsQuery.data?.length ?? 0) > 0 && (
+                <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">
+                      Currently running
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      auto-refresh every 3s
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {tallyActiveJobsQuery.data!.map((job) => {
+                      const pct =
+                        job.total_records > 0
+                          ? Math.min(
+                              100,
+                              Math.round(
+                                (job.processed / job.total_records) * 100,
+                              ),
+                            )
+                          : 0;
+                      const statusLabel =
+                        job.status === 'queued'
+                          ? 'Queued'
+                          : job.status === 'running'
+                            ? `Running · ${job.stage ?? 'starting'}`
+                            : job.status === 'done'
+                              ? 'Just completed'
+                              : job.status === 'failed'
+                                ? 'Failed'
+                                : 'Cancelled';
+                      const inFlight =
+                        job.status === 'queued' || job.status === 'running';
+                      return (
+                        <div
+                          key={job.id}
+                          className="flex items-center gap-3 rounded border bg-card px-2 py-1.5 text-xs"
+                        >
+                          <span
+                            className={`h-2 w-2 shrink-0 rounded-full ${
+                              job.status === 'done'
+                                ? 'bg-green-500'
+                                : job.status === 'failed'
+                                  ? 'bg-destructive'
+                                  : job.status === 'running'
+                                    ? 'animate-pulse bg-blue-500'
+                                    : 'bg-muted-foreground'
+                            }`}
+                          />
+                          <div className="flex-1 space-y-0.5">
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="font-medium">
+                                {statusLabel}
+                              </span>
+                              <span className="text-muted-foreground">
+                                · {job.processed} / {job.total_records}{' '}
+                                records ({pct}%)
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">
+                              Job {job.id.slice(0, 8)} ·{' '}
+                              {new Date(job.queued_at).toLocaleTimeString()}
+                            </div>
+                          </div>
+                          {inFlight && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => {
+                                setTallyJobId(job.id);
+                                setTallyStep('running');
+                              }}
+                            >
+                              View progress
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
             {tallyStep === 'input' && (
               <>
                 {/* Format selector */}
