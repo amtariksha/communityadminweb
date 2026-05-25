@@ -2259,7 +2259,16 @@ export default function AccountsContent(): ReactNode {
           <DialogFooter>
             <DialogClose>
               <Button type="button" variant="outline">
-                {tallyStep === 'done' ? 'Close' : 'Cancel'}
+                {/* The dialog never aborts an in-flight commit — the
+                    BullMQ worker keeps running once /commit-async
+                    accepts the job. While 'running' or 'done', the
+                    button is a pure dismiss → label as "Close" so
+                    operators don't fear it'll cancel the import. The
+                    'input' / 'preview' / 'review-debtors' steps are
+                    still pre-commit so 'Cancel' reads correctly there. */}
+                {tallyStep === 'running' || tallyStep === 'done'
+                  ? 'Close'
+                  : 'Cancel'}
               </Button>
             </DialogClose>
             {tallyStep === 'input' && (
