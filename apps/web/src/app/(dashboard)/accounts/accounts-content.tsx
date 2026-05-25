@@ -53,6 +53,7 @@ import {
   useTallyCsvImport,
   useTallyCommitImport,
   useTallyActiveJobs,
+  useTallyImportHistory,
 } from '@/hooks';
 import {
   useTallyEnqueueCommit,
@@ -387,6 +388,11 @@ export default function AccountsContent(): ReactNode {
   // don't run a 3s interval against the API forever just because
   // someone left the tab open on /accounts.
   const tallyActiveJobsQuery = useTallyActiveJobs(tallyDialogOpen);
+  // Recent completed imports — drives the "Recent imports" history
+  // strip in the dialog so the operator can see runs that finished
+  // outside the active-jobs 60s window. The hook already auto-polls
+  // while any row is still in 'pending' / 'processing'.
+  const tallyHistoryQuery = useTallyImportHistory();
 
   // Per-type commit selection (Phase 1 of the import revamp). Each
   // entity type has two flags — include_new and include_changed —
@@ -1839,6 +1845,75 @@ export default function AccountsContent(): ReactNode {
                               View progress
                             </Button>
                           )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+            {/* Recent imports history — shows completed runs from
+                tally_imports. Always visible at the input step so
+                the operator can see the result of imports that
+                finished outside the active-jobs 60s window. */}
+            {tallyStep === 'input' &&
+              (tallyHistoryQuery.data?.length ?? 0) > 0 && (
+                <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">
+                      Recent imports
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      last {Math.min(tallyHistoryQuery.data!.length, 5)}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {tallyHistoryQuery.data!.slice(0, 5).map((row) => {
+                      const ok = row.status === 'completed';
+                      const failed = row.status === 'failed';
+                      const inFlight =
+                        row.status === 'processing' ||
+                        row.status === 'pending';
+                      return (
+                        <div
+                          key={row.id}
+                          className="flex items-center gap-3 rounded border bg-card px-2 py-1.5 text-xs"
+                        >
+                          <span
+                            className={`h-2 w-2 shrink-0 rounded-full ${
+                              ok
+                                ? 'bg-green-500'
+                                : failed
+                                  ? 'bg-destructive'
+                                  : inFlight
+                                    ? 'animate-pulse bg-blue-500'
+                                    : 'bg-muted-foreground'
+                            }`}
+                          />
+                          <div className="flex-1 space-y-0.5">
+                            <div className="flex flex-wrap items-center gap-x-2 text-xs">
+                              <span className="font-medium capitalize">
+                                {row.status}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {row.source_type?.toUpperCase()} ·{' '}
+                                {row.import_type}
+                              </span>
+                              <span className="text-muted-foreground">
+                                · {row.records_imported} imported
+                                {row.records_skipped > 0
+                                  ? `, ${row.records_skipped} skipped`
+                                  : ''}
+                                {row.records_failed > 0
+                                  ? `, ${row.records_failed} failed`
+                                  : ''}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {row.file_name ? `${row.file_name} · ` : ''}
+                              {new Date(row.created_at).toLocaleString()}
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
