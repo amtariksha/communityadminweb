@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { type ReactNode } from 'react';
 import { Menu, Moon, Sun, ChevronRight, Building2, Check, HelpCircle } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -95,14 +96,39 @@ export function Header({ onMenuClick }: HeaderProps): ReactNode {
           row alongside the inline sidebar. Phones still see the
           hamburger; tablets see neither breadcrumb nor hamburger
           (they have the static sidebar instead). */}
+      {/* Header breadcrumb is now the single source of truth — the
+          PageHeader's own breadcrumb row was removed (used to render
+          a duplicate below the page title). Each crumb is a real
+          <Link> so the operator can jump back up the tree; the last
+          crumb stays as plain text since clicking the current page
+          is a no-op. */}
       <nav className="hidden items-center gap-1 text-sm text-muted-foreground lg:flex">
-        <span className="font-medium text-foreground">Home</span>
-        {breadcrumbs.map((crumb) => (
-          <span key={crumb.href} className="flex items-center gap-1">
-            <ChevronRight className="h-4 w-4" />
-            <span className="font-medium text-foreground">{crumb.label}</span>
-          </span>
-        ))}
+        <Link
+          href="/"
+          className="font-medium text-foreground hover:text-primary transition-colors"
+        >
+          Home
+        </Link>
+        {breadcrumbs.map((crumb, idx) => {
+          const isLast = idx === breadcrumbs.length - 1;
+          return (
+            <span key={crumb.href} className="flex items-center gap-1">
+              <ChevronRight className="h-4 w-4" />
+              {isLast ? (
+                <span className="font-medium text-foreground">
+                  {crumb.label}
+                </span>
+              ) : (
+                <Link
+                  href={crumb.href}
+                  className="font-medium text-foreground hover:text-primary transition-colors"
+                >
+                  {crumb.label}
+                </Link>
+              )}
+            </span>
+          );
+        })}
       </nav>
 
       <div className="ml-auto flex items-center gap-2">
