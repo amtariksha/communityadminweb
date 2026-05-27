@@ -196,6 +196,42 @@ export function useCreateBankAccount() {
   });
 }
 
+/**
+ * Promote an existing bank ledger (Tally-imported or manually
+ * created in COA) into a bank_accounts row so it surfaces on the
+ * /bank page. Idempotent on the backend — calling twice for the
+ * same ledger returns the existing row.
+ *
+ * The optional `overrides` body lets the operator supply real
+ * account-number / IFSC / branch at promotion time; omitting them
+ * lands a placeholder account_number ("TLY-<hex>") that the
+ * operator can edit later via the standard bank-account edit UI.
+ */
+export function usePromoteLedgerToBankAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function promote(params: {
+      ledgerId: string;
+      bank_name?: string;
+      branch?: string | null;
+      account_number?: string;
+      ifsc_code?: string | null;
+      account_type?: string;
+    }) {
+      const { ledgerId, ...overrides } = params;
+      return api.post<{ data: BankAccount }>(
+        `/bank/accounts/from-ledger/${ledgerId}`,
+        overrides,
+      );
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.accounts() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.accounts() });
+    },
+  });
+}
+
 export function useUpdateBankAccount() {
   const queryClient = useQueryClient();
 

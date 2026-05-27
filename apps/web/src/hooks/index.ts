@@ -169,6 +169,7 @@ export {
   useBankAccounts,
   useBankAccount,
   useCreateBankAccount,
+  usePromoteLedgerToBankAccount,
   useUpdateBankAccount,
   useDeleteBankAccount,
   useBankTransfers,

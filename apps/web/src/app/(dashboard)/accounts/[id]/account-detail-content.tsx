@@ -19,7 +19,16 @@ import {
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/layout/page-header';
 import { formatCurrency, formatTallyBalance, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
-import { useLedgerAccount, useGeneralLedgerReport, useAccountGroups } from '@/hooks';
+import {
+  useLedgerAccount,
+  useGeneralLedgerReport,
+  useAccountGroups,
+  useBankAccounts,
+  usePromoteLedgerToBankAccount,
+} from '@/hooks';
+import { useToast } from '@/components/ui/toast';
+import { friendlyError } from '@/lib/api-error';
+import { Landmark } from 'lucide-react';
 
 // Map of API entry_type values → human label + tone. Anything not
 // in the map falls through to a neutral "Journal" badge so we never
@@ -114,8 +123,42 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
   const { data: account, isLoading: accountLoading } = useLedgerAccount(id);
   const { data: report, isLoading: reportLoading } = useGeneralLedgerReport(id, startDate, endDate);
   const { data: groups } = useAccountGroups();
+  // Decide whether the "Set up as Bank Account" button should
+  // appear. Conditions: (a) the account looks like a bank ledger
+  // (is_bank_account flag OR parent group name contains "bank"), AND
+  // (b) no bank_accounts row already points at this ledger.
+  const { data: bankAccounts } = useBankAccounts();
+  const promoteToBank = usePromoteLedgerToBankAccount();
+  const { addToast } = useToast();
 
   const accountGroup = groups?.find((g) => g.id === account?.group_id);
+  const looksLikeBank =
+    account?.is_bank_account === true ||
+    (accountGroup?.name ?? '').toLowerCase().includes('bank');
+  const alreadyPromoted = (bankAccounts ?? []).some(
+    (b) => b.ledger_account_id === account?.id,
+  );
+  const canPromoteToBank = looksLikeBank && account && !alreadyPromoted;
+
+  async function handlePromoteToBank(): Promise<void> {
+    if (!account) return;
+    try {
+      await promoteToBank.mutateAsync({
+        ledgerId: account.id,
+        bank_name: account.name,
+      });
+      addToast({
+        title: 'Bank account set up',
+        description: `${account.name} now appears under Banking.`,
+      });
+    } catch (err) {
+      addToast({
+        title: 'Could not set up bank account',
+        description: friendlyError(err),
+        variant: 'destructive',
+      });
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -133,12 +176,30 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
             : undefined
         }
         actions={
-          <Link href="/accounts">
-            <Button variant="outline">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Accounts
-            </Button>
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Surfaces only when (a) the account is bank-class and
+                (b) no bank_accounts row exists for it yet. Tally-
+                imported bank ledgers land here straight after the
+                import — operator clicks once and the ledger shows
+                up on /bank with a placeholder account_number they
+                can edit. */}
+            {canPromoteToBank && (
+              <Button
+                variant="default"
+                onClick={handlePromoteToBank}
+                disabled={promoteToBank.isPending}
+              >
+                <Landmark className="mr-2 h-4 w-4" />
+                {promoteToBank.isPending ? 'Setting up…' : 'Set up as Bank Account'}
+              </Button>
+            )}
+            <Link href="/accounts">
+              <Button variant="outline">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Accounts
+              </Button>
+            </Link>
+          </div>
         }
       />
 
