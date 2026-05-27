@@ -44,6 +44,36 @@ interface VendorBillFilters {
   limit?: number;
 }
 
+interface VendorPaymentFilters {
+  vendor_id?: string;
+  start_date?: string;
+  end_date?: string;
+  payment_mode?: string;
+  page?: number;
+  limit?: number;
+}
+
+// Shape returned by GET /purchases/payments. Mirrors the SQL
+// projection in purchase.service.getPayments — keep them in sync.
+export interface VendorPaymentRow {
+  id: string;
+  payment_date: string;
+  amount: number;
+  payment_mode: string;
+  reference_number: string | null;
+  notes: string | null;
+  journal_entry_id: string | null;
+  created_at: string;
+  vendor_bill_id: string | null;
+  expense_account_id: string | null;
+  bank_account_id: string | null;
+  bill_number: string | null;
+  vendor_id: string | null;
+  vendor_name: string | null;
+  expense_account_name: string | null;
+  bank_account_name: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Input types
 // ---------------------------------------------------------------------------
@@ -133,6 +163,14 @@ export const purchaseKeys = {
     [...purchaseKeys.bills(), 'list', filters] as const,
   bill: (id: string) => [...purchaseKeys.bills(), id] as const,
 
+  // Standalone vendor-payments list. Distinct from the per-bill
+  // payments summary that comes nested under bills() — this is the
+  // place to see every payment regardless of bill linkage (Tally
+  // direct-expense payments have vendor_bill_id=NULL).
+  payments: () => [...purchaseKeys.all, 'payments'] as const,
+  paymentList: (filters?: VendorPaymentFilters) =>
+    [...purchaseKeys.payments(), 'list', filters] as const,
+
   aging: () => [...purchaseKeys.all, 'aging'] as const,
 };
 
@@ -161,6 +199,21 @@ function billFiltersToParams(
   const params: Record<string, string> = {};
   if (filters.status) params.status = filters.status;
   if (filters.vendor_id) params.vendor_id = filters.vendor_id;
+  if (filters.page !== undefined) params.page = String(filters.page);
+  if (filters.limit !== undefined) params.limit = String(filters.limit);
+  return params;
+}
+
+function paymentFiltersToParams(
+  filters?: VendorPaymentFilters,
+): Record<string, string> | undefined {
+  if (!filters) return undefined;
+
+  const params: Record<string, string> = {};
+  if (filters.vendor_id) params.vendor_id = filters.vendor_id;
+  if (filters.start_date) params.start_date = filters.start_date;
+  if (filters.end_date) params.end_date = filters.end_date;
+  if (filters.payment_mode) params.payment_mode = filters.payment_mode;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   return params;
@@ -311,6 +364,24 @@ export function useVendorBill(id: string) {
         });
     },
     enabled: id !== '',
+  });
+}
+
+/**
+ * List ALL vendor_payments (bill-linked + direct-expense + Tally-
+ * imported). Distinct from the payments_summary nested under each
+ * bill in useVendorBills — this hook is the only way to surface
+ * Tally direct-expense payments where vendor_bill_id IS NULL.
+ */
+export function useVendorPayments(filters?: VendorPaymentFilters) {
+  return useQuery({
+    queryKey: purchaseKeys.paymentList(filters),
+    queryFn: function fetchVendorPayments() {
+      return api.get<PaginatedResponse<VendorPaymentRow>>(
+        '/purchases/payments',
+        { params: paymentFiltersToParams(filters) },
+      );
+    },
   });
 }
 

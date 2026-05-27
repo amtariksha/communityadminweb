@@ -147,6 +147,11 @@ export default function ReceiptsContent(): ReactNode {
   const page = listState.state.page;
   const setPage = listState.setPage;
   const [modeFilter, setModeFilter] = useState('');
+  // Receipt-date range filter. Empty string = no filter on that
+  // bound; the API treats undefined as "open ended". Resets to page 1
+  // whenever the operator changes either bound.
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [directIncomeDialogOpen, setDirectIncomeDialogOpen] = useState(false);
   const [creditNoteDialogOpen, setCreditNoteDialogOpen] = useState(false);
@@ -166,6 +171,8 @@ export default function ReceiptsContent(): ReactNode {
 
   const receiptsQuery = useReceipts({
     payment_mode: modeFilter || undefined,
+    start_date: filterStartDate || undefined,
+    end_date: filterEndDate || undefined,
     page,
     limit: ITEMS_PER_PAGE,
     sort: listState.state.sort ?? undefined,
@@ -544,21 +551,62 @@ export default function ReceiptsContent(): ReactNode {
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-lg">Receipt History</CardTitle>
-            <Select
-              className="w-full sm:w-48"
-              value={modeFilter}
-              onChange={(e) => {
-                setModeFilter(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">All Payment Modes</option>
-              <option value="cash">Cash</option>
-              <option value="cheque">Cheque</option>
-              <option value="upi">UPI</option>
-              <option value="bank_transfer">NEFT</option>
-              <option value="online">Razorpay</option>
-            </Select>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                className="w-full sm:w-44"
+                value={modeFilter}
+                onChange={(e) => {
+                  setModeFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">All Payment Modes</option>
+                <option value="cash">Cash</option>
+                <option value="cheque">Cheque</option>
+                <option value="upi">UPI</option>
+                <option value="bank_transfer">NEFT</option>
+                <option value="online">Razorpay</option>
+              </Select>
+              {/* Date range — same shape as the invoices page so the
+                  two surfaces feel consistent. Native date inputs;
+                  empty = open-ended on that bound. */}
+              <Input
+                type="date"
+                value={filterStartDate}
+                onChange={(e) => {
+                  setFilterStartDate(e.target.value);
+                  setPage(1);
+                }}
+                className="w-40"
+                aria-label="From date"
+              />
+              <span className="text-xs text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={filterEndDate}
+                onChange={(e) => {
+                  setFilterEndDate(e.target.value);
+                  setPage(1);
+                }}
+                className="w-40"
+                aria-label="To date"
+              />
+              {(filterStartDate || filterEndDate || modeFilter) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilterStartDate('');
+                    setFilterEndDate('');
+                    setModeFilter('');
+                    setPage(1);
+                  }}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>

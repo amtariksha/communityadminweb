@@ -62,6 +62,8 @@ interface InvoiceFilters {
   unit_id?: string;
   start_date?: string;
   end_date?: string;
+  /** Free-text search across invoice_number, billing_period, unit_number. */
+  q?: string;
   page?: number;
   limit?: number;
   sort?: string;
@@ -135,6 +137,7 @@ function filtersToParams(filters?: InvoiceFilters): Record<string, string> | und
   if (filters.unit_id) params.unit_id = filters.unit_id;
   if (filters.start_date) params.start_date = filters.start_date;
   if (filters.end_date) params.end_date = filters.end_date;
+  if (filters.q && filters.q.trim()) params.q = filters.q.trim();
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   if (filters.sort) params.sort = filters.sort;

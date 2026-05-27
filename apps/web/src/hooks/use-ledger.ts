@@ -92,6 +92,22 @@ interface GeneralLedgerTransaction {
   debit: number;
   credit: number;
   running_balance: number;
+  /**
+   * Human-friendly source classification: 'invoice', 'receipt',
+   * 'vendor_bill', 'vendor_payment', 'opening_balance', 'journal',
+   * 'late_payment_interest', or a Tally voucher type slug like
+   * 'contra' / 'journal' for JEs without an operational mirror.
+   * Surfaced by the account-detail page as a column so operators
+   * can see what kind of transaction each row is.
+   */
+  entry_type?: string;
+  /**
+   * Reference number from the originating operational entity —
+   * the invoice_number, receipt_number, bill_number, or payment
+   * reference_number. NULL for pure-JE rows (depreciation,
+   * opening balances, manual postings).
+   */
+  reference_number?: string | null;
 }
 
 interface GeneralLedgerReport {

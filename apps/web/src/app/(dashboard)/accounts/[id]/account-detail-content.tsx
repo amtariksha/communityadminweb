@@ -21,6 +21,46 @@ import { PageHeader } from '@/components/layout/page-header';
 import { formatCurrency, formatTallyBalance, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { useLedgerAccount, useGeneralLedgerReport, useAccountGroups } from '@/hooks';
 
+// Map of API entry_type values → human label + tone. Anything not
+// in the map falls through to a neutral "Journal" badge so we never
+// render a raw enum slug to the user.
+const ENTRY_TYPE_META: Record<
+  string,
+  { label: string; tone: 'default' | 'success' | 'secondary' | 'warning' | 'outline' }
+> = {
+  invoice:              { label: 'Invoice',        tone: 'default' },
+  receipt:              { label: 'Receipt',        tone: 'success' },
+  vendor_bill:          { label: 'Vendor Bill',    tone: 'warning' },
+  vendor_payment:       { label: 'Vendor Payment', tone: 'secondary' },
+  opening_balance:      { label: 'Opening Bal',    tone: 'outline' },
+  late_payment_interest:{ label: 'Late Interest',  tone: 'warning' },
+  // Tally voucher fallbacks — surfaced when a tally_voucher JE has
+  // no operational mirror (Contra, plain Journal, etc.)
+  contra:               { label: 'Contra',         tone: 'outline' },
+  journal:              { label: 'Journal',        tone: 'outline' },
+  maintenance_bill:     { label: 'Maintenance',    tone: 'default' },
+  sales:                { label: 'Sales',          tone: 'default' },
+  payment:              { label: 'Payment',        tone: 'secondary' },
+};
+
+function EntryTypeBadge({ entryType }: { entryType?: string }): ReactNode {
+  if (!entryType) {
+    return <Badge variant="outline" className="text-xs">Journal</Badge>;
+  }
+  const meta = ENTRY_TYPE_META[entryType] ?? {
+    label: entryType
+      .split('_')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' '),
+    tone: 'outline' as const,
+  };
+  return (
+    <Badge variant={meta.tone} className="text-xs whitespace-nowrap">
+      {meta.label}
+    </Badge>
+  );
+}
+
 function getDefaultDateRange(): { startDate: string; endDate: string } {
   const now = new Date();
   const fyStartMonth = 3; // April (0-indexed)
@@ -219,7 +259,8 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                <TableHead>Entry #</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Ref #</TableHead>
                 <TableHead>Narration</TableHead>
                 <TableHead className="text-right">Debit</TableHead>
                 <TableHead className="text-right">Credit</TableHead>
@@ -246,7 +287,23 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
                         {formatDate(txn.entry_date)}
                       </TableCell>
                       <TableCell>
-                        <span className="font-mono text-xs">{txn.entry_number}</span>
+                        {/* New column — derived server-side from
+                            journal_entries.source_type + LEFT JOINs
+                            to operational tables. Lets the operator
+                            spot at a glance whether a row is an
+                            invoice, receipt, vendor bill, payment,
+                            opening balance, etc. */}
+                        <EntryTypeBadge entryType={txn.entry_type} />
+                      </TableCell>
+                      <TableCell>
+                        {/* Reference number from whichever
+                            operational entity backs this JE.
+                            Falls back to the journal entry_number
+                            so the row always has SOME identifier
+                            the operator can reference. */}
+                        <span className="font-mono text-xs">
+                          {txn.reference_number ?? txn.entry_number}
+                        </span>
                       </TableCell>
                       <TableCell className="font-medium">{txn.narration}</TableCell>
                       <TableCell className="text-right">
@@ -266,7 +323,7 @@ export default function AccountDetailContent({ params }: AccountDetailPageProps)
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                     No transactions found for the selected period
                   </TableCell>
                 </TableRow>

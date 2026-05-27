@@ -15,7 +15,7 @@ import {
   Clock,
   Sparkles,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,6 +58,7 @@ import {
   useRejectPR,
   useConvertPRToBill,
   useVendorBills,
+  useVendorPayments,
   useCreateBill,
   useEditBill,
   useCancelBill,
@@ -69,7 +70,7 @@ import {
   useBankAccounts,
   useTdsConfig,
 } from '@/hooks';
-import type { TdsConfig } from '@/hooks';
+import type { TdsConfig, VendorPaymentRow } from '@/hooks';
 import { useOcrInvoice } from '@/hooks/use-ocr';
 
 // API responses may include joined fields beyond the base shared types
@@ -111,7 +112,7 @@ interface BillRow {
 
 const ITEMS_PER_PAGE = 20;
 
-type ActiveTab = 'requests' | 'bills';
+type ActiveTab = 'requests' | 'bills' | 'payments';
 
 // ---------------------------------------------------------------------------
 // Status helpers
@@ -1064,6 +1065,23 @@ export default function PurchasesContent(): ReactNode {
           <FileText className="mr-2 inline-block h-4 w-4" />
           Vendor Bills
         </button>
+        {/* New: standalone Vendor Payments tab. Lists every
+            vendor_payment regardless of bill linkage — including
+            Tally-imported direct-expense payments that have
+            vendor_bill_id=NULL and therefore never appear under
+            any bill row. */}
+        <button
+          type="button"
+          className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'payments'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+          onClick={() => setActiveTab('payments')}
+        >
+          <CreditCard className="mr-2 inline-block h-4 w-4" />
+          Vendor Payments
+        </button>
       </div>
 
       {/* ------------------------------------------------------------------- */}
@@ -1868,6 +1886,11 @@ export default function PurchasesContent(): ReactNode {
       )}
 
       {/* ------------------------------------------------------------------- */}
+      {/* Vendor Payments Tab                                                  */}
+      {/* ------------------------------------------------------------------- */}
+      {activeTab === 'payments' && <VendorPaymentsTab vendors={vendors} />}
+
+      {/* ------------------------------------------------------------------- */}
       {/* Approve PR Dialog                                                    */}
       {/* ------------------------------------------------------------------- */}
       <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
@@ -2497,5 +2520,227 @@ export default function PurchasesContent(): ReactNode {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// ===========================================================================
+// VendorPaymentsTab — standalone vendor-payments view.
+// ===========================================================================
+//
+// Surfaces the `/purchases/payments` endpoint (purchase.service.getPayments),
+// which is the only place the operator can see every vendor_payment
+// regardless of bill linkage. Bill-linked payments ALSO appear inline on
+// the Vendor Bills tab as a sub-column per bill, but Tally-imported
+// direct-expense payments (vendor_bill_id IS NULL) only show up here.
+//
+// Filters: vendor, payment mode, date range. Same shape as the bills
+// filter row above so the two tabs feel consistent.
+
+interface VendorPaymentsTabProps {
+  vendors: Array<{ id: string; name: string }>;
+}
+
+function VendorPaymentsTab({ vendors }: VendorPaymentsTabProps): ReactNode {
+  const ITEMS_PER_PAGE = 25;
+  const [page, setPage] = useState(1);
+  const [vendorFilter, setVendorFilter] = useState('');
+  const [modeFilter, setModeFilter] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+
+  const { data, isLoading, isError } = useVendorPayments({
+    vendor_id: vendorFilter || undefined,
+    payment_mode: modeFilter || undefined,
+    start_date: filterStartDate || undefined,
+    end_date: filterEndDate || undefined,
+    page,
+    limit: ITEMS_PER_PAGE,
+  });
+
+  const rows: VendorPaymentRow[] = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="text-lg">Vendor Payments</CardTitle>
+            <CardDescription className="mt-1">
+              Every payment recorded against any vendor — including
+              Tally-imported direct-expense payments not linked to a bill.
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
+              className="w-44"
+              value={vendorFilter}
+              onChange={(e) => {
+                setVendorFilter(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All Vendors</option>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              className="w-40"
+              value={modeFilter}
+              onChange={(e) => {
+                setModeFilter(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All Modes</option>
+              <option value="cash">Cash</option>
+              <option value="cheque">Cheque</option>
+              <option value="bank_transfer">NEFT/RTGS</option>
+              <option value="upi">UPI</option>
+            </Select>
+            <Input
+              type="date"
+              value={filterStartDate}
+              onChange={(e) => {
+                setFilterStartDate(e.target.value);
+                setPage(1);
+              }}
+              className="w-40"
+              aria-label="From date"
+            />
+            <span className="text-xs text-muted-foreground">to</span>
+            <Input
+              type="date"
+              value={filterEndDate}
+              onChange={(e) => {
+                setFilterEndDate(e.target.value);
+                setPage(1);
+              }}
+              className="w-40"
+              aria-label="To date"
+            />
+            {(vendorFilter || modeFilter || filterStartDate || filterEndDate) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setVendorFilter('');
+                  setModeFilter('');
+                  setFilterStartDate('');
+                  setFilterEndDate('');
+                  setPage(1);
+                }}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isError ? (
+          <p className="py-8 text-center text-sm text-destructive">
+            Failed to load vendor payments.
+          </p>
+        ) : isLoading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Loading…
+          </p>
+        ) : rows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            No payments match the current filters.
+          </p>
+        ) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead>Bill #</TableHead>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Mode</TableHead>
+                  <TableHead>Reference</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(r.payment_date)}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {r.vendor_name ?? <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      {/* Bill # only present when this payment was
+                          linked via /bills/:id/pay or a Phase E.7
+                          BILLALLOCATIONS match. Direct-expense + Tally
+                          payments leave it blank. */}
+                      {r.bill_number ? (
+                        <span className="font-mono text-xs">{r.bill_number}</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Direct expense
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {r.expense_account_name ?? '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="capitalize">
+                        {r.payment_mode.replace(/_/g, ' ')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {r.reference_number ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatCurrency(Number(r.amount))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                {(page - 1) * ITEMS_PER_PAGE + 1}–
+                {Math.min(page * ITEMS_PER_PAGE, total)} of {total}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span>
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

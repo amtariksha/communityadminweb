@@ -181,9 +181,28 @@ export default function InvoicesContent(): ReactNode {
   const [lpiPostDate, setLpiPostDate] = useState('');
   const [defaultersDialogOpen, setDefaultersDialogOpen] = useState(false);
   const [unitFilter, setUnitFilter] = useState('');
+  // Free-text search + invoice-date range. Wired to `q`,
+  // `start_date`, `end_date` query params on the backend.
+  // `searchInput` is the unthrottled text; `searchQ` is what's
+  // actually sent to the API (debounced via useEffect below).
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQ, setSearchQ] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
   // QA #92 — bulk-update-due-date dialog
   const [bulkDueDialogOpen, setBulkDueDialogOpen] = useState(false);
   const [bulkDueDate, setBulkDueDate] = useState('');
+
+  // Debounce the search box so we don't refetch on every keystroke.
+  // 300ms is the same window the rest of the app uses for list-search
+  // inputs (vendors / customers / units).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearchQ(searchInput);
+      setPage(1); // reset pagination whenever the search text changes
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   // QA #95 / #246 — dashboard Outstanding-Dues card now links here
   // with `?filter=defaulters`. Open the existing Defaulters dialog
@@ -239,6 +258,9 @@ export default function InvoicesContent(): ReactNode {
   } = useInvoices({
     status: statusFilter,
     unit_id: unitFilter || undefined,
+    start_date: filterStartDate || undefined,
+    end_date: filterEndDate || undefined,
+    q: searchQ || undefined,
     page,
     limit,
     sort: listState.state.sort ?? undefined,
@@ -737,7 +759,17 @@ export default function InvoicesContent(): ReactNode {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Free-text search — invoice #, unit #, billing
+                  period. Debounced 300ms so we don't refetch on
+                  every keystroke. */}
+              <Input
+                type="search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search invoice / unit / period…"
+                className="w-56"
+              />
               <Select
                 value={unitFilter}
                 onChange={(e) => {
@@ -753,6 +785,46 @@ export default function InvoicesContent(): ReactNode {
                   </option>
                 ))}
               </Select>
+              {/* Invoice-date range. Native date inputs render
+                  consistently in modern browsers — no third-party
+                  picker for a single field. */}
+              <Input
+                type="date"
+                value={filterStartDate}
+                onChange={(e) => {
+                  setFilterStartDate(e.target.value);
+                  setPage(1);
+                }}
+                className="w-40"
+                aria-label="From date"
+              />
+              <span className="text-xs text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={filterEndDate}
+                onChange={(e) => {
+                  setFilterEndDate(e.target.value);
+                  setPage(1);
+                }}
+                className="w-40"
+                aria-label="To date"
+              />
+              {(searchInput || filterStartDate || filterEndDate || unitFilter) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchInput('');
+                    setFilterStartDate('');
+                    setFilterEndDate('');
+                    setUnitFilter('');
+                    setPage(1);
+                  }}
+                >
+                  Clear
+                </Button>
+              )}
             </div>
           </div>
 
