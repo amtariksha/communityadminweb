@@ -160,8 +160,8 @@ export function logout(options: { reason?: 'session_expired' | 'manual' } = {}):
   const apiBase =
     process.env.NEXT_PUBLIC_API_URL ??
     (typeof window !== 'undefined' &&
-    window.location.hostname === 'communityos.eassy.life'
-      ? 'https://community.eassy.life'
+    window.location.hostname === 'meragharadmin.amtariksha.com'
+      ? 'https://meraghar.amtariksha.com'
       : 'http://localhost:4000');
   void fetch(`${apiBase}/auth/logout`, {
     method: 'POST',
