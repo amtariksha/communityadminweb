@@ -26,8 +26,8 @@ export function useSuperAdminUnitsForTenant(tenantId: string | null) {
       const token = getToken();
       const base =
         process.env.NEXT_PUBLIC_API_URL ??
-        (typeof window !== 'undefined' && window.location.hostname === 'communityos.eassy.life'
-          ? 'https://community.eassy.life'
+        (typeof window !== 'undefined' && window.location.hostname === 'meragharadmin.amtariksha.com'
+          ? 'https://meraghar.amtariksha.com'
           : 'http://localhost:4000');
       const res = await fetch(`${base}/units?limit=500`, {
         headers: {

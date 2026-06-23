@@ -8,7 +8,7 @@ interface SocietyBranding {
   name: string;
 }
 
-const DEFAULT_NAME = 'Eassy Society';
+const DEFAULT_NAME = 'Mera Ghar';
 
 /**
  * Resolve the logged-in society's branding from the cached user +

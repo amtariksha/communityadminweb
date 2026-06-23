@@ -317,8 +317,8 @@ export async function downloadCreditNotePdf(
   const baseUrl =
     process.env.NEXT_PUBLIC_API_URL ??
     (typeof window !== 'undefined' &&
-    window.location.hostname === 'communityos.eassy.life'
-      ? 'https://community.eassy.life'
+    window.location.hostname === 'meragharadmin.amtariksha.com'
+      ? 'https://meraghar.amtariksha.com'
       : 'http://localhost:4000');
 
   const headers: Record<string, string> = {};
@@ -352,8 +352,8 @@ export async function downloadReceiptPdf(
   const baseUrl =
     process.env.NEXT_PUBLIC_API_URL ??
     (typeof window !== 'undefined' &&
-    window.location.hostname === 'communityos.eassy.life'
-      ? 'https://community.eassy.life'
+    window.location.hostname === 'meragharadmin.amtariksha.com'
+      ? 'https://meraghar.amtariksha.com'
       : 'http://localhost:4000');
 
   const headers: Record<string, string> = {};

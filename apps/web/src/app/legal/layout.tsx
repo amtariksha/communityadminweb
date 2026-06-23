@@ -20,14 +20,14 @@ export default function LegalLayout({ children }: LegalLayoutProps): ReactNode {
             <span className="text-base font-bold text-white">e</span>
           </div>
           <Link href="/" className="text-base font-semibold">
-            Eassy Society
+            Mera Ghar
           </Link>
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-8 sm:py-12">{children}</main>
       <footer className="border-t">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs text-muted-foreground">
-          <span>© Eassy Society — Society Management Platform</span>
+          <span>© Mera Ghar — Society Management Platform</span>
           <div className="flex items-center gap-4">
             <Link href="/legal/terms" className="hover:text-foreground">
               Terms

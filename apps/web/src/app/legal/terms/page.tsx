@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { LegalPageRenderer } from '../legal-page-renderer';
 
 export const metadata: Metadata = {
-  title: 'Terms & Conditions · Eassy Society',
+  title: 'Terms & Conditions · Mera Ghar',
 };
 
 export default function LegalTermsPage() {

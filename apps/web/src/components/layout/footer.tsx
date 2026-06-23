@@ -12,7 +12,7 @@ export function Footer(): ReactNode {
   return (
     <footer className="border-t bg-background px-4 py-3 text-xs text-muted-foreground sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span>© Eassy Society — Society Management Platform</span>
+        <span>© Mera Ghar — Society Management Platform</span>
         <div className="flex items-center gap-4">
           <Link href="/legal/terms" className="hover:text-foreground">
             Terms

@@ -68,8 +68,8 @@ export function LegalPageRenderer({ type }: LegalPageRendererProps): ReactNode {
           <p className="mt-2 text-sm text-muted-foreground">
             This document is being drafted and will appear here once
             published. Contact{' '}
-            <a href="mailto:support@eassy.life" className="underline">
-              support@eassy.life
+            <a href="mailto:support@amtariksha.com" className="underline">
+              support@amtariksha.com
             </a>{' '}
             for the current text.
           </p>

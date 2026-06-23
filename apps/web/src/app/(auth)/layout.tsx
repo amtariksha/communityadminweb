@@ -12,7 +12,7 @@ export default function AuthLayout({ children }: AuthLayoutProps): ReactNode {
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5A623]">
           <span className="text-xl font-bold text-white">e</span>
         </div>
-        <h1 className="text-2xl font-bold">Eassy Society</h1>
+        <h1 className="text-2xl font-bold">Mera Ghar</h1>
       </div>
       <div className="w-full max-w-md">
         {children}

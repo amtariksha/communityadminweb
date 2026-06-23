@@ -88,7 +88,7 @@ function CameraFeed({ camera }: CameraFeedProps): ReactNode {
   }, []);
 
   const snapshotUrl = camera.snapshot_url
-    ? `https://community.eassy.life/cameras/${camera.id}/snapshot?t=${timestamp}`
+    ? `https://meraghar.amtariksha.com/cameras/${camera.id}/snapshot?t=${timestamp}`
     : null;
 
   return snapshotUrl ? (
@@ -123,7 +123,7 @@ function FullscreenView({ camera, onClose }: FullscreenViewProps): ReactNode {
   }, []);
 
   const snapshotUrl = camera.snapshot_url
-    ? `https://community.eassy.life/cameras/${camera.id}/snapshot?t=${timestamp}`
+    ? `https://meraghar.amtariksha.com/cameras/${camera.id}/snapshot?t=${timestamp}`
     : null;
 
   return (

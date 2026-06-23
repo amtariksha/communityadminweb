@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import WrongAppContent from './wrong-app-content';
 
 export const metadata: Metadata = {
-  title: 'Wrong app · Eassy Society',
+  title: 'Wrong app · Mera Ghar',
 };
 
 // useSearchParams() inside the client content needs a Suspense

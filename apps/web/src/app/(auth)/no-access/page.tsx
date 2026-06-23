@@ -26,7 +26,7 @@ function NoAccessBody(): ReactNode {
             <span className="block">
               Your account is registered as a resident. The resident
               features — raising tickets, paying dues, viewing gate
-              passes, voting on resolutions — live in the Eassy Society
+              passes, voting on resolutions — live in the Mera Ghar
               resident app.
             </span>
             <span className="block text-xs">

@@ -45,7 +45,7 @@ export default function WrongAppContent(): ReactNode {
   const otherAppsLabel =
     accessibleApps.length > 0
       ? joinHumanList(
-          accessibleApps.map((a) => `Eassy ${APP_LABELS[a] ?? a}`),
+          accessibleApps.map((a) => `Mera Ghar ${APP_LABELS[a] ?? a}`),
         )
       : null;
 
@@ -88,13 +88,13 @@ export default function WrongAppContent(): ReactNode {
               </p>
               {accessibleApps.includes('resident') && (
                 <p>
-                  <strong>Eassy Resident</strong> — Google Play / App
-                  Store. Search &ldquo;Eassy Society&rdquo;.
+                  <strong>Mera Ghar Resident</strong> — Google Play / App
+                  Store. Search &ldquo;Mera Ghar&rdquo;.
                 </p>
               )}
               {accessibleApps.includes('guard') && (
                 <p>
-                  <strong>Eassy Guard</strong> — provided by your
+                  <strong>Mera Ghar Guard</strong> — provided by your
                   society&rsquo;s administrator. Contact them for the
                   install link.
                 </p>
@@ -117,10 +117,10 @@ export default function WrongAppContent(): ReactNode {
           <p className="text-center text-xs text-muted-foreground">
             Need help?{' '}
             <a
-              href="mailto:support@eassy.life"
+              href="mailto:support@amtariksha.com"
               className="underline hover:text-foreground"
             >
-              support@eassy.life
+              support@amtariksha.com
             </a>{' '}
             ·{' '}
             <Link

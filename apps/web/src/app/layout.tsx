@@ -10,7 +10,7 @@ import '@/styles/globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'Eassy Society',
+  title: 'Mera Ghar',
   description: 'Society Management Platform',
 };
 

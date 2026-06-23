@@ -84,7 +84,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps): R
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F5A623]">
               <span className="text-sm font-bold text-white">e</span>
             </div>
-            <span className="text-lg font-bold">Eassy Society — Super Admin</span>
+            <span className="text-lg font-bold">Mera Ghar — Super Admin</span>
           </div>
           {/*
             The "Back to Dashboard" shortcut was removed — super-admins
