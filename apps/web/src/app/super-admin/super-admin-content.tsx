@@ -376,7 +376,10 @@ export default function SuperAdminContent(): ReactNode {
     }
     setLogoUploading(true);
     try {
-      const { fileUrl } = await uploadLogo.mutateAsync({ file });
+      const { fileUrl } = await uploadLogo.mutateAsync({
+        file,
+        tenantId: selectedTenantId,
+      });
       setEditLogoUrl(fileUrl);
       addToast({
         title: 'Logo uploaded — Save Branding to apply',

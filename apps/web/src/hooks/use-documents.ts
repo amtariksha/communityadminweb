@@ -220,6 +220,13 @@ export function useUploadDocument() {
 export interface UploadFileInput {
   file: File;
   onProgress?: (percent: number) => void;
+  // Super-admin uploads (e.g. a society's white-label logo) act on a tenant
+  // the super-admin has no global "current tenant" for, so the api client
+  // can't auto-attach x-tenant-id. Pass it explicitly — the backend's upload
+  // guard requires it for super-admins (403 "must provide x-tenant-id"
+  // otherwise). Normal tenant users omit this; the api client supplies the
+  // header from the selected tenant automatically.
+  tenantId?: string;
 }
 
 function putFileWithProgress(
@@ -299,10 +306,16 @@ export function useUploadFileToS3() {
       // Step 1 — request the permission slip.
       const presign = await api.post<{
         data: { uploadUrl: string; fileUrl: string; key: string };
-      }>('/upload/presigned-url', {
-        fileName: input.file.name,
-        contentType: input.file.type || 'application/octet-stream',
-      });
+      }>(
+        '/upload/presigned-url',
+        {
+          fileName: input.file.name,
+          contentType: input.file.type || 'application/octet-stream',
+        },
+        input.tenantId
+          ? { headers: { 'x-tenant-id': input.tenantId } }
+          : undefined,
+      );
       const { uploadUrl, fileUrl, key } = presign.data;
 
       // Step 2 — ship the bytes straight to the object store via XHR
