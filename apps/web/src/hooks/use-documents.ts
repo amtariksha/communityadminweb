@@ -194,7 +194,7 @@ export function useUploadDocument() {
 }
 
 /**
- * Three-step direct-to-object-store upload (eassylife pattern).
+ * Three-step direct-to-object-store upload (Mera Ghar pattern).
  *
  *   1. Backend signs a time-boxed PUT URL with its secret creds.
  *   2. Browser PUTs the file bytes directly to the object store. Bytes

@@ -14,7 +14,7 @@ import type { User } from './auth';
  * protected endpoint still 403s.
  *
  * JWTs live in localStorage today because the admin-web runs on a
- * different origin (Vercel) from the api (EC2 behind api.eassy.life),
+ * different origin (Vercel) from the api (EC2 behind meraghar.amtariksha.com),
  * and httpOnly cookies require a shared parent domain + CORS credentials
  * plumbing. That migration is tracked as follow-up but is intentionally
  * out-of-scope for the Batch 6 security pass.

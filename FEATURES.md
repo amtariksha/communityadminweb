@@ -6,8 +6,8 @@ The Admin Panel is a Next.js web application for housing society facility manage
 
 - **Target users:** Society treasurers, facility managers, committee members, super admins
 - **Tech stack:** Next.js 16 (App Router), React 19, TanStack React Query, Tailwind CSS v4, shadcn/ui components, Recharts, Zod validation
-- **Deployment:** Vercel (`communityos.eassy.life`)
-- **API base:** `community.eassy.life` (NestJS backend)
+- **Deployment:** Vercel (`meragharadmin.amtariksha.com`)
+- **API base:** `meraghar.amtariksha.com` (NestJS backend)
 
 ---
 
