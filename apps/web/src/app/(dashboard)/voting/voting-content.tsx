@@ -291,8 +291,11 @@ export default function VotingContent(): ReactNode {
         description: newDescription.trim() || null,
         type: newType,
         options,
-        voting_start: newVotingStart,
-        voting_end: newVotingEnd,
+        // datetime-local yields a naive wall-clock string (no tz). Convert to a
+        // real UTC instant so the timestamptz column stores the admin's intended
+        // local time instead of drifting +5.5h (IST) under the UTC DB session.
+        voting_start: new Date(newVotingStart).toISOString(),
+        voting_end: new Date(newVotingEnd).toISOString(),
         who_can_vote: newWhoCanVote,
         one_vote_per: newOneVotePer,
       },
@@ -509,10 +512,11 @@ export default function VotingContent(): ReactNode {
         title: elTitle.trim(),
         description: elDescription.trim(),
         positions: validPositions.map((p) => ({ title: p.title.trim(), seats: p.seats })),
-        nomination_start: elNomStart,
-        nomination_end: elNomEnd,
-        voting_start: elVoteStart,
-        voting_end: elVoteEnd,
+        // Same naive-wall-clock → UTC-instant conversion as poll create above.
+        nomination_start: new Date(elNomStart).toISOString(),
+        nomination_end: new Date(elNomEnd).toISOString(),
+        voting_start: new Date(elVoteStart).toISOString(),
+        voting_end: new Date(elVoteEnd).toISOString(),
       },
       {
         onSuccess() {
