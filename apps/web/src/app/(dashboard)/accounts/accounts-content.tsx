@@ -392,9 +392,10 @@ export default function AccountsContent(): ReactNode {
   const tallyActiveJobsQuery = useTallyActiveJobs(tallyDialogOpen);
   // Recent completed imports — drives the "Recent imports" history
   // strip in the dialog so the operator can see runs that finished
-  // outside the active-jobs 60s window. The hook already auto-polls
-  // while any row is still in 'pending' / 'processing'.
-  const tallyHistoryQuery = useTallyImportHistory();
+  // outside the active-jobs 60s window. Gated on dialog-open so a
+  // closed /accounts tab makes zero /history calls; the hook
+  // auto-polls (with backoff) while any row is still in-flight.
+  const tallyHistoryQuery = useTallyImportHistory(tallyDialogOpen);
 
   // Per-type commit selection (Phase 1 of the import revamp). Each
   // entity type has two flags — include_new and include_changed —

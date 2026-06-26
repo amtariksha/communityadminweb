@@ -5,6 +5,31 @@ import { api } from '@/lib/api';
 import { getToken, getCurrentTenant } from '@/lib/auth';
 
 // ---------------------------------------------------------------------------
+// Egress-disciplined polling (P0-B)
+// ---------------------------------------------------------------------------
+// The Tally pollers used to hammer /active-jobs, /history and /jobs/:id at a
+// flat 3s for the whole life of an import — each poll dragging JSONB across
+// Supabase egress. We now back off (3s → 10s → 30s) the longer a job runs and
+// stop entirely when the tab is hidden. `updateCount` is React Query's
+// successful-refetch counter, so the interval widens automatically per poll.
+
+const POLL_FAST_MS = 3_000;
+const POLL_MID_MS = 10_000;
+const POLL_SLOW_MS = 30_000;
+
+/** True when the tab is backgrounded — pause polling so no request fires. */
+function isHidden(): boolean {
+  return typeof document !== 'undefined' && document.visibilityState === 'hidden';
+}
+
+/** 3s for the first few polls, then widen toward a 30s ceiling. */
+function backoffInterval(updateCount: number): number {
+  if (updateCount < 3) return POLL_FAST_MS;
+  if (updateCount < 6) return POLL_MID_MS;
+  return POLL_SLOW_MS;
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -236,28 +261,38 @@ export function useTallyActiveJobs(enabled = true) {
       return res.data;
     },
     refetchInterval: (query) => {
+      if (isHidden()) return false;
       const data = query.state.data as TallyActiveJob[] | undefined;
       if (!data || data.length === 0) return false;
       const hasInFlight = data.some(
         (j) => j.status === 'queued' || j.status === 'running',
       );
-      return hasInFlight ? 3_000 : false;
+      return hasInFlight ? backoffInterval(query.state.dataUpdateCount) : false;
     },
+    refetchIntervalInBackground: false,
   });
 }
 
-export function useTallyImportHistory() {
+/**
+ * Recent import history. Pass `enabled={dialogOpen}` so the (heavier)
+ * /history call only fires while the import dialog is open — a closed
+ * accounts page should make ZERO history requests.
+ */
+export function useTallyImportHistory(enabled = true) {
   return useQuery({
     queryKey: tallyImportKeys.history(),
+    enabled,
     queryFn: function fetchHistory() {
       return api
         .get<{ data: TallyImportHistory[] }>('/tally-import/history')
         .then((res) => res.data);
     },
-    // Auto-poll while any import is still running so the history
-    // strip live-updates without the operator hitting refresh. React
-    // Query stops the interval as soon as everything settles.
+    // Auto-poll (with backoff) while any import is still running so the
+    // history strip live-updates without the operator hitting refresh.
+    // React Query stops the interval as soon as everything settles or
+    // the tab is hidden.
     refetchInterval: (query) => {
+      if (isHidden()) return false;
       const data = query.state.data as TallyImportHistory[] | undefined;
       if (!data) return false;
       const hasRunning = data.some(
@@ -266,8 +301,9 @@ export function useTallyImportHistory() {
           row.status === 'queued' ||
           row.status === 'pending',
       );
-      return hasRunning ? 3_000 : false;
+      return hasRunning ? backoffInterval(query.state.dataUpdateCount) : false;
     },
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -548,17 +584,19 @@ export function useTallyCommitJob(jobId: string, enabled = true) {
       }
       return job;
     },
-    // Poll every 3s while running. React Query stops calling
-    // refetchInterval once it returns false, so we use the
-    // function form to gate it on the job's terminal state.
+    // Poll with backoff while running; stop on terminal state or when
+    // the tab is hidden. React Query halts the interval once this
+    // returns false.
     refetchInterval: (query) => {
+      if (isHidden()) return false;
       const data = query.state.data as TallyCommitJob | undefined;
-      if (!data) return 3_000;
+      if (!data) return POLL_FAST_MS;
       if (data.status === 'done' || data.status === 'failed' || data.status === 'cancelled') {
         return false;
       }
-      return 3_000;
+      return backoffInterval(query.state.dataUpdateCount);
     },
+    refetchIntervalInBackground: false,
     // Don't cache stale state across dialog reopens — the next
     // commit should always start from a fresh poll.
     staleTime: 0,
