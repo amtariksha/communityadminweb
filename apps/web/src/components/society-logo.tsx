@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { House } from 'lucide-react';
 import { getUser, getCurrentTenant } from '@/lib/auth';
 
 interface SocietyBranding {
@@ -61,8 +62,12 @@ export function SocietyLogo() {
           onError={() => setImgFailed(true)}
         />
       ) : (
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F5A623]">
-          <span className="text-lg font-bold text-white">e</span>
+        // Platform fallback when a society has no uploaded logo. Brand
+        // house glyph (Mera Ghar = "my home") in the brand teal —
+        // replaces the old Eassy "e" badge. Swapped for the official
+        // Mera Ghar logo image once it's wired in.
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+          <House className="h-5 w-5 text-primary-foreground" />
         </div>
       )}
       <span className="truncate text-lg font-bold">{branding.name}</span>
