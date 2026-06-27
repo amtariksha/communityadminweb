@@ -1,27 +1,57 @@
 @import "tailwindcss";
 
+/*
+ * Mera Ghar brand theme.
+ *
+ * Palette mirrors the Mera Ghar customer app (branding/mera-ghar/brand.json):
+ * teal primary (#0F766E) + amber accent (#F59E0B). The admin previously used a
+ * generic blue (#2563eb) that didn't match the resident-facing brand — these
+ * tokens bring it in line, and because every component reads these CSS vars,
+ * this single file re-skins all 22 routes at once.
+ *
+ * Contrast: foreground/background pairs target WCAG AA (4.5:1 body, 3:1 large).
+ * Dark mode uses lighter, desaturated teal/amber (not inverted hex) so the
+ * brand stays recognisable without blowing out contrast.
+ */
 @theme {
-  --color-primary: #2563eb;
+  /* Brand primary — teal */
+  --color-primary: #0f766e;            /* teal-700 */
   --color-primary-foreground: #ffffff;
-  --color-secondary: #f1f5f9;
+  --color-primary-soft: #ccfbf1;       /* teal-100 — active nav, subtle fills, badges */
+  --color-primary-soft-foreground: #134e4a; /* teal-900 text on soft fills */
+
+  /* Neutral surface (shadcn "secondary") — stays neutral, not the brand amber */
+  --color-secondary: #f1f5f9;          /* slate-100 */
   --color-secondary-foreground: #0f172a;
-  --color-destructive: #ef4444;
+
+  /* Amber — reserved for highlights / standout CTAs, used sparingly */
+  --color-brand-accent: #f59e0b;       /* amber-500 */
+  --color-brand-accent-foreground: #422006;
+
+  --color-destructive: #dc2626;        /* red-600 (AA on white) */
   --color-destructive-foreground: #ffffff;
   --color-muted: #f1f5f9;
-  --color-muted-foreground: #64748b;
-  --color-accent: #f1f5f9;
-  --color-accent-foreground: #0f172a;
+  --color-muted-foreground: #64748b;   /* slate-500 */
+
+  /* Accent = brand-tinted hover/active surface (dropdowns, list rows) */
+  --color-accent: #ecfeff;             /* brand surface accent (cyan-50) */
+  --color-accent-foreground: #134e4a;  /* teal-900 */
+
   --color-card: #ffffff;
   --color-card-foreground: #0f172a;
   --color-border: #e2e8f0;
   --color-input: #e2e8f0;
-  --color-ring: #2563eb;
-  --color-background: #ffffff;
+  --color-ring: #0f766e;               /* focus ring = brand teal */
+  --color-background: #f8fafc;          /* subtle off-white page bg (data-dense) */
   --color-foreground: #0f172a;
-  --color-sidebar: #f8fafc;
+  --color-sidebar: #ffffff;             /* white sidebar reads as a panel over the off-white page */
   --color-sidebar-foreground: #0f172a;
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
+
+  --color-success: #16a34a;            /* green-600 (AA) */
+  --color-success-foreground: #ffffff;
+  --color-warning: #d97706;            /* amber-600 (AA on white) */
+  --color-warning-foreground: #ffffff;
+
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
@@ -36,26 +66,39 @@
   }
 
   .dark {
-    --color-primary: #3b82f6;
-    --color-primary-foreground: #ffffff;
+    /* Brand primary — lighter/desaturated teal for dark surfaces */
+    --color-primary: #2dd4bf;          /* teal-400 */
+    --color-primary-foreground: #042f2e; /* deep teal text on bright teal */
+    --color-primary-soft: #134e4a;     /* teal-900 surface for active nav in dark */
+    --color-primary-soft-foreground: #ccfbf1;
+
     --color-secondary: #1e293b;
     --color-secondary-foreground: #f8fafc;
-    --color-destructive: #ef4444;
-    --color-destructive-foreground: #ffffff;
+
+    --color-brand-accent: #fbbf24;     /* amber-400 */
+    --color-brand-accent-foreground: #422006;
+
+    --color-destructive: #f87171;      /* red-400 (AA on dark) */
+    --color-destructive-foreground: #450a0a;
     --color-muted: #1e293b;
-    --color-muted-foreground: #94a3b8;
-    --color-accent: #1e293b;
-    --color-accent-foreground: #f8fafc;
+    --color-muted-foreground: #94a3b8; /* slate-400 */
+
+    --color-accent: #134e4a;           /* deep teal hover/active surface */
+    --color-accent-foreground: #ccfbf1;
+
     --color-card: #0f172a;
     --color-card-foreground: #f8fafc;
     --color-border: #334155;
     --color-input: #334155;
-    --color-ring: #3b82f6;
+    --color-ring: #2dd4bf;
     --color-background: #020617;
     --color-foreground: #f8fafc;
     --color-sidebar: #0f172a;
     --color-sidebar-foreground: #f8fafc;
-    --color-success: #22c55e;
-    --color-warning: #f59e0b;
+
+    --color-success: #4ade80;
+    --color-success-foreground: #052e16;
+    --color-warning: #fbbf24;
+    --color-warning-foreground: #422006;
   }
 }

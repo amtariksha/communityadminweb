@@ -136,7 +136,13 @@ export default function LoginContent(): ReactNode {
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-xl">Welcome Back</CardTitle>
+        {/* eslint-disable-next-line @next/next/no-img-element -- static local SVG */}
+        <img
+          src="/logo.svg"
+          alt="Mera Ghar"
+          className="mx-auto mb-3 h-14 w-14 rounded-xl"
+        />
+        <CardTitle className="text-xl">Welcome back</CardTitle>
         <CardDescription>Sign in to your society account</CardDescription>
       </CardHeader>
       <CardContent>

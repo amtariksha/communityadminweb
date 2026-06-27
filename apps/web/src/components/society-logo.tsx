@@ -61,9 +61,17 @@ export function SocietyLogo() {
           onError={() => setImgFailed(true)}
         />
       ) : (
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F5A623]">
-          <span className="text-lg font-bold text-white">e</span>
-        </div>
+        // Platform fallback when a society has no uploaded logo: the
+        // official Mera Ghar mark (white house + amber window on brand
+        // teal), served from /public. Reads well on both light and dark
+        // sidebars. Society-uploaded logos still override it at runtime.
+        // eslint-disable-next-line @next/next/no-img-element -- static
+        // local SVG; next/image would need extra config for no benefit.
+        <img
+          src="/logo.svg"
+          alt="Mera Ghar"
+          className="h-8 w-8 rounded-lg"
+        />
       )}
       <span className="truncate text-lg font-bold">{branding.name}</span>
     </div>
