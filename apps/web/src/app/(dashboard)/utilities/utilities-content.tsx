@@ -70,6 +70,7 @@ import type {
   Slab,
   UtilityBill,
 } from '@/hooks/use-utilities';
+import { MeterConsumptionChart } from '@/components/utilities/meter-consumption-chart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -113,13 +114,14 @@ function today(): string {
 // Tab constants
 // ---------------------------------------------------------------------------
 
-type Tab = 'meters' | 'slabs' | 'readings' | 'bills';
+type Tab = 'meters' | 'slabs' | 'readings' | 'bills' | 'trends';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'meters', label: 'Meters' },
   { key: 'slabs', label: 'Slab Rates' },
   { key: 'readings', label: 'Readings' },
   { key: 'bills', label: 'Bills' },
+  { key: 'trends', label: 'Trends' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -248,7 +250,77 @@ export default function UtilitiesContent(): ReactNode {
       {activeTab === 'slabs' && <SlabsTab />}
       {activeTab === 'readings' && <ReadingsTab />}
       {activeTab === 'bills' && <BillsTab />}
+      {activeTab === 'trends' && <TrendsTab />}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Trends Tab (#25) — per-meter consumption chart
+// ---------------------------------------------------------------------------
+
+function TrendsTab(): ReactNode {
+  const [meterType, setMeterType] = useState('');
+  const metersQuery = useMeters({ meter_type: meterType || undefined });
+  const [selectedId, setSelectedId] = useState('');
+
+  const meters = metersQuery.data ?? [];
+  const selected = meters.find((m) => m.id === selectedId) ?? meters[0] ?? null;
+
+  const meterLabel = (m: Meter): string =>
+    `${m.meter_number} · ${m.meter_type}${m.unit_number ? ` · ${m.unit_number}` : m.is_common ? ' · common' : ''}`;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Consumption Trends</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap gap-3">
+          <div className="w-40 space-y-1">
+            <Label htmlFor="trend-type">Meter type</Label>
+            <Select
+              id="trend-type"
+              value={meterType}
+              onChange={(e) => {
+                setMeterType(e.target.value);
+                setSelectedId('');
+              }}
+            >
+              <option value="">All types</option>
+              <option value="water">Water</option>
+              <option value="electricity">Electricity</option>
+              <option value="gas">Gas</option>
+            </Select>
+          </div>
+          <div className="w-64 space-y-1">
+            <Label htmlFor="trend-meter">Meter</Label>
+            <Select
+              id="trend-meter"
+              value={selected?.id ?? ''}
+              onChange={(e) => setSelectedId(e.target.value)}
+            >
+              {meters.length === 0 && <option value="">No meters</option>}
+              {meters.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {meterLabel(m)}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+
+        {metersQuery.isLoading ? (
+          <Skeleton className="h-72 w-full" />
+        ) : selected ? (
+          <MeterConsumptionChart meter={selected} />
+        ) : (
+          <div className="flex h-72 items-center justify-center text-sm text-muted-foreground">
+            No meters to chart. Add a meter first.
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
