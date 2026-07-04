@@ -258,7 +258,7 @@ function CheckpointsPanel({
             No checkpoints yet. Add one — it gets a printable QR the guard scans.
           </p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="print-sheet grid gap-4 sm:grid-cols-2 lg:grid-cols-3 print:grid-cols-2 print:gap-6 print:p-6">
             {checkpoints
               .slice()
               .sort((a, b) => a.sequence - b.sequence)

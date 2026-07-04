@@ -44,7 +44,7 @@ export function MeterConsumptionChart({ meter }: { meter: Meter }): ReactNode {
     .sort((a, b) => a.reading_date.localeCompare(b.reading_date))
     .map((r) => ({
       date: r.reading_date.slice(0, 10),
-      consumption: r.consumption ?? 0,
+      consumption: Number(r.consumption) || 0,
       reading: Number(r.reading_value),
     }));
 

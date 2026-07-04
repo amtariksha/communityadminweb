@@ -102,3 +102,28 @@
     --color-warning-foreground: #422006;
   }
 }
+
+/*
+ * Print isolation (Patrol #31). window.print() used to dump the entire
+ * dashboard chrome (sidebar, header, footer, routes panel, dialogs). When a
+ * page marks a `.print-sheet` element, hide everything else on print and let
+ * only that element (the checkpoint-QR grid) render, expanded to full width.
+ */
+@media print {
+  body:has(.print-sheet) *:not(.print-sheet):not(.print-sheet *) {
+    visibility: hidden;
+  }
+
+  body:has(.print-sheet) .print-sheet {
+    visibility: visible;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    overflow: visible;
+  }
+
+  /* Fallback for pages that only opt chrome out via `.no-print`. */
+  .no-print {
+    display: none !important;
+  }
+}

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { Invoice, InvoiceRule } from '@communityos/shared';
+import { todayIST } from '@/lib/date';
 import { ledgerKeys } from '@/hooks/use-ledger';
 
 // ---------------------------------------------------------------------------
@@ -201,7 +202,7 @@ export function useDefaulters() {
 }
 
 export function useCalculateLPI(asOfDate?: string) {
-  const date = asOfDate ?? new Date().toISOString().slice(0, 10);
+  const date = asOfDate ?? todayIST();
   return useQuery({
     queryKey: invoiceKeys.lpi(date),
     queryFn: function fetchLpi() {

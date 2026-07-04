@@ -20,6 +20,7 @@ import { useVendors } from '@/hooks';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { api } from '@/lib/api';
+import { todayIST } from '@/lib/date';
 
 // ---------------------------------------------------------------------------
 // Debit Note dialog (Phase C.4)
@@ -68,7 +69,7 @@ export function DebitNoteDialog({
     if (!open) return;
     setVendorSearch('');
     setVendorId('');
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(todayIST());
     setAmount('');
     setReturnAccountId('');
     setReferenceNumber('');

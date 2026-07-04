@@ -20,6 +20,7 @@ import { AccountSearchSelect } from '@/components/ui/account-search-select';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { api } from '@/lib/api';
+import { todayIST } from '@/lib/date';
 import { receiptKeys } from '@/hooks/use-receipts';
 
 // ---------------------------------------------------------------------------
@@ -61,7 +62,7 @@ export function DirectIncomeDialog({
   // Reset on open so a stale value can't leak across openings.
   useEffect(() => {
     if (!open) return;
-    setReceiptDate(new Date().toISOString().slice(0, 10));
+    setReceiptDate(todayIST());
     setAmount('');
     setIncomeAccountId('');
     setPaymentMode('bank_transfer');

@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { AccountSearchSelect } from '@/components/ui/account-search-select';
 import { formatCurrency, financialDateBounds, clampDateString } from '@/lib/utils';
+import { todayIST } from '@/lib/date';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { useCreateJournalEntry, useFinancialYears } from '@/hooks';
@@ -105,7 +106,7 @@ export function JournalEntryDialog({
   useEffect(() => {
     if (!open) return;
     setFinancialYearId(defaultFyId);
-    setEntryDate(new Date().toISOString().slice(0, 10));
+    setEntryDate(todayIST());
     setNarration('');
     setVoucherType('Journal');
     setLines([

@@ -21,6 +21,7 @@ import { useCustomers, useCreateCustomer } from '@/hooks';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/utils';
+import { todayIST } from '@/lib/date';
 import { api } from '@/lib/api';
 import { invoiceKeys } from '@/hooks/use-invoices';
 
@@ -109,7 +110,7 @@ export function CustomInvoiceDialog({
     setNewCustomerName('');
     setNewCustomerEmail('');
     setNewCustomerPhone('');
-    setInvoiceDate(new Date().toISOString().slice(0, 10));
+    setInvoiceDate(todayIST());
     setDueDays('15');
     setTdsRate('');
     setDefaultIncomeAccountId('');

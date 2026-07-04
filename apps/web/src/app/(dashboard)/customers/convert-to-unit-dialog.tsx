@@ -18,6 +18,7 @@ import { UnitSearchSelect } from '@/components/ui/unit-search-select';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/utils';
+import { todayIST } from '@/lib/date';
 import { useUnits, useConvertCustomerToUnit } from '@/hooks';
 
 // ---------------------------------------------------------------------------
@@ -69,7 +70,7 @@ export function ConvertToUnitDialog({
     if (!open) return;
     setUnitId('');
     setOpeningAccountId('');
-    setInvoiceDate(new Date().toISOString().slice(0, 10));
+    setInvoiceDate(todayIST());
   }, [open]);
 
   function handleSubmit(e: FormEvent): void {

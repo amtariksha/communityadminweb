@@ -20,6 +20,7 @@ import { AccountSearchSelect } from '@/components/ui/account-search-select';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { api } from '@/lib/api';
+import { todayIST } from '@/lib/date';
 import { purchaseKeys } from '@/hooks/use-purchases';
 
 // ---------------------------------------------------------------------------
@@ -60,7 +61,7 @@ export function DirectExpenseDialog({
 
   useEffect(() => {
     if (!open) return;
-    setPaymentDate(new Date().toISOString().slice(0, 10));
+    setPaymentDate(todayIST());
     setAmount('');
     setExpenseAccountId('');
     setBankAccountId('');
