@@ -8,7 +8,14 @@ import {
   AlertTriangle,
   Clock,
   Package,
+  QrCode,
+  Printer,
+  ClipboardCheck,
+  Calendar,
+  ShieldCheck,
+  CheckCircle,
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,9 +55,25 @@ import {
   useCreateAMC,
   useUpdateAMC,
   useLogService,
+  useAssetChecklists,
+  useCreateChecklist,
+  useAuditSchedules,
+  useCreateAuditSchedule,
+  useConductedAudits,
+  useRecordConductedAudit,
+  useVendorAudits,
+  useCreateVendorAudit,
 } from '@/hooks/use-assets';
-import type { Asset, AMCContract, ServiceLog } from '@/hooks/use-assets';
-import { useVendors } from '@/hooks';
+import type {
+  Asset,
+  AMCContract,
+  ServiceLog,
+  AssetChecklist,
+  AuditSchedule,
+  ConductedAudit,
+  VendorAudit,
+} from '@/hooks/use-assets';
+import { useVendors, useStaffEmployees } from '@/hooks';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -209,7 +232,10 @@ function StatCard({ title, value, icon, className }: StatCardProps): ReactNode {
 
 export default function AssetsContent(): ReactNode {
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'assets' | 'amc' | 'services'>('assets');
+  const [activeTab, setActiveTab] = useState<'assets' | 'amc' | 'services' | 'checklists' | 'schedules' | 'audits' | 'vendor_audits'>('assets');
+
+  // QR Modal
+  const [qrModalAsset, setQrModalAsset] = useState<Asset | null>(null);
 
   // Asset dialog
   const [assetDialogOpen, setAssetDialogOpen] = useState(false);
@@ -238,8 +264,6 @@ export default function AssetsContent(): ReactNode {
   // Service dialog
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [serviceAssetId, setServiceAssetId] = useState('');
-  // QA #342 — default to 'maintenance' (canonical backend value).
-  // The previous default 'preventive' was rejected by the backend.
   const [serviceType, setServiceType] = useState('maintenance');
   const [serviceDate, setServiceDate] = useState('');
   const [serviceVendor, setServiceVendor] = useState('');
@@ -247,18 +271,56 @@ export default function AssetsContent(): ReactNode {
   const [serviceCost, setServiceCost] = useState('');
   const [serviceNextDue, setServiceNextDue] = useState('');
 
+  // Checklists dialog & queries
+  const { data: checklists = [], isLoading: checklistsLoading } = useAssetChecklists();
+  const createChecklist = useCreateChecklist();
+  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
+  const [clName, setClName] = useState('');
+  const [clArea, setClArea] = useState('');
+  const [clItems, setClItems] = useState('5');
+  const [clFreq, setClFreq] = useState('monthly');
+
+  // Audit Schedules dialog & queries
+  const { data: schedules = [], isLoading: schedulesLoading } = useAuditSchedules();
+  const createSchedule = useCreateAuditSchedule();
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [schedChecklistId, setSchedChecklistId] = useState('');
+  const [schedDate, setSchedDate] = useState('');
+  const [schedStaffId, setSchedStaffId] = useState('');
+
+  // Conducted Audits dialog & queries
+  const { data: conductedAudits = [], isLoading: conductedLoading } = useConductedAudits();
+  const recordConductedAudit = useRecordConductedAudit();
+  const [conductDialogOpen, setConductDialogOpen] = useState(false);
+  const [conductChecklist, setConductChecklist] = useState('');
+  const [conductBy, setConductBy] = useState('');
+  const [conductScore, setConductScore] = useState('100');
+  const [conductPassed, setConductPassed] = useState('10');
+  const [conductFailed, setConductFailed] = useState('0');
+  const [conductStatus, setConductStatus] = useState<'pass' | 'fail' | 'conditional'>('pass');
+  const [conductNotes, setConductNotes] = useState('');
+
+  // Vendor Audits dialog & queries
+  const { data: vendorAudits = [], isLoading: vendorAuditsLoading } = useVendorAudits();
+  const createVendorAudit = useCreateVendorAudit();
+  const [vendorAuditDialogOpen, setVendorAuditDialogOpen] = useState(false);
+  const [vaVendorId, setVaVendorId] = useState('');
+  const [vaAuditor, setVaAuditor] = useState('');
+  const [vaDate, setVaDate] = useState('');
+  const [vaRating, setVaRating] = useState('5');
+  const [vaNotes, setVaNotes] = useState('');
+
   // Queries
   const { data: dashboard, isLoading: dashLoading } = useAssetDashboard();
   const { data: assetsData, isLoading: assetsLoading } = useAssets();
   const { data: amcsData, isLoading: amcsLoading } = useAMCs();
   const { data: vendorsResponse } = useVendors();
   const vendors = (vendorsResponse as unknown as { data: Array<{ id: string; name: string }> })?.data ?? [];
+  const { data: staffData } = useStaffEmployees();
+  const staffList = staffData?.data ?? [];
 
   // For service logs, show all when no specific asset is selected
   const [serviceFilterAssetId, setServiceFilterAssetId] = useState('');
-  // QA #257 — empty string asks the hook to hit the tenant-wide
-  // /assets/service-logs route. Sending the literal `_all` used to
-  // route through `/assets/:id/services` and trip ParseUUIDPipe.
   const { data: serviceLogs, isLoading: servicesLoading } = useServiceLogs(serviceFilterAssetId);
 
   const assets = assetsData?.data ?? [];
@@ -464,19 +526,27 @@ export default function AssetsContent(): ReactNode {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b">
-        {(['assets', 'amc', 'services'] as const).map((tab) => (
+      <div className="flex gap-1 border-b overflow-x-auto">
+        {[
+          { key: 'assets', label: 'Assets' },
+          { key: 'amc', label: 'AMC Contracts' },
+          { key: 'services', label: 'Service History' },
+          { key: 'checklists', label: 'Master Checklists' },
+          { key: 'schedules', label: 'Audit Schedules' },
+          { key: 'audits', label: 'Conducted Audits' },
+          { key: 'vendor_audits', label: 'Vendor Audits' },
+        ].map(({ key, label }) => (
           <button
-            key={tab}
+            key={key}
             type="button"
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab
-                ? 'border-primary text-primary'
+            className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+              activeTab === key
+                ? 'border-primary text-primary font-semibold'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => setActiveTab(key as typeof activeTab)}
           >
-            {tab === 'assets' ? 'Assets' : tab === 'amc' ? 'AMC Contracts' : 'Service History'}
+            {label}
           </button>
         ))}
       </div>
@@ -604,14 +674,24 @@ export default function AssetsContent(): ReactNode {
                         </TableCell>
                         <TableCell className="text-sm">{asset.manufacturer}</TableCell>
                         <TableCell>
-                          <button
-                            type="button"
-                            className="rounded p-1 hover:bg-muted"
-                            onClick={() => openEditAsset(asset)}
-                            title="Edit asset"
-                          >
-                            <Pencil className="h-4 w-4 text-muted-foreground" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              className="rounded p-1 hover:bg-muted"
+                              onClick={() => setQrModalAsset(asset)}
+                              title="View & Print QR Code"
+                            >
+                              <QrCode className="h-4 w-4 text-primary" />
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded p-1 hover:bg-muted"
+                              onClick={() => openEditAsset(asset)}
+                              title="Edit asset"
+                            >
+                              <Pencil className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -876,6 +956,657 @@ export default function AssetsContent(): ReactNode {
           </CardContent>
         </Card>
       )}
+
+      {/* Master Checklists tab */}
+      {activeTab === 'checklists' && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Master Audit Checklists</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">Predefined inspection templates for routine asset and site maintenance</p>
+            </div>
+            <Button size="sm" onClick={() => setChecklistDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Checklist
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            {checklistsLoading ? (
+              <div className="space-y-2 p-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : checklists.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <ClipboardCheck className="mb-2 h-10 w-10 opacity-50" />
+                <p className="text-lg font-medium">No checklists defined</p>
+                <p className="text-sm">Create standard inspection checklists for DG sets, elevators, pumps, etc.</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Checklist Name</TableHead>
+                    <TableHead>Area / Wing</TableHead>
+                    <TableHead>Item Count</TableHead>
+                    <TableHead>Frequency</TableHead>
+                    <TableHead>Last Run</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {checklists.map((cl) => (
+                    <TableRow key={cl.id}>
+                      <TableCell className="font-medium">{cl.name}</TableCell>
+                      <TableCell>{cl.area}</TableCell>
+                      <TableCell>{cl.items} checkpoints</TableCell>
+                      <TableCell className="capitalize">
+                        <Badge variant="outline">{cl.frequency}</Badge>
+                      </TableCell>
+                      <TableCell>{cl.last_run ? formatDate(cl.last_run) : 'Never'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Audit Schedules tab */}
+      {activeTab === 'schedules' && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Scheduled Asset Audits</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">Upcoming inspection rounds assigned to facilities staff</p>
+            </div>
+            <Button size="sm" onClick={() => setScheduleDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Schedule Audit
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            {schedulesLoading ? (
+              <div className="space-y-2 p-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : schedules.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <Calendar className="mb-2 h-10 w-10 opacity-50" />
+                <p className="text-lg font-medium">No audit rounds scheduled</p>
+                <p className="text-sm">Plan an inspection round and assign it to a technician</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Checklist</TableHead>
+                    <TableHead>Scheduled Date</TableHead>
+                    <TableHead>Assigned Auditor</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {schedules.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-medium">{s.checklist}</TableCell>
+                      <TableCell>{formatDate(s.scheduled_date)}</TableCell>
+                      <TableCell>{s.assignee_name || s.assigned_to || 'Assigned Staff'}</TableCell>
+                      <TableCell>
+                        <Badge variant={s.status === 'completed' ? 'success' : s.status === 'overdue' ? 'destructive' : 'warning'}>
+                          {s.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Conducted Audits tab */}
+      {activeTab === 'audits' && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Conducted Audit Logs</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">Inspection records with compliance pass/fail scores</p>
+            </div>
+            <Button size="sm" onClick={() => setConductDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Record Audit
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            {conductedLoading ? (
+              <div className="space-y-2 p-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : conductedAudits.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <ShieldCheck className="mb-2 h-10 w-10 opacity-50" />
+                <p className="text-lg font-medium">No conducted audit logs</p>
+                <p className="text-sm">Record completed inspection checklists and audit findings</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Checklist</TableHead>
+                    <TableHead>Conducted Date</TableHead>
+                    <TableHead>Conducted By</TableHead>
+                    <TableHead>Compliance Score</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {conductedAudits.map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-medium">{a.checklist}</TableCell>
+                      <TableCell>{formatDate(a.conducted_on)}</TableCell>
+                      <TableCell>{a.conducted_by}</TableCell>
+                      <TableCell>
+                        <span className="font-semibold">{a.score}%</span>{' '}
+                        <span className="text-xs text-muted-foreground">({a.passed} passed / {a.failed} failed)</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={a.status === 'pass' ? 'success' : a.status === 'conditional' ? 'warning' : 'destructive'}>
+                          {a.status.toUpperCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{a.notes || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Vendor Audits tab */}
+      {activeTab === 'vendor_audits' && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Vendor Performance Audits</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">SLA and service delivery compliance audits of empanelled contractors</p>
+            </div>
+            <Button size="sm" onClick={() => setVendorAuditDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Schedule Vendor Audit
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            {vendorAuditsLoading ? (
+              <div className="space-y-2 p-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : vendorAudits.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <Wrench className="mb-2 h-10 w-10 opacity-50" />
+                <p className="text-lg font-medium">No vendor audits found</p>
+                <p className="text-sm">Audit facility contractors against SLA criteria and quality standards</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Auditor</TableHead>
+                    <TableHead>Scheduled Date</TableHead>
+                    <TableHead>Compliance Rating</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {vendorAudits.map((va) => (
+                    <TableRow key={va.id}>
+                      <TableCell className="font-medium">{va.vendor_name || 'Vendor'}</TableCell>
+                      <TableCell>{va.auditor_name}</TableCell>
+                      <TableCell>{formatDate(va.scheduled_date)}</TableCell>
+                      <TableCell>
+                        {va.compliance_rating != null ? (
+                          <Badge variant="outline">{va.compliance_rating} / 5 ★</Badge>
+                        ) : (
+                          '-'
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={va.status === 'completed' ? 'success' : 'warning'}>{va.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{va.notes || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ROOT-LEVEL DIALOG: Schedule Audit Dialog */}
+      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Schedule Inspection Audit
+            </DialogTitle>
+            <DialogDescription>
+              Assign a checklist inspection round to a facilities team member.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const selectedCl = checklists.find((c) => c.id === schedChecklistId);
+              try {
+                await createSchedule.mutateAsync({
+                  checklist_id: schedChecklistId || undefined,
+                  checklist: selectedCl?.name || 'General Equipment Audit',
+                  scheduled_date: schedDate,
+                  assigned_to_user_id: schedStaffId || undefined,
+                });
+                addToast({ title: 'Scheduled', description: 'Audit round successfully scheduled' });
+                setScheduleDialogOpen(false);
+                setSchedChecklistId('');
+                setSchedDate('');
+                setSchedStaffId('');
+              } catch (err) {
+                addToast({ title: 'Error', description: friendlyError(err), variant: 'destructive' });
+              }
+            }}
+            className="space-y-4 py-2"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="sched-checklist">Checklist *</Label>
+              <Select
+                id="sched-checklist"
+                value={schedChecklistId}
+                onChange={(e) => setSchedChecklistId(e.target.value)}
+                required
+              >
+                <option value="">Select master checklist...</option>
+                {checklists.map((cl) => (
+                  <option key={cl.id} value={cl.id}>{cl.name} ({cl.area})</option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sched-date">Scheduled Date *</Label>
+              <Input
+                id="sched-date"
+                type="date"
+                value={schedDate}
+                onChange={(e) => setSchedDate(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sched-staff">Assign To Staff *</Label>
+              <Select
+                id="sched-staff"
+                value={schedStaffId}
+                onChange={(e) => setSchedStaffId(e.target.value)}
+                required
+              >
+                <option value="">Select staff member...</option>
+                {staffList.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.staff_type})</option>
+                ))}
+              </Select>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={createSchedule.isPending}>
+                {createSchedule.isPending ? 'Scheduling...' : 'Schedule Audit'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ROOT-LEVEL DIALOG: Create Checklist Dialog */}
+      <Dialog open={checklistDialogOpen} onOpenChange={setChecklistDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Master Checklist</DialogTitle>
+            <DialogDescription>Create a standardized inspection template.</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                await createChecklist.mutateAsync({
+                  name: clName,
+                  area: clArea,
+                  items: Number(clItems) || 5,
+                  frequency: clFreq,
+                });
+                addToast({ title: 'Success', description: 'Checklist template created' });
+                setChecklistDialogOpen(false);
+                setClName('');
+                setClArea('');
+              } catch (err) {
+                addToast({ title: 'Error', description: friendlyError(err), variant: 'destructive' });
+              }
+            }}
+            className="space-y-4 py-2"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="cl-name">Checklist Title *</Label>
+              <Input
+                id="cl-name"
+                placeholder="e.g. DG Set & Electrical Panel Inspection"
+                value={clName}
+                onChange={(e) => setClName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cl-area">Area / Wing *</Label>
+              <Input
+                id="cl-area"
+                placeholder="e.g. Basement 1 / Power House"
+                value={clArea}
+                onChange={(e) => setClArea(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="cl-items">Checkpoint Count</Label>
+                <Input
+                  id="cl-items"
+                  type="number"
+                  value={clItems}
+                  onChange={(e) => setClItems(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cl-freq">Frequency</Label>
+                <Select id="cl-freq" value={clFreq} onChange={(e) => setClFreq(e.target.value)}>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="annual">Annual</option>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={createChecklist.isPending}>Create Checklist</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ROOT-LEVEL DIALOG: Record Conducted Audit Dialog */}
+      <Dialog open={conductDialogOpen} onOpenChange={setConductDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Conducted Audit</DialogTitle>
+            <DialogDescription>Log an inspection outcome with pass/fail checkpoints.</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                await recordConductedAudit.mutateAsync({
+                  checklist: conductChecklist,
+                  conducted_by: conductBy,
+                  score: Number(conductScore),
+                  passed: Number(conductPassed),
+                  failed: Number(conductFailed),
+                  status: conductStatus,
+                  notes: conductNotes || undefined,
+                });
+                addToast({ title: 'Saved', description: 'Conducted audit recorded' });
+                setConductDialogOpen(false);
+                setConductChecklist('');
+                setConductBy('');
+                setConductNotes('');
+              } catch (err) {
+                addToast({ title: 'Error', description: friendlyError(err), variant: 'destructive' });
+              }
+            }}
+            className="space-y-3 py-2"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="cond-cl">Checklist Name *</Label>
+              <Input
+                id="cond-cl"
+                placeholder="e.g. DG Set Weekly Audit"
+                value={conductChecklist}
+                onChange={(e) => setConductChecklist(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cond-by">Conducted By *</Label>
+              <Input
+                id="cond-by"
+                placeholder="Auditor name"
+                value={conductBy}
+                onChange={(e) => setConductBy(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="cond-score">Score (%)</Label>
+                <Input
+                  id="cond-score"
+                  type="number"
+                  value={conductScore}
+                  onChange={(e) => setConductScore(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="cond-p">Passed</Label>
+                <Input
+                  id="cond-p"
+                  type="number"
+                  value={conductPassed}
+                  onChange={(e) => setConductPassed(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="cond-f">Failed</Label>
+                <Input
+                  id="cond-f"
+                  type="number"
+                  value={conductFailed}
+                  onChange={(e) => setConductFailed(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cond-status">Audit Result</Label>
+              <Select
+                id="cond-status"
+                value={conductStatus}
+                onChange={(e) => setConductStatus(e.target.value as typeof conductStatus)}
+              >
+                <option value="pass">Pass</option>
+                <option value="conditional">Conditional</option>
+                <option value="fail">Fail</option>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cond-notes">Notes / Observations</Label>
+              <Input
+                id="cond-notes"
+                placeholder="Remarks..."
+                value={conductNotes}
+                onChange={(e) => setConductNotes(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={recordConductedAudit.isPending}>Save Audit</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ROOT-LEVEL DIALOG: Vendor Audit Dialog */}
+      <Dialog open={vendorAuditDialogOpen} onOpenChange={setVendorAuditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Schedule Vendor Audit</DialogTitle>
+            <DialogDescription>Assess contractor performance against SLA.</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                await createVendorAudit.mutateAsync({
+                  vendor_id: vaVendorId,
+                  auditor_name: vaAuditor,
+                  scheduled_date: vaDate,
+                  compliance_rating: Number(vaRating),
+                  notes: vaNotes || undefined,
+                });
+                addToast({ title: 'Success', description: 'Vendor audit recorded' });
+                setVendorAuditDialogOpen(false);
+                setVaVendorId('');
+                setVaAuditor('');
+                setVaDate('');
+                setVaNotes('');
+              } catch (err) {
+                addToast({ title: 'Error', description: friendlyError(err), variant: 'destructive' });
+              }
+            }}
+            className="space-y-4 py-2"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="va-vendor">Vendor *</Label>
+              <Select
+                id="va-vendor"
+                value={vaVendorId}
+                onChange={(e) => setVaVendorId(e.target.value)}
+                required
+              >
+                <option value="">Select vendor...</option>
+                {vendors.map((v) => (
+                  <option key={v.id} value={v.id}>{v.name}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="va-auditor">Auditor Name *</Label>
+              <Input
+                id="va-auditor"
+                value={vaAuditor}
+                onChange={(e) => setVaAuditor(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="va-date">Date *</Label>
+                <Input
+                  id="va-date"
+                  type="date"
+                  value={vaDate}
+                  onChange={(e) => setVaDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="va-rating">Rating (1-5)</Label>
+                <Select id="va-rating" value={vaRating} onChange={(e) => setVaRating(e.target.value)}>
+                  <option value="5">5 - Excellent</option>
+                  <option value="4">4 - Good</option>
+                  <option value="3">3 - Satisfactory</option>
+                  <option value="2">2 - Poor</option>
+                  <option value="1">1 - Critical Breach</option>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="va-notes">Notes</Label>
+              <Input
+                id="va-notes"
+                placeholder="Findings and remarks..."
+                value={vaNotes}
+                onChange={(e) => setVaNotes(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={createVendorAudit.isPending}>Save</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ROOT-LEVEL DIALOG: QR Sticker Modal */}
+      <Dialog open={Boolean(qrModalAsset)} onOpenChange={(open) => !open && setQrModalAsset(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5 text-primary" />
+              Asset QR Badge
+            </DialogTitle>
+            <DialogDescription>
+              Printable equipment verification badge for field scanning and inspection.
+            </DialogDescription>
+          </DialogHeader>
+          {qrModalAsset && (
+            <div className="flex flex-col items-center justify-center p-6 border rounded-xl bg-card space-y-4">
+              <div className="p-4 bg-white rounded-lg shadow-sm border">
+                <QRCodeSVG
+                  value={`ASSET:${qrModalAsset.id}:${qrModalAsset.name}`}
+                  size={180}
+                  level="H"
+                />
+              </div>
+              <div className="text-center space-y-1">
+                <div className="font-bold text-base">{qrModalAsset.name}</div>
+                <div className="text-[11px] text-muted-foreground font-mono">ID: {qrModalAsset.id}</div>
+                <div className="text-xs font-medium text-muted-foreground">
+                  Location: {qrModalAsset.location} · {qrModalAsset.asset_type}
+                </div>
+                {qrModalAsset.serial_number && (
+                  <div className="text-xs text-muted-foreground">S/N: {qrModalAsset.serial_number}</div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter className="flex items-center gap-2">
+            <DialogClose>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+            <Button onClick={() => window.print()} className="gap-2">
+              <Printer className="h-4 w-4" />
+              Print QR Badge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

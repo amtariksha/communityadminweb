@@ -20,6 +20,8 @@ interface PaginatedResponse<T> {
 interface DocumentFilters {
   category_id?: string;
   search?: string;
+  unit_id?: string;
+  folder_type?: string;
   page?: number;
   limit?: number;
 }
@@ -57,6 +59,9 @@ interface UploadDocumentInput {
   tags?: string[];
   audience_role?: DocumentAudienceRole | null;
   audience_unit_id?: string | null;
+  unit_id?: string | null;
+  folder_type?: 'common' | 'unit' | 'committee';
+  is_private?: boolean;
 }
 
 interface UpdateDocumentInput {
@@ -66,6 +71,9 @@ interface UpdateDocumentInput {
   access_level?: string;
   audience_role?: DocumentAudienceRole | null;
   audience_unit_id?: string | null;
+  unit_id?: string | null;
+  folder_type?: 'common' | 'unit' | 'committee';
+  is_private?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,6 +100,8 @@ function filtersToParams(filters?: DocumentFilters): Record<string, string> | un
   const params: Record<string, string> = {};
   if (filters.category_id) params.category_id = filters.category_id;
   if (filters.search) params.search = filters.search;
+  if (filters.unit_id) params.unit_id = filters.unit_id;
+  if (filters.folder_type && filters.folder_type !== 'all') params.folder_type = filters.folder_type;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   return params;

@@ -18,6 +18,9 @@ export interface ParkingSlot {
   is_occupied: boolean;
   monthly_charge: number;
   status: string;
+  sticker_number?: string | null;
+  rfid_tag?: string | null;
+  is_ev_enabled?: boolean;
   created_at: string;
   unit_number?: string;
   member_name?: string;
@@ -97,12 +100,15 @@ export interface SubletFilters {
 // Input types
 // ---------------------------------------------------------------------------
 
-interface CreateSlotInput {
+export interface CreateSlotInput {
   slot_number: string;
   slot_type: string;
   location?: string | null;
   has_ev_charger?: boolean;
   monthly_charge?: number;
+  sticker_number?: string | null;
+  rfid_tag?: string | null;
+  is_ev_enabled?: boolean;
 }
 
 interface BulkCreateSlotsInput {
@@ -267,6 +273,19 @@ export function useCreateSlot() {
   return useMutation({
     mutationFn: function createSlot(input: CreateSlotInput) {
       return api.post<{ data: ParkingSlot }>('/parking/slots', input);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: parkingKeys.all });
+    },
+  });
+}
+
+export function useUpdateSlot() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function updateSlotFn({ id, data }: { id: string; data: Partial<CreateSlotInput> }) {
+      return api.patch<{ data: ParkingSlot }>(`/parking/slots/${id}`, data);
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: parkingKeys.all });

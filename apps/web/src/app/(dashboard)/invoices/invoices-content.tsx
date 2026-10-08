@@ -61,6 +61,10 @@ import {
   useDefaulters,
   useUnits,
   useBulkUpdateDueDates,
+  useOtherBills,
+  useCreateOtherBill,
+  useUnitBillingCycles,
+  useUpsertUnitBillingCycle,
 } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
 import type { InvoiceStatus, Invoice } from '@communityos/shared';
@@ -224,6 +228,36 @@ export default function InvoicesContent(): ReactNode {
   const page = listState.state.page;
   const setPage = listState.setPage;
   const limit = 20;
+
+  // Main Tab: invoices, other_bills, billing_cycles
+  const [mainTab, setMainTab] = useState<'invoices' | 'other_bills' | 'billing_cycles'>('invoices');
+
+  // Other Bills state & queries
+  const { data: otherBills = [], isLoading: otherBillsLoading } = useOtherBills();
+  const createOtherBill = useCreateOtherBill();
+  const [otherBillDialogOpen, setOtherBillDialogOpen] = useState(false);
+  const [obDescription, setObDescription] = useState('');
+  const [obCategory, setObCategory] = useState('Utility');
+  const [obAmount, setObAmount] = useState('');
+  const [obPaidBy, setObPaidBy] = useState('');
+  const [obPaymentMode, setObPaymentMode] = useState('bank_transfer');
+  const [obStatus, setObStatus] = useState('pending');
+
+  // Unit Billing Cycles state & queries
+  const { data: billingCycles = [], isLoading: billingCyclesLoading } = useUnitBillingCycles();
+  const upsertBillingCycle = useUpsertUnitBillingCycle();
+  const [billingCycleDialogOpen, setBillingCycleDialogOpen] = useState(false);
+  const [bcUnitId, setBcUnitId] = useState('');
+  const [bcFrequency, setBcFrequency] = useState('monthly');
+  const [bcDayOfMonth, setBcDayOfMonth] = useState('1');
+  const [bcGraceDays, setBcGraceDays] = useState('15');
+  const [bcLpiRate, setBcLpiRate] = useState('18');
+  const [bcAutoInvoice, setBcAutoInvoice] = useState(true);
+  const [bcAutoReceipt, setBcAutoReceipt] = useState(true);
+
+  // Units list for dynamic dropdown
+  const { data: unitsData } = useUnits();
+  const unitsList = unitsData?.data ?? [];
 
   // Form state for generate
   const [selectedRuleId, setSelectedRuleId] = useState('');
@@ -554,6 +588,16 @@ export default function InvoicesContent(): ReactNode {
                 { key: 'due_date', label: 'Due Date' },
               ]}
             />
+            <Button
+              variant="outline"
+              onClick={() => {
+                const idsQuery = selectedIds.size > 0 ? `?ids=${Array.from(selectedIds).join(',')}` : '';
+                window.open(`/api/v1/invoices/bulk-download-zip${idsQuery}`, '_blank');
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download ZIP
+            </Button>
             {selectedIds.size > 0 && (
               <>
                 <Button
@@ -672,9 +716,48 @@ export default function InvoicesContent(): ReactNode {
         }
       />
 
-      {/* QA #37 — explicit pagination/query error banner so users don't
-          stare at an empty table wondering if it really has no data. */}
-      {isError && (
+      {/* Module Level Navigation Tabs */}
+      <div className="flex gap-2 border-b">
+        <button
+          type="button"
+          onClick={() => setMainTab('invoices')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            mainTab === 'invoices'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Member Invoices
+        </button>
+        <button
+          type="button"
+          onClick={() => setMainTab('other_bills')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            mainTab === 'other_bills'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Other Bills Register
+        </button>
+        <button
+          type="button"
+          onClick={() => setMainTab('billing_cycles')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            mainTab === 'billing_cycles'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Unit Billing Cycles
+        </button>
+      </div>
+
+      {mainTab === 'invoices' && (
+        <>
+          {/* QA #37 — explicit pagination/query error banner so users don't
+              stare at an empty table wondering if it really has no data. */}
+          {isError && (
         <div className="flex items-center justify-between gap-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm">
           <div className="text-destructive">
             <strong>Couldn&apos;t load invoices.</strong>{' '}
@@ -977,6 +1060,376 @@ export default function InvoicesContent(): ReactNode {
           )}
         </CardContent>
       </Card>
+        </>
+      )}
+
+      {/* Other Bills Register */}
+      {mainTab === 'other_bills' && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Other Bills & Vouchers Register</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Record and track auxiliary society vouchers, utility payments, petty cash and emergency payouts.
+              </p>
+            </div>
+            <Button size="sm" onClick={() => setOtherBillDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Record Other Bill
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            {otherBillsLoading ? (
+              <div className="space-y-2 p-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : otherBills.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <FileText className="mb-2 h-10 w-10 opacity-50" />
+                <p className="text-lg font-medium">No auxiliary bills recorded</p>
+                <p className="text-sm">Click &ldquo;Record Other Bill&rdquo; to add a petty cash or utility voucher</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Paid On</TableHead>
+                    <TableHead>Paid By</TableHead>
+                    <TableHead>Payment Mode</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {otherBills.map((b) => (
+                    <TableRow key={b.id}>
+                      <TableCell className="font-medium">{b.description}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{b.category}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {formatCurrency(Number(b.amount))}
+                      </TableCell>
+                      <TableCell>{b.paid_on ? formatDate(b.paid_on) : '—'}</TableCell>
+                      <TableCell>{b.paid_by || '—'}</TableCell>
+                      <TableCell className="capitalize">{b.payment_mode.replace(/_/g, ' ')}</TableCell>
+                      <TableCell>
+                        <Badge variant={b.status === 'paid' ? 'success' : b.status === 'cancelled' ? 'destructive' : 'warning'}>
+                          {b.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Unit Billing Cycles Mapping */}
+      {mainTab === 'billing_cycles' && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Unit Billing Cycles</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Customize per-unit billing frequencies, cycle billing days, grace periods, and late payment interest rates.
+              </p>
+            </div>
+            <Button size="sm" onClick={() => setBillingCycleDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Configure Unit Cycle
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            {billingCyclesLoading ? (
+              <div className="space-y-2 p-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : billingCycles.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <Calculator className="mb-2 h-10 w-10 opacity-50" />
+                <p className="text-lg font-medium">No per-unit cycles mapped</p>
+                <p className="text-sm">Configure unit-specific billing frequencies (monthly, bi-monthly, quarterly, annual)</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Unit #</TableHead>
+                    <TableHead>Cycle Frequency</TableHead>
+                    <TableHead>Bill Day</TableHead>
+                    <TableHead>Grace Period</TableHead>
+                    <TableHead>LPI Rate</TableHead>
+                    <TableHead>Auto Invoicing</TableHead>
+                    <TableHead>Auto Receipt</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {billingCycles.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="font-semibold">{c.unit_number}</TableCell>
+                      <TableCell className="capitalize">
+                        <Badge variant="outline">{c.cycle_frequency.replace(/_/g, ' ')}</Badge>
+                      </TableCell>
+                      <TableCell>Day {c.bill_day_of_month}</TableCell>
+                      <TableCell>{c.grace_period_days} days</TableCell>
+                      <TableCell>{c.lpi_rate_percent}% p.a.</TableCell>
+                      <TableCell>
+                        <Badge variant={c.is_auto_generate_invoice ? 'success' : 'secondary'}>
+                          {c.is_auto_generate_invoice ? 'Enabled' : 'Disabled'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={c.is_auto_generate_receipt ? 'success' : 'secondary'}>
+                          {c.is_auto_generate_receipt ? 'Enabled' : 'Disabled'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Record Other Bill Dialog */}
+      <Dialog open={otherBillDialogOpen} onOpenChange={setOtherBillDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Other Bill / Voucher</DialogTitle>
+            <DialogDescription>
+              Log an auxiliary bill or expense voucher for the society ledger.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                await createOtherBill.mutateAsync({
+                  description: obDescription,
+                  category: obCategory,
+                  amount: Number(obAmount),
+                  paid_by: obPaidBy || undefined,
+                  payment_mode: obPaymentMode,
+                  status: obStatus,
+                });
+                addToast({ title: 'Bill recorded', variant: 'success' });
+                setOtherBillDialogOpen(false);
+                setObDescription('');
+                setObAmount('');
+                setObPaidBy('');
+              } catch (err) {
+                addToast({ title: 'Failed to record bill', description: friendlyError(err), variant: 'destructive' });
+              }
+            }}
+            className="space-y-4 py-2"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="ob-desc">Description *</Label>
+              <Input
+                id="ob-desc"
+                placeholder="e.g. Garden maintenance petty cash"
+                value={obDescription}
+                onChange={(e) => setObDescription(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="ob-cat">Category *</Label>
+                <Select id="ob-cat" value={obCategory} onChange={(e) => setObCategory(e.target.value)}>
+                  <option value="Utility">Utility</option>
+                  <option value="Facility Repair">Facility Repair</option>
+                  <option value="Office Expense">Office Expense</option>
+                  <option value="Municipal Fee">Municipal Fee</option>
+                  <option value="Emergency">Emergency</option>
+                  <option value="Petty Cash">Petty Cash</option>
+                  <option value="Other">Other</option>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ob-amt">Amount (₹) *</Label>
+                <Input
+                  id="ob-amt"
+                  type="number"
+                  placeholder="0.00"
+                  value={obAmount}
+                  onChange={(e) => setObAmount(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="ob-mode">Payment Mode</Label>
+                <Select id="ob-mode" value={obPaymentMode} onChange={(e) => setObPaymentMode(e.target.value)}>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="cash">Cash</option>
+                  <option value="upi">UPI</option>
+                  <option value="cheque">Cheque</option>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ob-status">Status</Label>
+                <Select id="ob-status" value={obStatus} onChange={(e) => setObStatus(e.target.value)}>
+                  <option value="pending">Pending</option>
+                  <option value="paid">Paid</option>
+                  <option value="cancelled">Cancelled</option>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ob-paidby">Paid By / Authorized Person</Label>
+              <Input
+                id="ob-paidby"
+                placeholder="e.g. Estate Manager"
+                value={obPaidBy}
+                onChange={(e) => setObPaidBy(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={createOtherBill.isPending}>
+                {createOtherBill.isPending ? 'Saving...' : 'Record Bill'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Configure Unit Billing Cycle Dialog */}
+      <Dialog open={billingCycleDialogOpen} onOpenChange={setBillingCycleDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configure Unit Billing Cycle</DialogTitle>
+            <DialogDescription>
+              Assign automated billing rules, cycle frequency, and grace periods for a flat.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                await upsertBillingCycle.mutateAsync({
+                  unit_id: bcUnitId,
+                  cycle_frequency: bcFrequency,
+                  bill_day_of_month: Number(bcDayOfMonth),
+                  grace_period_days: Number(bcGraceDays),
+                  lpi_rate_percent: Number(bcLpiRate),
+                  is_auto_generate_invoice: bcAutoInvoice,
+                  is_auto_generate_receipt: bcAutoReceipt,
+                });
+                addToast({ title: 'Configured', description: 'Unit billing cycle saved' });
+                setBillingCycleDialogOpen(false);
+                setBcUnitId('');
+              } catch (err) {
+                addToast({ title: 'Failed to save cycle', description: friendlyError(err), variant: 'destructive' });
+              }
+            }}
+            className="space-y-4 py-2"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="bc-unit">Select Unit *</Label>
+              <Select
+                id="bc-unit"
+                value={bcUnitId}
+                onChange={(e) => setBcUnitId(e.target.value)}
+                required
+              >
+                <option value="">Select flat unit...</option>
+                {unitsList.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.unit_number} {u.block ? `(${u.block})` : ''}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="bc-freq">Cycle Frequency</Label>
+                <Select id="bc-freq" value={bcFrequency} onChange={(e) => setBcFrequency(e.target.value)}>
+                  <option value="monthly">Monthly</option>
+                  <option value="bi_monthly">Bi-Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="annual">Annual</option>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bc-day">Billing Day (1-28)</Label>
+                <Input
+                  id="bc-day"
+                  type="number"
+                  min="1"
+                  max="28"
+                  value={bcDayOfMonth}
+                  onChange={(e) => setBcDayOfMonth(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="bc-grace">Grace Days</Label>
+                <Input
+                  id="bc-grace"
+                  type="number"
+                  value={bcGraceDays}
+                  onChange={(e) => setBcGraceDays(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bc-lpi">LPI Rate (% p.a.)</Label>
+                <Input
+                  id="bc-lpi"
+                  type="number"
+                  step="0.1"
+                  value={bcLpiRate}
+                  onChange={(e) => setBcLpiRate(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2 pt-1">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={bcAutoInvoice}
+                  onChange={(e) => setBcAutoInvoice(e.target.checked)}
+                  className="rounded border-input"
+                />
+                Auto-generate monthly invoice draft
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={bcAutoReceipt}
+                  onChange={(e) => setBcAutoReceipt(e.target.checked)}
+                  className="rounded border-input"
+                />
+                Auto-generate receipt on full payment
+              </label>
+            </div>
+            <DialogFooter>
+              <DialogClose>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={upsertBillingCycle.isPending}>
+                {upsertBillingCycle.isPending ? 'Saving...' : 'Save Cycle'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Cancel Invoice Dialog */}
       {/* QA #92 — Bulk update due-date dialog */}

@@ -167,11 +167,14 @@ export default function DocumentsContent(): ReactNode {
   const categoriesQuery = useDocumentCategories();
   // QA #238 — load units for the audience-targeting unit picker. Cheap
   // since the list page already pages units; the dialog only shows
-  // the dropdown when audience='unit', so this query is invoked
-  // alongside other dialog queries.
   const unitsQuery = useUnits({ limit: 1000 });
+  const [filterFolderType, setFilterFolderType] = useState<string>('all');
+  const [filterUnitId, setFilterUnitId] = useState<string>('all');
+
   const documentsQuery = useDocuments({
     category_id: activeCategoryId || undefined,
+    folder_type: filterFolderType !== 'all' ? filterFolderType : undefined,
+    unit_id: filterUnitId !== 'all' ? filterUnitId : undefined,
     page,
     limit: ITEMS_PER_PAGE,
   });
@@ -278,6 +281,8 @@ export default function DocumentsContent(): ReactNode {
         file_size: uploadFile.size,
         audience_role: audienceRole,
         audience_unit_id: audienceUnitId,
+        unit_id: audienceUnitId,
+        folder_type: audienceUnitId ? 'unit' : 'common',
       },
       {
         onSuccess() {
@@ -562,14 +567,53 @@ export default function DocumentsContent(): ReactNode {
       <Card>
         <CardContent className="pt-6">
           <div className="mb-4 flex flex-col gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Folder Type Tabs */}
+              <div className="flex flex-wrap gap-1 rounded-lg bg-muted p-1">
+                {(['all', 'common', 'unit', 'committee'] as const).map((ft) => (
+                  <button
+                    key={ft}
+                    type="button"
+                    onClick={() => {
+                      setFilterFolderType(ft);
+                      setPage(1);
+                    }}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                      filterFolderType === ft
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
+                    }`}
+                  >
+                    {ft === 'all' ? 'All Folders' : ft === 'unit' ? 'Flat-wise / Unit' : `${ft} Docs`}
+                  </button>
+                ))}
+              </div>
+
+              {(filterFolderType === 'unit' || filterFolderType === 'all') && (
+                <Select
+                  value={filterUnitId}
+                  onChange={(e) => {
+                    setFilterUnitId(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-44 text-xs"
+                >
+                  <option value="all">All Units / Flats</option>
+                  {(unitsQuery.data?.data ?? []).map((u) => (
+                    <option key={u.id} value={u.id}>
+                      Unit {u.unit_number}
+                    </option>
+                  ))}
+                </Select>
+              )}
+
               <Select
                 value={activeCategoryId}
                 onChange={(e) => {
                   setActiveCategoryId(e.target.value);
                   setPage(1);
                 }}
-                className="w-48"
+                className="w-44 text-xs"
               >
                 <option value="">All Categories</option>
                 {categories.map((cat) => (

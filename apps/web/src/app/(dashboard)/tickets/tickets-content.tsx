@@ -14,6 +14,9 @@ import {
   MoreHorizontal,
   UserCheck,
   Timer,
+  Star,
+  SlidersHorizontal,
+  BookOpen,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,6 +67,11 @@ import {
   useBulkReassignTickets,
   useUploadFileToS3,
   fetchPresignedDownloadUrl,
+  useHelpdeskKpi,
+  useHelpdeskSetup,
+  useHelpdeskTemplates,
+  useCreateHelpdeskTemplate,
+  useStaffEmployees,
 } from '@/hooks';
 import type { Ticket, TicketComment } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
@@ -210,15 +218,39 @@ export default function TicketsContent(): ReactNode {
   const bulkCloseMutation = useBulkCloseTickets();
   const bulkReassignMutation = useBulkReassignTickets();
 
+  // Helpdesk queries & mutations
+  const { data: helpdeskKpi } = useHelpdeskKpi();
+  const { data: helpdeskSetup } = useHelpdeskSetup();
+  const { data: helpdeskTemplates = [] } = useHelpdeskTemplates();
+  const createTemplateMutation = useCreateHelpdeskTemplate();
+  const { data: staffData } = useStaffEmployees();
+  const staffList = staffData?.data ?? [];
+
+  // Extended UI states
+  const [activeQueueTab, setActiveQueueTab] = useState<'all' | 'golden' | 'breached'>('all');
+  const [setupModalOpen, setSetupModalOpen] = useState(false);
+  const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
+  const [newTemplateTitle, setNewTemplateTitle] = useState('');
+  const [newTemplateBody, setNewTemplateBody] = useState('');
+
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkReassignOpen, setBulkReassignOpen] = useState(false);
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // Clear selection when page/filters change
-  useEffect(() => { setSelectedIds(new Set()); }, [currentPage, statusFilter, priorityFilter, categoryFilter]);
+  useEffect(() => { setSelectedIds(new Set()); }, [currentPage, statusFilter, priorityFilter, categoryFilter, activeQueueTab]);
 
-  const tickets = ticketsQuery.data?.data ?? [];
+  const rawTickets = ticketsQuery.data?.data ?? [];
+  const tickets = rawTickets.filter((t) => {
+    if (activeQueueTab === 'golden') {
+      return Boolean(t.is_golden_queue || t.is_senior_citizen || t.is_differently_abled);
+    }
+    if (activeQueueTab === 'breached') {
+      return Boolean(t.sla_breached || isSlaOverdue(t));
+    }
+    return true;
+  });
   const total = ticketsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const stats = statsQuery.data;
@@ -407,24 +439,32 @@ export default function TicketsContent(): ReactNode {
         title="Tickets"
         description="Track and resolve maintenance requests, complaints, and service issues"
         actions={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <ExportButton
               data={tickets as unknown as Record<string, unknown>[]}
               filename={`tickets-${new Date().toISOString().split('T')[0]}`}
               columns={[
                 { key: 'ticket_number', label: 'Ticket #' },
-                { key: 'title', label: 'Title' },
+                { key: 'subject', label: 'Title' },
                 { key: 'category', label: 'Category' },
                 { key: 'priority', label: 'Priority' },
                 { key: 'status', label: 'Status' },
                 { key: 'created_at', label: 'Created' },
               ]}
             />
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => setTemplatesModalOpen(true)}>
+              <BookOpen className="mr-2 h-4 w-4" />
+              Canned Templates
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setSetupModalOpen(true)}>
+              <SlidersHorizontal className="mr-2 h-4 w-4" />
+              Helpdesk SLA Setup
+            </Button>
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               New Ticket
             </Button>
-          </>
+          </div>
         }
       />
 
@@ -441,49 +481,96 @@ export default function TicketsContent(): ReactNode {
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Open</CardTitle>
+                <CardTitle className="text-sm font-medium">Active Open</CardTitle>
                 <AlertCircle className="h-4 w-4 text-yellow-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats?.open ?? 0}</div>
-                <p className="text-xs text-muted-foreground">Awaiting action</p>
+                <div className="text-2xl font-bold">{helpdeskKpi?.open_tickets ?? stats?.open ?? 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  {helpdeskKpi?.total_tickets ?? total} total society tickets
+                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+                <CardTitle className="text-sm font-medium">SLA Breached</CardTitle>
+                <Timer className="h-4 w-4 text-destructive" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-destructive">
+                  {helpdeskKpi?.sla_breached ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {(helpdeskKpi?.sla_breached ?? 0) > 0 ? 'Exceeded resolution deadline' : 'Zero SLA breaches'}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Golden Queue</CardTitle>
+                <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600">
+                  {helpdeskKpi?.golden_queue_tickets ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground">Senior & abled priority queue</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Avg Resolution</CardTitle>
                 <Clock className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats?.in_progress ?? 0}</div>
-                <p className="text-xs text-muted-foreground">Being worked on</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Resolved</CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.resolved ?? 0}</div>
-                <p className="text-xs text-muted-foreground">Completed</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Closed</CardTitle>
-                <XCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.closed ?? 0}</div>
-                <p className="text-xs text-muted-foreground">Archived</p>
+                <div className="text-2xl font-bold">{helpdeskKpi?.avg_resolution_hours ?? 0} hrs</div>
+                <p className="text-xs text-muted-foreground">Mean turnaround speed</p>
               </CardContent>
             </Card>
           </>
         )}
+      </div>
+
+      {/* Queue tabs */}
+      <div className="flex border-b">
+        <button
+          type="button"
+          onClick={() => setActiveQueueTab('all')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            activeQueueTab === 'all'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          All Tickets ({rawTickets.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveQueueTab('golden')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-1.5 transition-colors ${
+            activeQueueTab === 'golden'
+              ? 'border-amber-500 text-amber-600 font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+          ★ Golden Queue ({rawTickets.filter((t) => t.is_golden_queue || t.is_senior_citizen || t.is_differently_abled).length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveQueueTab('breached')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-1.5 transition-colors ${
+            activeQueueTab === 'breached'
+              ? 'border-destructive text-destructive font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+          SLA Overdue ({rawTickets.filter((t) => t.sla_breached || isSlaOverdue(t)).length})
+        </button>
       </div>
 
       {/* Filters */}
@@ -648,14 +735,19 @@ export default function TicketsContent(): ReactNode {
                     <TableCell className="font-mono text-xs">
                       {ticket.ticket_number}
                     </TableCell>
-                    <TableCell className="font-medium max-w-[200px]">
-                      <div className="flex items-center gap-1.5 truncate">
+                    <TableCell className="font-medium max-w-[240px]">
+                      <div className="flex items-center gap-1.5">
                         {isSlaOverdue(ticket) && (
                           <span title="SLA overdue">
                             <Timer className="h-3.5 w-3.5 shrink-0 text-destructive" />
                           </span>
                         )}
                         <span className="truncate">{ticket.subject}</span>
+                        {(ticket.is_golden_queue || ticket.is_senior_citizen || ticket.is_differently_abled) && (
+                          <Badge className="bg-amber-500 text-white text-[10px] px-1 py-0 shrink-0 gap-0.5">
+                            <Star className="h-2.5 w-2.5 fill-white" /> Golden
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="capitalize">
@@ -671,7 +763,7 @@ export default function TicketsContent(): ReactNode {
                         <Badge variant={getStatusBadgeVariant(ticket.status)}>
                           {formatStatus(ticket.status)}
                         </Badge>
-                        {isSlaOverdue(ticket) && (
+                        {(ticket.sla_breached || isSlaOverdue(ticket)) && (
                           <Badge variant="destructive" className="text-xs px-1 py-0">SLA</Badge>
                         )}
                       </div>
@@ -1001,7 +1093,26 @@ export default function TicketsContent(): ReactNode {
 
               {/* Add comment */}
               <div className="space-y-2">
-                <Label htmlFor="comment-message">Add Comment</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="comment-message">Add Comment</Label>
+                  {helpdeskTemplates.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground">Template:</span>
+                      <select
+                        className="text-xs h-7 px-2 border rounded bg-background"
+                        onChange={(e) => {
+                          if (e.target.value) setCommentMessage((prev) => (prev ? `${prev}\n\n${e.target.value}` : e.target.value));
+                        }}
+                        defaultValue=""
+                      >
+                        <option value="" disabled>Choose canned response...</option>
+                        {helpdeskTemplates.map((t) => (
+                          <option key={t.id} value={t.body}>{t.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Textarea
                     id="comment-message"
@@ -1043,13 +1154,19 @@ export default function TicketsContent(): ReactNode {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="bulk-assignee">Assign To (User ID)</Label>
-              <Input
+              <Label htmlFor="bulk-assignee">Assign To Staff</Label>
+              <Select
                 id="bulk-assignee"
-                placeholder="Enter staff user ID"
                 value={bulkAssignee}
                 onChange={(e) => setBulkAssignee(e.target.value)}
-              />
+              >
+                <option value="">Select staff member...</option>
+                {staffList.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.staff_type} {s.phone ? `· ${s.phone}` : ''})
+                  </option>
+                ))}
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -1062,6 +1179,181 @@ export default function TicketsContent(): ReactNode {
             >
               {bulkReassignMutation.isPending ? 'Reassigning...' : 'Reassign'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Canned Templates Modal */}
+      <Dialog open={templatesModalOpen} onOpenChange={setTemplatesModalOpen}>
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              Canned Response Templates
+            </DialogTitle>
+            <DialogDescription>
+              Pre-defined response templates to accelerate resolution and standardise resident communications.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Create new template form */}
+            <div className="p-3 border rounded-lg bg-muted/30 space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add New Template</h4>
+              <Input
+                placeholder="Template Title (e.g. Electrician Dispatched)"
+                value={newTemplateTitle}
+                onChange={(e) => setNewTemplateTitle(e.target.value)}
+              />
+              <Textarea
+                placeholder="Template message body..."
+                rows={3}
+                value={newTemplateBody}
+                onChange={(e) => setNewTemplateBody(e.target.value)}
+              />
+              <Button
+                size="sm"
+                disabled={createTemplateMutation.isPending || !newTemplateTitle.trim() || !newTemplateBody.trim()}
+                onClick={async () => {
+                  try {
+                    await createTemplateMutation.mutateAsync({
+                      title: newTemplateTitle,
+                      body: newTemplateBody,
+                    });
+                    addToast({ title: 'Template created', variant: 'success' });
+                    setNewTemplateTitle('');
+                    setNewTemplateBody('');
+                  } catch (err) {
+                    addToast({ title: 'Failed to create template', description: friendlyError(err), variant: 'destructive' });
+                  }
+                }}
+              >
+                {createTemplateMutation.isPending ? 'Saving...' : 'Save Template'}
+              </Button>
+            </div>
+
+            {/* Existing templates list */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Available Templates ({helpdeskTemplates.length})</h4>
+              {helpdeskTemplates.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                  No canned templates defined yet. Add one above!
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-[260px] overflow-y-auto">
+                  {helpdeskTemplates.map((t) => (
+                    <div key={t.id} className="p-3 border rounded-lg hover:bg-muted/20">
+                      <div className="font-medium text-sm">{t.title}</div>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.body}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <DialogClose>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Helpdesk SLA & Rules Setup Modal */}
+      <Dialog open={setupModalOpen} onOpenChange={setSetupModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SlidersHorizontal className="h-5 w-5 text-primary" />
+              Helpdesk SLA Policies & Escalation Rules
+            </DialogTitle>
+            <DialogDescription>
+              Service Level Agreements, operating working hours, and automated escalation tier matrix.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 py-2">
+            {/* Operational Timing */}
+            <div className="p-3 border rounded-lg space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Operational Hours</h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Working Hours: </span>
+                  <span className="font-medium">
+                    {helpdeskSetup?.settings?.operational_hours_start ?? '09:00'} - {helpdeskSetup?.settings?.operational_hours_end ?? '18:00'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Aging SLA Alert: </span>
+                  <span className="font-medium">{helpdeskSetup?.settings?.aging_sla_hours ?? 24} hours</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">Operating Days: </span>
+                  <span className="font-medium">
+                    {helpdeskSetup?.settings?.operational_days?.join(', ') || 'Monday - Saturday'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Category SLAs */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Category SLAs</h4>
+              <div className="border rounded-md overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b bg-muted/40 text-left text-muted-foreground">
+                      <th className="p-2">Category</th>
+                      <th className="p-2">SLA Target (Hours)</th>
+                      <th className="p-2">Default Priority</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {(helpdeskSetup?.categories ?? []).map((cat) => (
+                      <tr key={cat.id}>
+                        <td className="p-2 font-medium">{cat.name}</td>
+                        <td className="p-2">{cat.sla_hours} hrs</td>
+                        <td className="p-2 capitalize">
+                          <Badge variant="outline">{cat.default_priority}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Escalation Rules */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Escalation Tier Rules</h4>
+              <div className="border rounded-md overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b bg-muted/40 text-left text-muted-foreground">
+                      <th className="p-2">Level</th>
+                      <th className="p-2">Trigger After</th>
+                      <th className="p-2">Escalate To Role</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {(helpdeskSetup?.escalationRules ?? []).map((rule) => (
+                      <tr key={rule.id}>
+                        <td className="p-2 font-medium">Tier {rule.level}</td>
+                        <td className="p-2 text-destructive font-medium">{rule.trigger_after_hours} hrs after breach</td>
+                        <td className="p-2 capitalize">{rule.escalate_to_role || 'Manager'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <DialogClose>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>

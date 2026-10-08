@@ -33,6 +33,10 @@ export interface Ticket {
   // together or both null.
   attachment_url?: string | null;
   attachment_name?: string | null;
+  is_golden_queue?: boolean;
+  is_senior_citizen?: boolean;
+  is_differently_abled?: boolean;
+  sla_breached?: boolean;
 }
 
 export interface TicketComment {
@@ -282,3 +286,81 @@ export function useBulkReassignTickets() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Helpdesk Hooks & Extended Types
+// ---------------------------------------------------------------------------
+
+export interface HelpdeskKpi {
+  total_tickets: number;
+  open_tickets: number;
+  in_progress_tickets: number;
+  resolved_tickets: number;
+  closed_tickets: number;
+  sla_breached: number;
+  golden_queue_tickets: number;
+  senior_citizen_tickets: number;
+  avg_resolution_hours: number;
+}
+
+export interface HelpdeskTemplate {
+  id: string;
+  title: string;
+  subject: string | null;
+  body: string;
+  category_id: string | null;
+}
+
+export function useHelpdeskKpi() {
+  return useQuery({
+    queryKey: ['helpdesk', 'kpi'],
+    queryFn: async () => {
+      const res = await api.get<{ data: HelpdeskKpi }>('/helpdesk/kpi');
+      return res.data;
+    },
+  });
+}
+
+export function useHelpdeskSetup() {
+  return useQuery({
+    queryKey: ['helpdesk', 'setup'],
+    queryFn: async () => {
+      const res = await api.get<{
+        data: {
+          settings: {
+            operational_days: string[];
+            operational_hours_start: string;
+            operational_hours_end: string;
+            allowed_modes: string[];
+            aging_sla_hours: number;
+            committee_emails: string[];
+          };
+          categories: Array<{ id: string; name: string; sla_hours: number; default_priority: string }>;
+          statuses: Array<{ id: string; label: string; category: string; color: string }>;
+          escalationRules: Array<{ id: string; level: number; trigger_after_hours: number; escalate_to_role?: string }>;
+        };
+      }>('/helpdesk/setup');
+      return res.data;
+    },
+  });
+}
+
+export function useHelpdeskTemplates() {
+  return useQuery({
+    queryKey: ['helpdesk', 'templates'],
+    queryFn: async () => {
+      const res = await api.get<{ data: HelpdeskTemplate[] }>('/helpdesk/templates');
+      return res.data;
+    },
+  });
+}
+
+export function useCreateHelpdeskTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { title: string; subject?: string; body: string; category_id?: string }) =>
+      api.post<{ data: HelpdeskTemplate }>('/helpdesk/templates', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['helpdesk', 'templates'] }),
+  });
+}
+

@@ -66,6 +66,7 @@ const navGroups: NavGroup[] = [
     label: 'Overview',
     items: [
       { label: 'Dashboard', href: '/', icon: <LayoutDashboard className="h-4 w-4" /> },
+      { label: 'KPI Command Center', href: '/kpi-dashboard', icon: <Sparkles className="h-4 w-4" /> },
     ],
   },
   {
@@ -92,6 +93,8 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Units', href: '/units', icon: <Home className="h-4 w-4" />, feature: 'units' },
       { label: 'Member Directory', href: '/units/directory', icon: <Contact className="h-4 w-4" />, feature: 'units' },
+      { label: 'Member Categories', href: '/setup/categories', icon: <Users className="h-4 w-4" />, feature: 'units' },
+      { label: 'KYC Verification', href: '/setup/kyc', icon: <ShieldCheck className="h-4 w-4" />, feature: 'units' },
       { label: 'Gate', href: '/gate', icon: <ShieldCheck className="h-4 w-4" />, feature: 'gate' },
       { label: 'Guard Patrol', href: '/patrol', icon: <Footprints className="h-4 w-4" />, feature: 'gate' },
       { label: 'SOS & Safety', href: '/sos', icon: <Siren className="h-4 w-4" /> },
@@ -103,7 +106,11 @@ const navGroups: NavGroup[] = [
       { label: 'Voting', href: '/voting', icon: <Vote className="h-4 w-4" />, feature: 'voting' },
       { label: 'Gas', href: '/gas', icon: <Flame className="h-4 w-4" />, feature: 'gas' },
       { label: 'Marketplace', href: '/marketplace', icon: <Store className="h-4 w-4" />, feature: 'marketplace' },
+      { label: 'Events', href: '/events', icon: <CalendarCheck className="h-4 w-4" /> },
+      { label: 'Local Directory', href: '/directory', icon: <Contact className="h-4 w-4" /> },
+      { label: 'Governance & MoM', href: '/governance', icon: <ScrollText className="h-4 w-4" /> },
       { label: 'Assets', href: '/assets', icon: <Wrench className="h-4 w-4" />, feature: 'assets' },
+      { label: 'Inventory & Procurement', href: '/inventory', icon: <ShoppingCart className="h-4 w-4" />, feature: 'assets' },
       { label: 'CCTV', href: '/cctv', icon: <Video className="h-4 w-4" />, feature: 'cctv' },
       { label: 'Staff', href: '/staff', icon: <Users className="h-4 w-4" />, feature: 'staff' },
       // QA #204 — placeholder route until the salaries feature lands.

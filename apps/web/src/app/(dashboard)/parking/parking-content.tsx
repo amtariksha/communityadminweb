@@ -271,6 +271,9 @@ function SlotsTab(): ReactNode {
   const [newLocation, setNewLocation] = useState('');
   const [newEvCharger, setNewEvCharger] = useState(false);
   const [newMonthlyCharge, setNewMonthlyCharge] = useState('');
+  const [newStickerNumber, setNewStickerNumber] = useState('');
+  const [newRfidTag, setNewRfidTag] = useState('');
+  const [newIsEvEnabled, setNewIsEvEnabled] = useState(false);
 
   // Assign form state
   const [assignUnitId, setAssignUnitId] = useState('');
@@ -297,8 +300,11 @@ function SlotsTab(): ReactNode {
         slot_number: newSlotNumber.trim(),
         slot_type: newSlotType,
         location: newLocation.trim() || null,
-        has_ev_charger: newEvCharger,
+        has_ev_charger: newEvCharger || newIsEvEnabled,
         monthly_charge: newMonthlyCharge ? Number(newMonthlyCharge) : undefined,
+        sticker_number: newStickerNumber.trim() || null,
+        rfid_tag: newRfidTag.trim() || null,
+        is_ev_enabled: newIsEvEnabled || newEvCharger,
       },
       {
         onSuccess() {
@@ -309,6 +315,9 @@ function SlotsTab(): ReactNode {
           setNewLocation('');
           setNewEvCharger(false);
           setNewMonthlyCharge('');
+          setNewStickerNumber('');
+          setNewRfidTag('');
+          setNewIsEvEnabled(false);
         },
         onError(error) {
           addToast({ title: 'Failed to create slot', description: friendlyError(error), variant: 'destructive' });
@@ -499,6 +508,26 @@ function SlotsTab(): ReactNode {
                 placeholder="e.g. Basement 1"
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="slot-sticker">Sticker # / Pass</Label>
+                <Input
+                  id="slot-sticker"
+                  value={newStickerNumber}
+                  onChange={(e) => setNewStickerNumber(e.target.value)}
+                  placeholder="e.g. STK-1042"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="slot-rfid">RFID Tag / Fastag</Label>
+                <Input
+                  id="slot-rfid"
+                  value={newRfidTag}
+                  onChange={(e) => setNewRfidTag(e.target.value)}
+                  placeholder="e.g. RFID-88219"
+                />
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 id="ev-charger"
@@ -507,7 +536,7 @@ function SlotsTab(): ReactNode {
                 onChange={(e) => setNewEvCharger(e.target.checked)}
                 className="h-4 w-4 rounded border-input"
               />
-              <Label htmlFor="ev-charger">Has EV Charger</Label>
+              <Label htmlFor="ev-charger">Has EV Charger / Enabled</Label>
             </div>
             <div className="space-y-2">
               <Label htmlFor="monthly-charge">Monthly Charge</Label>

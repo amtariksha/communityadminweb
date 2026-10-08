@@ -101,7 +101,12 @@ export {
   useCalculateLPI,
   usePostLPI,
   useWaiveInterest,
+  useOtherBills,
+  useCreateOtherBill,
+  useUnitBillingCycles,
+  useUpsertUnitBillingCycle,
 } from './use-invoices';
+export type { OtherBill, UnitBillingCycle } from './use-invoices';
 
 // Receipts
 export {
@@ -469,6 +474,7 @@ export {
   useVehicles,
   useSublets,
   useCreateSlot,
+  useUpdateSlot,
   useBulkCreateSlots,
   useAssignSlot,
   useDeallocateSlot,
@@ -482,6 +488,7 @@ export {
 } from './use-parking';
 export type {
   ParkingSlot,
+  CreateSlotInput,
   Vehicle,
   ParkingSublet,
   SlotStats,
@@ -829,3 +836,162 @@ export type {
   ReplaceAdminRolesInput,
   RemoveAdminRoleInput,
 } from './use-tenant-admins';
+
+// Asset Audits & Checklists
+export {
+  useAssetChecklists,
+  useCreateChecklist,
+  useAuditSchedules,
+  useCreateAuditSchedule,
+  useConductedAudits,
+  useRecordConductedAudit,
+  useVendorAudits,
+  useCreateVendorAudit,
+} from './use-assets';
+export type {
+  AssetChecklist,
+  AuditSchedule,
+  ConductedAudit,
+  VendorAudit,
+} from './use-assets';
+
+// Inventory & Procurement
+export {
+  useMaterials,
+  useCreateMaterial,
+  useLOIs,
+  useCreateLOI,
+  useConvertLOIToPO,
+  useInventoryPurchaseOrders,
+  useCreateInventoryPurchaseOrder,
+  useGRNs,
+  useCreateGRN,
+  useWorkOrders,
+  useCreateWorkOrder,
+  useStockLogs,
+  useRecordStockMovement,
+} from './use-inventory';
+export type {
+  Material,
+  LOI,
+  PurchaseOrder,
+  GRN,
+  WorkOrder,
+  StockLog,
+} from './use-inventory';
+
+// Member Categories & KYC
+export {
+  useMemberCategories,
+  useCreateMemberCategory,
+  useDeleteMemberCategory,
+  useKycRecords,
+  useVerifyKyc,
+  useRejectKyc,
+} from './use-categories-kyc';
+export type {
+  MemberCategory,
+  KycRecord,
+} from './use-categories-kyc';
+
+// KPI Dashboard & Breakdown
+export {
+  useKpiDashboardData,
+  useCountsSummary,
+  useTicketsSummary,
+  useStatisticsSummary,
+} from './use-kpi-dashboard';
+export type {
+  KpiBackendData,
+} from './use-kpi-dashboard';
+
+// Helpdesk
+export {
+  useHelpdeskKpi,
+  useHelpdeskSetup,
+  useHelpdeskTemplates,
+  useCreateHelpdeskTemplate,
+} from './use-tickets';
+export type {
+  HelpdeskKpi,
+  HelpdeskTemplate,
+} from './use-tickets';
+
+// Events & RSVPs
+export {
+  useEvents,
+  useEvent,
+  useCreateEvent,
+  useUpdateEvent,
+  useDeleteEvent,
+  useRsvpEvent,
+  useEventRsvps,
+} from './use-events';
+export type {
+  EventItem,
+  EventRsvp,
+  CreateEventInput,
+  UpdateEventInput,
+} from './use-events';
+
+// Lifestyle: Offers, Business Directory, Emergency Desk, Amenity Rules & Club
+export {
+  useOffers,
+  useCreateOffer,
+  useUpdateOffer,
+  useDeleteOffer,
+  useBusinessCategories,
+  useCreateBusinessCategory,
+  useBusinessListings,
+  useCreateBusinessListing,
+  useUpdateBusinessListing,
+  useDeleteBusinessListing,
+  useEmergencyContacts,
+  useCreateEmergencyContact,
+  useUpdateEmergencyContact,
+  useDeleteEmergencyContact,
+  useAmenityRules,
+  useCreateAmenityRule,
+  useDeleteAmenityRule,
+  useClubMembers,
+  useCreateClubMember,
+  useUpdateClubMemberStatus,
+} from './use-lifestyle';
+export type {
+  OfferItem,
+  CreateOfferInput,
+  UpdateOfferInput,
+  BusinessCategory,
+  BusinessListing,
+  CreateBusinessCategoryInput,
+  CreateBusinessListingInput,
+  UpdateBusinessListingInput,
+  EmergencyContact,
+  CreateEmergencyContactInput,
+  UpdateEmergencyContactInput,
+  AmenityRule,
+  ClubMember,
+} from './use-lifestyle';
+
+// Governance Meetings & MoM Tasks
+export {
+  useMeetings,
+  useMeeting,
+  useCreateMeeting,
+  useUpdateMeeting,
+  useDeleteMeeting,
+  useMomTasks,
+  useCreateMomTask,
+  useUpdateMomTask,
+  useDeleteMomTask,
+} from './use-meetings';
+export type {
+  MeetingItem,
+  MomTask,
+  CreateMeetingInput,
+  UpdateMeetingInput,
+  CreateMomTaskInput,
+  UpdateMomTaskInput,
+} from './use-meetings';
+
+

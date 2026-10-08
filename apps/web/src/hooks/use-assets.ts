@@ -345,3 +345,140 @@ export function useLogService() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Checklists & Audits Types & Hooks
+// ---------------------------------------------------------------------------
+
+export interface AssetChecklist {
+  id: string;
+  name: string;
+  area: string;
+  items: number;
+  frequency: string;
+  last_run: string | null;
+  created_at: string;
+}
+
+export interface AuditSchedule {
+  id: string;
+  checklist_id: string | null;
+  checklist: string;
+  scheduled_date: string;
+  assigned_to: string;
+  assigned_to_user_id: string | null;
+  assignee_name?: string | null;
+  status: string;
+}
+
+export interface ConductedAudit {
+  id: string;
+  schedule_id: string | null;
+  checklist: string;
+  conducted_on: string;
+  conducted_by: string;
+  score: number;
+  passed: number;
+  failed: number;
+  status: 'pass' | 'fail' | 'conditional';
+  notes: string | null;
+}
+
+export interface VendorAudit {
+  id: string;
+  vendor_id: string;
+  vendor_name: string;
+  auditor_name: string;
+  scheduled_date: string;
+  status: string;
+  compliance_rating: number | null;
+  notes: string | null;
+}
+
+export function useAssetChecklists() {
+  return useQuery({
+    queryKey: ['assets', 'checklists'],
+    queryFn: async () => {
+      const res = await api.get<{ data: AssetChecklist[] }>('/assets/checklists');
+      return res.data;
+    },
+  });
+}
+
+export function useCreateChecklist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; area: string; items?: number; frequency?: string }) =>
+      api.post<{ data: AssetChecklist }>('/assets/checklists', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets', 'checklists'] }),
+  });
+}
+
+export function useAuditSchedules() {
+  return useQuery({
+    queryKey: ['assets', 'audit-schedules'],
+    queryFn: async () => {
+      const res = await api.get<{ data: AuditSchedule[] }>('/assets/audits/schedules');
+      return res.data;
+    },
+  });
+}
+
+export function useCreateAuditSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { checklist_id?: string; checklist: string; scheduled_date: string; assigned_to?: string; assigned_to_user_id?: string }) =>
+      api.post<{ data: AuditSchedule }>('/assets/audits/schedules', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets', 'audit-schedules'] }),
+  });
+}
+
+export function useConductedAudits() {
+  return useQuery({
+    queryKey: ['assets', 'conducted-audits'],
+    queryFn: async () => {
+      const res = await api.get<{ data: ConductedAudit[] }>('/assets/audits/conducted');
+      return res.data;
+    },
+  });
+}
+
+export function useRecordConductedAudit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      schedule_id?: string;
+      checklist: string;
+      conducted_on?: string;
+      conducted_by: string;
+      score?: number;
+      passed?: number;
+      failed?: number;
+      status?: 'pass' | 'fail' | 'conditional';
+      notes?: string;
+    }) => api.post<{ data: ConductedAudit }>('/assets/audits/conducted', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['assets', 'conducted-audits'] });
+      qc.invalidateQueries({ queryKey: ['assets', 'audit-schedules'] });
+    },
+  });
+}
+
+export function useVendorAudits() {
+  return useQuery({
+    queryKey: ['assets', 'vendor-audits'],
+    queryFn: async () => {
+      const res = await api.get<{ data: VendorAudit[] }>('/assets/audits/vendor');
+      return res.data;
+    },
+  });
+}
+
+export function useCreateVendorAudit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { vendor_id: string; auditor_name: string; scheduled_date: string; compliance_rating?: number; notes?: string }) =>
+      api.post<{ data: VendorAudit }>('/assets/audits/vendor', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets', 'vendor-audits'] }),
+  });
+}

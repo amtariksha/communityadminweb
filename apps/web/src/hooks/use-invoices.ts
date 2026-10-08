@@ -352,3 +352,89 @@ export function useWaiveInterest() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Other Bills Register & Unit Billing Cycles Types & Hooks
+// ---------------------------------------------------------------------------
+
+export interface OtherBill {
+  id: string;
+  tenant_id: string;
+  description: string;
+  category: string;
+  amount: number;
+  paid_on: string | null;
+  paid_by: string | null;
+  payment_mode: string;
+  status: 'pending' | 'paid' | 'cancelled';
+  receipt_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useOtherBills() {
+  return useQuery({
+    queryKey: ['invoices', 'other-bills'],
+    queryFn: async () => {
+      const res = await api.get<{ data: OtherBill[] }>('/invoices/other-bills');
+      return res.data;
+    },
+  });
+}
+
+export function useCreateOtherBill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      description: string;
+      category?: string;
+      amount: number;
+      paid_on?: string;
+      paid_by?: string;
+      payment_mode?: string;
+      status?: string;
+    }) => api.post<{ data: OtherBill }>('/invoices/other-bills', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices', 'other-bills'] }),
+  });
+}
+
+export interface UnitBillingCycle {
+  id: string;
+  tenant_id: string;
+  unit_id: string;
+  unit_number: string;
+  cycle_frequency: 'monthly' | 'bi_monthly' | 'quarterly' | 'annual';
+  bill_day_of_month: number;
+  grace_period_days: number;
+  lpi_rate_percent: number;
+  is_auto_generate_invoice: boolean;
+  is_auto_generate_receipt: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useUnitBillingCycles() {
+  return useQuery({
+    queryKey: ['invoices', 'billing-cycles'],
+    queryFn: async () => {
+      const res = await api.get<{ data: UnitBillingCycle[] }>('/invoices/billing-cycles');
+      return res.data;
+    },
+  });
+}
+
+export function useUpsertUnitBillingCycle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      unit_id: string;
+      cycle_frequency?: string;
+      bill_day_of_month?: number;
+      grace_period_days?: number;
+      lpi_rate_percent?: number;
+      is_auto_generate_invoice?: boolean;
+      is_auto_generate_receipt?: boolean;
+    }) => api.post<{ data: UnitBillingCycle }>('/invoices/billing-cycles', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices', 'billing-cycles'] }),
+  });
+}

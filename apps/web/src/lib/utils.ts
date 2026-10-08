@@ -126,6 +126,16 @@ export function clampDateString(value: string, min: string, max: string): string
 
 export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return '—';
+  // Timezone-safe YYYY-MM-DD parsing to avoid 1-day-before shift in UTC+ timezones
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [year, month, day] = date.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day);
+    return localDate.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
   const parsed = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(parsed.getTime())) return '—';
   // QA #22 — backend occasionally sends Unix epoch 0 when a date
