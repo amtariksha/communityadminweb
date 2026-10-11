@@ -47,11 +47,12 @@ import {
   useCreateMomTask,
   useUpdateMomTask,
   useDeleteMomTask,
-  useStaffEmployees,
   type MeetingItem,
   type MomTask,
   type CreateMeetingInput,
 } from '@/hooks';
+import { UserSearchSelect } from '@/components/ui/user-search-select';
+import type { UserSearchHit } from '@/hooks/use-user-search';
 import { formatDate } from '@/lib/utils';
 
 export function GovernanceContent() {
@@ -66,8 +67,6 @@ export function GovernanceContent() {
     undefined,
     taskFilter,
   );
-  const { data: staffData } = useStaffEmployees();
-  const staffList = staffData?.data ?? [];
 
   const createMeetingMutation = useCreateMeeting();
   const updateMeetingMutation = useUpdateMeeting();
@@ -101,10 +100,12 @@ export function GovernanceContent() {
   const [taskForm, setTaskForm] = useState({
     title: '',
     description: '',
-    assignee_id: '',
     due_date: new Date().toISOString().split('T')[0],
     status: 'pending' as 'pending' | 'in_progress' | 'completed',
   });
+  // mom_tasks.assignee_id is a FK to users(id), so the assignee is picked
+  // from the society's user directory, not the staff roster.
+  const [taskAssignee, setTaskAssignee] = useState<UserSearchHit | null>(null);
 
   const handleOpenCreateMeeting = () => {
     setEditingMeeting(null);
@@ -213,10 +214,10 @@ export function GovernanceContent() {
     setTaskForm({
       title: '',
       description: '',
-      assignee_id: staffList[0]?.id ?? '',
       due_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
       status: 'pending',
     });
+    setTaskAssignee(null);
     setIsCreateTaskOpen(true);
   };
 
@@ -230,6 +231,14 @@ export function GovernanceContent() {
       });
       return;
     }
+    if (!taskAssignee) {
+      toast({
+        title: 'Validation Error',
+        description: 'Search by name or phone and pick who the task is for.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
       await createMomTaskMutation.mutateAsync({
@@ -237,12 +246,12 @@ export function GovernanceContent() {
         data: {
           title: taskForm.title,
           description: taskForm.description || null,
-          assignee_id: taskForm.assignee_id || null,
+          assignee_id: taskAssignee.id,
           due_date: taskForm.due_date || null,
           status: taskForm.status,
         },
       });
-      toast({ title: 'Task Dispatched', description: 'MoM action item assigned to staff.' });
+      toast({ title: 'Task Dispatched', description: 'MoM action item assigned.' });
       setIsCreateTaskOpen(false);
     } catch {
       toast({
@@ -768,21 +777,14 @@ export function GovernanceContent() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="t-assignee">Assigned Staff Member *</Label>
-                <select
-                  id="t-assignee"
-                  value={taskForm.assignee_id}
-                  onChange={(e) => setTaskForm({ ...taskForm, assignee_id: e.target.value })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm"
-                  required
-                >
-                  <option value="">-- Select Staff Assignee --</option>
-                  {staffList.map((staff) => (
-                    <option key={staff.id} value={staff.id}>
-                      {staff.name} ({staff.designation ?? staff.staff_type})
-                    </option>
-                  ))}
-                </select>
+                <Label>Assignee *</Label>
+                <UserSearchSelect
+                  scope="tenant"
+                  value={taskAssignee}
+                  onChange={setTaskAssignee}
+                  retainTypedOnNoMatch={false}
+                  noMatchHint="No one in this society matches. Staff need a login to be assigned."
+                />
               </div>
 
               <div className="space-y-1.5">

@@ -35,7 +35,6 @@ export interface MomTask {
   updated_at: string;
   created_by: string | null;
   assignee_name?: string | null;
-  assignee_phone?: string | null;
   meeting_title?: string | null;
 }
 
