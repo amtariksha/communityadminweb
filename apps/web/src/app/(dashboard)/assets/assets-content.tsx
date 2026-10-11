@@ -73,7 +73,9 @@ import type {
   ConductedAudit,
   VendorAudit,
 } from '@/hooks/use-assets';
-import { useVendors, useStaffEmployees } from '@/hooks';
+import { useVendors } from '@/hooks';
+import { UserSearchSelect } from '@/components/ui/user-search-select';
+import type { UserSearchHit } from '@/hooks/use-user-search';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -123,12 +125,14 @@ const ASSET_TYPE_ICONS: Record<string, string> = {
   cctv: '\uD83D\uDCF9',
 };
 
+// Values must match the backend enum + DB CHECK (migration 036); there
+// is no 'critical' — the worst state is 'non_functional'.
 const CONDITIONS = [
   { value: 'excellent', label: 'Excellent' },
   { value: 'good', label: 'Good' },
   { value: 'fair', label: 'Fair' },
   { value: 'poor', label: 'Poor' },
-  { value: 'critical', label: 'Critical' },
+  { value: 'non_functional', label: 'Non-functional' },
 ];
 
 // QA #342 — values must match the backend enum + DB CHECK exactly.
@@ -147,13 +151,6 @@ const SERVICE_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-const AMC_FREQUENCIES = [
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-  { value: 'half_yearly', label: 'Half Yearly' },
-  { value: 'yearly', label: 'Yearly' },
-];
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -166,7 +163,7 @@ function conditionBadgeVariant(condition: string): 'success' | 'default' | 'warn
     case 'fair':
       return 'warning';
     case 'poor':
-    case 'critical':
+    case 'non_functional':
       return 'destructive';
     default:
       return 'default';
@@ -190,7 +187,7 @@ function daysRemaining(endDate: string): number {
   return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleDateString('en-IN', {
     day: '2-digit',
@@ -259,7 +256,6 @@ export default function AssetsContent(): ReactNode {
   const [amcStartDate, setAmcStartDate] = useState('');
   const [amcEndDate, setAmcEndDate] = useState('');
   const [amcAmount, setAmcAmount] = useState('');
-  const [amcFrequency, setAmcFrequency] = useState('quarterly');
 
   // Service dialog
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
@@ -286,7 +282,7 @@ export default function AssetsContent(): ReactNode {
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [schedChecklistId, setSchedChecklistId] = useState('');
   const [schedDate, setSchedDate] = useState('');
-  const [schedStaffId, setSchedStaffId] = useState('');
+  const [schedAssignee, setSchedAssignee] = useState<UserSearchHit | null>(null);
 
   // Conducted Audits dialog & queries
   const { data: conductedAudits = [], isLoading: conductedLoading } = useConductedAudits();
@@ -316,8 +312,6 @@ export default function AssetsContent(): ReactNode {
   const { data: amcsData, isLoading: amcsLoading } = useAMCs();
   const { data: vendorsResponse } = useVendors();
   const vendors = (vendorsResponse as unknown as { data: Array<{ id: string; name: string }> })?.data ?? [];
-  const { data: staffData } = useStaffEmployees();
-  const staffList = staffData?.data ?? [];
 
   // For service logs, show all when no specific asset is selected
   const [serviceFilterAssetId, setServiceFilterAssetId] = useState('');
@@ -416,20 +410,24 @@ export default function AssetsContent(): ReactNode {
     setAmcStartDate('');
     setAmcEndDate('');
     setAmcAmount('');
-    setAmcFrequency('quarterly');
   }
 
   function handleAmcSubmit(e: FormEvent): void {
     e.preventDefault();
+    // amc_contracts keeps the vendor by name, not by id.
+    const vendor = vendors.find((v) => v.id === amcVendorId);
+    if (!vendor) {
+      addToast({ title: 'Select a vendor', variant: 'destructive' });
+      return;
+    }
     createAMC.mutate(
       {
         asset_id: amcAssetId,
-        vendor_id: amcVendorId,
+        vendor_name: vendor.name,
         contract_number: amcContractNumber,
         start_date: amcStartDate,
         end_date: amcEndDate,
-        amount: Number(amcAmount),
-        frequency: amcFrequency,
+        cost: Number(amcAmount),
       },
       {
         onSuccess() {
@@ -462,9 +460,9 @@ export default function AssetsContent(): ReactNode {
         service_type: serviceType,
         service_date: serviceDate,
         vendor_name: serviceVendor || undefined,
-        description: serviceDescription || undefined,
+        description: serviceDescription,
         cost: serviceCost ? Number(serviceCost) : undefined,
-        next_service_due: serviceNextDue || undefined,
+        next_service_date: serviceNextDue || undefined,
       },
       {
         onSuccess() {
@@ -511,7 +509,7 @@ export default function AssetsContent(): ReactNode {
             />
             <StatCard
               title="Expiring Soon"
-              value={dashboard?.expiring_soon ?? 0}
+              value={dashboard?.expiring_amcs_30d ?? 0}
               icon={<Clock className="h-6 w-6" />}
               className="bg-warning/10 text-warning"
             />
@@ -750,17 +748,9 @@ export default function AssetsContent(): ReactNode {
                         <Input id="amc-end" type="date" value={amcEndDate} onChange={(e) => setAmcEndDate(e.target.value)} required />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="amc-amount">Amount *</Label>
-                        <Input id="amc-amount" type="number" value={amcAmount} onChange={(e) => setAmcAmount(e.target.value)} required />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="amc-frequency">Frequency *</Label>
-                        <Select id="amc-frequency" value={amcFrequency} onChange={(e) => setAmcFrequency(e.target.value)}>
-                          {AMC_FREQUENCIES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
-                        </Select>
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="amc-amount">Amount *</Label>
+                      <Input id="amc-amount" type="number" min="0" step="0.01" value={amcAmount} onChange={(e) => setAmcAmount(e.target.value)} required />
                     </div>
                   </div>
                   <DialogFooter>
@@ -808,7 +798,7 @@ export default function AssetsContent(): ReactNode {
                         <TableCell className="text-sm">
                           {formatDate(amc.start_date)} - {formatDate(amc.end_date)}
                         </TableCell>
-                        <TableCell>{formatCurrency(amc.amount)}</TableCell>
+                        <TableCell>{formatCurrency(amc.cost)}</TableCell>
                         <TableCell>
                           <span className={days < 30 ? 'font-semibold text-destructive' : ''}>
                             {days > 0 ? `${days} days` : 'Expired'}
@@ -872,8 +862,8 @@ export default function AssetsContent(): ReactNode {
                       <Input id="service-vendor" value={serviceVendor} onChange={(e) => setServiceVendor(e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="service-desc">Description</Label>
-                      <Input id="service-desc" value={serviceDescription} onChange={(e) => setServiceDescription(e.target.value)} />
+                      <Label htmlFor="service-desc">Description *</Label>
+                      <Input id="service-desc" value={serviceDescription} onChange={(e) => setServiceDescription(e.target.value)} required />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -947,7 +937,7 @@ export default function AssetsContent(): ReactNode {
                       <TableCell>{formatDate(svc.service_date)}</TableCell>
                       <TableCell>{svc.vendor_name || '-'}</TableCell>
                       <TableCell>{svc.cost ? formatCurrency(svc.cost) : '-'}</TableCell>
-                      <TableCell>{formatDate(svc.next_service_due)}</TableCell>
+                      <TableCell>{formatDate(svc.next_service_date)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1212,18 +1202,29 @@ export default function AssetsContent(): ReactNode {
             onSubmit={async (e) => {
               e.preventDefault();
               const selectedCl = checklists.find((c) => c.id === schedChecklistId);
+              if (!schedAssignee) {
+                addToast({
+                  title: 'Choose who will run the audit',
+                  description: 'Search by name or phone and pick a person from the list.',
+                  variant: 'destructive',
+                });
+                return;
+              }
               try {
                 await createSchedule.mutateAsync({
                   checklist_id: schedChecklistId || undefined,
                   checklist: selectedCl?.name || 'General Equipment Audit',
                   scheduled_date: schedDate,
-                  assigned_to_user_id: schedStaffId || undefined,
+                  // Name snapshot for the list; the column holds 100 chars.
+                  assigned_to: (schedAssignee.name ?? schedAssignee.phone).slice(0, 100),
+                  // FK to users(id) — a society_staff id is not valid here.
+                  assigned_to_user_id: schedAssignee.id,
                 });
                 addToast({ title: 'Scheduled', description: 'Audit round successfully scheduled' });
                 setScheduleDialogOpen(false);
                 setSchedChecklistId('');
                 setSchedDate('');
-                setSchedStaffId('');
+                setSchedAssignee(null);
               } catch (err) {
                 addToast({ title: 'Error', description: friendlyError(err), variant: 'destructive' });
               }
@@ -1255,18 +1256,14 @@ export default function AssetsContent(): ReactNode {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="sched-staff">Assign To Staff *</Label>
-              <Select
-                id="sched-staff"
-                value={schedStaffId}
-                onChange={(e) => setSchedStaffId(e.target.value)}
-                required
-              >
-                <option value="">Select staff member...</option>
-                {staffList.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name} ({s.staff_type})</option>
-                ))}
-              </Select>
+              <Label>Assign To *</Label>
+              <UserSearchSelect
+                scope="tenant"
+                value={schedAssignee}
+                onChange={setSchedAssignee}
+                retainTypedOnNoMatch={false}
+                noMatchHint="No one in this society matches. Staff need a login to be assigned."
+              />
             </div>
             <DialogFooter>
               <DialogClose>

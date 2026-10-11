@@ -6,6 +6,12 @@ import { api } from '@/lib/api';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+//
+// Field names here are the API's own (communityos
+// `apps/api/src/modules/asset/asset.controller.ts` Zod schemas and the
+// rows `asset.service.ts` returns). The API strips unknown body keys
+// without complaint, so a renamed field fails silently — check there
+// before adding or renaming anything.
 
 export interface Asset {
   id: string;
@@ -27,13 +33,13 @@ export interface AMCContract {
   id: string;
   asset_id: string;
   asset_name: string;
-  vendor_id: string;
   vendor_name: string;
-  contract_number: string;
+  vendor_contact: string | null;
+  contract_number: string | null;
   start_date: string;
   end_date: string;
-  amount: number;
-  frequency: string;
+  // NUMERIC column: arrives as a string.
+  cost: number | string | null;
   status: string;
 }
 
@@ -46,13 +52,16 @@ export interface ServiceLog {
   vendor_name: string;
   description: string;
   cost: number;
-  next_service_due: string;
+  next_service_date: string | null;
 }
 
 export interface AssetDashboard {
   total_assets: number;
+  active_assets: number;
+  under_maintenance: number;
+  decommissioned: number;
   active_amcs: number;
-  expiring_soon: number;
+  expiring_amcs_30d: number;
   overdue_services: number;
 }
 
@@ -88,7 +97,8 @@ export const assetKeys = {
   amc: () => [...assetKeys.all, 'amc'] as const,
   amcList: (filters?: AMCFilters) => [...assetKeys.amc(), 'list', filters] as const,
   amcExpiring: (days: number) => [...assetKeys.amc(), 'expiring', days] as const,
-  services: (assetId: string) => [...assetKeys.all, 'services', assetId] as const,
+  serviceLists: () => [...assetKeys.all, 'services'] as const,
+  services: (assetId: string) => [...assetKeys.serviceLists(), assetId] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -246,22 +256,22 @@ interface UpdateAssetInput {
 
 interface CreateAMCInput {
   asset_id: string;
-  vendor_id: string;
-  contract_number: string;
+  vendor_name: string;
+  vendor_contact?: string;
+  contract_number?: string;
   start_date: string;
   end_date: string;
-  amount: number;
-  frequency: string;
+  cost?: number;
 }
 
 interface UpdateAMCInput {
   id: string;
-  vendor_id?: string;
+  vendor_name?: string;
+  vendor_contact?: string;
   contract_number?: string;
   start_date?: string;
   end_date?: string;
-  amount?: number;
-  frequency?: string;
+  cost?: number;
   status?: string;
 }
 
@@ -270,9 +280,9 @@ interface LogServiceInput {
   service_type: string;
   service_date: string;
   vendor_name?: string;
-  description?: string;
+  description: string;
   cost?: number;
-  next_service_due?: string;
+  next_service_date?: string;
 }
 
 export function useCreateAsset() {
@@ -339,8 +349,10 @@ export function useLogService() {
       const { asset_id, ...body } = input;
       return api.post<{ data: ServiceLog }>(`/assets/${asset_id}/service`, body);
     },
-    onSuccess: function invalidate(_data: unknown, variables: LogServiceInput) {
-      queryClient.invalidateQueries({ queryKey: assetKeys.services(variables.asset_id) });
+    onSuccess: function invalidate() {
+      // The page lists one asset's logs or every asset's (`_all`); the
+      // new row belongs in both.
+      queryClient.invalidateQueries({ queryKey: assetKeys.serviceLists() });
       queryClient.invalidateQueries({ queryKey: assetKeys.dashboard() });
     },
   });

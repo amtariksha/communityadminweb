@@ -58,6 +58,12 @@ export interface UserSearchSelectProps {
    * submits even when no user was selected).
    */
   onQueryChange?: (q: string) => void;
+  /**
+   * Shown when the search returns nobody. The default suits forms that
+   * create a user from the typed phone; forms that can only pick an
+   * existing user (assignee pickers) should say so instead.
+   */
+  noMatchHint?: string;
 }
 
 function findDialogAncestor(el: Element | null): HTMLElement | null {
@@ -92,6 +98,7 @@ export function UserSearchSelect({
   disabled = false,
   retainTypedOnNoMatch = true,
   onQueryChange,
+  noMatchHint = 'No matches. Continue typing — the form will create a new user on submit.',
 }: UserSearchSelectProps): ReactNode {
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -190,8 +197,7 @@ export function UserSearchSelect({
               </div>
             ) : hits.length === 0 ? (
               <div className="px-3 py-2 text-sm text-muted-foreground">
-                No matches. Continue typing — the form will create a new
-                user on submit.
+                {noMatchHint}
               </div>
             ) : (
               hits.map((hit) => (
