@@ -46,15 +46,15 @@ import {
   useCreateLOI,
   useConvertLOIToPO,
   useInventoryPurchaseOrders,
-  useCreateInventoryPurchaseOrder,
   useGRNs,
   useCreateGRN,
   useWorkOrders,
-  useCreateWorkOrder,
   useStockLogs,
   useRecordStockMovement,
   useStaffEmployees,
 } from '@/hooks';
+import { CreatePoDialog } from './create-po-dialog';
+import { CreateWorkOrderDialog } from './create-work-order-dialog';
 
 export function InventoryContent() {
   const [activeTab, setActiveTab] = useState<'materials' | 'loi' | 'po' | 'grn' | 'wo' | 'logs'>('materials');
@@ -74,9 +74,7 @@ export function InventoryContent() {
   const createMaterial = useCreateMaterial();
   const createLOI = useCreateLOI();
   const convertLoiToPo = useConvertLOIToPO();
-  const createPO = useCreateInventoryPurchaseOrder();
   const createGRN = useCreateGRN();
-  const createWO = useCreateWorkOrder();
   const recordMovement = useRecordStockMovement();
 
   // Dialog States
@@ -90,9 +88,7 @@ export function InventoryContent() {
   // Form States
   const [matForm, setMatForm] = useState({ name: '', category: 'Electrical', unit: 'PCS', current_stock: 0, minimum_stock: 5, unit_price: 0, location: '' });
   const [loiForm, setLoiForm] = useState({ vendor: '', title: '', estimated_value: 0, valid_until: '', deliverables: '' });
-  const [poForm, setPoForm] = useState({ vendor_name: '', total_amount: 0, tax_amount: 0, delivery_date: '', notes: '' });
   const [grnForm, setGrnForm] = useState({ vendor_name: '', received_by: '', items_count: 1, invoice_number: '', notes: '' });
-  const [woForm, setWoForm] = useState({ title: '', category: 'Maintenance', assigned_to: '', materials_used: 0, cost: 0 });
   const [moveForm, setMoveForm] = useState({ material_id: '', movement_type: 'IN' as 'IN' | 'OUT', quantity: 1, notes: '' });
 
   return (
@@ -529,9 +525,15 @@ export function InventoryContent() {
                   <Input type="number" value={matForm.minimum_stock} onChange={(e) => setMatForm({ ...matForm, minimum_stock: Number(e.target.value) })} />
                 </div>
               </div>
-              <div>
-                <Label>Store Location</Label>
-                <Input placeholder="e.g. Store Room Rack A-2" value={matForm.location} onChange={(e) => setMatForm({ ...matForm, location: e.target.value })} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="mat-unit-price">Unit Price (INR)</Label>
+                  <Input id="mat-unit-price" type="number" min="0" step="0.01" value={matForm.unit_price} onChange={(e) => setMatForm({ ...matForm, unit_price: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <Label>Store Location</Label>
+                  <Input placeholder="e.g. Store Room Rack A-2" value={matForm.location} onChange={(e) => setMatForm({ ...matForm, location: e.target.value })} />
+                </div>
               </div>
             </div>
             <DialogFooter>
@@ -589,6 +591,10 @@ export function InventoryContent() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <CreatePoDialog open={poOpen} onOpenChange={setPoOpen} />
+
+      <CreateWorkOrderDialog open={woOpen} onOpenChange={setWoOpen} staff={staffList} />
 
       {/* Record GRN Dialog with Staff Dropdown */}
       <Dialog open={grnOpen} onOpenChange={setGrnOpen}>
