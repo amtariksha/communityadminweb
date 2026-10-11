@@ -45,3 +45,9 @@ jobs:
 
       - name: Type-check web
         run: pnpm --filter @communityos/web type-check
+
+      # Component tests pin the field names the pages exchange with the
+      # API (Assets, Governance, Inventory). The API strips unknown keys
+      # silently, so a renamed field only shows up here.
+      - name: Test web
+        run: pnpm --filter @communityos/web test
