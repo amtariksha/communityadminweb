@@ -24,6 +24,33 @@ interface TenantInfo {
   tenantId: string;
   tenantName: string;
   roles: string[];
+  // White-label runtime branding (backend migration 099). Sent on every
+  // tenant entry by /auth/me and /auth/verify-otp; optional for
+  // back-compat with backends that predate it.
+  logo_url?: string | null;
+  display_name?: string | null;
+}
+
+/**
+ * The ONE place an API tenant entry becomes a `User['societies']` entry.
+ * /auth/me and /auth/verify-otp both go through it: they used to carry
+ * hand-copied mappers, and both silently dropped `logo_url` /
+ * `display_name`, so per-society branding never reached the sidebar.
+ */
+export function toSociety(t: TenantInfo): User['societies'][number] {
+  return {
+    id: t.tenantId,
+    name: t.tenantName,
+    // Admin-eligible role for this society. If the user only has resident
+    // roles here, mark it with NON_ADMIN_ROLE_SENTINEL so the entry is
+    // uniformly rejected by getAdminSocieties, getSidebarAllowlist and
+    // bootstrap re-validation. A `t.roles[0]` fallback would leak the
+    // resident slug and widen the admin sidebar (multi-role bug,
+    // 2026-04-29).
+    role: pickAdminRole(t.roles) ?? NON_ADMIN_ROLE_SENTINEL,
+    logo_url: t.logo_url ?? null,
+    display_name: t.display_name ?? null,
+  };
 }
 
 interface VerifyOtpResponse {
@@ -122,18 +149,7 @@ export function useCurrentUser() {
           role: res.isSuperAdmin
             ? 'super_admin'
             : (pickAdminRole(res.tenants.flatMap((t) => t.roles)) ?? 'user'),
-          societies: res.tenants.map((t) => ({
-            id: t.tenantId,
-            name: t.tenantName,
-            // Multi-role hardening (2026-04-29): if the user holds
-            // NO admin role on this society, mark it with a sentinel
-            // so getAdminSocieties / getSidebarAllowlist / route
-            // gates uniformly reject it. The previous `t.roles[0]`
-            // fallback put a real resident slug into society.role,
-            // which several downstream call-sites used to widen the
-            // sidebar incorrectly.
-            role: pickAdminRole(t.roles) ?? NON_ADMIN_ROLE_SENTINEL,
-          })),
+          societies: res.tenants.map(toSociety),
           // QA Round 14 #14-2e — see useVerifyOtp comment.
           accessible_apps: res.accessible_apps,
         };
@@ -179,18 +195,7 @@ export function useVerifyOtp() {
       // role; per-society we do the same so the tenant-switcher and
       // sidebar gating use the user's *admin* role in each society,
       // not whatever happened to be first.
-      const societies = data.user.tenants.map((t) => ({
-        id: t.tenantId,
-        name: t.tenantName,
-        // Admin-eligible role for this society. If the user only has
-        // resident roles here, mark it with NON_ADMIN_ROLE_SENTINEL
-        // so the entry is uniformly rejected by getAdminSocieties,
-        // getSidebarAllowlist, and bootstrap re-validation. The old
-        // `t.roles[0]` fallback leaked the resident slug and caused
-        // the multi-role bug where the admin sidebar widened to its
-        // full menu for a tenant_resident.
-        role: pickAdminRole(t.roles) ?? NON_ADMIN_ROLE_SENTINEL,
-      }));
+      const societies = data.user.tenants.map(toSociety);
       const user: User = {
         id: data.user.id,
         phone: data.user.phone,

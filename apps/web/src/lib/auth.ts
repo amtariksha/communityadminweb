@@ -126,6 +126,40 @@ export function setUser(user: User): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
+/**
+ * Copy fresh per-society branding onto the cached user. The cached user
+ * is otherwise written only at login, so without this a session that
+ * predates a logo change (or predates branding reaching the client at
+ * all) would keep the platform default until the next sign-in.
+ *
+ * Deliberately touches `logo_url` / `display_name` ONLY. Roles drive
+ * sidebar gating and the bootstrap redirects, and must not change as a
+ * side effect of a cosmetic refresh.
+ */
+export function syncSocietyBranding(fresh: User['societies']): void {
+  const cached = getUser();
+  if (!cached) return;
+
+  const freshById = new Map(fresh.map((s) => [s.id, s]));
+  let changed = false;
+  const societies = cached.societies.map((society) => {
+    const match = freshById.get(society.id);
+    if (!match) return society;
+    const logo_url = match.logo_url ?? null;
+    const display_name = match.display_name ?? null;
+    if (
+      (society.logo_url ?? null) === logo_url &&
+      (society.display_name ?? null) === display_name
+    ) {
+      return society;
+    }
+    changed = true;
+    return { ...society, logo_url, display_name };
+  });
+
+  if (changed) setUser({ ...cached, societies });
+}
+
 // ---------------------------------------------------------------------------
 // One-shot cleanup of JWTs left in localStorage by pre-QA-#57 builds.
 // Call once from the app provider tree on mount.

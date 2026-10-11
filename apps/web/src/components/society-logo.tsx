@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getUser, getCurrentTenant } from '@/lib/auth';
+import { getUser, getCurrentTenant, syncSocietyBranding } from '@/lib/auth';
+import { useCurrentUser } from '@/hooks';
 
 interface SocietyBranding {
   logoUrl: string | null;
@@ -42,10 +43,21 @@ export function SocietyLogo() {
     name: DEFAULT_NAME,
   });
   const [imgFailed, setImgFailed] = useState(false);
+  const { data: freshUser } = useCurrentUser();
 
   useEffect(() => {
     setBranding(resolveBranding());
   }, []);
+
+  // The cached user is only written at login, so pick up branding the
+  // super admin changed since then. Best-effort: if /auth/me fails the
+  // cached (or default) branding simply stays.
+  useEffect(() => {
+    if (!freshUser) return;
+    syncSocietyBranding(freshUser.societies);
+    setBranding(resolveBranding());
+    setImgFailed(false);
+  }, [freshUser]);
 
   const showImage = branding.logoUrl && !imgFailed;
 
