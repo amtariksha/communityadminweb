@@ -550,7 +550,14 @@ export function InventoryContent() {
           <form onSubmit={async (e) => {
             e.preventDefault();
             try {
-              await createLOI.mutateAsync(loiForm);
+              await createLOI.mutateAsync({
+                vendor: loiForm.vendor,
+                title: loiForm.title,
+                estimated_value: loiForm.estimated_value,
+                // The API validates these when present, and '' is not a date.
+                valid_until: loiForm.valid_until || undefined,
+                deliverables: loiForm.deliverables || undefined,
+              });
               toast({ title: 'Success', description: 'Letter of Intent issued' });
               setLoiOpen(false);
             } catch {

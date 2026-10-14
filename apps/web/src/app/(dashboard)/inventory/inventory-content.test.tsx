@@ -7,6 +7,8 @@ import { InventoryContent } from './inventory-content';
  * dialog was bound to either flag, so the buttons did nothing. The Add
  * Material dialog also had no Unit Price input, so every material was
  * saved at 0 and the catalogue's Unit Price column never showed a value.
+ * The Issue LOI dialog posted its form as-is, so an untouched "Valid
+ * Until" went out as '' and the API refused the whole LOI.
  */
 
 const mocks = vi.hoisted(() => {
@@ -21,6 +23,7 @@ const mocks = vi.hoisted(() => {
     createMaterial: mutation(),
     createPO: mutation(),
     createWO: mutation(),
+    createLOI: mutation(),
     other: mutation(),
     query,
   };
@@ -39,7 +42,7 @@ vi.mock('@/hooks', () => ({
   useCreateMaterial: () => mocks.createMaterial,
   useCreateInventoryPurchaseOrder: () => mocks.createPO,
   useCreateWorkOrder: () => mocks.createWO,
-  useCreateLOI: () => mocks.other,
+  useCreateLOI: () => mocks.createLOI,
   useConvertLOIToPO: () => mocks.other,
   useCreateGRN: () => mocks.other,
   useRecordStockMovement: () => mocks.other,
@@ -175,6 +178,54 @@ describe('InventoryContent', () => {
       expect(mocks.createMaterial.mutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({ name: '9W LED bulb', unit_price: 45.5 }),
       );
+    });
+  });
+
+  describe('Issue LOI', () => {
+    function fillRequired(dialog: HTMLElement): void {
+      const [vendor, title] = within(dialog).getAllByRole('textbox');
+      fireEvent.change(vendor, { target: { value: 'Otis Elevators' } });
+      fireEvent.change(title, { target: { value: 'Lift modernisation — Tower A' } });
+    }
+
+    it('leaves out a blank Valid Until and blank deliverables', async () => {
+      render(<InventoryContent />);
+      const dialog = openDialog(/letters of intent/i, /issue loi/i, 'Issue Letter of Intent (LOI)');
+
+      fillRequired(dialog);
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Issue LOI' }));
+
+      await waitFor(() => expect(mocks.createLOI.mutateAsync).toHaveBeenCalledTimes(1));
+      const payload = mocks.createLOI.mutateAsync.mock.calls[0][0];
+      expect(payload.valid_until).toBeUndefined();
+      expect(payload.deliverables).toBeUndefined();
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: 'Issue Letter of Intent (LOI)' })).toBeNull(),
+      );
+    });
+
+    it('sends the chosen date and an estimated value with paise', async () => {
+      render(<InventoryContent />);
+      const dialog = openDialog(/letters of intent/i, /issue loi/i, 'Issue Letter of Intent (LOI)');
+
+      fillRequired(dialog);
+      fireEvent.change(within(dialog).getByRole('spinbutton'), { target: { value: '125000.75' } });
+      fireEvent.change(dialog.querySelector('input[type="date"]') as HTMLInputElement, {
+        target: { value: '2026-12-31' },
+      });
+      fireEvent.change(within(dialog).getAllByRole('textbox')[2], {
+        target: { value: 'Two VVVF drives' },
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Issue LOI' }));
+
+      await waitFor(() => expect(mocks.createLOI.mutateAsync).toHaveBeenCalledTimes(1));
+      expect(mocks.createLOI.mutateAsync).toHaveBeenCalledWith({
+        vendor: 'Otis Elevators',
+        title: 'Lift modernisation — Tower A',
+        estimated_value: 125000.75,
+        valid_until: '2026-12-31',
+        deliverables: 'Two VVVF drives',
+      });
     });
   });
 });
