@@ -10,11 +10,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  Send,
   MoreHorizontal,
   UserCheck,
   Timer,
-  Star,
   SlidersHorizontal,
   BookOpen,
 } from 'lucide-react';
@@ -71,16 +69,16 @@ import {
   useUploadFileToS3,
   fetchPresignedDownloadUrl,
   useHelpdeskKpi,
-  useHelpdeskSetup,
   useHelpdeskTemplates,
   useCreateHelpdeskTemplate,
-  useStaffEmployees,
 } from '@/hooks';
-import type { Ticket, TicketComment } from '@/hooks';
+import type { Ticket } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
 import { UploadProgress } from '@/components/ui/upload-progress';
 import { TicketDetailThreads } from './ticket-detail-threads';
 import { categoryChoices } from './category-choices';
+import { BulkReassignDialog } from './bulk-reassign-dialog';
+import { QueueTabs, type QueueTab } from './queue-tabs';
 
 const TICKET_SORTS = [
   'created_at',
@@ -93,15 +91,6 @@ const TICKET_SORTS = [
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Returns true when the ticket's SLA deadline has passed. */
-function isSlaOverdue(ticket: Ticket): boolean {
-  const slaHours = (ticket as unknown as { sla_hours?: number }).sla_hours;
-  if (!slaHours || ticket.status === 'closed' || ticket.status === 'resolved') return false;
-  const deadline = new Date(ticket.created_at);
-  deadline.setHours(deadline.getHours() + slaHours);
-  return new Date() > deadline;
-}
 
 function getPriorityBadgeVariant(
   priority: string,
@@ -201,18 +190,24 @@ export default function TicketsContent(): ReactNode {
   const [selectedTicketId, setSelectedTicketId] = useState('');
   const [detailOpen, setDetailOpen] = useState(false);
 
+  // Which queue is showing: every request, or only the overdue ones.
+  const [activeQueueTab, setActiveQueueTab] = useState<QueueTab>('all');
+
   // Categories: the society's own list, or the legacy names from an older server.
   const categoriesQuery = useHelpdeskCategories();
   const legacyCategoriesQuery = useTicketCategories();
-  // The Setup screen needs the newer server; offer its link only once it answers.
-  const setupAvailable = useHelpdeskAssignees().isSuccess;
   const categories = categoryChoices(categoriesQuery.data, legacyCategoriesQuery.data);
+  // Admins to assign to. The Setup screens need the same newer server, so
+  // their link is offered only once it answers.
+  const assigneesQuery = useHelpdeskAssignees();
+  const setupAvailable = assigneesQuery.isSuccess;
 
   // Queries
   const ticketsQuery = useTickets({
     status: statusFilter || undefined,
     priority: priorityFilter || undefined,
     ...categoryFilterParams(categoryFilter),
+    overdue: activeQueueTab === 'overdue' ? true : undefined,
     page: currentPage,
     limit: PAGE_SIZE,
     sort: listState.state.sort ?? undefined,
@@ -231,15 +226,10 @@ export default function TicketsContent(): ReactNode {
 
   // Helpdesk queries & mutations
   const { data: helpdeskKpi } = useHelpdeskKpi();
-  const { data: helpdeskSetup } = useHelpdeskSetup();
   const { data: helpdeskTemplates = [] } = useHelpdeskTemplates();
   const createTemplateMutation = useCreateHelpdeskTemplate();
-  const { data: staffData } = useStaffEmployees();
-  const staffList = staffData?.data ?? [];
 
   // Extended UI states
-  const [activeQueueTab, setActiveQueueTab] = useState<'all' | 'golden' | 'breached'>('all');
-  const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
   const [newTemplateTitle, setNewTemplateTitle] = useState('');
   const [newTemplateBody, setNewTemplateBody] = useState('');
@@ -247,21 +237,15 @@ export default function TicketsContent(): ReactNode {
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkReassignOpen, setBulkReassignOpen] = useState(false);
-  const [bulkAssignee, setBulkAssignee] = useState('');
 
   // Clear selection when page/filters change
   useEffect(() => { setSelectedIds(new Set()); }, [currentPage, statusFilter, priorityFilter, categoryFilter, activeQueueTab]);
 
   const rawTickets = ticketsQuery.data?.data ?? [];
-  const tickets = rawTickets.filter((t) => {
-    if (activeQueueTab === 'golden') {
-      return Boolean(t.is_golden_queue || t.is_senior_citizen || t.is_differently_abled);
-    }
-    if (activeQueueTab === 'breached') {
-      return Boolean(t.sla_breached || isSlaOverdue(t));
-    }
-    return true;
-  });
+  // The server filters; an older one ignores `overdue`, so the page keeps only
+  // the rows it flagged overdue.
+  const tickets =
+    activeQueueTab === 'overdue' ? rawTickets.filter((t) => t.is_overdue === true) : rawTickets;
   const total = ticketsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const stats = statsQuery.data;
@@ -441,17 +425,16 @@ export default function TicketsContent(): ReactNode {
     );
   }
 
-  function handleBulkReassign(): void {
+  function handleBulkReassign(assigneeId: string): void {
     const ids = Array.from(selectedIds);
-    if (ids.length === 0 || !bulkAssignee.trim()) return;
+    if (ids.length === 0 || !assigneeId) return;
     bulkReassignMutation.mutate(
-      { ticket_ids: ids, assigned_to: bulkAssignee.trim() },
+      { ticket_ids: ids, assigned_to: assigneeId },
       {
         onSuccess() {
           addToast({ title: `${ids.length} ticket(s) reassigned`, variant: 'success' });
           setSelectedIds(new Set());
           setBulkReassignOpen(false);
-          setBulkAssignee('');
         },
         onError(error) {
           addToast({ title: 'Bulk reassign failed', description: friendlyError(error), variant: 'destructive' });
@@ -469,14 +452,18 @@ export default function TicketsContent(): ReactNode {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <ExportButton
-              data={tickets as unknown as Record<string, unknown>[]}
+              data={tickets.map((t) => ({ ...t, is_overdue: t.is_overdue ? 'Yes' : 'No' })) as unknown as Record<string, unknown>[]}
               filename={`tickets-${new Date().toISOString().split('T')[0]}`}
               columns={[
                 { key: 'ticket_number', label: 'Ticket #' },
                 { key: 'subject', label: 'Title' },
                 { key: 'category', label: 'Category' },
+                { key: 'unit_number', label: 'Unit' },
+                { key: 'created_by_name', label: 'Raised By' },
+                { key: 'assigned_to_name', label: 'Assigned To' },
                 { key: 'priority', label: 'Priority' },
                 { key: 'status', label: 'Status' },
+                { key: 'is_overdue', label: 'Overdue' },
                 { key: 'created_at', label: 'Created' },
               ]}
             />
@@ -490,10 +477,6 @@ export default function TicketsContent(): ReactNode {
                 Setup
               </Link>
             )}
-            <Button variant="outline" size="sm" onClick={() => setSetupModalOpen(true)}>
-              <SlidersHorizontal className="mr-2 h-4 w-4" />
-              Helpdesk SLA Setup
-            </Button>
             <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               New Ticket
@@ -503,10 +486,9 @@ export default function TicketsContent(): ReactNode {
       />
 
       {/* Stat cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         {statsQuery.isLoading ? (
           <>
-            <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
@@ -543,19 +525,6 @@ export default function TicketsContent(): ReactNode {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Golden Queue</CardTitle>
-                <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-amber-600">
-                  {helpdeskKpi?.golden_queue_tickets ?? 0}
-                </div>
-                <p className="text-xs text-muted-foreground">Senior & abled priority queue</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Avg Resolution</CardTitle>
                 <Clock className="h-4 w-4 text-blue-500" />
               </CardHeader>
@@ -569,43 +538,12 @@ export default function TicketsContent(): ReactNode {
       </div>
 
       {/* Queue tabs */}
-      <div className="flex border-b">
-        <button
-          type="button"
-          onClick={() => setActiveQueueTab('all')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            activeQueueTab === 'all'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          All Tickets ({rawTickets.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveQueueTab('golden')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-1.5 transition-colors ${
-            activeQueueTab === 'golden'
-              ? 'border-amber-500 text-amber-600 font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
-          ★ Golden Queue ({rawTickets.filter((t) => t.is_golden_queue || t.is_senior_citizen || t.is_differently_abled).length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveQueueTab('breached')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-1.5 transition-colors ${
-            activeQueueTab === 'breached'
-              ? 'border-destructive text-destructive font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <AlertCircle className="h-3.5 w-3.5 text-destructive" />
-          SLA Overdue ({rawTickets.filter((t) => t.sla_breached || isSlaOverdue(t)).length})
-        </button>
-      </div>
+      <QueueTabs
+        active={activeQueueTab}
+        onChange={setActiveQueueTab}
+        totalCount={helpdeskKpi?.total_tickets ?? stats?.total ?? total}
+        overdueCount={helpdeskKpi?.sla_breached ?? stats?.overdue ?? 0}
+      />
 
       {/* Filters */}
       <Card>
@@ -771,17 +709,12 @@ export default function TicketsContent(): ReactNode {
                     </TableCell>
                     <TableCell className="font-medium max-w-[240px]">
                       <div className="flex items-center gap-1.5">
-                        {isSlaOverdue(ticket) && (
+                        {ticket.is_overdue && (
                           <span title="SLA overdue">
                             <Timer className="h-3.5 w-3.5 shrink-0 text-destructive" />
                           </span>
                         )}
                         <span className="truncate">{ticket.subject}</span>
-                        {(ticket.is_golden_queue || ticket.is_senior_citizen || ticket.is_differently_abled) && (
-                          <Badge className="bg-amber-500 text-white text-[10px] px-1 py-0 shrink-0 gap-0.5">
-                            <Star className="h-2.5 w-2.5 fill-white" /> Golden
-                          </Badge>
-                        )}
                       </div>
                     </TableCell>
                     <TableCell className="capitalize">
@@ -797,7 +730,7 @@ export default function TicketsContent(): ReactNode {
                         <Badge variant={getStatusBadgeVariant(ticket.status)}>
                           {formatStatus(ticket.status)}
                         </Badge>
-                        {(ticket.sla_breached || isSlaOverdue(ticket)) && (
+                        {ticket.is_overdue && (
                           <Badge variant="destructive" className="text-xs px-1 py-0">SLA</Badge>
                         )}
                       </div>
@@ -1144,45 +1077,14 @@ export default function TicketsContent(): ReactNode {
         </DialogContent>
       </Dialog>
 
-      {/* Bulk Reassign Dialog */}
-      <Dialog open={bulkReassignOpen} onOpenChange={setBulkReassignOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Bulk Reassign Tickets</DialogTitle>
-            <DialogDescription>
-              Assign {selectedIds.size} selected ticket(s) to a staff member.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="bulk-assignee">Assign To Staff</Label>
-              <Select
-                id="bulk-assignee"
-                value={bulkAssignee}
-                onChange={(e) => setBulkAssignee(e.target.value)}
-              >
-                <option value="">Select staff member...</option>
-                {staffList.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.staff_type} {s.phone ? `· ${s.phone}` : ''})
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button
-              onClick={handleBulkReassign}
-              disabled={bulkReassignMutation.isPending || !bulkAssignee.trim()}
-            >
-              {bulkReassignMutation.isPending ? 'Reassigning...' : 'Reassign'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <BulkReassignDialog
+        open={bulkReassignOpen}
+        onOpenChange={setBulkReassignOpen}
+        selectedCount={selectedIds.size}
+        assignees={assigneesQuery.data ?? []}
+        isPending={bulkReassignMutation.isPending}
+        onSubmit={handleBulkReassign}
+      />
 
       {/* Canned Templates Modal */}
       <Dialog open={templatesModalOpen} onOpenChange={setTemplatesModalOpen}>
@@ -1251,88 +1153,6 @@ export default function TicketsContent(): ReactNode {
                 </div>
               )}
             </div>
-          </div>
-
-          <DialogFooter>
-            <DialogClose>
-              <Button variant="outline">Close</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Helpdesk SLA & Rules Setup Modal */}
-      <Dialog open={setupModalOpen} onOpenChange={setSetupModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <SlidersHorizontal className="h-5 w-5 text-primary" />
-              Helpdesk SLA Policies & Escalation Rules
-            </DialogTitle>
-            <DialogDescription>
-              Service Level Agreements, operating working hours, and automated escalation tier matrix.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-5 py-2">
-            {/* Operational Timing */}
-            <div className="p-3 border rounded-lg space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Operational Hours</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className="text-muted-foreground">Working Hours: </span>
-                  <span className="font-medium">
-                    {helpdeskSetup?.settings?.operational_hours_start ?? '09:00'} - {helpdeskSetup?.settings?.operational_hours_end ?? '18:00'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Aging SLA Alert: </span>
-                  <span className="font-medium">{helpdeskSetup?.settings?.aging_sla_hours ?? 24} hours</span>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-muted-foreground">Operating Days: </span>
-                  <span className="font-medium">
-                    {helpdeskSetup?.settings?.operational_days?.join(', ') || 'Monday - Saturday'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Category SLAs */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Category SLAs</h4>
-              <div className="border rounded-md overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b bg-muted/40 text-left text-muted-foreground">
-                      <th className="p-2">Category</th>
-                      <th className="p-2">SLA Target (Hours)</th>
-                      <th className="p-2">Default Priority</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {(helpdeskSetup?.categories ?? []).map((cat) => (
-                      <tr key={cat.id}>
-                        <td className="p-2 font-medium">{cat.name}</td>
-                        <td className="p-2">{cat.sla_hours} hrs</td>
-                        <td className="p-2 capitalize">
-                          <Badge variant="outline">{cat.default_priority}</Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {setupAvailable && (
-              <p className="text-xs text-muted-foreground">
-                Escalation owners and windows are set per category under{' '}
-                <Link href="/helpdesk/escalation" className="text-primary hover:underline">
-                  Escalation
-                </Link>.
-              </p>
-            )}
           </div>
 
           <DialogFooter>

@@ -34,10 +34,11 @@ export interface Ticket {
   attachment_url?: string | null;
   attachment_name?: string | null;
   category_id?: string | null;
-  is_golden_queue?: boolean;
-  is_senior_citizen?: boolean;
-  is_differently_abled?: boolean;
-  sla_breached?: boolean;
+  // Returned by the list and detail routes.
+  is_overdue?: boolean;
+  unit_number?: string | null;
+  created_by_name?: string | null;
+  assigned_to_name?: string | null;
   // GET /tickets/:id returns the whole thread; the list does not.
   comments?: TicketComment[];
 }
@@ -59,6 +60,8 @@ export interface TicketStats {
   in_progress: number;
   resolved: number;
   closed: number;
+  total?: number;
+  overdue?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,6 +74,8 @@ export interface TicketFilters {
   category?: string;
   category_id?: string;
   assigned_to?: string;
+  /** Only requests past their due time and not completed. */
+  overdue?: boolean;
   page?: number;
   limit?: number;
   sort?: string;
@@ -138,6 +143,7 @@ function filtersToParams(filters?: TicketFilters): Record<string, string> | unde
   if (filters.category) params.category = filters.category;
   if (filters.category_id) params.category_id = filters.category_id;
   if (filters.assigned_to) params.assigned_to = filters.assigned_to;
+  if (filters.overdue) params.overdue = 'true';
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   if (filters.sort) params.sort = filters.sort;
@@ -308,8 +314,6 @@ export interface HelpdeskKpi {
   resolved_tickets: number;
   closed_tickets: number;
   sla_breached: number;
-  golden_queue_tickets: number;
-  senior_citizen_tickets: number;
   avg_resolution_hours: number;
 }
 
