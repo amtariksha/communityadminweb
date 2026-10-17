@@ -46,6 +46,20 @@ export interface TenantSettings {
     days: number[];
   };
 
+  // INC-07 — late payment interest and the days an invoice runs before it is
+  // due, read by the API's invoice, interest and PDF code. Send the whole
+  // object on save (the API merges top-level keys only). Keep in sync with
+  // communityos/packages/shared/src/types/tenant.ts.
+  billing_interest?: {
+    rate_pa: number;
+    due_days: number;
+    basis: 'due_date' | 'invoice_date';
+    start_date?: string | null;
+    hsn_sac?: string | null;
+    income_account_id?: string | null;
+    auto_post?: boolean;
+  };
+
   // NotifPlan §"Phase 5" — per-tenant notification policy. Two
   // levers, both optional so an unset tenant continues to behave as
   // it did before this field existed:

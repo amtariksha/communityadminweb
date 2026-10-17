@@ -52,6 +52,8 @@ interface LpiCalculation {
 interface LpiResponse {
   details: LpiCalculation[];
   totalInterest: number;
+  /** The society's saved rate; absent on an API older than INC-07. */
+  rate_pa?: number;
 }
 
 // INC-01 — one row per society per scheduled billing run (GET /billing-runs).

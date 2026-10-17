@@ -62,6 +62,7 @@ import type { FinancialYear } from '@communityos/shared';
 import { RoleDelegationCard } from './role-delegation-card';
 import { AutomatedReportsCard } from './automated-reports-card';
 import { DuesRemindersCard } from './dues-reminders-card';
+import { InterestCard } from './interest-card';
 import { TdsConfigCard } from './tds-config-card';
 import { NotificationPolicyCard } from './notification-policy-card';
 import { HelpContactCard } from './help-contact-card';
@@ -1876,6 +1877,11 @@ export default function SettingsContent(): ReactNode {
       {/* Automatic dues reminders — days of the month (INC-02)               */}
       {/* ------------------------------------------------------------------- */}
       <DuesRemindersCard />
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Late payment interest — rate, due days, basis (INC-07)              */}
+      {/* ------------------------------------------------------------------- */}
+      <InterestCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Notification Policy — urgent allowlist + default quiet hours        */}

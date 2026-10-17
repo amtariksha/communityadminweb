@@ -331,7 +331,7 @@ export default function InvoicesContent(): ReactNode {
   // array-fallback in the hook protects us if the API ever
   // regresses. We render `details`; the modal footer can show
   // `totalInterest` as a sanity check.
-  const lpiResponse = lpiQuery.data ?? { details: [], totalInterest: 0 };
+  const lpiResponse = lpiQuery.data ?? { details: [], totalInterest: 0, rate_pa: undefined };
   const lpiData = lpiResponse.details;
   const defaulters = defaultersQuery.data ?? [];
   const units = unitsQuery.data?.data ?? [];
@@ -1758,6 +1758,14 @@ export default function InvoicesContent(): ReactNode {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {lpiResponse.rate_pa !== undefined && (
+              <p className="text-sm text-muted-foreground">
+                Rate: {lpiResponse.rate_pa}% a year —{' '}
+                <Link href="/settings#late-payment-interest" className="text-primary underline">
+                  change
+                </Link>
+              </p>
+            )}
             {lpiQuery.isLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-8 w-full" />
