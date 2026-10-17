@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { lastMonthRanges, type MonthRange } from '@/lib/date';
 import type {
   AccountGroup,
   LedgerAccount,
@@ -240,6 +241,8 @@ export const ledgerKeys = {
     [...ledgerKeys.reports(), 'income-expenditure', startDate, endDate] as const,
   generalLedger: (accountId: string, startDate: string, endDate: string) =>
     [...ledgerKeys.reports(), 'general-ledger', accountId, startDate, endDate] as const,
+  monthlyIncomeExpense: (months: number, lastMonth: string) =>
+    [...ledgerKeys.reports(), 'income-expenditure-monthly', months, lastMonth] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -665,6 +668,47 @@ export function useIncomeExpenditure(startDate: string, endDate: string) {
         });
     },
     enabled: startDate !== '' && endDate !== '',
+  });
+}
+
+export interface MonthlyIncomeExpense {
+  /** `YYYY-MM`. */
+  month: string;
+  /** Short month name for chart axes. */
+  label: string;
+  income: number;
+  expense: number;
+}
+
+function fetchMonthTotals(range: MonthRange): Promise<MonthlyIncomeExpense> {
+  return api
+    .get<{ data: IncomeExpenditureReport }>('/ledger/reports/income-expenditure', {
+      params: { start_date: range.start_date, end_date: range.end_date },
+    })
+    .then(function toTotals(res) {
+      return {
+        month: range.month,
+        label: range.label,
+        income: Number(res.data?.total_income ?? 0),
+        expense: Number(res.data?.total_expense ?? 0),
+      };
+    });
+}
+
+/**
+ * Income and expense for each of the last `months` calendar months, oldest
+ * first, one report request per month fired in parallel. The whole query
+ * fails if one month fails, so the chart never shows a made-up zero.
+ */
+export function useMonthlyIncomeExpense(months: number) {
+  const ranges = lastMonthRanges(months);
+  const lastMonth = ranges.length > 0 ? ranges[ranges.length - 1].month : '';
+  return useQuery({
+    queryKey: ledgerKeys.monthlyIncomeExpense(months, lastMonth),
+    queryFn: function fetchMonthlyIncomeExpense() {
+      return Promise.all(ranges.map(fetchMonthTotals));
+    },
+    enabled: ranges.length > 0,
   });
 }
 

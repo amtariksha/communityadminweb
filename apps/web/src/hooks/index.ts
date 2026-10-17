@@ -82,6 +82,7 @@ export {
   useTrialBalance,
   useBalanceSheet,
   useIncomeExpenditure,
+  useMonthlyIncomeExpense,
   useGeneralLedgerReport,
 } from './use-ledger';
 

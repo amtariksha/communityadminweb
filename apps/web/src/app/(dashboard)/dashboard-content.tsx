@@ -44,19 +44,13 @@ import { TOOLTIP } from '@/lib/tooltip-content';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
   useDashboardData,
-  useIncomeExpenditure,
+  useMonthlyIncomeExpense,
   useCountsSummary,
   useTicketsSummary,
   useStatisticsSummary,
 } from '@/hooks';
 
-function getMonthRange(): { startDate: string; endDate: string } {
-  const now = new Date();
-  const endDate = now.toISOString().split('T')[0];
-  const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-  const startDate = start.toISOString().split('T')[0];
-  return { startDate, endDate };
-}
+const CHART_MONTHS = 6;
 
 function StatCardSkeleton(): ReactNode {
   return (
@@ -114,8 +108,8 @@ function getStatusBadgeVariant(status: string): 'success' | 'warning' | 'seconda
 
 export default function DashboardContent(): ReactNode {
   const { data: dashboard, isLoading } = useDashboardData();
-  const { startDate, endDate } = getMonthRange();
-  const { data: incomeExpenditure } = useIncomeExpenditure(startDate, endDate);
+  const { data: monthlySeries, isLoading: isChartLoading, isError: isChartError } =
+    useMonthlyIncomeExpense(CHART_MONTHS);
 
   // QA #58 / #59 / #244 — Income / Expenses / Collection now derive
   // from accounting-layer truth instead of:
@@ -127,7 +121,7 @@ export default function DashboardContent(): ReactNode {
   // which already filters to ag.type IN ('income', 'expense').
   // Collection Rate uses receipts collected vs (collected + outstanding).
   const totalIncome = dashboard?.income_expenditure?.total_income ?? 0;
-  const totalExpenses = dashboard?.income_expenditure?.total_expenditure ?? 0;
+  const totalExpenses = dashboard?.income_expenditure?.total_expense ?? 0;
   const outstandingDues = dashboard?.defaulter_summary?.total_overdue_amount ?? 0;
   const totalCollected = dashboard?.receipt_summary?.total_collected ?? 0;
 
@@ -138,19 +132,7 @@ export default function DashboardContent(): ReactNode {
   const billedTotal = totalCollected + outstandingDues;
   const collectionRate = billedTotal > 0 ? (totalCollected / billedTotal) * 100 : 0;
 
-  const incomeArr = incomeExpenditure?.income ?? [];
-  const expenditureArr = incomeExpenditure?.expense ?? [];
-
-  const chartData = incomeArr.map((inc) => {
-    const matchingExpense = expenditureArr.find(
-      (exp) => exp.account_id === inc.account_id,
-    );
-    return {
-      name: inc.account_name,
-      income: inc.amount,
-      expenses: matchingExpense?.amount ?? 0,
-    };
-  });
+  const chartData = monthlySeries ?? [];
 
   const recentInvoices = dashboard?.recent_invoices ?? [];
   const recentReceipts = dashboard?.recent_receipts ?? [];
@@ -340,17 +322,21 @@ export default function DashboardContent(): ReactNode {
                 <Card className="lg:col-span-2">
                   <CardHeader>
                     <CardTitle className="text-lg">Income vs Expenses</CardTitle>
-                    <CardDescription>Account-wise breakdown for current period</CardDescription>
+                    <CardDescription>Month by month, last six months</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="h-[300px]">
-                      {isLoading ? (
+                      {isChartLoading ? (
                         <Skeleton className="h-full w-full" />
+                      ) : isChartError ? (
+                        <div className="flex h-full items-center justify-center text-sm text-destructive">
+                          Could not load the monthly figures
+                        </div>
                       ) : chartData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={chartData}>
                             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                            <XAxis dataKey="name" className="text-xs" />
+                            <XAxis dataKey="label" className="text-xs" />
                             <YAxis
                               className="text-xs"
                               tickFormatter={(value: number) => `${(value / 1000).toFixed(0)}k`}
@@ -365,7 +351,7 @@ export default function DashboardContent(): ReactNode {
                             />
                             <Legend />
                             <Bar dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="expenses" name="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="expense" name="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       ) : (

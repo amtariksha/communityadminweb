@@ -29,8 +29,8 @@ interface TrialBalanceTotals {
 
 interface IncomeExpenditureTotals {
   total_income: number;
-  total_expenditure: number;
-  surplus_or_deficit: number;
+  total_expense: number;
+  surplus: number;
 }
 
 interface RecentInvoiceRow {
@@ -174,20 +174,20 @@ export function useDashboardData() {
           })
           .catch(() => EMPTY_RECEIPT_SUMMARY),
 
-          // Defaulters — use the list endpoint, not /summary
+          // Defaulters — the list endpoint returns `{ data: [...] }` with no
+          // `total`, so the count is the number of rows (one per unit).
           api
-            .get<{ data: Array<Record<string, unknown>>; total: number }>(
-              '/invoices/defaulters',
-            )
-            .then((res) => ({
-              total_defaulters: res.total ?? 0,
-              total_overdue_amount: Array.isArray(res.data)
-                ? res.data.reduce<number>(
-                    (sum, d) => sum + (Number(d.total_due) || 0),
-                    0,
-                  )
-                : 0,
-            }))
+            .get<{ data: Array<Record<string, unknown>> }>('/invoices/defaulters')
+            .then((res) => {
+              const rows = Array.isArray(res.data) ? res.data : [];
+              return {
+                total_defaulters: rows.length,
+                total_overdue_amount: rows.reduce<number>(
+                  (sum, d) => sum + (Number(d.total_due) || 0),
+                  0,
+                ),
+              };
+            })
             .catch(() => ({ total_defaulters: 0, total_overdue_amount: 0 })),
 
           // Trial balance — kept as-is for the Balance Sheet card.
@@ -222,22 +222,22 @@ export function useDashboardData() {
           api
             .get<{
               data: {
-                total_income?: number;
-                total_expenditure?: number;
-                surplus_or_deficit?: number;
+                total_income?: number | string;
+                total_expense?: number | string;
+                surplus?: number | string;
               };
             }>('/ledger/reports/income-expenditure', {
               params: { start_date, end_date },
             })
             .then((res) => ({
               total_income: Number(res.data?.total_income ?? 0),
-              total_expenditure: Number(res.data?.total_expenditure ?? 0),
-              surplus_or_deficit: Number(res.data?.surplus_or_deficit ?? 0),
+              total_expense: Number(res.data?.total_expense ?? 0),
+              surplus: Number(res.data?.surplus ?? 0),
             }))
             .catch(() => ({
               total_income: 0,
-              total_expenditure: 0,
-              surplus_or_deficit: 0,
+              total_expense: 0,
+              surplus: 0,
             })),
 
           // Recent invoices
