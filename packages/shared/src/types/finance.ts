@@ -88,7 +88,9 @@ export interface Invoice {
   tenant_id: string;
   financial_year_id: string;
   invoice_number: string;
-  unit_id: string;
+  /** Null on an invoice raised to a non-member payer (see `customer_id`). */
+  unit_id: string | null;
+  customer_id?: string | null;
   // Dates are ISO strings over the wire even though pg types them as Date.
   invoice_date: string | Date;
   issue_date?: string | Date;
@@ -106,11 +108,15 @@ export interface Invoice {
   lpi_amount: number;
   created_at: string | Date;
   // Joined fields returned by the list query.
-  unit_number?: string;
+  unit_number?: string | null;
   block?: string | null;
   owner_name?: string | null;
   owner_phone?: string | null;
   tenant_name?: string | null;
+  /** The non-member payer's name, when the invoice was raised to one. */
+  customer_name?: string | null;
+  customer_legal_name?: string | null;
+  customer_gstin?: string | null;
   lines?: InvoiceLine[];
 }
 

@@ -34,6 +34,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { CustomInvoiceDialog } from './custom-invoice-dialog';
 import { BillingRunsPanel } from './billing-runs-panel';
+import { describeInvoicePayer, INVOICE_PARTY_OPTIONS, type InvoiceParty } from './invoice-payer';
 import { describeGenerateResult } from './generate-summary';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
@@ -187,6 +188,7 @@ export default function InvoicesContent(): ReactNode {
   const [lpiPostDate, setLpiPostDate] = useState('');
   const [defaultersDialogOpen, setDefaultersDialogOpen] = useState(false);
   const [unitFilter, setUnitFilter] = useState('');
+  const [partyFilter, setPartyFilter] = useState<InvoiceParty>('');
   // Free-text search + invoice-date range. Wired to `q`,
   // `start_date`, `end_date` query params on the backend.
   // `searchInput` is the unthrottled text; `searchQ` is what's
@@ -298,6 +300,7 @@ export default function InvoicesContent(): ReactNode {
   } = useInvoices({
     status: statusFilter,
     unit_id: unitFilter || undefined,
+    party: partyFilter || undefined,
     start_date: filterStartDate || undefined,
     end_date: filterEndDate || undefined,
     q: searchQ || undefined,
@@ -587,6 +590,7 @@ export default function InvoicesContent(): ReactNode {
               columns={[
                 { key: 'invoice_number', label: 'Invoice #' },
                 { key: 'unit_number', label: 'Unit' },
+                { key: 'customer_name', label: 'Non-member payer' },
                 { key: 'total_amount', label: 'Amount' },
                 { key: 'amount_paid', label: 'Paid' },
                 { key: 'balance_due', label: 'Balance' },
@@ -867,9 +871,24 @@ export default function InvoicesContent(): ReactNode {
                 type="search"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search invoice / unit / period…"
+                placeholder="Search invoice / unit / payer / period…"
                 className="w-56"
               />
+              <Select
+                value={partyFilter}
+                onChange={(e) => {
+                  setPartyFilter(e.target.value as InvoiceParty);
+                  setPage(1);
+                }}
+                className="w-40"
+                aria-label="Payer"
+              >
+                {INVOICE_PARTY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
               <Select
                 value={unitFilter}
                 onChange={(e) => {
@@ -909,7 +928,7 @@ export default function InvoicesContent(): ReactNode {
                 className="w-40"
                 aria-label="To date"
               />
-              {(searchInput || filterStartDate || filterEndDate || unitFilter) && (
+              {(searchInput || filterStartDate || filterEndDate || unitFilter || partyFilter) && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -919,6 +938,7 @@ export default function InvoicesContent(): ReactNode {
                     setFilterStartDate('');
                     setFilterEndDate('');
                     setUnitFilter('');
+                    setPartyFilter('');
                     setPage(1);
                   }}
                 >
@@ -940,7 +960,7 @@ export default function InvoicesContent(): ReactNode {
                   />
                 </TableHead>
                 <TableHead>Invoice #</TableHead>
-                <TableHead>Unit / Owner</TableHead>
+                <TableHead>Payer</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Paid</TableHead>
                 <TableHead className="text-right">Balance</TableHead>
@@ -967,19 +987,18 @@ export default function InvoicesContent(): ReactNode {
                       <span className="font-mono text-xs">{invoice.invoice_number}</span>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium">
-                        {invoice.unit_number
-                          ? `${invoice.unit_number}${invoice.block ? ` (Block ${invoice.block})` : ''}`
-                          : invoice.unit_id}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {invoice.owner_name ?? '\u2014'}
-                      </div>
-                      {invoice.tenant_name && (
-                        <div className="text-xs text-muted-foreground/70">
-                          (Tenant: {invoice.tenant_name})
-                        </div>
-                      )}
+                      {(() => {
+                        const payer = describeInvoicePayer(invoice);
+                        return (
+                          <>
+                            <div className="font-medium">{payer.primary}</div>
+                            <div className="text-xs text-muted-foreground">{payer.secondary}</div>
+                            {payer.tertiary && (
+                              <div className="text-xs text-muted-foreground/70">{payer.tertiary}</div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(Number(invoice.total_amount) || 0)}
@@ -1560,8 +1579,10 @@ export default function InvoicesContent(): ReactNode {
                   </Badge>
                 </span>
 
-                <span className="text-muted-foreground">Unit</span>
-                <span>{viewInvoiceData.unit_number ?? viewInvoiceData.unit_id}</span>
+                <span className="text-muted-foreground">
+                  {viewInvoiceData.customer_id ? 'Payer' : 'Unit'}
+                </span>
+                <span>{describeInvoicePayer(viewInvoiceData).primary}</span>
 
                 <span className="text-muted-foreground">Invoice Date</span>
                 <span>{formatDate(String(viewInvoiceData.invoice_date ?? viewInvoiceData.issue_date ?? viewInvoiceData.created_at))}</span>
