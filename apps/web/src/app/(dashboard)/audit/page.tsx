@@ -1,6 +1,12 @@
-import { type ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import AuditContent from './audit-content';
 
 export default function AuditPage(): ReactNode {
-  return <AuditContent />;
+  // AuditContent reads its filter from the link (Show Logs), which needs
+  // a Suspense boundary.
+  return (
+    <Suspense fallback={null}>
+      <AuditContent />
+    </Suspense>
+  );
 }

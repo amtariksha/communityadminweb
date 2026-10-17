@@ -51,6 +51,9 @@ export interface MenuNode {
   tabs?: MenuNode[];
   planned?: string;
   aliases?: string[];
+  // Audit record types the screen shows; the frame offers Show Logs
+  // over them (SB-06).
+  logs?: string[];
   // Button on every page of the module, e.g. "Create Request" (SB-03).
   create?: { label: string; href: string };
 }
@@ -75,8 +78,20 @@ export const classicMenu: MenuNode[] = [
     // show today's screens until UNIT-14, UNIT-12 and UNIT-09 rebuild them.
     children: [
       planned('units.unapproved', 'Unapproved Users', 'UNIT-13'),
-      { id: 'units.add', label: 'Add Users', href: '/units/add-users', aliases: ['/units/import'] },
-      { id: 'units.approved', label: 'Approved Users', href: '/units/approved', aliases: ['/units'] },
+      {
+        id: 'units.add',
+        label: 'Add Users',
+        href: '/units/add-users',
+        aliases: ['/units/import'],
+        logs: ['unit', 'member'],
+      },
+      {
+        id: 'units.approved',
+        label: 'Approved Users',
+        href: '/units/approved',
+        aliases: ['/units'],
+        logs: ['unit', 'member'],
+      },
       planned('units.access', 'Access Control', 'UNIT-22'),
       { id: 'units.broadcast', label: 'Broadcast', href: '/units/broadcast', aliases: ['/notifications'] },
       planned('units.statistics', 'Statistics', 'UNIT-31'),
@@ -86,7 +101,7 @@ export const classicMenu: MenuNode[] = [
       planned('units.consent', 'Consent Activity', 'P9'),
       planned('units.reports', 'Reports', 'REP-04'),
       // Ours, after their children: people list, resident tags, KYC queue.
-      { id: 'units.directory', label: 'Member Directory', href: '/units/directory' },
+      { id: 'units.directory', label: 'Member Directory', href: '/units/directory', logs: ['member'] },
       { id: 'units.categories', label: 'Member Categories', href: '/setup/categories' },
       { id: 'units.kyc', label: 'KYC Verification', href: '/setup/kyc' },
     ],
@@ -124,6 +139,7 @@ export const classicMenu: MenuNode[] = [
             label: 'Receipts',
             href: '/income/registers/receipts',
             aliases: ['/receipts'],
+            logs: ['receipt'],
           },
           planned('income.registers.credit-notes', 'Credit Notes', 'INC-25'),
           {
@@ -131,6 +147,7 @@ export const classicMenu: MenuNode[] = [
             label: 'Invoices',
             href: '/income/registers/invoices',
             aliases: ['/invoices'],
+            logs: ['invoice'],
           },
           planned('income.registers.email-status', 'Email Status Monitor', 'INC-31'),
         ],
@@ -222,6 +239,7 @@ export const classicMenu: MenuNode[] = [
     // Employees, attendance and shifts are tabs of one page until
     // STAFF-10 gives each status its own route.
     href: '/staff',
+    logs: ['staff'],
     children: [
       planned('staff.setup', 'Setup', 'STAFF-10'),
       planned('staff.active', 'Active', 'STAFF-10'),
@@ -264,7 +282,7 @@ export const classicMenu: MenuNode[] = [
     icon: icon(CalendarCheck),
     children: [
       planned('amenity.setup', 'Setup', 'AMEN-10'),
-      { id: 'amenity.amenity', label: 'Amenity', href: '/amenities' },
+      { id: 'amenity.amenity', label: 'Amenity', href: '/amenities', logs: ['amenity'] },
       { id: 'amenity.event', label: 'Event', href: '/events' },
       planned('amenity.reports', 'Reports', 'REP-04'),
     ],
@@ -307,7 +325,7 @@ export const classicMenu: MenuNode[] = [
     icon: icon(Wrench),
     children: [
       planned('assets.setup', 'Setup', 'ASSET-07'),
-      { id: 'assets.assets', label: 'Assets', href: '/assets' },
+      { id: 'assets.assets', label: 'Assets', href: '/assets', logs: ['asset', 'amc_contract'] },
       { id: 'assets.inventory', label: 'Inventory', href: '/inventory' },
       planned('assets.reports', 'Reports', 'REP-04'),
     ],
@@ -318,6 +336,7 @@ export const classicMenu: MenuNode[] = [
     icon: icon(Megaphone),
     // One list for every state until ANN-10 adds the status routes.
     href: '/announcements',
+    logs: ['announcement'],
     children: [
       planned('announcements.setup', 'Setup', 'ANN-10'),
       planned('announcements.awaiting', 'Awaiting Approval', 'ANN-10'),
@@ -330,8 +349,13 @@ export const classicMenu: MenuNode[] = [
     label: 'Vendor Master',
     icon: icon(Store),
     children: [
-      { id: 'vendors.expense', label: 'Vendors For Expense', href: '/vendors' },
-      { id: 'vendors.non-member', label: 'Vendors for Non Member Income', href: '/customers' },
+      { id: 'vendors.expense', label: 'Vendors For Expense', href: '/vendors', logs: ['vendor'] },
+      {
+        id: 'vendors.non-member',
+        label: 'Vendors for Non Member Income',
+        href: '/customers',
+        logs: ['customer'],
+      },
       planned('vendors.bulk', 'Bulk Posting', 'VEND-09'),
       planned('vendors.amcs', 'AMCs', 'VEND-06'),
     ],
@@ -378,7 +402,7 @@ export const classicMenu: MenuNode[] = [
       { id: 'more.marketplace', label: 'Marketplace', href: '/marketplace' },
       { id: 'more.salaries', label: 'Salaries', href: '/staff/salaries' },
       { id: 'more.audit', label: 'Audit Trail', href: '/audit' },
-      { id: 'more.settings', label: 'Settings', href: '/settings' },
+      { id: 'more.settings', label: 'Settings', href: '/settings', logs: ['tenant_settings'] },
     ],
   },
 ];

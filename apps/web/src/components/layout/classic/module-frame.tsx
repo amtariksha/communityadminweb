@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode } from 'react';
 import { buttonVariants } from '@/components/ui/button';
+import { ShowLogsButton } from '@/components/show-logs';
 import { cn } from '@/lib/utils';
 import { MORE_GROUP_ID, type MenuNode } from '../menu/classic-menu';
 import { entryHref, locate, type MenuLocation } from '../menu/menu-access';
@@ -62,6 +63,7 @@ export function ModuleFrame({ menu, children }: ModuleFrameProps): ReactNode {
   const { module, child, tab } = location;
   const tabs = child?.tabs ?? module.tabs ?? [];
   const create = child?.create ?? module.create;
+  const logs = (tab ?? child ?? module).logs;
   const close = closeHref(module);
 
   return (
@@ -70,6 +72,7 @@ export function ModuleFrame({ menu, children }: ModuleFrameProps): ReactNode {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
           <h2 className="text-lg font-semibold">{frameTitle(location)}</h2>
           <div className="flex items-center gap-2">
+            {logs && logs.length > 0 && <ShowLogsButton recordTypes={logs} />}
             {create && (
               <Link href={create.href} className={buttonVariants()} data-slot="button" data-size="default">
                 {create.label}

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { classicMenu } from '../menu/classic-menu';
 import { visibleMenu } from '../menu/menu-access';
@@ -16,14 +17,26 @@ const menu = visibleMenu(classicMenu, { roleAllowlist: null });
 function renderAt(pathname: string) {
   nav.pathname = pathname;
   return render(
-    <ModuleFrame menu={menu}>
-      <p>page body</p>
-    </ModuleFrame>,
+    <QueryClientProvider client={new QueryClient()}>
+      <ModuleFrame menu={menu}>
+        <p>page body</p>
+      </ModuleFrame>
+    </QueryClientProvider>,
+  );
+}
+
+function signIn(role: string): void {
+  const tenant = '11111111-1111-4111-8111-111111111111';
+  localStorage.setItem('communityos_tenant', tenant);
+  localStorage.setItem(
+    'communityos_user',
+    JSON.stringify({ id: 'u1', name: 'A', phone: '+910000000010', isSuperAdmin: false, role, societies: [{ id: tenant, name: 'S', role }] }),
   );
 }
 
 afterEach(() => {
   nav.pathname = '/';
+  localStorage.clear();
 });
 
 describe('ModuleFrame', () => {
@@ -56,6 +69,18 @@ describe('ModuleFrame', () => {
     renderAt('/settings');
     expect(screen.getByRole('heading', { name: 'More › Settings' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Close' })).toBeNull();
+  });
+
+  it('offers Show Logs where the entry names its record types', () => {
+    signIn('community_admin');
+    renderAt('/vendors');
+    expect(screen.getByRole('button', { name: 'Show Logs' })).toBeTruthy();
+  });
+
+  it('offers no Show Logs where the entry names none', () => {
+    signIn('community_admin');
+    renderAt('/kpi-dashboard');
+    expect(screen.queryByRole('button', { name: 'Show Logs' })).toBeNull();
   });
 
   it('keeps detail pages inside their module', () => {

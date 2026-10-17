@@ -199,15 +199,21 @@ interface DiffTableProps {
   entityType: string;
   oldData: Record<string, unknown> | null;
   newData: Record<string, unknown> | null;
+  // Show Logs lists only what an edit changed; the audit page shows all.
+  changedOnly?: boolean;
 }
 
 export function DiffTable({
   entityType,
   oldData,
   newData,
+  changedOnly = false,
 }: DiffTableProps): ReactNode {
   const fieldMap = FIELD_MAPS[entityType] ?? {};
-  const keys = gatherKeys(oldData, newData);
+  const isEdit = Boolean(oldData && newData);
+  const keys = gatherKeys(oldData, newData).filter(
+    (key) => !changedOnly || !isEdit || !isPrimitiveEqual(oldData?.[key], newData?.[key]),
+  );
 
   // CREATE-only rows (no oldData) and DELETE-only rows (no newData) get
   // a single-column collapsed view so the operator isn't squinting at a

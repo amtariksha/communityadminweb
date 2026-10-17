@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Download, ChevronDown, ChevronRight, Search, History } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,7 +47,11 @@ const ENTITY_TYPES = [
   { value: 'ticket', label: 'Ticket' },
   { value: 'announcement', label: 'Announcement' },
   { value: 'asset', label: 'Asset' },
+  { value: 'amc_contract', label: 'AMC Contract' },
   { value: 'staff', label: 'Staff' },
+  { value: 'customer', label: 'Customer' },
+  { value: 'amenity', label: 'Amenity' },
+  { value: 'tenant_settings', label: 'Society Settings' },
 ];
 
 const ACTION_TYPES = [
@@ -193,7 +198,11 @@ function ExpandableRow({ entry, onViewHistory }: ExpandableRowProps): ReactNode 
 // ---------------------------------------------------------------------------
 
 export default function AuditContent(): ReactNode {
-  const [entityType, setEntityType] = useState('');
+  // Show Logs links here with the page's record types and, from a record
+  // page, the record (SB-06).
+  const searchParams = useSearchParams();
+  const [entityType, setEntityType] = useState(searchParams.get('entity_type') ?? '');
+  const [entityId, setEntityId] = useState(searchParams.get('entity_id') ?? '');
   const [action, setAction] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -207,6 +216,7 @@ export default function AuditContent(): ReactNode {
 
   const filters: AuditFilters = {
     ...(entityType ? { entity_type: entityType } : {}),
+    ...(entityId ? { entity_id: entityId } : {}),
     ...(action ? { action } : {}),
     ...(fromDate ? { from_date: fromDate } : {}),
     ...(toDate ? { to_date: toDate } : {}),
@@ -264,8 +274,20 @@ export default function AuditContent(): ReactNode {
                 {ENTITY_TYPES.map((et) => (
                   <option key={et.value} value={et.value}>{et.label}</option>
                 ))}
+                {/* A Show Logs link can ask for several types at once. */}
+                {entityType && !ENTITY_TYPES.some((et) => et.value === entityType) && (
+                  <option value={entityType}>{entityType.replace(/[_,]/g, ' ')}</option>
+                )}
               </Select>
             </div>
+            {entityId && (
+              <div className="flex items-center gap-2 self-end pb-2 text-sm">
+                <span className="text-muted-foreground">One record only</span>
+                <Button variant="ghost" size="sm" onClick={() => { setEntityId(''); setPage(1); }}>
+                  Show all
+                </Button>
+              </div>
+            )}
             <div className="space-y-1">
               <Label htmlFor="filter-action">Action</Label>
               <Select

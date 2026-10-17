@@ -20,7 +20,9 @@ export interface AuditEntry {
 }
 
 export interface AuditFilters {
+  // One record type, or several separated by commas.
   entity_type?: string;
+  entity_id?: string;
   user_id?: string;
   action?: string;
   from_date?: string;
@@ -55,6 +57,7 @@ function auditFiltersToParams(
 
   const params: Record<string, string> = {};
   if (filters.entity_type) params.entity_type = filters.entity_type;
+  if (filters.entity_id) params.entity_id = filters.entity_id;
   if (filters.user_id) params.user_id = filters.user_id;
   if (filters.action) params.action = filters.action;
   if (filters.from_date) params.from_date = filters.from_date;
@@ -68,7 +71,7 @@ function auditFiltersToParams(
 // Queries
 // ---------------------------------------------------------------------------
 
-export function useAuditLog(filters?: AuditFilters) {
+export function useAuditLog(filters?: AuditFilters, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: auditKeys.list(filters),
     queryFn: function fetchAuditLog() {
@@ -76,6 +79,7 @@ export function useAuditLog(filters?: AuditFilters) {
         params: auditFiltersToParams(filters),
       });
     },
+    enabled: options.enabled ?? true,
   });
 }
 
