@@ -45,6 +45,15 @@ export interface KpiBackendData {
     income: number;
     expense: number;
   }> | null;
+  /** SOS alerts still active or acknowledged. */
+  sos_live: number | null;
+  kyc_pending: number | null;
+  bookings_today: number | null;
+  patrol_rounds_today: number | null;
+  /** Materials below their minimum stock. */
+  low_stock_items: number | null;
+  member_categories: number | null;
+  journal_entries_month: number | null;
 }
 
 export function useKpiDashboardData() {

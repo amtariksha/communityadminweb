@@ -93,18 +93,18 @@ export function KpiDashboardContent(): ReactNode {
   const operationalModules = [
     { title: 'Units & Flats', href: '/units', count: orDash(kpi?.totalUnits), label: 'Units Total', icon: Building2, color: 'text-blue-500' },
     { title: 'Helpdesk SLA', href: '/tickets', count: orDash(kpi?.openTickets), label: 'Open Tickets', icon: Ticket, color: 'text-orange-500' },
-    { title: 'PMS Inventory', href: '/inventory', count: 'Active', label: 'Procurement', icon: Boxes, color: 'text-indigo-500' },
+    { title: 'PMS Inventory', href: '/inventory', count: orDash(kpi?.low_stock_items), label: 'Low Stock', icon: Boxes, color: 'text-indigo-500' },
     { title: 'Assets & Audits', href: '/assets', count: orDash(kpi?.assets?.total_assets), label: 'Assets', icon: Wrench, color: 'text-teal-500' },
     { title: 'Invoices & Dues', href: '/invoices', count: moneyOrDash(kpi?.totalOutstanding), label: 'Outstanding', icon: FileText, color: 'text-red-500' },
     { title: 'Collections', href: '/receipts', count: moneyOrDash(kpi?.totalCollected), label: 'Collected', icon: Receipt, color: 'text-emerald-500' },
     { title: 'Gate & Visitors', href: '/gate', count: orDash(kpi?.gate?.today_visitors), label: "Today's Visitors", icon: ShieldAlert, color: 'text-cyan-500' },
-    { title: 'Guard Patrol', href: '/patrol', count: 'Active', label: 'Checkpoints', icon: Footprints, color: 'text-sky-500' },
+    { title: 'Guard Patrol', href: '/patrol', count: orDash(kpi?.patrol_rounds_today), label: 'Rounds Today', icon: Footprints, color: 'text-sky-500' },
     { title: 'Parking & EV', href: '/parking', count: kpi?.parking ? `${kpi.parking.vacant_slots} Vacant` : DASH, label: 'Parking Lots', icon: Car, color: 'text-emerald-600' },
-    { title: 'Amenities', href: '/amenities', count: 'Bookings', label: 'Facilities', icon: CalendarCheck, color: 'text-purple-500' },
-    { title: 'KYC Approvals', href: '/setup/kyc', count: 'Verify', label: 'Identity Proofs', icon: UserCheck, color: 'text-amber-500' },
-    { title: 'Member Categories', href: '/setup/categories', count: 'Rules', label: 'Privileges', icon: Tags, color: 'text-pink-500' },
-    { title: 'SOS Alarms', href: '/sos', count: '0 Live', label: 'Emergency', icon: AlertTriangle, color: 'text-rose-500' },
-    { title: 'Accounts & GL', href: '/accounts', count: 'Ledger', label: 'Accounting', icon: Wallet, color: 'text-blue-600' },
+    { title: 'Amenities', href: '/amenities', count: orDash(kpi?.bookings_today), label: 'Booked Today', icon: CalendarCheck, color: 'text-purple-500' },
+    { title: 'KYC Approvals', href: '/setup/kyc', count: orDash(kpi?.kyc_pending), label: 'Pending', icon: UserCheck, color: 'text-amber-500' },
+    { title: 'Member Categories', href: '/setup/categories', count: orDash(kpi?.member_categories), label: 'Categories', icon: Tags, color: 'text-pink-500' },
+    { title: 'SOS Alarms', href: '/sos', count: kpi?.sos_live == null ? DASH : `${kpi.sos_live} Live`, label: 'Emergency', icon: AlertTriangle, color: 'text-rose-500' },
+    { title: 'Accounts & GL', href: '/accounts', count: orDash(kpi?.journal_entries_month), label: 'Entries This Month', icon: Wallet, color: 'text-blue-600' },
   ];
 
   // Prepare export dataset
@@ -125,6 +125,13 @@ export function KpiDashboardContent(): ReactNode {
     { metric: 'SLA Breaches', value: kpi?.slaBreaches ?? '' },
     { metric: 'Golden Queue Tickets', value: kpi?.goldenQueueCount ?? '' },
     { metric: 'Active Overstay Alerts', value: kpi?.gate?.active_overstays ?? '' },
+    { metric: 'Live SOS Alerts', value: kpi?.sos_live ?? '' },
+    { metric: 'KYC Awaiting Review', value: kpi?.kyc_pending ?? '' },
+    { metric: 'Amenity Bookings Today', value: kpi?.bookings_today ?? '' },
+    { metric: 'Patrol Rounds Today', value: kpi?.patrol_rounds_today ?? '' },
+    { metric: 'Low Stock Items', value: kpi?.low_stock_items ?? '' },
+    { metric: 'Member Categories', value: kpi?.member_categories ?? '' },
+    { metric: 'Journal Entries This Month', value: kpi?.journal_entries_month ?? '' },
   ];
 
   const occupancyPieData = [
