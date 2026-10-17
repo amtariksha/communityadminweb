@@ -49,23 +49,11 @@ import {
   useRejectRequest,
 } from '@/hooks';
 import type { ApprovalRequest } from '@/hooks';
+import { REQUEST_TYPE_OPTIONS, formatRequestType } from './request-types';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const REQUEST_TYPE_LABELS: Record<string, string> = {
-  tenant_onboarding: 'Tenant Onboarding',
-  tenant_exit: 'Tenant Exit',
-  purchase_request: 'Purchase Request',
-  leave_request: 'Leave Request',
-  work_order: 'Work Order',
-  document: 'Document',
-};
-
-function formatRequestType(type: string): string {
-  return REQUEST_TYPE_LABELS[type] ?? type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 function getStatusBadgeVariant(
   status: string,
@@ -346,12 +334,11 @@ export default function ApprovalsContent(): ReactNode {
                 }}
               >
                 <option value="">All</option>
-                <option value="tenant_onboarding">Tenant Onboarding</option>
-                <option value="tenant_exit">Tenant Exit</option>
-                <option value="purchase_request">Purchase Request</option>
-                <option value="leave_request">Leave Request</option>
-                <option value="work_order">Work Order</option>
-                <option value="document">Document</option>
+                {REQUEST_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </Select>
             </div>
             <div className="space-y-2">
