@@ -124,8 +124,14 @@ export {
   useRecalculateArrears,
   useAdvances,
   useApplyAdvance,
+  useApplyAdvancesFifo,
 } from './use-receipts';
-export type { Advance, CreditNoteRow } from './use-receipts';
+export type {
+  Advance,
+  ApplyAdvancesFifoResult,
+  CreatedReceipt,
+  CreditNoteRow,
+} from './use-receipts';
 
 // Vendors
 export {

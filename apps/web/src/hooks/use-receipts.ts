@@ -112,6 +112,20 @@ interface CreateReceiptInput {
     invoice_id: string;
     amount: number;
   }>;
+  // INC-03 — 'fifo' with no allocations settles the oldest open invoices.
+  // An API without it strips the key and books the receipt as an advance.
+  allocation_mode?: 'selected' | 'fifo';
+}
+
+export interface CreatedReceipt extends Receipt {
+  // NUMERIC amounts arrive as strings. Absent from APIs older than INC-03.
+  allocations?: Array<{ invoice_id: string; amount: number | string }>;
+}
+
+export interface ApplyAdvancesFifoResult {
+  units_processed: number;
+  amount_applied: number;
+  units_failed: number;
 }
 
 interface BulkImportReceiptsInput {
@@ -231,7 +245,7 @@ export function useCreateReceipt() {
 
   return useMutation({
     mutationFn: function createReceipt(input: CreateReceiptInput) {
-      return api.post<{ data: Receipt }>('/receipts', input);
+      return api.post<{ data: CreatedReceipt }>('/receipts', input);
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: receiptKeys.all });
@@ -406,13 +420,35 @@ export interface Advance {
   created_at: string;
 }
 
-export function useAdvances(unitId?: string) {
+export function useAdvances(unitId?: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [...receiptKeys.all, 'advances', unitId] as const,
     queryFn: function fetchAdvances() {
       const params: Record<string, string> = {};
       if (unitId) params.unit_id = unitId;
       return api.get<{ data: Advance[] }>('/receipts/advances', { params });
+    },
+    enabled: options?.enabled ?? true,
+  });
+}
+
+// INC-03 — apply every unit's unapplied advances to its open posted
+// invoices, oldest first. No unit_id means the whole society.
+export function useApplyAdvancesFifo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function applyAdvancesFifo(input: { unit_id?: string }) {
+      return api.post<{ data: ApplyAdvancesFifoResult }>(
+        '/receipts/advances/apply-fifo',
+        input,
+      );
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
     },
   });
 }

@@ -30,6 +30,8 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { DirectIncomeDialog } from './direct-income-dialog';
+import { ApplyAdvancesButton } from './apply-advances-button';
+import { describeReceiptAllocation, summarizeReceiptAllocation } from './receipt-allocation';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
@@ -267,12 +269,21 @@ export default function ReceiptsContent(): ReactNode {
         amount: Number(receiptAmount),
         mode: receiptMode,
         reference_number: receiptReference || null,
+        // INC-03 — settle the unit's oldest posted invoices; only the
+        // remainder is held as an advance.
+        allocation_mode: 'fifo',
       },
       {
-        onSuccess() {
+        onSuccess(response, input) {
           setReceiptDialogOpen(false);
           resetReceiptForm();
-          addToast({ title: 'Receipt recorded successfully', variant: 'success' });
+          addToast({
+            title: 'Receipt recorded',
+            description: describeReceiptAllocation(
+              summarizeReceiptAllocation(input.amount, response?.data?.allocations),
+            ),
+            variant: 'success',
+          });
         },
         onError(error) {
           addToast({ title: 'Failed to record receipt', description: friendlyError(error), variant: 'destructive' });
@@ -397,6 +408,8 @@ export default function ReceiptsContent(): ReactNode {
               </DialogContent>
             </Dialog>
 
+            <ApplyAdvancesButton />
+
             <Button
               variant="outline"
               onClick={() => setDirectIncomeDialogOpen(true)}
@@ -418,7 +431,7 @@ export default function ReceiptsContent(): ReactNode {
                     <DialogTitle>Record Receipt</DialogTitle>
                     <DialogDescription className="flex items-center gap-1">
                       Record a new payment receipt from a unit owner
-                      <HelpTooltip text="The receipt amount is automatically allocated against the unit's oldest pending invoices to track dues clearance." />
+                      <HelpTooltip text="The receipt settles the unit's oldest posted invoices first; anything left over is held as an advance." />
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
