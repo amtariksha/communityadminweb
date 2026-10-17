@@ -34,6 +34,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { CustomInvoiceDialog } from './custom-invoice-dialog';
 import { BillingRunsPanel } from './billing-runs-panel';
+import { WaiveInterestButton } from './waive-interest-button';
 import { describeInvoicePayer, INVOICE_PARTY_OPTIONS, type InvoiceParty } from './invoice-payer';
 import { describeGenerateResult } from './generate-summary';
 import { ExportButton } from '@/components/ui/export-button';
@@ -1654,6 +1655,15 @@ export default function InvoicesContent(): ReactNode {
                   {formatCurrency(Number(viewInvoiceData.total_amount))}
                 </span>
 
+                {Number(viewInvoiceData.lpi_amount ?? 0) > 0 && (
+                  <div className="col-span-2">
+                    <WaiveInterestButton
+                      invoiceId={viewInvoiceData.id}
+                      lpiAmount={Number(viewInvoiceData.lpi_amount)}
+                    />
+                  </div>
+                )}
+
                 <span className="text-muted-foreground">Amount Paid</span>
                 <span className="text-right text-green-600">
                   {Number(viewInvoiceData.amount_paid) > 0
@@ -1779,7 +1789,7 @@ export default function InvoicesContent(): ReactNode {
                     <TableHead>Unit</TableHead>
                     <TableHead>Invoice #</TableHead>
                     <TableHead className="text-right">Balance Due</TableHead>
-                    <TableHead className="text-right">Days Overdue</TableHead>
+                    <TableHead className="text-right">Days charged</TableHead>
                     <TableHead className="text-right">Interest</TableHead>
                   </TableRow>
                 </TableHeader>
