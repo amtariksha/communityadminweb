@@ -157,6 +157,37 @@ describe('KPI Command Center', () => {
     expect(hubOf('Units & Flats').textContent).toContain('—');
   });
 
+  it('hides every finance card and tile when the API sent no finance keys (a manager)', () => {
+    const {
+      totalBilled: _billed,
+      totalCollected: _collected,
+      totalOutstanding: _outstanding,
+      collectionRate: _rate,
+      monthlyTrend: _trend,
+      journal_entries_month: _entries,
+      ...operational
+    } = FULL_PAYLOAD;
+    mocks.kpi = operational;
+    render(<KpiDashboardContent />);
+
+    expect(screen.queryByText('Collection Efficiency')).toBeNull();
+    expect(screen.queryByText('Invoices & Dues')).toBeNull();
+    expect(screen.queryByText('Collections')).toBeNull();
+    expect(screen.queryByText('Accounts & GL')).toBeNull();
+    expect(screen.queryByText('Financial Cashflow Trend')).toBeNull();
+    expect(cardOf('Occupancy Rate').textContent).toContain('75%');
+    expect(cardOf('Gate & Security').textContent).toContain('17');
+    expect(hubOf('Units & Flats').textContent).toContain('40 ');
+  });
+
+  it('still shows the finance cards, with dashes, while the figures are loading or failed', () => {
+    mocks.kpi = undefined;
+    render(<KpiDashboardContent />);
+
+    expect(screen.getByText('Collection Efficiency')).toBeTruthy();
+    expect(screen.getByText('Invoices & Dues')).toBeTruthy();
+  });
+
   it('says the trend could not be loaded when that section failed', () => {
     mocks.kpi = { ...FULL_PAYLOAD, monthlyTrend: null };
     render(<KpiDashboardContent />);

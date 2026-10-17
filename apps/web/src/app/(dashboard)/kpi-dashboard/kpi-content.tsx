@@ -73,6 +73,15 @@ function occupancyRateOf(kpi: KpiBackendData | null | undefined): string {
   return kpi.totalUnits > 0 ? `${Math.round((kpi.occupiedUnits / kpi.totalUnits) * 100)}%` : '0%';
 }
 
+/**
+ * The API leaves the money keys out for a caller who may not read the books.
+ * A missing payload (still loading, or the call failed) is not that case: the
+ * finance cards stay and show dashes.
+ */
+function showsFinanceOf(kpi: KpiBackendData | null | undefined): boolean {
+  return kpi == null || kpi.totalBilled !== undefined;
+}
+
 function hasTrendActivity(trend: KpiBackendData['monthlyTrend']): boolean {
   return (trend ?? []).some((point) => point.income !== 0 || point.expense !== 0);
 }
@@ -90,13 +99,14 @@ export function KpiDashboardContent(): ReactNode {
     refetchStats();
   };
 
-  const operationalModules = [
+  const showsFinance = showsFinanceOf(kpi);
+  const allModules = [
     { title: 'Units & Flats', href: '/units', count: orDash(kpi?.totalUnits), label: 'Units Total', icon: Building2, color: 'text-blue-500' },
     { title: 'Helpdesk SLA', href: '/tickets', count: orDash(kpi?.openTickets), label: 'Open Tickets', icon: Ticket, color: 'text-orange-500' },
     { title: 'PMS Inventory', href: '/inventory', count: orDash(kpi?.low_stock_items), label: 'Low Stock', icon: Boxes, color: 'text-indigo-500' },
     { title: 'Assets & Audits', href: '/assets', count: orDash(kpi?.assets?.total_assets), label: 'Assets', icon: Wrench, color: 'text-teal-500' },
-    { title: 'Invoices & Dues', href: '/invoices', count: moneyOrDash(kpi?.totalOutstanding), label: 'Outstanding', icon: FileText, color: 'text-red-500' },
-    { title: 'Collections', href: '/receipts', count: moneyOrDash(kpi?.totalCollected), label: 'Collected', icon: Receipt, color: 'text-emerald-500' },
+    { title: 'Invoices & Dues', finance: true, href: '/invoices', count: moneyOrDash(kpi?.totalOutstanding), label: 'Outstanding', icon: FileText, color: 'text-red-500' },
+    { title: 'Collections', finance: true, href: '/receipts', count: moneyOrDash(kpi?.totalCollected), label: 'Collected', icon: Receipt, color: 'text-emerald-500' },
     { title: 'Gate & Visitors', href: '/gate', count: orDash(kpi?.gate?.today_visitors), label: "Today's Visitors", icon: ShieldAlert, color: 'text-cyan-500' },
     { title: 'Guard Patrol', href: '/patrol', count: orDash(kpi?.patrol_rounds_today), label: 'Rounds Today', icon: Footprints, color: 'text-sky-500' },
     { title: 'Parking & EV', href: '/parking', count: kpi?.parking ? `${kpi.parking.vacant_slots} Vacant` : DASH, label: 'Parking Lots', icon: Car, color: 'text-emerald-600' },
@@ -104,8 +114,9 @@ export function KpiDashboardContent(): ReactNode {
     { title: 'KYC Approvals', href: '/setup/kyc', count: orDash(kpi?.kyc_pending), label: 'Pending', icon: UserCheck, color: 'text-amber-500' },
     { title: 'Member Categories', href: '/setup/categories', count: orDash(kpi?.member_categories), label: 'Categories', icon: Tags, color: 'text-pink-500' },
     { title: 'SOS Alarms', href: '/sos', count: kpi?.sos_live == null ? DASH : `${kpi.sos_live} Live`, label: 'Emergency', icon: AlertTriangle, color: 'text-rose-500' },
-    { title: 'Accounts & GL', href: '/accounts', count: orDash(kpi?.journal_entries_month), label: 'Entries This Month', icon: Wallet, color: 'text-blue-600' },
+    { title: 'Accounts & GL', finance: true, href: '/accounts', count: orDash(kpi?.journal_entries_month), label: 'Entries This Month', icon: Wallet, color: 'text-blue-600' },
   ];
+  const operationalModules = allModules.filter((mod) => showsFinance || !('finance' in mod));
 
   // Prepare export dataset
   const exportData: Record<string, unknown>[] = [
@@ -210,29 +221,31 @@ export function KpiDashboardContent(): ReactNode {
         </Card>
 
         {/* Financial Collection */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Collection Efficiency</CardTitle>
-            <Percent className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loadingKpi ? (
-              <Skeleton className="h-8 w-28" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold text-emerald-600">
-                  {orDash(kpi?.collectionRate)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {moneyOrDash(kpi?.totalCollected)} collected of {moneyOrDash(kpi?.totalBilled)}
-                </p>
-                <div className="mt-2 text-xs font-medium text-destructive">
-                  Outstanding: {moneyOrDash(kpi?.totalOutstanding)}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        {showsFinance && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Collection Efficiency</CardTitle>
+              <Percent className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {loadingKpi ? (
+                <Skeleton className="h-8 w-28" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-emerald-600">
+                    {orDash(kpi?.collectionRate)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {moneyOrDash(kpi?.totalCollected)} collected of {moneyOrDash(kpi?.totalBilled)}
+                  </p>
+                  <div className="mt-2 text-xs font-medium text-destructive">
+                    Outstanding: {moneyOrDash(kpi?.totalOutstanding)}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Helpdesk & SLA Card */}
         <Card>
@@ -342,44 +355,46 @@ export function KpiDashboardContent(): ReactNode {
       {/* Recharts Analytics Visualization Grid */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Monthly Income vs Expense Trend */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center justify-between">
-              <span>Financial Cashflow Trend</span>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardTitle>
-            <CardDescription>Billed collections vs expenses over the last 6 months</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loadingKpi ? (
-              <Skeleton className="h-64 w-full" />
-            ) : !kpi?.monthlyTrend ? (
-              <div className="h-64 flex flex-col items-center justify-center text-muted-foreground text-sm border border-dashed rounded-lg">
-                <Receipt className="h-8 w-8 mb-2 opacity-50" />
-                Could not load the cashflow trend
-              </div>
-            ) : !hasTrendActivity(kpi.monthlyTrend) ? (
-              <div className="h-64 flex flex-col items-center justify-center text-muted-foreground text-sm border border-dashed rounded-lg">
-                <Receipt className="h-8 w-8 mb-2 opacity-50" />
-                No financial cashflow data recorded yet
-              </div>
-            ) : (
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={kpi.monthlyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(val) => `₹${val / 1000}k`} />
-                    <Tooltip formatter={(val: number) => formatCurrency(val)} />
-                    <Legend />
-                    <Bar dataKey="income" name="Income" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {showsFinance && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                <span>Financial Cashflow Trend</span>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardTitle>
+              <CardDescription>Billed collections vs expenses over the last 6 months</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingKpi ? (
+                <Skeleton className="h-64 w-full" />
+              ) : !kpi?.monthlyTrend ? (
+                <div className="h-64 flex flex-col items-center justify-center text-muted-foreground text-sm border border-dashed rounded-lg">
+                  <Receipt className="h-8 w-8 mb-2 opacity-50" />
+                  Could not load the cashflow trend
+                </div>
+              ) : !hasTrendActivity(kpi.monthlyTrend) ? (
+                <div className="h-64 flex flex-col items-center justify-center text-muted-foreground text-sm border border-dashed rounded-lg">
+                  <Receipt className="h-8 w-8 mb-2 opacity-50" />
+                  No financial cashflow data recorded yet
+                </div>
+              ) : (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={kpi.monthlyTrend}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} tickFormatter={(val) => `₹${val / 1000}k`} />
+                      <Tooltip formatter={(val: number) => formatCurrency(val)} />
+                      <Legend />
+                      <Bar dataKey="income" name="Income" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="expense" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Helpdesk Categories Breakdown */}
         <Card>

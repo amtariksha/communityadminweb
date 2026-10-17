@@ -6,7 +6,9 @@ import { api } from '@/lib/api';
 /**
  * `GET /analytics/kpi-dashboard`. Each section is computed on its own; a
  * section that failed arrives as `null` (all of its keys), and the page shows
- * "—" for it instead of a zero.
+ * "—" for it instead of a zero. The money figures (marked optional) are absent
+ * altogether for a caller who may not read the books, such as a manager; the
+ * page then leaves those cards out.
  */
 export interface KpiBackendData {
   totalUnits: number | null;
@@ -15,10 +17,10 @@ export interface KpiBackendData {
   activeResidents: number | null;
   ownersCount: number | null;
   tenantsCount: number | null;
-  totalBilled: number | null;
-  totalCollected: number | null;
-  totalOutstanding: number | null;
-  collectionRate: string | null;
+  totalBilled?: number | null;
+  totalCollected?: number | null;
+  totalOutstanding?: number | null;
+  collectionRate?: string | null;
   totalTickets: number | null;
   openTickets: number | null;
   resolvedTickets: number | null;
@@ -40,7 +42,7 @@ export interface KpiBackendData {
     today_staff_entries: number;
     active_overstays: number;
   } | null;
-  monthlyTrend: Array<{
+  monthlyTrend?: Array<{
     month: string;
     income: number;
     expense: number;
@@ -53,7 +55,7 @@ export interface KpiBackendData {
   /** Materials below their minimum stock. */
   low_stock_items: number | null;
   member_categories: number | null;
-  journal_entries_month: number | null;
+  journal_entries_month?: number | null;
 }
 
 export function useKpiDashboardData() {
