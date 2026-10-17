@@ -4,6 +4,7 @@ import { type ReactNode } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useWord } from '@/lib/vocabulary';
 
 interface BreadcrumbItem {
   label: string;
@@ -28,6 +29,9 @@ export function PageHeader({
   className,
   breadcrumbs,
 }: PageHeaderProps): ReactNode {
+  // Titles follow the society's layout wording (SB-14); unchanged in
+  // the standard layout.
+  const word = useWord();
   return (
     <div className={cn('space-y-1', className)}>
       {/* The page-level breadcrumb was duplicating the header's
@@ -38,7 +42,7 @@ export function PageHeader({
           callers that still pass it — accepted and ignored here. */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{word(title)}</h1>
           {description &&
             (typeof description === 'string' ? (
               <p className="text-sm text-muted-foreground">{description}</p>

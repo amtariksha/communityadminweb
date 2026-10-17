@@ -29,6 +29,8 @@ interface TenantInfo {
   // back-compat with backends that predate it.
   logo_url?: string | null;
   display_name?: string | null;
+  // Admin-web layout for the society; absent on older backends.
+  admin_layout?: 'standard' | 'classic';
 }
 
 /**
@@ -50,6 +52,7 @@ export function toSociety(t: TenantInfo): User['societies'][number] {
     role: pickAdminRole(t.roles) ?? NON_ADMIN_ROLE_SENTINEL,
     logo_url: t.logo_url ?? null,
     display_name: t.display_name ?? null,
+    ...(t.admin_layout ? { admin_layout: t.admin_layout } : {}),
   };
 }
 

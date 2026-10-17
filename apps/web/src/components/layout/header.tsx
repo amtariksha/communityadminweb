@@ -3,18 +3,12 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { type ReactNode } from 'react';
-import { Menu, Moon, Sun, ChevronRight, Building2, Check, HelpCircle } from 'lucide-react';
+import { Menu, Moon, Sun, ChevronRight, HelpCircle } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { getUser, getCurrentTenant, setCurrentTenant } from '@/lib/auth';
 import { useHelpMode } from '@/lib/help-mode-context';
 import { Tooltip } from '@/components/ui/tooltip';
+import { SocietySwitcher } from './society-switcher';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -48,36 +42,11 @@ function getBreadcrumbs(pathname: string): Array<{ label: string; href: string }
   return breadcrumbs;
 }
 
-function getCurrentTenantName(
-  societies: Array<{ id: string; name: string; role: string }>,
-  currentTenantId: string | null,
-): string {
-  if (!currentTenantId || societies.length === 0) {
-    return 'Select Society';
-  }
-
-  const match = societies.find((s) => s.id === currentTenantId);
-  if (match) {
-    return match.name;
-  }
-
-  return societies[0]?.name ?? 'Select Society';
-}
-
-function handleSwitchTenant(tenantId: string): void {
-  setCurrentTenant(tenantId);
-  window.location.reload();
-}
-
 export function Header({ onMenuClick }: HeaderProps): ReactNode {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const { isHelpMode, toggleHelpMode } = useHelpMode();
-  const user = getUser();
   const breadcrumbs = getBreadcrumbs(pathname);
-  const societies = user?.societies ?? [];
-  const currentTenantId = getCurrentTenant();
-  const currentTenantName = getCurrentTenantName(societies, currentTenantId);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 lg:px-6">
@@ -132,34 +101,7 @@ export function Header({ onMenuClick }: HeaderProps): ReactNode {
       </nav>
 
       <div className="ml-auto flex items-center gap-2">
-        {societies.length > 0 && (
-          <div className="relative">
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
-                <Building2 className="h-4 w-4" />
-                <span className="hidden sm:inline">{currentTenantName}</span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {societies.map((society) => (
-                  <DropdownMenuItem
-                    key={society.id}
-                    onClick={() => handleSwitchTenant(society.id)}
-                  >
-                    <span className="flex items-center gap-2">
-                      {society.id === currentTenantId && (
-                        <Check className="h-4 w-4 text-primary" />
-                      )}
-                      {society.id !== currentTenantId && (
-                        <span className="h-4 w-4" />
-                      )}
-                      {society.name}
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
+        <SocietySwitcher />
 
         <Tooltip content="Toggle Help Mode" side="bottom">
           <Button

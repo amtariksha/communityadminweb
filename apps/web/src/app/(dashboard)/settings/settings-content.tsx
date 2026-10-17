@@ -64,6 +64,7 @@ import { AutomatedReportsCard } from './automated-reports-card';
 import { TdsConfigCard } from './tds-config-card';
 import { NotificationPolicyCard } from './notification-policy-card';
 import { HelpContactCard } from './help-contact-card';
+import { AdminLayoutCard } from './admin-layout-card';
 import { OwnerDirectOnboardCard } from './owner-direct-onboard-card';
 import {
   DropdownMenu,
@@ -1854,6 +1855,11 @@ export default function SettingsContent(): ReactNode {
           )}
         </CardContent>
       </Card>
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Admin layout — standard or classic, society-wide (SB-01)            */}
+      {/* ------------------------------------------------------------------- */}
+      <AdminLayoutCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Access & Roles — supervisor toggles + expiry enforcement             */}

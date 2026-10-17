@@ -19,7 +19,10 @@
 // first /auth/refresh / /auth/me round-trip resolves.
 // ---------------------------------------------------------------------------
 
-const TENANT_KEY = 'communityos_tenant';
+// Exported for the pre-paint layout script (lib/admin-layout.ts), which
+// runs before any module loads and has to find the selected society.
+export const TENANT_STORAGE_KEY = 'communityos_tenant';
+const TENANT_KEY = TENANT_STORAGE_KEY;
 const USER_KEY = 'communityos_user';
 
 // Legacy keys we used to store JWTs under. Cleared on boot so the
@@ -48,6 +51,9 @@ export interface User {
     // absent for unbranded societies and pre-099 cached payloads.
     logo_url?: string | null;
     display_name?: string | null;
+    // Admin-web arrangement for this society (settings_json.admin_layout).
+    // Absent on payloads from backends that predate it.
+    admin_layout?: 'standard' | 'classic';
   }>;
   // QA Round 14 #14-2d/2e — server-computed list of apps this user
   // can sign into, derived from the per-society APP_ROLE_ACCESS
@@ -127,14 +133,14 @@ export function setUser(user: User): void {
 }
 
 /**
- * Copy fresh per-society branding onto the cached user. The cached user
- * is otherwise written only at login, so without this a session that
- * predates a logo change (or predates branding reaching the client at
- * all) would keep the platform default until the next sign-in.
+ * Copy fresh per-society branding and admin layout onto the cached user.
+ * The cached user is otherwise written only at login, so without this a
+ * session that predates a logo or layout change would keep the old one
+ * until the next sign-in.
  *
- * Deliberately touches `logo_url` / `display_name` ONLY. Roles drive
- * sidebar gating and the bootstrap redirects, and must not change as a
- * side effect of a cosmetic refresh.
+ * Deliberately touches `logo_url` / `display_name` / `admin_layout` ONLY.
+ * Roles drive sidebar gating and the bootstrap redirects, and must not
+ * change as a side effect of a cosmetic refresh.
  */
 export function syncSocietyBranding(fresh: User['societies']): void {
   const cached = getUser();
@@ -147,14 +153,17 @@ export function syncSocietyBranding(fresh: User['societies']): void {
     if (!match) return society;
     const logo_url = match.logo_url ?? null;
     const display_name = match.display_name ?? null;
+    // An older backend sends no layout; keep whatever is cached.
+    const admin_layout = match.admin_layout ?? society.admin_layout;
     if (
       (society.logo_url ?? null) === logo_url &&
-      (society.display_name ?? null) === display_name
+      (society.display_name ?? null) === display_name &&
+      society.admin_layout === admin_layout
     ) {
       return society;
     }
     changed = true;
-    return { ...society, logo_url, display_name };
+    return { ...society, logo_url, display_name, admin_layout };
   });
 
   if (changed) setUser({ ...cached, societies });

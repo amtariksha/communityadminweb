@@ -13,6 +13,10 @@ export interface TenantSettings {
   maintenance_requests?: boolean;
   parking_management?: boolean;
 
+  // Admin-web arrangement for this society: today's layout or the
+  // classic menu, density and wording. Absent = standard.
+  admin_layout?: 'standard' | 'classic';
+
   // Batch 14 — purchase-request approval configuration. Keep in sync
   // with communityos/packages/shared/src/types/tenant.ts.
   pr_approval_levels?: number;

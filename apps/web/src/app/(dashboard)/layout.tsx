@@ -18,6 +18,8 @@ import type { User } from '@/lib/auth';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
+import { ClassicShell } from '@/components/layout/classic/classic-shell';
+import { LayoutProvider, useAdminLayout } from '@/lib/layout-context';
 
 /**
  * Returns the existing tenant id ONLY if the user still has an
@@ -52,9 +54,65 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+function SuperAdminBanner(): ReactNode {
+  const user = getUser();
+  const isSuperAdmin = user?.isSuperAdmin === true;
+  const currentTenantId = getCurrentTenant();
+  const tenantName = getSuperAdminTenantName();
+  if (!(isSuperAdmin && currentTenantId && tenantName)) return null;
+
+  return (
+    <div className="flex items-center justify-between gap-3 bg-primary px-4 py-2 text-primary-foreground">
+      <div className="flex items-center gap-2 text-sm">
+        <Shield className="h-4 w-4" />
+        <span className="font-medium">Super Admin</span>
+        <span className="opacity-80">— viewing {tenantName}</span>
+      </div>
+      <button
+        onClick={handleBackToSuperAdmin}
+        className="flex items-center gap-1 rounded-md px-3 py-1 text-sm font-medium hover:bg-primary-foreground/20 transition-colors"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back to Super Admin
+      </button>
+    </div>
+  );
+}
+
+function StandardShell({ children }: DashboardLayoutProps): ReactNode {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <SuperAdminBanner />
+        <Header onMenuClick={() => setSidebarOpen(true)} />
+        {/* QA #113 — tighten outer padding on phones (p-2),
+            relax to p-4 on tablet, full p-6 on desktop. Was
+            `p-4 lg:p-6` which gave phones 16px margins on top of
+            already-narrow viewport — content felt cramped. */}
+        <main className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6">{children}</main>
+        {/* QA Round 14 #14-2c — legal-links footer. Outside `<main>`
+            so it doesn't scroll with content; pins to bottom of the
+            column. Slim row, low visual weight. */}
+        <Footer />
+      </div>
+    </div>
+  );
+}
+
+// The society's layout picks the shell (SB-01); pages are the same.
+function AdminShell({ children }: DashboardLayoutProps): ReactNode {
+  const layout = useAdminLayout();
+  if (layout === 'classic') {
+    return <ClassicShell banner={<SuperAdminBanner />}>{children}</ClassicShell>;
+  }
+  return <StandardShell>{children}</StandardShell>;
+}
+
 export default function DashboardLayout({ children }: DashboardLayoutProps): ReactNode {
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [bootstrapped, setBootstrapped] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
@@ -192,43 +250,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): Rea
     );
   }
 
-  const user = getUser();
-  const isSuperAdmin = user?.isSuperAdmin === true;
-  const currentTenantId = getCurrentTenant();
-  const tenantName = getSuperAdminTenantName();
-  const showSuperAdminBanner = isSuperAdmin && currentTenantId && tenantName;
-
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {showSuperAdminBanner && (
-          <div className="flex items-center justify-between gap-3 bg-primary px-4 py-2 text-primary-foreground">
-            <div className="flex items-center gap-2 text-sm">
-              <Shield className="h-4 w-4" />
-              <span className="font-medium">Super Admin</span>
-              <span className="opacity-80">— viewing {tenantName}</span>
-            </div>
-            <button
-              onClick={handleBackToSuperAdmin}
-              className="flex items-center gap-1 rounded-md px-3 py-1 text-sm font-medium hover:bg-primary-foreground/20 transition-colors"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back to Super Admin
-            </button>
-          </div>
-        )}
-        <Header onMenuClick={() => setSidebarOpen(true)} />
-        {/* QA #113 — tighten outer padding on phones (p-2),
-            relax to p-4 on tablet, full p-6 on desktop. Was
-            `p-4 lg:p-6` which gave phones 16px margins on top of
-            already-narrow viewport — content felt cramped. */}
-        <main className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6">{children}</main>
-        {/* QA Round 14 #14-2c — legal-links footer. Outside `<main>`
-            so it doesn't scroll with content; pins to bottom of the
-            column. Slim row, low visual weight. */}
-        <Footer />
-      </div>
-    </div>
+    <LayoutProvider>
+      <AdminShell>{children}</AdminShell>
+    </LayoutProvider>
   );
 }

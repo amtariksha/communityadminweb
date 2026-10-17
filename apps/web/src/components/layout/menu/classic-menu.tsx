@@ -1,0 +1,364 @@
+import { type ReactNode } from 'react';
+import {
+  LayoutDashboard,
+  Home,
+  TicketCheck,
+  IndianRupee,
+  ShoppingCart,
+  Landmark,
+  BookOpen,
+  Gauge,
+  ShieldCheck,
+  Users,
+  ArrowLeftRight,
+  Car,
+  CalendarCheck,
+  Gavel,
+  ClipboardList,
+  ScrollText,
+  Wrench,
+  Megaphone,
+  Store,
+  FolderOpen,
+  Building2,
+  BarChart3,
+  Ellipsis,
+} from 'lucide-react';
+
+/**
+ * One entry in the classic menu (requirements SB-02, Part 3.3).
+ *
+ * - `href`: the screen it opens. Only routes that exist today; a module
+ *   ticket points it at the module's own route when it builds one.
+ * - `children`: second level in the left menu.
+ * - `tabs`: sub-tabs drawn by the module frame (SB-03); the menu entry
+ *   opens the first one the user may see.
+ * - `planned`: the ticket that builds the screen. Planned entries are
+ *   kept here so the menu shape is complete, but are never shown.
+ *
+ * Feature flags and supervisor visibility are not repeated here: they
+ * come from the standard menu entry for the same route (menu-access.ts).
+ */
+export interface MenuNode {
+  id: string;
+  label: string;
+  icon?: ReactNode;
+  href?: string;
+  children?: MenuNode[];
+  tabs?: MenuNode[];
+  planned?: string;
+  // Button on every page of the module, e.g. "Create Request" (SB-03).
+  create?: { label: string; href: string };
+}
+
+const icon = (Icon: typeof Home): ReactNode => <Icon className="h-4 w-4" />;
+const planned = (id: string, label: string, ticket: string): MenuNode => ({
+  id,
+  label,
+  planned: ticket,
+});
+
+// "More" collects our extra screens; it is a group, not a module.
+export const MORE_GROUP_ID = 'more';
+
+export const classicMenu: MenuNode[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: icon(LayoutDashboard), href: '/' },
+  {
+    id: 'units',
+    label: 'Units & Users',
+    icon: icon(Home),
+    children: [
+      planned('units.unapproved', 'Unapproved Users', 'UNIT-13'),
+      { id: 'units.add', label: 'Add Users', href: '/units/import' },
+      { id: 'units.approved', label: 'Approved Users', href: '/units' },
+      // Ours; their portal has no people list of its own.
+      { id: 'units.directory', label: 'Member Directory', href: '/units/directory' },
+      planned('units.access', 'Access Control', 'UNIT-10'),
+      { id: 'units.broadcast', label: 'Broadcast', href: '/notifications' },
+      planned('units.statistics', 'Statistics', 'UNIT-10'),
+      planned('units.deactivated', 'De-Activated Users', 'UNIT-10'),
+      planned('units.survey', 'Survey', 'P9'),
+      planned('units.pets', 'Pet Setup', 'P9'),
+      planned('units.consent', 'Consent Activity', 'P9'),
+      planned('units.reports', 'Reports', 'REP-04'),
+    ],
+  },
+  {
+    id: 'helpdesk',
+    label: 'HelpDesk Tracker',
+    icon: icon(TicketCheck),
+    children: [
+      planned('helpdesk.setup', 'Setup', 'HELP-11'),
+      planned('helpdesk.escalation', 'Escalation', 'HELP-11'),
+      planned('helpdesk.open', 'Open Requests', 'HELP-12'),
+      planned('helpdesk.closed', 'Closed Requests', 'HELP-12'),
+      // One list for every status until HELP-12 splits it.
+      { id: 'helpdesk.all', label: 'All Requests', href: '/tickets' },
+      planned('helpdesk.reports', 'Reports', 'REP-04'),
+    ],
+  },
+  {
+    id: 'income',
+    label: 'Income Tracker',
+    icon: icon(IndianRupee),
+    children: [
+      planned('income.setup', 'Setup', 'INC-34'),
+      planned('income.track-units', 'Track Units', 'INC-37'),
+      planned('income.member-income', 'Member Income', 'INC-35'),
+      {
+        id: 'income.registers',
+        label: 'Receipts & Invoices',
+        tabs: [
+          { id: 'income.registers.receipts', label: 'Receipts', href: '/receipts' },
+          { id: 'income.registers.invoices', label: 'Invoices', href: '/invoices' },
+        ],
+      },
+      planned('income.defaulters', 'Defaulters', 'INC-36'),
+      planned('income.non-member', 'Non Member Income', 'VEND-07'),
+      planned('income.reports', 'Reports', 'REP-04'),
+    ],
+  },
+  {
+    id: 'expense',
+    label: 'Expense Tracker',
+    icon: icon(ShoppingCart),
+    children: [
+      planned('expense.setup', 'Setup', 'EXP-20'),
+      { id: 'expense.purchase-workflow', label: 'Purchase Workflow', href: '/purchases' },
+      planned('expense.by-vendors', 'By Vendors', 'EXP-20'),
+      planned('expense.by-date', 'By Date', 'EXP-20'),
+      planned('expense.budget', 'Budget', 'EXP-20'),
+      planned('expense.comparison', 'Expenses Comparison', 'EXP-20'),
+      planned('expense.reports', 'Reports', 'REP-04'),
+    ],
+  },
+  {
+    id: 'bank',
+    label: 'Bank & Cash',
+    icon: icon(Landmark),
+    children: [
+      planned('bank.setup', 'Setup', 'BANK-06'),
+      planned('bank.transfer', 'Transfer', 'BANK-06'),
+      { id: 'bank.accounts', label: 'Bank & Cash Accounts', href: '/bank' },
+      { id: 'bank.taxes', label: 'Taxes', href: '/tax' },
+      planned('bank.fixed-deposits', 'Fixed Deposits', 'BANK-06'),
+      planned('bank.reports', 'Reports', 'REP-04'),
+    ],
+  },
+  {
+    id: 'ledger',
+    label: 'General Ledger',
+    icon: icon(BookOpen),
+    children: [
+      { id: 'ledger.chart', label: 'Chart of Accounts', href: '/accounts' },
+      planned('ledger.journal', 'Journal Entries', 'GL-10'),
+      planned('ledger.query', 'Query', 'GL-09'),
+      planned('ledger.trial-balance', 'Trial Balance', 'GL-09'),
+      planned('ledger.statements', 'Financial Statements', 'GL-09'),
+      planned('ledger.reports', 'Reports', 'REP-04'),
+    ],
+  },
+  {
+    id: 'utility',
+    label: 'Utility Tracker',
+    icon: icon(Gauge),
+    // Meters, readings, bills and slab rates are tabs of one page until
+    // UTIL-10 gives each its own route.
+    href: '/utilities',
+    children: [
+      planned('utility.setup', 'Setup', 'UTIL-10'),
+      planned('utility.flats', 'Track Utility Flats', 'UTIL-11'),
+      planned('utility.income', 'Utility Income', 'UTIL-10'),
+      planned('utility.bulk', 'Bulk Posting', 'UTIL-12'),
+      planned('utility.registers', 'Receipts & Invoices', 'UTIL-12'),
+      planned('utility.defaulters', 'Defaulters', 'UTIL-10'),
+    ],
+  },
+  {
+    id: 'gate',
+    label: 'Gate & Visitors',
+    icon: icon(ShieldCheck),
+    children: [
+      planned('gate.setup', 'Setup', 'GATE-10'),
+      planned('gate.move', 'Move In/Out', 'GATE-10'),
+      planned('gate.usage', 'Usage Summary', 'GATE-10'),
+      {
+        id: 'gate.investigator',
+        label: 'Incident Investigator',
+        tabs: [
+          { id: 'gate.investigator.visitors', label: 'Visitors & Logs', href: '/gate' },
+          { id: 'gate.investigator.panic', label: 'Panic Alerts', href: '/sos' },
+        ],
+      },
+      planned('gate.reports', 'Reports', 'REP-04'),
+    ],
+  },
+  {
+    id: 'staff',
+    label: 'Staff Manager',
+    icon: icon(Users),
+    // Employees, attendance and shifts are tabs of one page until
+    // STAFF-10 gives each status its own route.
+    href: '/staff',
+    children: [
+      planned('staff.setup', 'Setup', 'STAFF-10'),
+      planned('staff.active', 'Active', 'STAFF-10'),
+      planned('staff.attendance', 'Attendance', 'STAFF-10'),
+      planned('staff.temp', 'Temp', 'STAFF-10'),
+      planned('staff.retired', 'Retired', 'STAFF-10'),
+      planned('staff.blacklisted', 'Blacklisted', 'STAFF-10'),
+      planned('staff.reports', 'Reports', 'REP-04'),
+    ],
+  },
+  {
+    id: 'move',
+    label: 'Move In/Out Tracker',
+    icon: icon(ArrowLeftRight),
+    children: [
+      planned('move.setup', 'Setup', 'MOVE-05'),
+      // Today's approval queue, which also holds exit requests.
+      { id: 'move.verify', label: 'Verify Move Ins', href: '/approvals' },
+      planned('move.approved', 'Approved Move Ins', 'MOVE-06'),
+      planned('move.owners', 'Approved Owners', 'MOVE-05'),
+      planned('move.tenants', 'Approved Tenants', 'MOVE-05'),
+      planned('move.noc', 'NOC Initiated', 'MOVE-05'),
+      planned('move.deactivated', 'Deactivated', 'MOVE-05'),
+    ],
+  },
+  {
+    id: 'parking',
+    label: 'Parking Manager',
+    icon: icon(Car),
+    children: [
+      planned('parking.setup', 'Setup', 'PARK-06'),
+      // Slots and vehicles are two tabs of one page until PARK-06.
+      { id: 'parking.slots-vehicles', label: 'Slots & Vehicles', href: '/parking' },
+      { id: 'parking.vehicle-approvals', label: 'Vehicle Approvals', href: '/approvals/vehicles' },
+    ],
+  },
+  {
+    id: 'amenity',
+    label: 'Amenity & Event',
+    icon: icon(CalendarCheck),
+    children: [
+      planned('amenity.setup', 'Setup', 'AMEN-10'),
+      { id: 'amenity.amenity', label: 'Amenity', href: '/amenities' },
+      { id: 'amenity.event', label: 'Event', href: '/events' },
+      planned('amenity.reports', 'Reports', 'REP-04'),
+    ],
+  },
+  {
+    id: 'rules',
+    label: 'Community Rules & Violations',
+    icon: icon(Gavel),
+    children: [
+      planned('rules.setup', 'Rules & Violations Set Up', 'RULE-02'),
+      planned('rules.open', 'Open Violations', 'RULE-03'),
+      planned('rules.closed', 'Closed Violations', 'RULE-03'),
+    ],
+  },
+  {
+    id: 'forms',
+    label: 'Community Forms',
+    icon: icon(ClipboardList),
+    children: [
+      planned('forms.setup', 'Setup', 'FORM-02'),
+      planned('forms.responses', 'Responses', 'FORM-05'),
+      planned('forms.reports', 'Reports', 'REP-04'),
+    ],
+  },
+  {
+    id: 'projects',
+    label: 'Projects & Meetings',
+    icon: icon(ScrollText),
+    children: [
+      planned('projects.setup', 'SetUp', 'PROJ-22'),
+      planned('projects.projects', 'Projects', 'P9'),
+      { id: 'projects.meetings', label: 'Meetings', href: '/governance' },
+      planned('projects.tasks', 'Tasks', 'PROJ-11'),
+      planned('projects.reports', 'Reports', 'REP-04'),
+    ],
+  },
+  {
+    id: 'assets',
+    label: 'Asset & Inventory',
+    icon: icon(Wrench),
+    children: [
+      planned('assets.setup', 'Setup', 'ASSET-07'),
+      { id: 'assets.assets', label: 'Assets', href: '/assets' },
+      { id: 'assets.inventory', label: 'Inventory', href: '/inventory' },
+      planned('assets.reports', 'Reports', 'REP-04'),
+    ],
+  },
+  {
+    id: 'announcements',
+    label: 'Announcements',
+    icon: icon(Megaphone),
+    // One list for every state until ANN-10 adds the status routes.
+    href: '/announcements',
+    children: [
+      planned('announcements.setup', 'Setup', 'ANN-10'),
+      planned('announcements.awaiting', 'Awaiting Approval', 'ANN-10'),
+      planned('announcements.active', 'Active', 'ANN-10'),
+      planned('announcements.retired', 'Retired', 'ANN-10'),
+    ],
+  },
+  {
+    id: 'vendors',
+    label: 'Vendor Master',
+    icon: icon(Store),
+    children: [
+      { id: 'vendors.expense', label: 'Vendors For Expense', href: '/vendors' },
+      { id: 'vendors.non-member', label: 'Vendors for Non Member Income', href: '/customers' },
+      planned('vendors.bulk', 'Bulk Posting', 'VEND-09'),
+      planned('vendors.amcs', 'AMCs', 'VEND-06'),
+    ],
+  },
+  {
+    id: 'files',
+    label: 'Admin Files',
+    icon: icon(FolderOpen),
+    children: [
+      { id: 'files.common', label: 'Common Files', href: '/documents' },
+      planned('files.unit', 'Unit Specific Files', 'FILE-10'),
+      planned('files.platform', 'Platform Files', 'FILE-10'),
+    ],
+  },
+  {
+    id: 'profile',
+    label: 'Society Profile',
+    icon: icon(Building2),
+    children: [
+      planned('profile.home', 'Home', 'PROF-10'),
+      planned('profile.images', 'Images', 'PROF-10'),
+      planned('profile.location', 'Location', 'PROF-10'),
+      planned('profile.agreement', 'User Agreement', 'P9'),
+      planned('profile.downloads', 'Downloadable Files', 'PROF-10'),
+      { id: 'profile.emergency', label: 'Emergency Contacts', href: '/directory' },
+    ],
+  },
+  // Today's finance reports; REP-04 turns this into the numbered index.
+  { id: 'reports', label: 'Admin Reports', icon: icon(BarChart3), href: '/reports' },
+  {
+    // Our screens with no place in their menu (decision D4).
+    id: MORE_GROUP_ID,
+    label: 'More',
+    icon: icon(Ellipsis),
+    children: [
+      { id: 'more.kpi', label: 'KPI Command Center', href: '/kpi-dashboard' },
+      { id: 'more.analytics', label: 'Analytics', href: '/analytics' },
+      { id: 'more.payments', label: 'Online Payments', href: '/payments' },
+      { id: 'more.reconcile', label: 'Reconcile Debtors', href: '/accounts/reconcile-debtors' },
+      { id: 'more.categories', label: 'Member Categories', href: '/setup/categories' },
+      { id: 'more.kyc', label: 'KYC Verification', href: '/setup/kyc' },
+      { id: 'more.patrol', label: 'Guard Patrol', href: '/patrol' },
+      { id: 'more.cctv', label: 'CCTV', href: '/cctv' },
+      { id: 'more.voting', label: 'Voting', href: '/voting' },
+      { id: 'more.gas', label: 'Gas', href: '/gas' },
+      { id: 'more.marketplace', label: 'Marketplace', href: '/marketplace' },
+      { id: 'more.salaries', label: 'Salaries', href: '/staff/salaries' },
+      { id: 'more.audit', label: 'Audit Trail', href: '/audit' },
+      { id: 'more.settings', label: 'Settings', href: '/settings' },
+    ],
+  },
+];

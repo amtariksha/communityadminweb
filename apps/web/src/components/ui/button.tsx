@@ -36,7 +36,16 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { className, variant, size, ...props },
   ref,
 ) {
-  return <button className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+  return (
+    <button
+      // Hooks for the classic density rules in globals.css (SB-14).
+      data-slot="button"
+      data-size={size ?? 'default'}
+      className={cn(buttonVariants({ variant, size, className }))}
+      ref={ref}
+      {...props}
+    />
+  );
 });
 
 Button.displayName = 'Button';
