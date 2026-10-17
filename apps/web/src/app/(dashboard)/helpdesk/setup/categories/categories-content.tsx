@@ -52,6 +52,8 @@ export default function CategoriesContent(): ReactNode {
       />
       <p className="text-sm text-muted-foreground">
         Change admin roles in <Link href="/settings" className="text-primary hover:underline">Settings</Link>.
+        {' '}Owners of the second and third level, and how long each level has, are set in the{' '}
+        <Link href="/helpdesk/escalation" className="text-primary hover:underline">escalation matrix</Link>.
       </p>
       <Card>
         <CardContent className="pt-6">

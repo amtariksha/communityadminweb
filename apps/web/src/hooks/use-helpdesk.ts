@@ -35,6 +35,34 @@ export interface HelpdeskAssignee {
   roles: string[];
 }
 
+/** One row of the escalation matrix: a category with its owners and windows. */
+export interface EscalationRow {
+  category_id: string;
+  category_name: string;
+  display_order: number;
+  owner_l1_user_id: string | null;
+  owner_l1_name: string | null;
+  escalation_l1_l2_hours: number | null;
+  owner_l2_user_id: string | null;
+  owner_l2_name: string | null;
+  escalation_l2_l3_hours: number | null;
+  owner_l3_user_id: string | null;
+  owner_l3_name: string | null;
+  sla_hours: number | null;
+  default_priority: string | null;
+}
+
+/** What the row editor saves; a blank window or owner is sent as null. */
+export interface EscalationRowInput {
+  owner_l1_user_id: string;
+  escalation_l1_l2_hours: number | null;
+  owner_l2_user_id: string | null;
+  escalation_l2_l3_hours: number | null;
+  owner_l3_user_id: string | null;
+  sla_hours: number;
+  default_priority: string;
+}
+
 // ---------------------------------------------------------------------------
 // Query keys
 // ---------------------------------------------------------------------------
@@ -43,6 +71,7 @@ export const helpdeskKeys = {
   all: ['helpdesk'] as const,
   categories: () => [...helpdeskKeys.all, 'categories'] as const,
   assignees: () => [...helpdeskKeys.all, 'assignees'] as const,
+  escalation: () => [...helpdeskKeys.all, 'escalation'] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -85,6 +114,40 @@ export function useSaveHelpdeskCategories() {
       queryClient.setQueryData(helpdeskKeys.categories(), saved);
       queryClient.invalidateQueries({ queryKey: ['tickets', 'categories'] });
       queryClient.invalidateQueries({ queryKey: ['helpdesk', 'setup'] });
+    },
+  });
+}
+
+export function useEscalationMatrix() {
+  return useQuery({
+    queryKey: helpdeskKeys.escalation(),
+    queryFn: async function fetchEscalationMatrix() {
+      const res = await api.get<{ data: EscalationRow[] }>('/helpdesk/escalation');
+      return res.data;
+    },
+  });
+}
+
+export function useSaveEscalationRow() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async function saveEscalationRow(input: {
+      categoryId: string;
+      body: EscalationRowInput;
+    }) {
+      const res = await api.put<{ data: EscalationRow }>(
+        `/helpdesk/escalation/${input.categoryId}`,
+        input.body,
+      );
+      return res.data;
+    },
+    onSuccess: function showSavedRow(saved) {
+      queryClient.setQueryData<EscalationRow[]>(helpdeskKeys.escalation(), (rows) =>
+        (rows ?? []).map((row) => (row.category_id === saved.category_id ? saved : row)),
+      );
+      // The categories list carries each owner too.
+      queryClient.invalidateQueries({ queryKey: helpdeskKeys.categories() });
     },
   });
 }

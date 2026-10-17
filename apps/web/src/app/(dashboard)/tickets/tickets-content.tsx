@@ -1325,30 +1325,14 @@ export default function TicketsContent(): ReactNode {
               </div>
             </div>
 
-            {/* Escalation Rules */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Escalation Tier Rules</h4>
-              <div className="border rounded-md overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b bg-muted/40 text-left text-muted-foreground">
-                      <th className="p-2">Level</th>
-                      <th className="p-2">Trigger After</th>
-                      <th className="p-2">Escalate To Role</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {(helpdeskSetup?.escalationRules ?? []).map((rule) => (
-                      <tr key={rule.id}>
-                        <td className="p-2 font-medium">Tier {rule.level}</td>
-                        <td className="p-2 text-destructive font-medium">{rule.trigger_after_hours} hrs after breach</td>
-                        <td className="p-2 capitalize">{rule.escalate_to_role || 'Manager'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {setupAvailable && (
+              <p className="text-xs text-muted-foreground">
+                Escalation owners and windows are set per category under{' '}
+                <Link href="/helpdesk/escalation" className="text-primary hover:underline">
+                  Escalation
+                </Link>.
+              </p>
+            )}
           </div>
 
           <DialogFooter>

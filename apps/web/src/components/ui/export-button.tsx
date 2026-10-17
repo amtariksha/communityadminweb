@@ -19,6 +19,8 @@ interface ExportButtonProps {
   data: Record<string, unknown>[];
   filename: string;
   columns: ExportColumn[];
+  /** Button text; defaults to "Export". */
+  label?: string;
 }
 
 function escapeCsvValue(val: unknown): string {
@@ -37,7 +39,7 @@ function downloadBlob(blob: Blob, name: string): void {
   URL.revokeObjectURL(url);
 }
 
-export function ExportButton({ data, filename, columns }: ExportButtonProps): ReactNode {
+export function ExportButton({ data, filename, columns, label = 'Export' }: ExportButtonProps): ReactNode {
   function exportCsv(): void {
     const header = columns.map((col) => escapeCsvValue(col.label)).join(',');
     const rows = data.map((row) =>
@@ -63,7 +65,7 @@ export function ExportButton({ data, filename, columns }: ExportButtonProps): Re
       <DropdownMenuTrigger>
         <Button variant="outline" size="sm">
           <Download className="mr-2 h-4 w-4" />
-          Export
+          {label}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="z-50">

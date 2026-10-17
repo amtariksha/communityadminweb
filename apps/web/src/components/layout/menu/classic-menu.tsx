@@ -121,7 +121,7 @@ export const classicMenu: MenuNode[] = [
           planned('helpdesk.setup.auto-responses', 'Automated Responses', 'HELP-06'),
         ],
       },
-      planned('helpdesk.escalation', 'Escalation', 'HELP-11'),
+      { id: 'helpdesk.escalation', label: 'Escalation', href: '/helpdesk/escalation' },
       planned('helpdesk.open', 'Open Requests', 'HELP-12'),
       planned('helpdesk.closed', 'Closed Requests', 'HELP-12'),
       // One list for every status until HELP-12 splits it.

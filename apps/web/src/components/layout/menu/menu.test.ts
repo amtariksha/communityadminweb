@@ -100,7 +100,8 @@ describe('classic modules', () => {
   });
 
   it('HelpDesk Tracker shows Setup with its built screens as sub-tabs, then the request list', () => {
-    expect(labels('helpdesk')).toEqual(['Setup', 'All Requests']);
+    expect(labels('helpdesk')).toEqual(['Setup', 'Escalation', 'All Requests']);
+    expect(find(menu, 'helpdesk.escalation')?.href).toBe('/helpdesk/escalation');
     expect(find(menu, 'helpdesk.setup')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Setup Helpdesk Categories', '/helpdesk/setup/categories'],
     ]);
@@ -195,6 +196,7 @@ describe('locate', () => {
     ['/units/directory', 'units', 'units.directory', undefined],
     ['/income/registers/invoices', 'income', 'income.registers', 'income.registers.invoices'],
     ['/helpdesk/setup/categories', 'helpdesk', 'helpdesk.setup', 'helpdesk.setup.categories'],
+    ['/helpdesk/escalation', 'helpdesk', 'helpdesk.escalation', undefined],
     ['/tickets', 'helpdesk', 'helpdesk.all', undefined],
     // Today's routes stay inside their classic module, so in-page links still get a frame.
     ['/units', 'units', 'units.approved', undefined],

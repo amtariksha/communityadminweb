@@ -347,7 +347,6 @@ export function useHelpdeskSetup() {
           };
           categories: Array<{ id: string; name: string; sla_hours: number; default_priority: string }>;
           statuses: Array<{ id: string; label: string; category: string; color: string }>;
-          escalationRules: Array<{ id: string; level: number; trigger_after_hours: number; escalate_to_role?: string }>;
         };
       }>('/helpdesk/setup');
       return res.data;

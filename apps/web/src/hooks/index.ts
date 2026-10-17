@@ -937,11 +937,15 @@ export {
   useHelpdeskCategories,
   useHelpdeskAssignees,
   useSaveHelpdeskCategories,
+  useEscalationMatrix,
+  useSaveEscalationRow,
 } from './use-helpdesk';
 export type {
   HelpdeskCategory,
   HelpdeskCategoryRow,
   HelpdeskAssignee,
+  EscalationRow,
+  EscalationRowInput,
 } from './use-helpdesk';
 
 // Events & RSVPs
