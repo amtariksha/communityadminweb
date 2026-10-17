@@ -18,7 +18,7 @@ import {
 } from '@/hooks';
 
 // ---------------------------------------------------------------------------
-// Toggle metadata — human labels + grouping for the checkbox grid
+// The supervisor switches that something reads
 // ---------------------------------------------------------------------------
 
 interface ToggleDef {
@@ -32,80 +32,31 @@ interface ToggleGroup {
   items: ToggleDef[];
 }
 
+// UNIT-08 — thirty other switches used to be offered here and nothing read
+// them. These two decide whether a supervisor sees their team's requests;
+// which team a request category belongs to is set under HelpDesk > Escalation.
 const SECURITY_GROUPS: ToggleGroup[] = [
   {
-    title: 'Staff',
+    title: 'Requests',
     items: [
-      { key: 'guard_staff_crud', label: 'Create/edit guard staff' },
       {
-        key: 'non_guard_staff_crud',
-        label: 'Create/edit non-guard staff',
-        help: 'Off by default for external security agencies.',
+        key: 'security_tickets_crud',
+        label: 'Sees the security team’s requests',
+        help: 'Security supervisors see, assign and update requests in categories handled by security.',
       },
-      { key: 'manage_shifts', label: 'Manage shifts (guards)' },
-      { key: 'view_attendance', label: 'View attendance reports' },
-      {
-        key: 'clock_in_override',
-        label: 'Clock in/out on behalf of guards',
-        help: 'Routed through a community-admin approval before applying.',
-      },
-      { key: 'leave_approve_own_team', label: 'Approve leave — own team' },
-      { key: 'leave_approve_all_staff', label: 'Approve leave — all staff' },
-    ],
-  },
-  {
-    title: 'Approval queues',
-    items: [
-      { key: 'approvals_face_enrollment', label: 'Face enrollment approvals' },
-      { key: 'approvals_visitor_override', label: 'Visitor pre-reg override approvals' },
-      { key: 'approvals_clock_in_override', label: 'Clock-in override approvals' },
-      { key: 'approvals_new_guard_onboarding', label: 'New-guard onboarding approvals' },
-    ],
-  },
-  {
-    title: 'Gate + directory',
-    items: [
-      { key: 'visitor_pass_override', label: 'Cancel / override visitor passes' },
-      { key: 'parcel_management', label: 'Parcel logs + mark collected' },
-      { key: 'anpr_logs', label: 'ANPR vehicle logs' },
-      { key: 'unrecognized_vehicles', label: 'Review unrecognized vehicles' },
-      { key: 'camera_list_view', label: 'View CCTV camera list' },
-      { key: 'unit_directory_names_only', label: 'Unit directory (names + unit #)' },
-      {
-        key: 'member_directory_with_contact',
-        label: 'Member directory with contact details',
-        help: 'Off by default — external agencies should not see resident PII.',
-      },
-      { key: 'security_tickets_crud', label: 'Security-category tickets' },
     ],
   },
 ];
 
 const FACILITY_GROUPS: ToggleGroup[] = [
   {
-    title: 'Staff',
+    title: 'Requests',
     items: [
-      { key: 'non_guard_staff_crud', label: 'Create/edit non-guard staff' },
       {
-        key: 'guard_staff_crud',
-        label: 'Create/edit guard staff',
-        help: 'Turn off when security is contracted out to a third party.',
+        key: 'maintenance_tickets_crud',
+        label: 'Sees the facility team’s requests',
+        help: 'Facility supervisors see, assign and update requests in categories handled by facility.',
       },
-      { key: 'manage_shifts_all', label: 'Manage shifts (all staff)' },
-      { key: 'view_attendance', label: 'View attendance reports' },
-      { key: 'leave_approve_non_guard', label: 'Approve leave — non-guard' },
-      { key: 'leave_approve_all_staff', label: 'Approve leave — all staff' },
-    ],
-  },
-  {
-    title: 'Facility ops',
-    items: [
-      { key: 'maintenance_tickets_crud', label: 'Maintenance tickets (assign, resolve, close)' },
-      { key: 'amenity_bookings_manage', label: 'Amenity bookings (cancel, manage slots)' },
-      { key: 'utility_readings_record', label: 'Utility readings (record, history)' },
-      { key: 'assets_amc_view_and_service_log', label: 'Assets + AMC (view, log service)' },
-      { key: 'gate_non_guard_checkin_logs', label: 'Gate check-in logs for non-guard staff' },
-      { key: 'member_directory_with_contact', label: 'Member directory with contact details' },
     ],
   },
 ];
@@ -226,10 +177,9 @@ export function RoleDelegationCard(): ReactNode {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Fine-grained toggles for the two supervisor roles. Defaults are tuned
-          for &quot;external security agency + internal facility supervisor&quot; —
-          flip what doesn&apos;t fit your setup. Changes propagate cluster-wide
-          within 5 minutes.
+          Whether each supervisor role works the requests of its own team, and
+          what happens when a role assignment expires. Changes propagate
+          cluster-wide within 5 minutes.
         </p>
       </CardHeader>
       <CardContent className="space-y-8">

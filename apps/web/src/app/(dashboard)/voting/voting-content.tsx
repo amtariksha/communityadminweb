@@ -607,9 +607,7 @@ export default function VotingContent(): ReactNode {
                 <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                   <option value="">All Statuses</option>
                   <option value="active">Active</option>
-                  <option value="draft">Draft</option>
                   <option value="closed">Closed</option>
-                  <option value="cancelled">Cancelled</option>
                 </Select>
                 <Button onClick={() => setCreateOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" /> Create Poll

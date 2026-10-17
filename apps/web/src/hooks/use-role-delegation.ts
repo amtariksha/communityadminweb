@@ -13,41 +13,14 @@ export type ExpiryEnforcement =
   | 'filter_only'
   | 'hybrid';
 
+// UNIT-08 — only the switches something reads: whether a supervisor sees
+// their team's requests (HELP-09). The other supervisor switches were removed.
 export interface SecuritySupervisorPermissions {
-  guard_staff_crud: boolean;
-  non_guard_staff_crud: boolean;
-  manage_shifts: boolean;
-  clock_in_override: boolean;
-  view_attendance: boolean;
-  leave_approve_own_team: boolean;
-  leave_approve_all_staff: boolean;
-  approvals_face_enrollment: boolean;
-  approvals_visitor_override: boolean;
-  approvals_clock_in_override: boolean;
-  approvals_new_guard_onboarding: boolean;
-  member_directory_with_contact: boolean;
-  unit_directory_names_only: boolean;
-  visitor_pass_override: boolean;
-  parcel_management: boolean;
-  anpr_logs: boolean;
-  unrecognized_vehicles: boolean;
-  camera_list_view: boolean;
   security_tickets_crud: boolean;
 }
 
 export interface FacilitySupervisorPermissions {
-  non_guard_staff_crud: boolean;
-  guard_staff_crud: boolean;
-  manage_shifts_all: boolean;
-  view_attendance: boolean;
-  leave_approve_non_guard: boolean;
-  leave_approve_all_staff: boolean;
   maintenance_tickets_crud: boolean;
-  amenity_bookings_manage: boolean;
-  utility_readings_record: boolean;
-  assets_amc_view_and_service_log: boolean;
-  gate_non_guard_checkin_logs: boolean;
-  member_directory_with_contact: boolean;
 }
 
 export interface RoleDelegation {
