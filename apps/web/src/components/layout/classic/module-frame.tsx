@@ -60,11 +60,12 @@ export function ModuleFrame({ menu, children }: ModuleFrameProps): ReactNode {
   const location = locate(pathname, menu);
   if (!location || location.module.id === 'dashboard') return <>{children}</>;
 
-  const { module, child, tab } = location;
+  const { module, child, tab, form } = location;
   const tabs = child?.tabs ?? module.tabs ?? [];
-  const create = child?.create ?? module.create;
+  // A form page carries its own Save and Close (SB-07).
+  const create = form ? undefined : child?.create ?? module.create;
   const logs = (tab ?? child ?? module).logs;
-  const close = closeHref(module);
+  const close = form ? undefined : closeHref(module);
 
   return (
     <div className="space-y-4">

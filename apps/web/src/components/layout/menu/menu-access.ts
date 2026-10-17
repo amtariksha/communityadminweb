@@ -101,6 +101,18 @@ export interface MenuLocation {
   module: MenuNode;
   child?: MenuNode;
   tab?: MenuNode;
+  // The module's create form, shown as a page of its own (SB-07).
+  form?: true;
+}
+
+/**
+ * The module's create form as a location, when it is a page of its own
+ * (`/helpdesk/new`). A create that opens today's dialog (`?new=1`) is not.
+ */
+function createPage(module: MenuNode): MenuLocation[] {
+  const create = module.create;
+  if (!create || create.href.includes('?')) return [];
+  return [{ module, child: { id: `${module.id}.create`, label: create.label, href: create.href }, form: true }];
 }
 
 function matchLength(pathname: string, href: string): number {
@@ -111,6 +123,7 @@ function matchLength(pathname: string, href: string): number {
 function candidates(nodes: readonly MenuNode[]): MenuLocation[] {
   return nodes.flatMap((module) => [
     { module },
+    ...createPage(module),
     ...(module.children ?? []).flatMap((child) => [
       { module, child },
       ...(child.tabs ?? []).map((tab) => ({ module, child, tab })),
