@@ -939,6 +939,8 @@ export {
   useSaveHelpdeskCategories,
   useEscalationMatrix,
   useSaveEscalationRow,
+  useHelpdeskSettings,
+  useSaveHelpdeskSettings,
 } from './use-helpdesk';
 export type {
   HelpdeskCategory,
@@ -946,6 +948,9 @@ export type {
   HelpdeskAssignee,
   EscalationRow,
   EscalationRowInput,
+  NotificationAlerts,
+  HelpdeskSettings,
+  HelpdeskSettingsUpdate,
 } from './use-helpdesk';
 
 // Events & RSVPs

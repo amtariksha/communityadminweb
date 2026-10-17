@@ -63,6 +63,36 @@ export interface EscalationRowInput {
   default_priority: string;
 }
 
+/** The email alerts of Setup > Notification Alerts; each is on or off. */
+export type NotificationAlerts = Record<
+  | 'new_request_owner'
+  | 'new_request_committee'
+  | 'escalated_owner'
+  | 'escalated_committee'
+  | 'status_changed_requester'
+  | 'resident_reply_owner'
+  | 'admin_reply_requester'
+  | 'completed_requester',
+  boolean
+>;
+
+/** The society's helpdesk settings (GET /helpdesk/setup, `settings`). */
+export interface HelpdeskSettings {
+  operational_days: string[];
+  operational_hours_start: string;
+  operational_hours_end: string;
+  allowed_modes: string[];
+  aging_sla_hours: number;
+  committee_emails: string[];
+  notification_alerts: NotificationAlerts;
+  include_contact_in_alerts: boolean;
+}
+
+/** What PUT /helpdesk/setup takes: only the fields that change. */
+export type HelpdeskSettingsUpdate = Partial<
+  Pick<HelpdeskSettings, 'committee_emails' | 'include_contact_in_alerts'>
+> & { notification_alerts?: Partial<NotificationAlerts> };
+
 // ---------------------------------------------------------------------------
 // Query keys
 // ---------------------------------------------------------------------------
@@ -72,6 +102,7 @@ export const helpdeskKeys = {
   categories: () => [...helpdeskKeys.all, 'categories'] as const,
   assignees: () => [...helpdeskKeys.all, 'assignees'] as const,
   escalation: () => [...helpdeskKeys.all, 'escalation'] as const,
+  settings: () => [...helpdeskKeys.all, 'settings'] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -148,6 +179,53 @@ export function useSaveEscalationRow() {
       );
       // The categories list carries each owner too.
       queryClient.invalidateQueries({ queryKey: helpdeskKeys.categories() });
+    },
+  });
+}
+
+const NO_ALERTS: NotificationAlerts = {
+  new_request_owner: false,
+  new_request_committee: false,
+  escalated_owner: false,
+  escalated_committee: false,
+  status_changed_requester: false,
+  resident_reply_owner: false,
+  admin_reply_requester: false,
+  completed_requester: false,
+};
+
+/** Fills in what a server that predates the alert settings leaves out. */
+function withAlertDefaults(settings: HelpdeskSettings): HelpdeskSettings {
+  return {
+    ...settings,
+    notification_alerts: { ...NO_ALERTS, ...settings.notification_alerts },
+    include_contact_in_alerts: settings.include_contact_in_alerts ?? false,
+    committee_emails: settings.committee_emails ?? [],
+  };
+}
+
+export function useHelpdeskSettings() {
+  return useQuery({
+    queryKey: helpdeskKeys.settings(),
+    queryFn: async function fetchSettings() {
+      const res = await api.get<{ data: { settings: HelpdeskSettings } }>('/helpdesk/setup');
+      return res.data.settings;
+    },
+    select: withAlertDefaults,
+  });
+}
+
+export function useSaveHelpdeskSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async function saveSettings(update: HelpdeskSettingsUpdate) {
+      const res = await api.put<{ data: HelpdeskSettings }>('/helpdesk/setup', update);
+      return res.data;
+    },
+    onSuccess: function showSaved(saved) {
+      queryClient.setQueryData(helpdeskKeys.settings(), saved);
+      queryClient.invalidateQueries({ queryKey: ['helpdesk', 'setup'] });
     },
   });
 }

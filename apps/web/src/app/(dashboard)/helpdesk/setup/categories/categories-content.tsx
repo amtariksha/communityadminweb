@@ -15,6 +15,7 @@ import {
 } from '@/hooks';
 import type { HelpdeskCategoryRow } from '@/hooks';
 import { CategoriesGrid } from './categories-grid';
+import { SetupLinks } from '../setup-links';
 
 // Roles the API lets save the grid; everyone else sees it read-only.
 const SAVE_ROLES = new Set(['super_admin', 'community_admin']);
@@ -50,6 +51,7 @@ export default function CategoriesContent(): ReactNode {
         title="Helpdesk Categories"
         description="Each request goes to the owner of its category. Category owners are people with an admin role in this society."
       />
+      <SetupLinks current="categories" />
       <p className="text-sm text-muted-foreground">
         Change admin roles in <Link href="/settings" className="text-primary hover:underline">Settings</Link>.
         {' '}Owners of the second and third level, and how long each level has, are set in the{' '}

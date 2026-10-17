@@ -117,7 +117,7 @@ export const classicMenu: MenuNode[] = [
         tabs: [
           { id: 'helpdesk.setup.categories', label: 'Setup Helpdesk Categories', href: '/helpdesk/setup/categories' },
           planned('helpdesk.setup.service-date', 'Setup Preferred Service Date', 'HELP-16'),
-          planned('helpdesk.setup.notifications', 'Notification Alerts', 'HELP-05'),
+          { id: 'helpdesk.setup.notifications', label: 'Notification Alerts', href: '/helpdesk/setup/notifications' },
           planned('helpdesk.setup.auto-responses', 'Automated Responses', 'HELP-06'),
         ],
       },

@@ -13,6 +13,7 @@ import { useEscalationMatrix, useHelpdeskAssignees, useSaveEscalationRow } from 
 import type { EscalationRow, EscalationRowInput } from '@/hooks';
 import { EXPORT_COLUMNS, EscalationMatrix, toExportRows } from './escalation-matrix';
 import { EscalationRowEditor } from './escalation-row-editor';
+import { SetupLinks } from '../setup/setup-links';
 
 // Roles the API lets save a row; everyone else who can open the page views it.
 const SAVE_ROLES = new Set(['super_admin', 'community_admin']);
@@ -56,6 +57,7 @@ export default function EscalationContent(): ReactNode {
           />
         }
       />
+      <SetupLinks current="escalation" />
       <Card>
         <CardContent className="pt-6">
           {matrixQuery.isLoading ? (
