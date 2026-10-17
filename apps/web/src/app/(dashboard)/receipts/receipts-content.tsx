@@ -32,6 +32,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { DirectIncomeDialog } from './direct-income-dialog';
 import { ApplyAdvancesButton } from './apply-advances-button';
 import { describeReceiptAllocation, summarizeReceiptAllocation } from './receipt-allocation';
+import { creditableInvoices } from './credit-note-invoices';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
@@ -343,7 +344,9 @@ export default function ReceiptsContent(): ReactNode {
                 <form onSubmit={handleCreateCreditNote}>
                   <DialogHeader>
                     <DialogTitle>Create Credit Note</DialogTitle>
-                    <DialogDescription>Issue a credit note against a unit</DialogDescription>
+                    <DialogDescription>
+                      Reduce what a unit owes on a posted invoice. A draft invoice is cancelled instead.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -364,7 +367,7 @@ export default function ReceiptsContent(): ReactNode {
                         onChange={(e) => setCnInvoiceId(e.target.value)}
                       >
                         <option value="">Select invoice</option>
-                        {(invoicesQuery.data?.data ?? []).map((inv: { id: string; invoice_number: string; balance_due: number }) => (
+                        {creditableInvoices(invoicesQuery.data?.data ?? []).map((inv) => (
                           <option key={inv.id} value={inv.id}>
                             {inv.invoice_number} (Due: {formatCurrency(Number(inv.balance_due))})
                           </option>
