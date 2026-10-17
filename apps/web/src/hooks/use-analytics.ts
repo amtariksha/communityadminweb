@@ -85,8 +85,38 @@ interface BenchmarkResponse {
   computed_at?: string;
 }
 
+/**
+ * `GET /analytics/dashboard-summary`. Money is a two-decimal string, counts are
+ * integers. A section is `null` when it failed, when the caller may not see it
+ * (a manager gets no income, expense, bank or utility), or when it cannot be
+ * known yet; a figure inside a section is `null` when its source is not built.
+ */
+export interface DashboardSummary {
+  period: { fy_id: string; label: string; start_date: string; end_date: string } | null;
+  units: { total: number; occupied: number } | null;
+  users: { members: number; admins: number; never_logged_in: number | null } | null;
+  helpdesk: { open: number; overdue: number } | null;
+  latest_updates: Array<{ id: string; title: string; published_at: string }> | null;
+  income: {
+    collected: string | null;
+    outstanding: string;
+    defaulters: number;
+    paid_intimations: number | null;
+  } | null;
+  expense: { total: string | null; open_purchase_requests: number; variance: string | null } | null;
+  bank: {
+    total: string;
+    accounts: Array<{ id: string; name: string; balance: string }>;
+    more: number;
+  } | null;
+  utility: { pending_bills: number; billed_amount: string | null } | null;
+  gate: { visitors_today: number; staff_today: number; open_overstays: number } | null;
+}
+
 export const analyticsKeys = {
   all: ['analytics'] as const,
+  dashboardSummary: (financialYearId: string | undefined) =>
+    [...analyticsKeys.all, 'dashboard-summary', financialYearId ?? 'current'] as const,
   healthScore: () => [...analyticsKeys.all, 'health-score'] as const,
   trend: (months: number) => [...analyticsKeys.all, 'trend', months] as const,
   benchmark: () => [...analyticsKeys.all, 'benchmark'] as const,
@@ -167,6 +197,20 @@ export function useMaintenancePredictions() {
     queryFn: () =>
       api
         .get<{ data: { predictions: MaintenancePrediction[] } }>('/analytics/maintenance-predictions')
+        .then((r) => r.data),
+  });
+}
+
+/** Every figure the classic dashboard shows, for the given financial year (the current one when omitted). */
+export function useDashboardSummary(financialYearId: string | undefined) {
+  return useQuery({
+    queryKey: analyticsKeys.dashboardSummary(financialYearId),
+    queryFn: () =>
+      api
+        .get<{ data: DashboardSummary }>(
+          '/analytics/dashboard-summary',
+          financialYearId ? { params: { fy_id: financialYearId } } : undefined,
+        )
         .then((r) => r.data),
   });
 }

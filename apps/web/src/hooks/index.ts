@@ -736,6 +736,7 @@ export {
   useBenchmark,
   useAnomalies,
   useMaintenancePredictions,
+  useDashboardSummary,
 } from './use-analytics';
 export type {
   HealthScore,
@@ -743,6 +744,7 @@ export type {
   Anomaly,
   MaintenancePrediction,
   BenchmarkMetric,
+  DashboardSummary,
 } from './use-analytics';
 
 // Gas Management
