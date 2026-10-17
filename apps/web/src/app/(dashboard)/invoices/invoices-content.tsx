@@ -35,6 +35,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { CustomInvoiceDialog } from './custom-invoice-dialog';
 import { BillingRunsPanel } from './billing-runs-panel';
 import { WaiveInterestButton } from './waive-interest-button';
+import { activeRules } from '@/lib/invoice-rule';
 import { describeInvoicePayer, INVOICE_PARTY_OPTIONS, type InvoiceParty } from './invoice-payer';
 import { describeGenerateResult } from './generate-summary';
 import { ExportButton } from '@/components/ui/export-button';
@@ -668,7 +669,7 @@ export default function InvoicesContent(): ReactNode {
                           className="flex-1"
                         >
                           <option value="">Select billing rule</option>
-                          {rules?.map((rule) => {
+                          {activeRules(rules ?? []).map((rule) => {
                             const isPerSqft = rule.is_per_sqft || rule.charge_type === 'area_based';
                             const label = isPerSqft
                               ? `${rule.name} (${formatCurrency(rule.amount)}/sqft)`

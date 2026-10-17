@@ -75,8 +75,14 @@ export interface InvoiceRule {
   amount: number;
   charge_type: InvoiceChargeType;
   is_per_sqft: boolean;
-  is_gst_applicable: boolean;
-  gst_rate: number;
+  /** What the API returns: 'none' (no GST) or the rule GST is charged by. */
+  gst_rule?: 'none' | 'inclusive' | 'exclusive' | 'full' | 'above_limit';
+  /** DECIMAL on the wire, so usually a string. */
+  gst_percentage?: number | string;
+  /** @deprecated The API does not send this; read `gst_rule` (see lib/invoice-rule.ts). */
+  is_gst_applicable?: boolean;
+  /** @deprecated The API does not send this; read `gst_percentage`. */
+  gst_rate?: number;
   is_active: boolean;
   created_at: Date;
 }

@@ -99,6 +99,7 @@ export {
   useInvoiceRules,
   useCreateInvoiceRule,
   useUpdateInvoiceRule,
+  useDeactivateInvoiceRule,
   useGenerateInvoices,
   usePostInvoices,
   useCancelInvoice,

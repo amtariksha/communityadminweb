@@ -307,6 +307,20 @@ export function useUpdateInvoiceRule() {
   });
 }
 
+/** "Off" on a billing rule: DELETE /invoices/rules/:id switches it off (never deletes the row). */
+export function useDeactivateInvoiceRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function deactivateInvoiceRule(id: string) {
+      return api.delete<{ message: string }>(`/invoices/rules/${id}`);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.rules() });
+    },
+  });
+}
+
 export function useGenerateInvoices() {
   const queryClient = useQueryClient();
 
