@@ -390,20 +390,6 @@ export async function downloadReceiptPdf(
   window.URL.revokeObjectURL(url);
 }
 
-export function useRecalculateArrears() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: function recalculateArrears(unitId: string) {
-      return api.post<{ message: string }>(`/receipts/recalculate-arrears/${unitId}`);
-    },
-    onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
-    },
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Member Advances
 // ---------------------------------------------------------------------------

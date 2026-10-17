@@ -68,8 +68,6 @@ import {
   useBulkUpdateDueDates,
   useOtherBills,
   useCreateOtherBill,
-  useUnitBillingCycles,
-  useUpsertUnitBillingCycle,
 } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
 import type { InvoiceStatus, Invoice } from '@communityos/shared';
@@ -235,11 +233,11 @@ export default function InvoicesContent(): ReactNode {
   const setPage = listState.setPage;
   const limit = 20;
 
-  // Main Tab: invoices, other_bills, billing_cycles, billing_runs.
+  // Main Tab: invoices, other_bills, billing_runs.
   // `?tab=billing_runs` opens the runs list (the failed-run notification
   // points admins there).
   const [mainTab, setMainTab] = useState<
-    'invoices' | 'other_bills' | 'billing_cycles' | 'billing_runs'
+    'invoices' | 'other_bills' | 'billing_runs'
   >(() => (searchParams?.get('tab') === 'billing_runs' ? 'billing_runs' : 'invoices'));
 
   // Other Bills state & queries
@@ -252,18 +250,6 @@ export default function InvoicesContent(): ReactNode {
   const [obPaidBy, setObPaidBy] = useState('');
   const [obPaymentMode, setObPaymentMode] = useState('bank_transfer');
   const [obStatus, setObStatus] = useState('pending');
-
-  // Unit Billing Cycles state & queries
-  const { data: billingCycles = [], isLoading: billingCyclesLoading } = useUnitBillingCycles();
-  const upsertBillingCycle = useUpsertUnitBillingCycle();
-  const [billingCycleDialogOpen, setBillingCycleDialogOpen] = useState(false);
-  const [bcUnitId, setBcUnitId] = useState('');
-  const [bcFrequency, setBcFrequency] = useState('monthly');
-  const [bcDayOfMonth, setBcDayOfMonth] = useState('1');
-  const [bcGraceDays, setBcGraceDays] = useState('15');
-  const [bcLpiRate, setBcLpiRate] = useState('18');
-  const [bcAutoInvoice, setBcAutoInvoice] = useState(true);
-  const [bcAutoReceipt, setBcAutoReceipt] = useState(true);
 
   // Units list for dynamic dropdown
   const { data: unitsData } = useUnits();
@@ -754,17 +740,6 @@ export default function InvoicesContent(): ReactNode {
         </button>
         <button
           type="button"
-          onClick={() => setMainTab('billing_cycles')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            mainTab === 'billing_cycles'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Unit Billing Cycles
-        </button>
-        <button
-          type="button"
           onClick={() => setMainTab('billing_runs')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             mainTab === 'billing_runs'
@@ -1171,76 +1146,6 @@ export default function InvoicesContent(): ReactNode {
 
       {mainTab === 'billing_runs' && <BillingRunsPanel />}
 
-      {/* Unit Billing Cycles Mapping */}
-      {mainTab === 'billing_cycles' && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Unit Billing Cycles</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                Customize per-unit billing frequencies, cycle billing days, grace periods, and late payment interest rates.
-              </p>
-            </div>
-            <Button size="sm" onClick={() => setBillingCycleDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Configure Unit Cycle
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            {billingCyclesLoading ? (
-              <div className="space-y-2 p-6">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            ) : billingCycles.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <Calculator className="mb-2 h-10 w-10 opacity-50" />
-                <p className="text-lg font-medium">No per-unit cycles mapped</p>
-                <p className="text-sm">Configure unit-specific billing frequencies (monthly, bi-monthly, quarterly, annual)</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Unit #</TableHead>
-                    <TableHead>Cycle Frequency</TableHead>
-                    <TableHead>Bill Day</TableHead>
-                    <TableHead>Grace Period</TableHead>
-                    <TableHead>LPI Rate</TableHead>
-                    <TableHead>Auto Invoicing</TableHead>
-                    <TableHead>Auto Receipt</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {billingCycles.map((c) => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-semibold">{c.unit_number}</TableCell>
-                      <TableCell className="capitalize">
-                        <Badge variant="outline">{c.cycle_frequency.replace(/_/g, ' ')}</Badge>
-                      </TableCell>
-                      <TableCell>Day {c.bill_day_of_month}</TableCell>
-                      <TableCell>{c.grace_period_days} days</TableCell>
-                      <TableCell>{c.lpi_rate_percent}% p.a.</TableCell>
-                      <TableCell>
-                        <Badge variant={c.is_auto_generate_invoice ? 'success' : 'secondary'}>
-                          {c.is_auto_generate_invoice ? 'Enabled' : 'Disabled'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={c.is_auto_generate_receipt ? 'success' : 'secondary'}>
-                          {c.is_auto_generate_receipt ? 'Enabled' : 'Disabled'}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
       {/* Record Other Bill Dialog */}
       <Dialog open={otherBillDialogOpen} onOpenChange={setOtherBillDialogOpen}>
         <DialogContent className="max-w-md">
@@ -1342,129 +1247,6 @@ export default function InvoicesContent(): ReactNode {
               </DialogClose>
               <Button type="submit" disabled={createOtherBill.isPending}>
                 {createOtherBill.isPending ? 'Saving...' : 'Record Bill'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Configure Unit Billing Cycle Dialog */}
-      <Dialog open={billingCycleDialogOpen} onOpenChange={setBillingCycleDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Configure Unit Billing Cycle</DialogTitle>
-            <DialogDescription>
-              Assign automated billing rules, cycle frequency, and grace periods for a flat.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              try {
-                await upsertBillingCycle.mutateAsync({
-                  unit_id: bcUnitId,
-                  cycle_frequency: bcFrequency,
-                  bill_day_of_month: Number(bcDayOfMonth),
-                  grace_period_days: Number(bcGraceDays),
-                  lpi_rate_percent: Number(bcLpiRate),
-                  is_auto_generate_invoice: bcAutoInvoice,
-                  is_auto_generate_receipt: bcAutoReceipt,
-                });
-                addToast({ title: 'Configured', description: 'Unit billing cycle saved' });
-                setBillingCycleDialogOpen(false);
-                setBcUnitId('');
-              } catch (err) {
-                addToast({ title: 'Failed to save cycle', description: friendlyError(err), variant: 'destructive' });
-              }
-            }}
-            className="space-y-4 py-2"
-          >
-            <div className="space-y-2">
-              <Label htmlFor="bc-unit">Select Unit *</Label>
-              <Select
-                id="bc-unit"
-                value={bcUnitId}
-                onChange={(e) => setBcUnitId(e.target.value)}
-                required
-              >
-                <option value="">Select flat unit...</option>
-                {unitsList.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.unit_number} {u.block ? `(${u.block})` : ''}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="bc-freq">Cycle Frequency</Label>
-                <Select id="bc-freq" value={bcFrequency} onChange={(e) => setBcFrequency(e.target.value)}>
-                  <option value="monthly">Monthly</option>
-                  <option value="bi_monthly">Bi-Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="annual">Annual</option>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bc-day">Billing Day (1-28)</Label>
-                <Input
-                  id="bc-day"
-                  type="number"
-                  min="1"
-                  max="28"
-                  value={bcDayOfMonth}
-                  onChange={(e) => setBcDayOfMonth(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="bc-grace">Grace Days</Label>
-                <Input
-                  id="bc-grace"
-                  type="number"
-                  value={bcGraceDays}
-                  onChange={(e) => setBcGraceDays(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bc-lpi">LPI Rate (% p.a.)</Label>
-                <Input
-                  id="bc-lpi"
-                  type="number"
-                  step="0.1"
-                  value={bcLpiRate}
-                  onChange={(e) => setBcLpiRate(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-2 pt-1">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={bcAutoInvoice}
-                  onChange={(e) => setBcAutoInvoice(e.target.checked)}
-                  className="rounded border-input"
-                />
-                Auto-generate monthly invoice draft
-              </label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={bcAutoReceipt}
-                  onChange={(e) => setBcAutoReceipt(e.target.checked)}
-                  className="rounded border-input"
-                />
-                Auto-generate receipt on full payment
-              </label>
-            </div>
-            <DialogFooter>
-              <DialogClose>
-                <Button type="button" variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit" disabled={upsertBillingCycle.isPending}>
-                {upsertBillingCycle.isPending ? 'Saving...' : 'Save Cycle'}
               </Button>
             </DialogFooter>
           </form>
