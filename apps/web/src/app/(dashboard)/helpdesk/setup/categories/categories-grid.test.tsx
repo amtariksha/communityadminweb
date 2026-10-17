@@ -11,7 +11,7 @@ import { CategoriesGrid } from './categories-grid';
 
 const OWNERS: HelpdeskAssignee[] = [
   { user_id: 'owner-1', name: 'Test Admin One', roles: ['community_admin'] },
-  { user_id: 'owner-2', name: 'Test Admin Two', roles: ['manager'] },
+  { user_id: 'owner-2', name: 'Test Admin Two', roles: ['accountant'] },
 ];
 
 const CATEGORIES: HelpdeskCategory[] = [
@@ -65,7 +65,7 @@ describe('CategoriesGrid', () => {
     renderGrid();
 
     const options = within(ownerBox(1)).getAllByRole('option').map((option) => option.textContent);
-    expect(options).toEqual(['Select owner...', 'Test Admin One (community_admin)', 'Test Admin Two (manager)']);
+    expect(options).toEqual(['Select owner...', 'Test Admin One (community_admin)', 'Test Admin Two (accountant)']);
     expect(ownerBox(1).value).toBe('owner-1');
   });
 

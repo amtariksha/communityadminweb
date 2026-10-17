@@ -16,7 +16,6 @@ export const ADMIN_ROLE_ALLOW_LIST = [
   'community_admin',
   'committee_member',
   'accountant',
-  'manager',
   'security_supervisor',
   'facility_supervisor',
   'guard_supervisor',

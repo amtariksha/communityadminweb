@@ -229,14 +229,6 @@ describe('ClassicDashboard', () => {
     expect(screen.queryByText('Post Announcement')).toBeNull();
   });
 
-  it('does not render the accounting band for a manager', () => {
-    mocks.role = 'manager';
-    render(<ClassicDashboard />);
-
-    expect(screen.queryByRole('heading', { name: 'ACCOUNTING' })).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Income Tracker' })).toBeNull();
-  });
-
   it('does not render the accounting band for another admin role, but keeps the operational cards', () => {
     mocks.role = 'moderator';
     render(<ClassicDashboard />);

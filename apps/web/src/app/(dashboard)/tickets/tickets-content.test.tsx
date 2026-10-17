@@ -42,7 +42,7 @@ vi.mock('@/hooks', () => ({
   useHelpdeskAssignees: () => ({
     data: [
       { user_id: 'admin-1', name: 'Test Admin One', roles: ['community_admin'] },
-      { user_id: 'admin-2', name: 'Test Admin Two', roles: ['manager'] },
+      { user_id: 'admin-2', name: 'Test Admin Two', roles: ['accountant'] },
     ],
     isSuccess: mocks.assigneesSucceeded,
   }),

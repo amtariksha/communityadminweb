@@ -23,7 +23,7 @@ vi.mock('@/hooks', () => ({
   useHelpdeskAssignees: () => ({
     data: [
       { user_id: 'u1', name: 'Test Admin One', roles: ['community_admin'] },
-      { user_id: 'u2', name: 'Test Admin Two', roles: ['manager'] },
+      { user_id: 'u2', name: 'Test Admin Two', roles: ['accountant'] },
       { user_id: 'u3', name: 'Test Admin Three', roles: ['committee_member'] },
     ],
     isLoading: false,
@@ -175,7 +175,7 @@ describe('Escalation matrix', () => {
   });
 
   it('opens read-only for a role that may view but not edit', () => {
-    mocks.role = 'manager';
+    mocks.role = 'accountant';
     render(<EscalationContent />);
 
     fireEvent.click(screen.getByRole('button', { name: 'View Plumbing' }));
