@@ -25,6 +25,14 @@ interface ApiRequestOptions {
   // and clobber the visible list, leaving a gap. The retry-after-401
   // path also honours this signal so a logout cancels the retry.
   signal?: AbortSignal;
+  // 'blob' for file downloads (exports, PDFs); JSON otherwise.
+  responseType?: 'json' | 'blob';
+}
+
+async function parseBody<T>(response: Response, options: ApiRequestOptions): Promise<T> {
+  if (response.status === 204) return undefined as T;
+  if (options.responseType === 'blob') return (await response.blob()) as T;
+  return response.json() as Promise<T>;
 }
 
 /**
@@ -318,8 +326,7 @@ async function request<T>(
 
       // Retry succeeded → normal response flow.
       if (retryResponse.ok) {
-        if (retryResponse.status === 204) return undefined as T;
-        return retryResponse.json() as Promise<T>;
+        return parseBody<T>(retryResponse, options);
       }
 
       // Retry still 401: the new token doesn't actually buy us access
@@ -356,11 +363,7 @@ async function request<T>(
     throw await buildApiError(response);
   }
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json() as Promise<T>;
+  return parseBody<T>(response, options);
 }
 
 export const api = {
@@ -386,5 +389,10 @@ export const api = {
   // separate POST route.
   delete<T>(path: string, body?: unknown, options?: ApiRequestOptions): Promise<T> {
     return request<T>('DELETE', path, body, options);
+  },
+
+  /** A file (export, PDF) with the same sign-in and society as every call. */
+  download(path: string, options?: Omit<ApiRequestOptions, 'responseType'>): Promise<Blob> {
+    return request<Blob>('GET', path, undefined, { ...options, responseType: 'blob' });
   },
 };
