@@ -37,14 +37,18 @@ export interface Ticket {
   is_senior_citizen?: boolean;
   is_differently_abled?: boolean;
   sla_breached?: boolean;
+  // GET /tickets/:id returns the whole thread; the list does not.
+  comments?: TicketComment[];
 }
 
 export interface TicketComment {
   id: string;
   ticket_id: string;
-  author_id: string;
+  // Null for system comments (escalation, automatic replies).
+  author_id: string | null;
   message: string;
   is_internal: boolean;
+  is_system?: boolean;
   created_at: string;
   author_name?: string;
 }

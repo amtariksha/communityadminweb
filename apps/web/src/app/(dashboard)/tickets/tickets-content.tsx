@@ -76,6 +76,7 @@ import {
 import type { Ticket, TicketComment } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
 import { UploadProgress } from '@/components/ui/upload-progress';
+import { TicketDetailThreads } from './ticket-detail-threads';
 
 const TICKET_SORTS = [
   'created_at',
@@ -194,7 +195,6 @@ export default function TicketsContent(): ReactNode {
   // Detail dialog
   const [selectedTicketId, setSelectedTicketId] = useState('');
   const [detailOpen, setDetailOpen] = useState(false);
-  const [commentMessage, setCommentMessage] = useState('');
 
   // Queries
   const ticketsQuery = useTickets({
@@ -350,25 +350,27 @@ export default function TicketsContent(): ReactNode {
     );
   }
 
-  function handleAddComment(): void {
-    if (!commentMessage.trim() || !selectedTicketId) return;
+  async function handleAddComment(message: string, isInternal: boolean): Promise<void> {
+    if (!selectedTicketId) return;
 
-    commentMutation.mutate(
-      { ticket_id: selectedTicketId, message: commentMessage.trim() },
-      {
-        onSuccess() {
-          addToast({ title: 'Comment added', variant: 'success' });
-          setCommentMessage('');
-        },
-        onError(error) {
-          addToast({
-            title: 'Failed to add comment',
-            description: friendlyError(error),
-            variant: 'destructive',
-          });
-        },
-      },
-    );
+    try {
+      await commentMutation.mutateAsync({
+        ticket_id: selectedTicketId,
+        message,
+        is_internal: isInternal,
+      });
+      addToast({
+        title: isInternal ? 'Internal note added' : 'Reply sent to the resident',
+        variant: 'success',
+      });
+    } catch (error) {
+      addToast({
+        title: 'Failed to add comment',
+        description: friendlyError(error),
+        variant: 'destructive',
+      });
+      throw error;
+    }
   }
 
   function handleClearFilters(): void {
@@ -962,8 +964,8 @@ export default function TicketsContent(): ReactNode {
       </Dialog>
 
       {/* Ticket detail dialog */}
-      <Dialog open={detailOpen} onOpenChange={(open) => { setDetailOpen(open); if (!open) { setSelectedTicketId(''); setCommentMessage(''); } }}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <Dialog open={detailOpen} onOpenChange={(open) => { setDetailOpen(open); if (!open) { setSelectedTicketId(''); } }}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {detail?.ticket_number ?? 'Loading...'}
@@ -1091,47 +1093,13 @@ export default function TicketsContent(): ReactNode {
 
               <Separator />
 
-              {/* Add comment */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="comment-message">Add Comment</Label>
-                  {helpdeskTemplates.length > 0 && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground">Template:</span>
-                      <select
-                        className="text-xs h-7 px-2 border rounded bg-background"
-                        onChange={(e) => {
-                          if (e.target.value) setCommentMessage((prev) => (prev ? `${prev}\n\n${e.target.value}` : e.target.value));
-                        }}
-                        defaultValue=""
-                      >
-                        <option value="" disabled>Choose canned response...</option>
-                        {helpdeskTemplates.map((t) => (
-                          <option key={t.id} value={t.body}>{t.title}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Textarea
-                    id="comment-message"
-                    placeholder="Type a comment..."
-                    rows={2}
-                    value={commentMessage}
-                    onChange={(e) => setCommentMessage(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button
-                    size="sm"
-                    disabled={commentMutation.isPending || !commentMessage.trim()}
-                    onClick={handleAddComment}
-                    className="self-end"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+              {/* Resident and internal conversations (HELP-04) */}
+              <TicketDetailThreads
+                comments={detail.comments ?? []}
+                templates={helpdeskTemplates}
+                isPosting={commentMutation.isPending}
+                onPost={handleAddComment}
+              />
             </div>
           ) : null}
 
