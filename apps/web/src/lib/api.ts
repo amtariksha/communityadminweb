@@ -376,6 +376,10 @@ export const api = {
     return request<T>('PATCH', path, body, options);
   },
 
+  put<T>(path: string, body?: unknown, options?: ApiRequestOptions): Promise<T> {
+    return request<T>('PUT', path, body, options);
+  },
+
   // Body on DELETE is uncommon but not invalid (RFC 9110 §9.3.5). The
   // super-admin user-delete endpoint accepts `{ reason, force }` so the
   // operator can confirm an orphaning override without needing a

@@ -7,6 +7,7 @@ import { standardMenu } from './standard-menu';
 import {
   entryHref,
   gatingItem,
+  governingItem,
   locate,
   menuAliases,
   menuHrefs,
@@ -98,6 +99,20 @@ describe('classic modules', () => {
     ]);
   });
 
+  it('HelpDesk Tracker shows Setup with its built screens as sub-tabs, then the request list', () => {
+    expect(labels('helpdesk')).toEqual(['Setup', 'All Requests']);
+    expect(find(menu, 'helpdesk.setup')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
+      ['Setup Helpdesk Categories', '/helpdesk/setup/categories'],
+    ]);
+    expect(entryHref(find(menu, 'helpdesk.setup') as MenuNode)).toBe('/helpdesk/setup/categories');
+  });
+
+  it('HelpDesk screens follow the Tickets feature and supervisor visibility', () => {
+    const withoutTickets = visibleMenu(classicMenu, { roleAllowlist: null, enabledFeatures: ['invoices'] });
+    expect(find(withoutTickets, 'helpdesk')).toBeUndefined();
+    expect(governingItem('/helpdesk/setup/categories')?.href).toBe('/tickets');
+  });
+
   it('keeps no Invoices, Receipts or Customers entry at the top of Income Tracker', () => {
     expect(labels('income')).not.toEqual(expect.arrayContaining(['Invoices', 'Receipts', 'Customers']));
   });
@@ -179,6 +194,8 @@ describe('locate', () => {
     ['/units/approved', 'units', 'units.approved', undefined],
     ['/units/directory', 'units', 'units.directory', undefined],
     ['/income/registers/invoices', 'income', 'income.registers', 'income.registers.invoices'],
+    ['/helpdesk/setup/categories', 'helpdesk', 'helpdesk.setup', 'helpdesk.setup.categories'],
+    ['/tickets', 'helpdesk', 'helpdesk.all', undefined],
     // Today's routes stay inside their classic module, so in-page links still get a frame.
     ['/units', 'units', 'units.approved', undefined],
     ['/invoices', 'income', 'income.registers', 'income.registers.invoices'],

@@ -33,6 +33,7 @@ export interface Ticket {
   // together or both null.
   attachment_url?: string | null;
   attachment_name?: string | null;
+  category_id?: string | null;
   is_golden_queue?: boolean;
   is_senior_citizen?: boolean;
   is_differently_abled?: boolean;
@@ -68,6 +69,7 @@ export interface TicketFilters {
   status?: string;
   priority?: string;
   category?: string;
+  category_id?: string;
   assigned_to?: string;
   page?: number;
   limit?: number;
@@ -80,7 +82,9 @@ export interface TicketFilters {
 // ---------------------------------------------------------------------------
 
 interface CreateTicketInput {
-  category: string;
+  // The society's category id; `category` (a name) is still accepted.
+  category_id?: string;
+  category?: string;
   subject: string;
   description?: string;
   priority?: string;
@@ -96,6 +100,7 @@ interface UpdateTicketInput {
   status?: string;
   priority?: string;
   assigned_to?: string;
+  category_id?: string;
   category?: string;
 }
 
@@ -131,6 +136,7 @@ function filtersToParams(filters?: TicketFilters): Record<string, string> | unde
   if (filters.status) params.status = filters.status;
   if (filters.priority) params.priority = filters.priority;
   if (filters.category) params.category = filters.category;
+  if (filters.category_id) params.category_id = filters.category_id;
   if (filters.assigned_to) params.assigned_to = filters.assigned_to;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);

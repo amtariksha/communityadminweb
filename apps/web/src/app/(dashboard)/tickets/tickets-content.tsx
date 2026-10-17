@@ -19,7 +19,8 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
@@ -59,6 +60,8 @@ import {
   useTickets,
   useTicket,
   useTicketStats,
+  useHelpdeskCategories,
+  useHelpdeskAssignees,
   useTicketCategories,
   useCreateTicket,
   useUpdateTicket,
@@ -77,6 +80,7 @@ import type { Ticket, TicketComment } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
 import { UploadProgress } from '@/components/ui/upload-progress';
 import { TicketDetailThreads } from './ticket-detail-threads';
+import { categoryChoices } from './category-choices';
 
 const TICKET_SORTS = [
   'created_at',
@@ -184,7 +188,8 @@ export default function TicketsContent(): ReactNode {
   const [newSubject, setNewSubject] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newCategory, setNewCategory] = useState('');
-  const [newPriority, setNewPriority] = useState('medium');
+  // Empty = the category's own default priority.
+  const [newPriority, setNewPriority] = useState('');
   // QA #231 — optional single attachment per ticket. The picker
   // selects the File; on submit we upload via useUploadFileToS3 and
   // pass the resulting URL + display name into createTicket.
@@ -196,18 +201,24 @@ export default function TicketsContent(): ReactNode {
   const [selectedTicketId, setSelectedTicketId] = useState('');
   const [detailOpen, setDetailOpen] = useState(false);
 
+  // Categories: the society's own list, or the legacy names from an older server.
+  const categoriesQuery = useHelpdeskCategories();
+  const legacyCategoriesQuery = useTicketCategories();
+  // The Setup screen needs the newer server; offer its link only once it answers.
+  const setupAvailable = useHelpdeskAssignees().isSuccess;
+  const categories = categoryChoices(categoriesQuery.data, legacyCategoriesQuery.data);
+
   // Queries
   const ticketsQuery = useTickets({
     status: statusFilter || undefined,
     priority: priorityFilter || undefined,
-    category: categoryFilter || undefined,
+    ...categoryFilterParams(categoryFilter),
     page: currentPage,
     limit: PAGE_SIZE,
     sort: listState.state.sort ?? undefined,
     dir: listState.state.dir,
   });
   const statsQuery = useTicketStats();
-  const categoriesQuery = useTicketCategories();
   const ticketDetailQuery = useTicket(selectedTicketId);
 
   // Mutations
@@ -254,12 +265,27 @@ export default function TicketsContent(): ReactNode {
   const total = ticketsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const stats = statsQuery.data;
-  const categories = categoriesQuery.data ?? [];
   const detail = ticketDetailQuery.data;
 
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
+
+  /** The list filter: a category id, or a plain name from the legacy list. */
+  function categoryFilterParams(choiceValue: string): { category_id?: string; category?: string } {
+    if (!choiceValue) return {};
+    const choice = categories.find((entry) => entry.value === choiceValue);
+    return choice?.categoryId ? { category_id: choice.categoryId } : { category: choiceValue };
+  }
+
+  /** What to send for the category chosen in the New Ticket dialog. */
+  function newCategoryFields(): { category_id?: string; category: string } {
+    const choice = categories.find((entry) => entry.value === newCategory);
+    // Both are sent: a server that knows categories files by id, an older one by name.
+    return choice?.categoryId
+      ? { category_id: choice.categoryId, category: choice.label }
+      : { category: newCategory.trim() };
+  }
 
   function handleViewTicket(ticket: Ticket): void {
     setSelectedTicketId(ticket.id);
@@ -304,8 +330,8 @@ export default function TicketsContent(): ReactNode {
       {
         subject: newSubject.trim(),
         description: newDescription.trim() || undefined,
-        category: newCategory.trim(),
-        priority: newPriority,
+        ...newCategoryFields(),
+        priority: newPriority || undefined,
         attachment_url: attachmentUrl,
         attachment_name: attachmentName,
       },
@@ -316,7 +342,7 @@ export default function TicketsContent(): ReactNode {
           setNewSubject('');
           setNewDescription('');
           setNewCategory('');
-          setNewPriority('medium');
+          setNewPriority('');
           setNewAttachment(null);
           setNewAttachmentPercent(null);
           setNewAttachmentFailed(false);
@@ -458,6 +484,12 @@ export default function TicketsContent(): ReactNode {
               <BookOpen className="mr-2 h-4 w-4" />
               Canned Templates
             </Button>
+            {setupAvailable && (
+              <Link href="/helpdesk/setup/categories" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                Setup
+              </Link>
+            )}
             <Button variant="outline" size="sm" onClick={() => setSetupModalOpen(true)}>
               <SlidersHorizontal className="mr-2 h-4 w-4" />
               Helpdesk SLA Setup
@@ -626,8 +658,8 @@ export default function TicketsContent(): ReactNode {
               >
                 <option value="">All</option>
                 {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
                   </option>
                 ))}
               </Select>
@@ -890,8 +922,8 @@ export default function TicketsContent(): ReactNode {
                 >
                   <option value="">Select category</option>
                   {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
                     </option>
                   ))}
                 </Select>
@@ -904,6 +936,7 @@ export default function TicketsContent(): ReactNode {
                   value={newPriority}
                   onChange={(e) => setNewPriority(e.target.value)}
                 >
+                  <option value="">Category default</option>
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>

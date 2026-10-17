@@ -924,6 +924,18 @@ export type {
   HelpdeskTemplate,
 } from './use-tickets';
 
+export {
+  helpdeskKeys,
+  useHelpdeskCategories,
+  useHelpdeskAssignees,
+  useSaveHelpdeskCategories,
+} from './use-helpdesk';
+export type {
+  HelpdeskCategory,
+  HelpdeskCategoryRow,
+  HelpdeskAssignee,
+} from './use-helpdesk';
+
 // Events & RSVPs
 export {
   useEvents,

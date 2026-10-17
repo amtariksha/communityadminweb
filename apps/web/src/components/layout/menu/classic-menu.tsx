@@ -111,7 +111,16 @@ export const classicMenu: MenuNode[] = [
     label: 'HelpDesk Tracker',
     icon: icon(TicketCheck),
     children: [
-      planned('helpdesk.setup', 'Setup', 'HELP-11'),
+      {
+        id: 'helpdesk.setup',
+        label: 'Setup',
+        tabs: [
+          { id: 'helpdesk.setup.categories', label: 'Setup Helpdesk Categories', href: '/helpdesk/setup/categories' },
+          planned('helpdesk.setup.service-date', 'Setup Preferred Service Date', 'HELP-16'),
+          planned('helpdesk.setup.notifications', 'Notification Alerts', 'HELP-05'),
+          planned('helpdesk.setup.auto-responses', 'Automated Responses', 'HELP-06'),
+        ],
+      },
       planned('helpdesk.escalation', 'Escalation', 'HELP-11'),
       planned('helpdesk.open', 'Open Requests', 'HELP-12'),
       planned('helpdesk.closed', 'Closed Requests', 'HELP-12'),

@@ -9,6 +9,12 @@ export interface MenuAccess {
   roleAllowlist: ReadonlySet<string> | null;
 }
 
+// Classic-only route families that a standard entry governs: the classic
+// HelpDesk screens live under /helpdesk but follow the Tickets entry.
+const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string]> = [
+  ['/helpdesk', '/tickets'],
+];
+
 /**
  * The standard menu entry that owns a route: the same path, or the
  * closest parent path. Its feature flag and label decide who may see the
@@ -21,6 +27,10 @@ export function governingItem(
   const items = groups.flatMap((group) => group.items);
   const exact = items.find((item) => item.href === href);
   if (exact) return exact;
+  const family = ROUTE_FAMILIES.find(
+    ([prefix]) => href === prefix || href.startsWith(`${prefix}/`),
+  );
+  if (family) return governingItem(family[1], groups);
   return items
     .filter((item) => item.href !== '/' && href.startsWith(`${item.href}/`))
     .sort((a, b) => b.href.length - a.href.length)[0];
