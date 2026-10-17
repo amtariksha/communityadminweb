@@ -49,6 +49,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { useOpenOnNewParam } from '@/hooks/use-open-on-new-param';
 import { friendlyError } from '@/lib/api-error';
 import {
   useAnnouncements,
@@ -166,6 +167,9 @@ export default function AnnouncementsContent(): ReactNode {
     resetForm();
     setFormOpen(true);
   }
+
+  // The dashboard's "Create Announcement" / "Post Announcement" link here.
+  useOpenOnNewParam(handleOpenCreate);
 
   function handleOpenEdit(announcement: Announcement): void {
     setEditingId(announcement.id);

@@ -38,6 +38,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
+import { useOpenOnNewParam } from '@/hooks/use-open-on-new-param';
 import {
   useMeetings,
   useCreateMeeting,
@@ -121,6 +122,9 @@ export function GovernanceContent() {
     });
     setIsCreateMeetingOpen(true);
   };
+
+  // The dashboard's "Create Meeting" button links here with ?new=1.
+  useOpenOnNewParam(handleOpenCreateMeeting);
 
   const handleOpenEditMeeting = (m: MeetingItem) => {
     setEditingMeeting(m);

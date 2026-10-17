@@ -1,6 +1,11 @@
-import { type ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import AmenitiesContent from './amenities-content';
 
 export default function AmenitiesPage(): ReactNode {
-  return <AmenitiesContent />;
+  // useSearchParams (the ?new=1 deep link) needs a Suspense boundary.
+  return (
+    <Suspense fallback={null}>
+      <AmenitiesContent />
+    </Suspense>
+  );
 }

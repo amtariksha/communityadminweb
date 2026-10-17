@@ -41,6 +41,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { useOpenOnNewParam } from '@/hooks/use-open-on-new-param';
 import { friendlyError } from '@/lib/api-error';
 import {
   useAmenities,
@@ -729,6 +730,8 @@ function BookingsTab(): ReactNode {
   // Mounted at the BookingsTab level so the dialog can read the
   // existing amenitiesQuery / bookingsQuery caches.
   const [newBookingOpen, setNewBookingOpen] = useState(false);
+  // The dashboard's "Book Facilities" button links here with ?new=1.
+  useOpenOnNewParam(() => setNewBookingOpen(true));
 
   // Compute month date range for data fetching
   const monthStart = useMemo(() => {

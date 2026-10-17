@@ -8,6 +8,14 @@ import { GovernanceContent } from './governance-content';
  * `society_staff.id`, which the database refused for every staff member.
  */
 
+const nav = vi.hoisted(() => ({ search: '', replace: vi.fn() }));
+
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(nav.search),
+  usePathname: () => '/governance',
+  useRouter: () => ({ replace: nav.replace }),
+}));
+
 const mocks = vi.hoisted(() => {
   const mutation = () => ({
     mutate: vi.fn(),
@@ -128,5 +136,28 @@ describe('GovernanceContent — Assign Task', () => {
       ),
     );
     expect(mocks.createTask.mutateAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe('GovernanceContent — ?new=1 (DASH-07)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    nav.search = '';
+  });
+
+  it('opens the Schedule Meeting dialog and drops the parameter from the URL', () => {
+    nav.search = 'new=1';
+
+    render(<GovernanceContent />);
+
+    expect(screen.getByRole('heading', { name: 'Schedule Meeting' })).toBeTruthy();
+    expect(nav.replace).toHaveBeenCalledWith('/governance');
+  });
+
+  it('stays closed without the parameter', () => {
+    render(<GovernanceContent />);
+
+    expect(screen.queryByRole('heading', { name: 'Schedule Meeting' })).toBeNull();
+    expect(nav.replace).not.toHaveBeenCalled();
   });
 });

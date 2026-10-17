@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { GovernanceContent } from './governance-content';
 
 export const metadata = {
@@ -5,5 +6,10 @@ export const metadata = {
 };
 
 export default function GovernancePage() {
-  return <GovernanceContent />;
+  // useSearchParams (the ?new=1 deep link) needs a Suspense boundary.
+  return (
+    <Suspense fallback={null}>
+      <GovernanceContent />
+    </Suspense>
+  );
 }
