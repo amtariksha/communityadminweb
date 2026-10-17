@@ -17,6 +17,8 @@ export interface HelpdeskCategory {
   display_order: number;
   owner_l1_user_id?: string | null;
   owner_l1_name?: string | null;
+  /** The category's own automatic reply; staff only. */
+  auto_reply_text?: string | null;
 }
 
 /** One row sent when the Setup grid is saved. */
@@ -25,6 +27,8 @@ export interface HelpdeskCategoryRow {
   name: string;
   owner_l1_user_id: string | null;
   display_order: number;
+  /** Left out: the stored reply is kept. Blank: it is removed. */
+  auto_reply_text?: string;
   delete?: boolean;
 }
 
@@ -86,12 +90,27 @@ export interface HelpdeskSettings {
   committee_emails: string[];
   notification_alerts: NotificationAlerts;
   include_contact_in_alerts: boolean;
+  auto_reply_outside_hours: boolean;
+  auto_reply_outside_hours_text: string | null;
+  auto_reply_by_category: boolean;
 }
 
 /** What PUT /helpdesk/setup takes: only the fields that change. */
 export type HelpdeskSettingsUpdate = Partial<
-  Pick<HelpdeskSettings, 'committee_emails' | 'include_contact_in_alerts'>
-> & { notification_alerts?: Partial<NotificationAlerts> };
+  Pick<
+    HelpdeskSettings,
+    | 'committee_emails'
+    | 'include_contact_in_alerts'
+    | 'operational_days'
+    | 'operational_hours_start'
+    | 'operational_hours_end'
+    | 'auto_reply_by_category'
+    | 'auto_reply_outside_hours'
+  >
+> & {
+  notification_alerts?: Partial<NotificationAlerts>;
+  auto_reply_outside_hours_text?: string;
+};
 
 // ---------------------------------------------------------------------------
 // Query keys
@@ -201,6 +220,9 @@ function withAlertDefaults(settings: HelpdeskSettings): HelpdeskSettings {
     notification_alerts: { ...NO_ALERTS, ...settings.notification_alerts },
     include_contact_in_alerts: settings.include_contact_in_alerts ?? false,
     committee_emails: settings.committee_emails ?? [],
+    auto_reply_outside_hours: settings.auto_reply_outside_hours ?? false,
+    auto_reply_outside_hours_text: settings.auto_reply_outside_hours_text ?? null,
+    auto_reply_by_category: settings.auto_reply_by_category ?? false,
   };
 }
 

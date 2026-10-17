@@ -105,6 +105,7 @@ describe('classic modules', () => {
     expect(find(menu, 'helpdesk.setup')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Setup Helpdesk Categories', '/helpdesk/setup/categories'],
       ['Notification Alerts', '/helpdesk/setup/notifications'],
+      ['Automated Responses', '/helpdesk/setup/auto-responses'],
     ]);
     expect(entryHref(find(menu, 'helpdesk.setup') as MenuNode)).toBe('/helpdesk/setup/categories');
   });
@@ -198,6 +199,7 @@ describe('locate', () => {
     ['/income/registers/invoices', 'income', 'income.registers', 'income.registers.invoices'],
     ['/helpdesk/setup/categories', 'helpdesk', 'helpdesk.setup', 'helpdesk.setup.categories'],
     ['/helpdesk/setup/notifications', 'helpdesk', 'helpdesk.setup', 'helpdesk.setup.notifications'],
+    ['/helpdesk/setup/auto-responses', 'helpdesk', 'helpdesk.setup', 'helpdesk.setup.auto-responses'],
     ['/helpdesk/escalation', 'helpdesk', 'helpdesk.escalation', undefined],
     ['/tickets', 'helpdesk', 'helpdesk.all', undefined],
     // Today's routes stay inside their classic module, so in-page links still get a frame.

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 const SETUP_PAGES = [
   { key: 'categories', label: 'Helpdesk Categories', href: '/helpdesk/setup/categories' },
   { key: 'notifications', label: 'Notification Alerts', href: '/helpdesk/setup/notifications' },
+  { key: 'auto-responses', label: 'Automated Responses', href: '/helpdesk/setup/auto-responses' },
   { key: 'escalation', label: 'Escalation', href: '/helpdesk/escalation' },
 ] as const;
 

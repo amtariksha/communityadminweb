@@ -31,6 +31,9 @@ function settings(overrides: Partial<HelpdeskSettings> = {}): HelpdeskSettings {
     committee_emails: [],
     notification_alerts: { ...ALL_OFF },
     include_contact_in_alerts: false,
+    auto_reply_outside_hours: false,
+    auto_reply_outside_hours_text: null,
+    auto_reply_by_category: false,
     ...overrides,
   };
 }
