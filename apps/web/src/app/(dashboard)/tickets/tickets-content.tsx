@@ -74,6 +74,7 @@ import {
 } from '@/hooks';
 import type { Ticket } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
+import { useOpenOnNewParam } from '@/hooks/use-open-on-new-param';
 import { UploadProgress } from '@/components/ui/upload-progress';
 import { TicketDetailThreads } from './ticket-detail-threads';
 import { categoryChoices } from './category-choices';
@@ -185,6 +186,9 @@ export default function TicketsContent(): ReactNode {
   const [newAttachment, setNewAttachment] = useState<File | null>(null);
   const [newAttachmentPercent, setNewAttachmentPercent] = useState<number | null>(null);
   const [newAttachmentFailed, setNewAttachmentFailed] = useState(false);
+
+  // The dashboard's "Create New Request" button links here with ?new=1.
+  useOpenOnNewParam(() => setCreateOpen(true));
 
   // Detail dialog
   const [selectedTicketId, setSelectedTicketId] = useState('');

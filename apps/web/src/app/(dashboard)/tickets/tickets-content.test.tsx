@@ -92,6 +92,13 @@ vi.mock('@/components/ui/select', () => ({
     <select {...props}>{children}</select>
   ),
 }));
+// The dashboard's "Create New Request" button links to /tickets?new=1.
+const nav = vi.hoisted(() => ({ search: '', replace: vi.fn() }));
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(nav.search),
+  usePathname: () => '/tickets',
+  useRouter: () => ({ replace: nav.replace }),
+}));
 vi.mock('next/link', () => ({
   default: ({ href, children, className }: { href: string; children: ReactNode; className?: string }) => (
     <a href={href} className={className}>{children}</a>
@@ -106,6 +113,8 @@ const THREE_OVERDUE = [
 const ALL_FIVE = [...THREE_OVERDUE, ticket('4'), ticket('5')];
 
 beforeEach(() => {
+  nav.search = '';
+  nav.replace.mockClear();
   mocks.assigneesSucceeded = true;
   mocks.bulkReassign.mockClear();
   mocks.useTickets.mockReset().mockImplementation((filters: { overdue?: boolean }) =>
@@ -196,5 +205,23 @@ describe('Tickets page — Bulk Reassign', () => {
 
     expect(mocks.bulkReassign).toHaveBeenCalledTimes(1);
     expect(mocks.bulkReassign.mock.calls[0][0]).toEqual({ ticket_ids: ['1'], assigned_to: 'admin-2' });
+  });
+});
+
+describe('Tickets page — ?new=1 (DASH-07)', () => {
+  it('opens the New Ticket dialog and drops the parameter from the URL', () => {
+    nav.search = 'new=1';
+
+    render(<TicketsContent />);
+
+    expect(screen.getByRole('heading', { name: 'New Ticket' })).toBeTruthy();
+    expect(nav.replace).toHaveBeenCalledWith('/tickets');
+  });
+
+  it('stays closed without the parameter', () => {
+    render(<TicketsContent />);
+
+    expect(screen.queryByRole('heading', { name: 'New Ticket' })).toBeNull();
+    expect(nav.replace).not.toHaveBeenCalled();
   });
 });
