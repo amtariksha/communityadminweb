@@ -139,7 +139,7 @@ export default function DashboardContent(): ReactNode {
   const collectionRate = billedTotal > 0 ? (totalCollected / billedTotal) * 100 : 0;
 
   const incomeArr = incomeExpenditure?.income ?? [];
-  const expenditureArr = incomeExpenditure?.expenditure ?? [];
+  const expenditureArr = incomeExpenditure?.expense ?? [];
 
   const chartData = incomeArr.map((inc) => {
     const matchingExpense = expenditureArr.find(

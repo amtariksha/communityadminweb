@@ -73,12 +73,13 @@ interface IncomeExpenditureRow {
   amount: number;
 }
 
+/** Shape of `GET /ledger/reports/income-expenditure` (the API says "expense"). */
 interface IncomeExpenditureReport {
   income: IncomeExpenditureRow[];
-  expenditure: IncomeExpenditureRow[];
+  expense: IncomeExpenditureRow[];
   total_income: number;
-  total_expenditure: number;
-  surplus_or_deficit: number;
+  total_expense: number;
+  surplus: number;
   start_date: string;
   end_date: string;
 }
