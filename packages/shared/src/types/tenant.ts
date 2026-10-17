@@ -46,6 +46,12 @@ export interface TenantSettings {
     days: number[];
   };
 
+  // INC-11 — the society's tax registrations, printed on invoices, receipts
+  // and credit notes and carried into the GSTR-1 export (null = cleared).
+  gstin?: string | null;
+  pan?: string | null;
+  society_registration_no?: string | null;
+
   // INC-07 — late payment interest and the days an invoice runs before it is
   // due, read by the API's invoice, interest and PDF code. Send the whole
   // object on save (the API merges top-level keys only). Keep in sync with

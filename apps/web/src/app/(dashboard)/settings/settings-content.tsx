@@ -58,6 +58,7 @@ import { RoleDelegationCard } from './role-delegation-card';
 import { AutomatedReportsCard } from './automated-reports-card';
 import { DuesRemindersCard } from './dues-reminders-card';
 import { InterestCard } from './interest-card';
+import { TaxRegistrationCard } from './tax-registration-card';
 import { BillingRulesCard } from './billing-rules-card';
 import { TdsConfigCard } from './tds-config-card';
 import { NotificationPolicyCard } from './notification-policy-card';
@@ -1510,6 +1511,11 @@ export default function SettingsContent(): ReactNode {
       {/* Late payment interest — rate, due days, basis (INC-07)              */}
       {/* ------------------------------------------------------------------- */}
       <InterestCard />
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Tax registration — GSTIN, PAN, registration number (INC-11)         */}
+      {/* ------------------------------------------------------------------- */}
+      <TaxRegistrationCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Notification Policy — urgent allowlist + default quiet hours        */}
