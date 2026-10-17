@@ -375,8 +375,20 @@ export {
   useAddTicketComment,
   useBulkCloseTickets,
   useBulkReassignTickets,
+  useTicketFacets,
+  useTicketScopeCounts,
+  ticketListParams,
 } from './use-tickets';
-export type { Ticket, TicketComment, TicketStats, TicketFilters } from './use-tickets';
+export type {
+  Ticket,
+  TicketComment,
+  TicketStats,
+  TicketFilters,
+  TicketFacets,
+  TicketFacetOption,
+  TicketScopeCounts,
+  TicketScopeName,
+} from './use-tickets';
 
 // Tax & Compliance
 export {

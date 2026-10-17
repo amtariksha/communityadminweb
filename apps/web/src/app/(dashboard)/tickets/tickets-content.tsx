@@ -50,33 +50,31 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
-import { Separator } from '@/components/ui/separator';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import {
   useTickets,
-  useTicket,
   useTicketStats,
   useHelpdeskCategories,
   useHelpdeskAssignees,
   useTicketCategories,
   useCreateTicket,
-  useUpdateTicket,
-  useAddTicketComment,
   useBulkCloseTickets,
   useBulkReassignTickets,
   useUploadFileToS3,
-  fetchPresignedDownloadUrl,
   useHelpdeskKpi,
-  useHelpdeskTemplates,
-  useCreateHelpdeskTemplate,
 } from '@/hooks';
 import type { Ticket } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
 import { useOpenOnNewParam } from '@/hooks/use-open-on-new-param';
 import { UploadProgress } from '@/components/ui/upload-progress';
-import { TicketDetailThreads } from './ticket-detail-threads';
+import { useAdminLayout } from '@/lib/layout-context';
+import { ticketStatusLabel } from '@/lib/ticket-status';
+import { CannedTemplatesDialog } from './canned-templates-dialog';
+import { priorityTone, requestAgeDays, statusTone } from './ticket-badges';
+import { TicketDetailDialog } from './ticket-detail-dialog';
+import { useTicketStatusUpdate } from './use-ticket-status-update';
 import { categoryChoices } from './category-choices';
 import { BulkReassignDialog } from './bulk-reassign-dialog';
 import { QueueTabs, type QueueTab } from './queue-tabs';
@@ -92,46 +90,6 @@ const TICKET_SORTS = [
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function getPriorityBadgeVariant(
-  priority: string,
-): 'secondary' | 'default' | 'warning' | 'destructive' {
-  switch (priority) {
-    case 'low':
-      return 'secondary';
-    case 'medium':
-      return 'default';
-    case 'high':
-      return 'warning';
-    case 'urgent':
-      return 'destructive';
-    default:
-      return 'secondary';
-  }
-}
-
-function getStatusBadgeVariant(
-  status: string,
-): 'warning' | 'default' | 'success' | 'secondary' | 'destructive' {
-  switch (status) {
-    case 'open':
-      return 'warning';
-    case 'in_progress':
-      return 'default';
-    case 'resolved':
-      return 'success';
-    case 'closed':
-      return 'secondary';
-    case 'reopened':
-      return 'destructive';
-    default:
-      return 'secondary';
-  }
-}
-
-function formatStatus(status: string): string {
-  return status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 // ---------------------------------------------------------------------------
 // Skeleton components
@@ -158,6 +116,7 @@ function StatCardSkeleton(): ReactNode {
 
 export default function TicketsContent(): ReactNode {
   const { addToast } = useToast();
+  const layout = useAdminLayout();
   const PAGE_SIZE = 20;
 
   // Filters
@@ -190,9 +149,8 @@ export default function TicketsContent(): ReactNode {
   // The dashboard's "Create New Request" button links here with ?new=1.
   useOpenOnNewParam(() => setCreateOpen(true));
 
-  // Detail dialog
+  // Detail dialog: open while a request is chosen.
   const [selectedTicketId, setSelectedTicketId] = useState('');
-  const [detailOpen, setDetailOpen] = useState(false);
 
   // Which queue is showing: every request, or only the overdue ones.
   const [activeQueueTab, setActiveQueueTab] = useState<QueueTab>('all');
@@ -212,31 +170,24 @@ export default function TicketsContent(): ReactNode {
     priority: priorityFilter || undefined,
     ...categoryFilterParams(categoryFilter),
     overdue: activeQueueTab === 'overdue' ? true : undefined,
+    scope: activeQueueTab === 'open' || activeQueueTab === 'closed' ? activeQueueTab : undefined,
     page: currentPage,
     limit: PAGE_SIZE,
     sort: listState.state.sort ?? undefined,
     dir: listState.state.dir,
   });
   const statsQuery = useTicketStats();
-  const ticketDetailQuery = useTicket(selectedTicketId);
 
   // Mutations
   const createMutation = useCreateTicket();
-  const updateMutation = useUpdateTicket();
-  const commentMutation = useAddTicketComment();
+  const statusUpdate = useTicketStatusUpdate();
   const uploadAttachment = useUploadFileToS3();
   const bulkCloseMutation = useBulkCloseTickets();
   const bulkReassignMutation = useBulkReassignTickets();
 
-  // Helpdesk queries & mutations
+  // Helpdesk queries
   const { data: helpdeskKpi } = useHelpdeskKpi();
-  const { data: helpdeskTemplates = [] } = useHelpdeskTemplates();
-  const createTemplateMutation = useCreateHelpdeskTemplate();
-
-  // Extended UI states
   const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
-  const [newTemplateTitle, setNewTemplateTitle] = useState('');
-  const [newTemplateBody, setNewTemplateBody] = useState('');
 
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -253,7 +204,8 @@ export default function TicketsContent(): ReactNode {
   const total = ticketsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const stats = statsQuery.data;
-  const detail = ticketDetailQuery.data;
+  // Open / Closed tabs appear once the server counts them (HELP-12).
+  const scopeCounts = ticketsQuery.data?.counts;
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -277,7 +229,6 @@ export default function TicketsContent(): ReactNode {
 
   function handleViewTicket(ticket: Ticket): void {
     setSelectedTicketId(ticket.id);
-    setDetailOpen(true);
   }
 
   async function handleCreateTicket(): Promise<void> {
@@ -347,44 +298,7 @@ export default function TicketsContent(): ReactNode {
   }
 
   function handleUpdateStatus(ticketId: string, status: string): void {
-    updateMutation.mutate(
-      { id: ticketId, status },
-      {
-        onSuccess() {
-          addToast({ title: `Ticket updated to ${formatStatus(status)}`, variant: 'success' });
-        },
-        onError(error) {
-          addToast({
-            title: 'Failed to update ticket',
-            description: friendlyError(error),
-            variant: 'destructive',
-          });
-        },
-      },
-    );
-  }
-
-  async function handleAddComment(message: string, isInternal: boolean): Promise<void> {
-    if (!selectedTicketId) return;
-
-    try {
-      await commentMutation.mutateAsync({
-        ticket_id: selectedTicketId,
-        message,
-        is_internal: isInternal,
-      });
-      addToast({
-        title: isInternal ? 'Internal note added' : 'Reply sent to the resident',
-        variant: 'success',
-      });
-    } catch (error) {
-      addToast({
-        title: 'Failed to add comment',
-        description: friendlyError(error),
-        variant: 'destructive',
-      });
-      throw error;
-    }
+    statusUpdate.update(ticketId, status);
   }
 
   function handleClearFilters(): void {
@@ -547,6 +461,7 @@ export default function TicketsContent(): ReactNode {
         onChange={setActiveQueueTab}
         totalCount={helpdeskKpi?.total_tickets ?? stats?.total ?? total}
         overdueCount={helpdeskKpi?.sla_breached ?? stats?.overdue ?? 0}
+        scopeCounts={scopeCounts}
       />
 
       {/* Filters */}
@@ -661,9 +576,12 @@ export default function TicketsContent(): ReactNode {
                 <TableHead>Ticket #</TableHead>
                 <TableHead>Subject</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>By</TableHead>
+                <TableHead>Unit</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
+                <TableHead>Days</TableHead>
                 <TableHead className="w-20">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -678,12 +596,15 @@ export default function TicketsContent(): ReactNode {
                     <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-8" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                   </TableRow>
                 ))
               ) : ticketsQuery.isError ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-8 text-center text-destructive">
+                  <TableCell colSpan={11} className="py-8 text-center text-destructive">
                     Failed to load tickets —{' '}
                     {(ticketsQuery.error as Error)?.message ?? 'unknown error'}.{' '}
                     <Button
@@ -724,15 +645,17 @@ export default function TicketsContent(): ReactNode {
                     <TableCell className="capitalize">
                       {ticket.category}
                     </TableCell>
+                    <TableCell>{ticket.created_by_name ?? '—'}</TableCell>
+                    <TableCell>{ticket.unit_number ?? '—'}</TableCell>
                     <TableCell>
-                      <Badge variant={getPriorityBadgeVariant(ticket.priority)}>
+                      <Badge variant={priorityTone(ticket.priority)}>
                         {ticket.priority}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Badge variant={getStatusBadgeVariant(ticket.status)}>
-                          {formatStatus(ticket.status)}
+                        <Badge variant={statusTone(ticket.status)}>
+                          {ticketStatusLabel(ticket.status, layout)}
                         </Badge>
                         {ticket.is_overdue && (
                           <Badge variant="destructive" className="text-xs px-1 py-0">SLA</Badge>
@@ -742,6 +665,7 @@ export default function TicketsContent(): ReactNode {
                     <TableCell className="text-muted-foreground">
                       {formatDate(ticket.created_at)}
                     </TableCell>
+                    <TableCell className="tabular-nums">{requestAgeDays(ticket)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -780,7 +704,7 @@ export default function TicketsContent(): ReactNode {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
                     No tickets found
                   </TableCell>
                 </TableRow>
@@ -933,153 +857,7 @@ export default function TicketsContent(): ReactNode {
         </DialogContent>
       </Dialog>
 
-      {/* Ticket detail dialog */}
-      <Dialog open={detailOpen} onOpenChange={(open) => { setDetailOpen(open); if (!open) { setSelectedTicketId(''); } }}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {detail?.ticket_number ?? 'Loading...'}
-            </DialogTitle>
-            <DialogDescription>
-              {detail?.subject ?? ''}
-            </DialogDescription>
-          </DialogHeader>
-
-          {ticketDetailQuery.isLoading ? (
-            <div className="space-y-4 py-4">
-              <Skeleton className="h-6 w-full" />
-              <Skeleton className="h-6 w-full" />
-              <Skeleton className="h-6 w-full" />
-            </div>
-          ) : detail ? (
-            <div className="space-y-4 py-4">
-              {/* Ticket info */}
-              <div className="grid grid-cols-2 gap-y-3 text-sm">
-                <span className="text-muted-foreground">Status</span>
-                <span>
-                  <Badge variant={getStatusBadgeVariant(detail.status)}>
-                    {formatStatus(detail.status)}
-                  </Badge>
-                </span>
-
-                <span className="text-muted-foreground">Priority</span>
-                <span>
-                  <Badge variant={getPriorityBadgeVariant(detail.priority)}>
-                    {detail.priority}
-                  </Badge>
-                </span>
-
-                <span className="text-muted-foreground">Category</span>
-                <span className="capitalize">{detail.category}</span>
-
-                {detail.description && (
-                  <>
-                    <span className="text-muted-foreground">Description</span>
-                    <span>{detail.description}</span>
-                  </>
-                )}
-
-                <span className="text-muted-foreground">Created</span>
-                <span>{formatDate(detail.created_at)}</span>
-
-                {detail.resolved_at && (
-                  <>
-                    <span className="text-muted-foreground">Resolved</span>
-                    <span>{formatDate(detail.resolved_at)}</span>
-                  </>
-                )}
-
-                {detail.sla_due_at && (
-                  <>
-                    <span className="text-muted-foreground">SLA Due</span>
-                    <span>{formatDate(detail.sla_due_at)}</span>
-                  </>
-                )}
-
-                {detail.attachment_url && (
-                  <>
-                    <span className="text-muted-foreground">Attachment</span>
-                    <span>
-                      <button
-                        type="button"
-                        className="text-primary hover:underline"
-                        onClick={async () => {
-                          try {
-                            const url = await fetchPresignedDownloadUrl({
-                              fileUrl: detail.attachment_url ?? '',
-                              disposition: 'inline',
-                              fileName: detail.attachment_name ?? undefined,
-                            });
-                            window.open(url, '_blank', 'noopener,noreferrer');
-                          } catch (err) {
-                            addToast({
-                              title: 'Could not open attachment',
-                              description: friendlyError(err),
-                              variant: 'destructive',
-                            });
-                          }
-                        }}
-                      >
-                        {detail.attachment_name ?? 'View attachment'}
-                      </button>
-                    </span>
-                  </>
-                )}
-              </div>
-
-              {/* Status actions */}
-              <div className="flex gap-2">
-                {detail.status === 'open' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={updateMutation.isPending}
-                    onClick={() => handleUpdateStatus(detail.id, 'in_progress')}
-                  >
-                    <Clock className="mr-2 h-4 w-4" /> Mark In Progress
-                  </Button>
-                )}
-                {detail.status === 'in_progress' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={updateMutation.isPending}
-                    onClick={() => handleUpdateStatus(detail.id, 'resolved')}
-                  >
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> Resolve
-                  </Button>
-                )}
-                {detail.status === 'resolved' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={updateMutation.isPending}
-                    onClick={() => handleUpdateStatus(detail.id, 'closed')}
-                  >
-                    <XCircle className="mr-2 h-4 w-4" /> Close
-                  </Button>
-                )}
-              </div>
-
-              <Separator />
-
-              {/* Resident and internal conversations (HELP-04) */}
-              <TicketDetailThreads
-                comments={detail.comments ?? []}
-                templates={helpdeskTemplates}
-                isPosting={commentMutation.isPending}
-                onPost={handleAddComment}
-              />
-            </div>
-          ) : null}
-
-          <DialogFooter>
-            <DialogClose>
-              <Button variant="outline">Close</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TicketDetailDialog ticketId={selectedTicketId} onClose={() => setSelectedTicketId('')} />
 
       <BulkReassignDialog
         open={bulkReassignOpen}
@@ -1090,82 +868,7 @@ export default function TicketsContent(): ReactNode {
         onSubmit={handleBulkReassign}
       />
 
-      {/* Canned Templates Modal */}
-      <Dialog open={templatesModalOpen} onOpenChange={setTemplatesModalOpen}>
-        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-primary" />
-              Canned Response Templates
-            </DialogTitle>
-            <DialogDescription>
-              Pre-defined response templates to accelerate resolution and standardise resident communications.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            {/* Create new template form */}
-            <div className="p-3 border rounded-lg bg-muted/30 space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add New Template</h4>
-              <Input
-                placeholder="Template Title (e.g. Electrician Dispatched)"
-                value={newTemplateTitle}
-                onChange={(e) => setNewTemplateTitle(e.target.value)}
-              />
-              <Textarea
-                placeholder="Template message body..."
-                rows={3}
-                value={newTemplateBody}
-                onChange={(e) => setNewTemplateBody(e.target.value)}
-              />
-              <Button
-                size="sm"
-                disabled={createTemplateMutation.isPending || !newTemplateTitle.trim() || !newTemplateBody.trim()}
-                onClick={async () => {
-                  try {
-                    await createTemplateMutation.mutateAsync({
-                      title: newTemplateTitle,
-                      body: newTemplateBody,
-                    });
-                    addToast({ title: 'Template created', variant: 'success' });
-                    setNewTemplateTitle('');
-                    setNewTemplateBody('');
-                  } catch (err) {
-                    addToast({ title: 'Failed to create template', description: friendlyError(err), variant: 'destructive' });
-                  }
-                }}
-              >
-                {createTemplateMutation.isPending ? 'Saving...' : 'Save Template'}
-              </Button>
-            </div>
-
-            {/* Existing templates list */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Available Templates ({helpdeskTemplates.length})</h4>
-              {helpdeskTemplates.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
-                  No canned templates defined yet. Add one above!
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-[260px] overflow-y-auto">
-                  {helpdeskTemplates.map((t) => (
-                    <div key={t.id} className="p-3 border rounded-lg hover:bg-muted/20">
-                      <div className="font-medium text-sm">{t.title}</div>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.body}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <DialogClose>
-              <Button variant="outline">Close</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CannedTemplatesDialog open={templatesModalOpen} onOpenChange={setTemplatesModalOpen} />
     </div>
   );
 }

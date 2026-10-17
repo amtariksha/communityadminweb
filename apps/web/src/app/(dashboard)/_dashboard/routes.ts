@@ -9,7 +9,8 @@ export const DASHBOARD_ROUTES = {
   announcements: '/announcements',
   newAnnouncement: '/announcements?new=1',
   settings: '/settings',
-  tickets: '/tickets',
+  // The classic HelpDesk list (HELP-12).
+  tickets: '/helpdesk/open',
   newRequest: '/tickets?new=1',
   defaulters: '/invoices?filter=defaulters',
   purchases: '/purchases',

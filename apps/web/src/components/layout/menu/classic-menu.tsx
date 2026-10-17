@@ -24,6 +24,8 @@ import {
   BarChart3,
   Ellipsis,
 } from 'lucide-react';
+import { HELPDESK_BASE, HELPDESK_SCOPES } from '@/lib/helpdesk-scopes';
+import { statusMenuChildren } from './status-menu';
 
 /**
  * One entry in the classic menu (requirements SB-02, Part 3.3).
@@ -117,9 +119,11 @@ export const classicMenu: MenuNode[] = [
     label: 'HelpDesk Tracker',
     icon: icon(TicketCheck),
     // HELP-11. Create Request opens today's dialog until HELP-13 gives it
-    // a page; Close goes to the request list, where the desk works.
+    // a page; Close goes to Open Requests, where the desk works. Today's
+    // /tickets list stays inside the module.
     create: { label: 'Create Request', href: '/tickets?new=1' },
-    close: '/tickets',
+    close: '/helpdesk/open',
+    aliases: ['/tickets'],
     children: [
       {
         id: 'helpdesk.setup',
@@ -132,12 +136,9 @@ export const classicMenu: MenuNode[] = [
         ],
       },
       { id: 'helpdesk.escalation', label: 'Escalation', href: '/helpdesk/escalation', logs: ['helpdesk'] },
-      planned('helpdesk.open', 'Open Requests', 'HELP-12'),
-      planned('helpdesk.closed', 'Closed Requests', 'HELP-12'),
+      // Open Requests, Closed Requests: status as menu items (SB-05, HELP-12).
+      ...statusMenuChildren('helpdesk', HELPDESK_BASE, HELPDESK_SCOPES, { logs: ['ticket'] }),
       planned('helpdesk.reports', 'Reports', 'HELP-21'),
-      // Ours, after their children: one list for every status until
-      // HELP-12 splits it into Open and Closed Requests.
-      { id: 'helpdesk.all', label: 'All Requests', href: '/tickets' },
     ],
   },
   {

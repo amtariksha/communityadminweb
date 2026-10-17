@@ -99,8 +99,8 @@ describe('classic modules', () => {
     ]);
   });
 
-  it('HelpDesk Tracker shows Setup with its built screens as sub-tabs, then the request list', () => {
-    expect(labels('helpdesk')).toEqual(['Setup', 'Escalation', 'All Requests']);
+  it('HelpDesk Tracker shows Setup with its built screens as sub-tabs, then the status lists', () => {
+    expect(labels('helpdesk')).toEqual(['Setup', 'Escalation', 'Open Requests', 'Closed Requests']);
     expect(find(menu, 'helpdesk.escalation')?.href).toBe('/helpdesk/escalation');
     expect(find(menu, 'helpdesk.setup')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Setup Helpdesk Categories', '/helpdesk/setup/categories'],
@@ -146,10 +146,10 @@ describe('menus point only at screens that exist', () => {
 describe('visibleMenu', () => {
   it('hides planned entries and modules with nothing built yet', () => {
     const menu = visibleMenu(classicMenu, EVERYONE);
-    expect(find(menu, 'helpdesk.open')).toBeUndefined();
+    expect(find(menu, 'helpdesk.reports')).toBeUndefined();
     expect(find(menu, 'rules')).toBeUndefined();
     expect(find(menu, 'forms')).toBeUndefined();
-    expect(find(menu, 'helpdesk.all')?.href).toBe('/tickets');
+    expect(find(menu, 'helpdesk.open')?.href).toBe('/helpdesk/open');
   });
 
   it('turns a module whose children are all planned into a plain link', () => {
@@ -201,7 +201,10 @@ describe('locate', () => {
     ['/helpdesk/setup/notifications', 'helpdesk', 'helpdesk.setup', 'helpdesk.setup.notifications'],
     ['/helpdesk/setup/auto-responses', 'helpdesk', 'helpdesk.setup', 'helpdesk.setup.auto-responses'],
     ['/helpdesk/escalation', 'helpdesk', 'helpdesk.escalation', undefined],
-    ['/tickets', 'helpdesk', 'helpdesk.all', undefined],
+    ['/helpdesk/open', 'helpdesk', 'helpdesk.open', undefined],
+    ['/helpdesk/closed', 'helpdesk', 'helpdesk.closed', undefined],
+    // Today's list stays inside the module, under no entry of its own.
+    ['/tickets', 'helpdesk', undefined, undefined],
     // Today's routes stay inside their classic module, so in-page links still get a frame.
     ['/units', 'units', 'units.approved', undefined],
     ['/invoices', 'income', 'income.registers', 'income.registers.invoices'],

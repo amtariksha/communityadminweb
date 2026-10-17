@@ -44,9 +44,11 @@ export function statusFromPath(
 /** Counts by menu badge key: `{ open: 12 }` → `{ 'helpdesk.open': 12 }`. */
 export function badgeCounts(
   moduleId: string,
-  counts: Readonly<Record<string, number>> | undefined,
+  counts: object | undefined,
 ): Record<string, number> {
   return Object.fromEntries(
-    Object.entries(counts ?? {}).map(([slug, count]) => [`${moduleId}.${slug}`, count]),
+    Object.entries(counts ?? {})
+      .filter((entry): entry is [string, number] => typeof entry[1] === 'number')
+      .map(([slug, count]) => [`${moduleId}.${slug}`, count]),
   );
 }

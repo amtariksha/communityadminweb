@@ -64,6 +64,19 @@ describe('HelpDesk Tracker frame', () => {
     expect(screen.getByRole('link', { name: 'Close' }).getAttribute('href')).toBe(helpdesk?.close);
   });
 
+  it.each(['/helpdesk/open', '/helpdesk/closed', '/tickets'])('%s is inside the module with Create Request', (path) => {
+    renderAt(path);
+
+    expect(screen.getByRole('link', { name: 'Create Request' })).toBeTruthy();
+    expect(screen.getByRole('heading').textContent?.startsWith('HelpDesk Tracker')).toBe(true);
+  });
+
+  it('closes the other lists to Open Requests', () => {
+    renderAt('/helpdesk/closed');
+
+    expect(screen.getByRole('link', { name: 'Close' }).getAttribute('href')).toBe('/helpdesk/open');
+  });
+
   it('titles the setup screens and shows their sub-tabs', () => {
     renderAt('/helpdesk/setup/notifications');
 

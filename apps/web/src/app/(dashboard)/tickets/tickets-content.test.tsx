@@ -225,3 +225,52 @@ describe('Tickets page — ?new=1 (DASH-07)', () => {
     expect(nav.replace).not.toHaveBeenCalled();
   });
 });
+
+describe('Tickets page — Open and Closed tabs, By, Unit and Days (HELP-12)', () => {
+  function withCounts(): void {
+    mocks.useTickets.mockImplementation((filters: { scope?: string }) => ({
+      data: {
+        data: filters.scope === 'closed' ? [ticket('9', { status: 'closed', age_days: 3 })] : ALL_FIVE,
+        total: filters.scope === 'closed' ? 1 : 5,
+        counts: { open: 5, closed: 1 },
+      },
+      isLoading: false,
+    }));
+  }
+
+  it('offers Open and Closed tabs that ask the server for that scope', () => {
+    withCounts();
+    render(<TicketsContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Closed (1)' }));
+
+    expect(screen.getByRole('button', { name: 'Open (5)' })).toBeTruthy();
+    expect(mocks.useTickets.mock.calls.at(-1)?.[0].scope).toBe('closed');
+    expect(screen.getAllByRole('checkbox', { name: /^Select ticket/ })).toHaveLength(1);
+  });
+
+  it('keeps the tabs away while the server does not count the scopes', () => {
+    render(<TicketsContent />);
+
+    expect(screen.queryByRole('button', { name: /^Open \(/ })).toBeNull();
+    expect(mocks.useTickets.mock.calls.at(-1)?.[0].scope).toBeUndefined();
+  });
+
+  it('shows who raised each request, for which unit, and for how many days', () => {
+    mocks.useTickets.mockReturnValue({
+      data: {
+        data: [ticket('1', { created_by_name: 'Asha Rao', unit_number: 'A-101', age_days: 4 })],
+        total: 1,
+      },
+      isLoading: false,
+    });
+    render(<TicketsContent />);
+
+    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
+    expect(headers).toEqual(expect.arrayContaining(['By', 'Unit', 'Days']));
+    const row = screen.getByRole('checkbox', { name: 'Select ticket TKT-1' }).closest('tr') as HTMLElement;
+    expect(within(row).getByText('Asha Rao')).toBeTruthy();
+    expect(within(row).getByText('A-101')).toBeTruthy();
+    expect(within(row).getByText('4')).toBeTruthy();
+  });
+});

@@ -133,6 +133,7 @@ describe('ClassicDashboard', () => {
     expect(link('5 Admins').getAttribute('href')).toBe('/settings');
     expect(within(card('HelpDesk Tracker')).getByText(/Open Requests: 4/)).toBeTruthy();
     expect(within(card('HelpDesk Tracker')).getByText(/1 overdue/)).toBeTruthy();
+    expect(link('HelpDesk Tracker').getAttribute('href')).toBe('/helpdesk/open');
     expect(link('Create New Request').getAttribute('href')).toBe('/tickets?new=1');
     expect(link('3 Open Purchase Requests').getAttribute('href')).toBe('/purchases');
     expect(link('Trial Balance').getAttribute('href')).toBe('/reports?report=trial-balance');
