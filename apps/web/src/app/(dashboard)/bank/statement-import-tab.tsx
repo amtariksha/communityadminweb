@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, type ReactNode } from 'react';
-import { FileUp, Download, Check, X } from 'lucide-react';
+import { FileUp, Download, Check, X, Link2, Unlink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,10 @@ import {
   useStatementRows,
   useImportStatement,
   useExcludeRow,
+  useUnmatchRow,
 } from '@/hooks';
+import type { StatementRow } from '@/hooks/use-bank';
+import { MatchRowDialog } from './match-row-dialog';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -192,6 +195,8 @@ export function StatementImportTab(): ReactNode {
 
   const importMutation = useImportStatement();
   const excludeMutation = useExcludeRow();
+  const unmatchMutation = useUnmatchRow();
+  const [matchingRow, setMatchingRow] = useState<StatementRow | null>(null);
   const statementRows = useStatementRows(accountId, statusFilter || undefined);
   const rows = statementRows.data?.data ?? [];
 
@@ -251,6 +256,18 @@ export function StatementImportTab(): ReactNode {
           description: (err as Error).message,
           variant: 'destructive',
         });
+      },
+    });
+  }
+
+  function handleUnmatch(rowId: string): void {
+    if (!window.confirm('Unmatch this row? The entry it reconciled goes back to unreconciled.')) return;
+    unmatchMutation.mutate(rowId, {
+      onSuccess() {
+        addToast({ title: 'Row unmatched', variant: 'success' });
+      },
+      onError(err) {
+        addToast({ title: 'Unmatch failed', description: (err as Error).message, variant: 'destructive' });
       },
     });
   }
@@ -383,7 +400,7 @@ export function StatementImportTab(): ReactNode {
                   <TableHead className="text-right">Balance</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Matched JE</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
+                  <TableHead className="w-40">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -431,19 +448,44 @@ export function StatementImportTab(): ReactNode {
                         </TableCell>
                         <TableCell>
                           {status === 'unmatched' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0 text-destructive"
-                              title="Exclude from reconciliation"
-                              onClick={() => handleExclude(r.id)}
-                              disabled={excludeMutation.isPending}
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                title="Match to a book entry"
+                                onClick={() => setMatchingRow(r)}
+                              >
+                                <Link2 className="mr-1 h-3.5 w-3.5" />
+                                Match
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-destructive"
+                                title="Exclude from reconciliation"
+                                onClick={() => handleExclude(r.id)}
+                                disabled={excludeMutation.isPending}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           )}
                           {(status === 'auto_matched' || status === 'manual_matched') && (
-                            <Check className="h-3.5 w-3.5 text-success" />
+                            <div className="flex items-center gap-1">
+                              <Check className="h-3.5 w-3.5 text-success" />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                title="Unmatch this row"
+                                onClick={() => handleUnmatch(r.id)}
+                                disabled={unmatchMutation.isPending}
+                              >
+                                <Unlink className="mr-1 h-3.5 w-3.5" />
+                                Unmatch
+                              </Button>
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>
@@ -463,6 +505,9 @@ export function StatementImportTab(): ReactNode {
             </Table>
           </CardContent>
         </Card>
+      )}
+      {matchingRow && (
+        <MatchRowDialog row={matchingRow} accountId={accountId} onClose={() => setMatchingRow(null)} />
       )}
     </div>
   );

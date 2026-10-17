@@ -43,8 +43,6 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
-import { HelpTooltip } from '@/components/ui/help-tooltip';
-import { TOOLTIP } from '@/lib/tooltip-content';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
@@ -54,9 +52,6 @@ import {
   useDeleteBankAccount,
   useBankTransfers,
   useCreateTransfer,
-  useReconciliation,
-  useReconcileTransaction,
-  useBRSSummary,
   useFixedDeposits,
   useCreateFD,
   useMatureFD,
@@ -66,6 +61,7 @@ import {
   useIssueCheque,
 } from '@/hooks';
 import type { Cheque } from '@/hooks';
+import { ReconciliationTab } from './reconciliation-tab';
 import { StatementImportTab } from './statement-import-tab';
 
 // API responses may include computed/joined fields beyond the base shared types
@@ -249,15 +245,6 @@ export default function BankContent(): ReactNode {
   const [transferReference, setTransferReference] = useState('');
   const [transferNarration, setTransferNarration] = useState('');
 
-  // Reconciliation state
-  const [reconAccountId, setReconAccountId] = useState('');
-  const [reconStartDate, setReconStartDate] = useState('');
-  const [reconEndDate, setReconEndDate] = useState('');
-  const [reconcileDialogOpen, setReconcileDialogOpen] = useState(false);
-  const [selectedReconId, setSelectedReconId] = useState('');
-  const [reconStatementDate, setReconStatementDate] = useState('');
-  const [reconStatementBalance, setReconStatementBalance] = useState('');
-
   // Fixed Deposits state
   const [createFDDialogOpen, setCreateFDDialogOpen] = useState(false);
   const [fdBankAccountId, setFdBankAccountId] = useState('');
@@ -295,8 +282,6 @@ export default function BankContent(): ReactNode {
     page: transferPage,
     limit: ITEMS_PER_PAGE,
   });
-  const reconQuery = useReconciliation(reconAccountId, reconStartDate, reconEndDate);
-  const brsSummaryQuery = useBRSSummary(reconAccountId);
   const fdQuery = useFixedDeposits();
   const ledgerAccountsQuery = useLedgerAccounts({ limit: 500 });
   const ledgerAccounts = ledgerAccountsQuery.data?.data ?? [];
@@ -307,7 +292,6 @@ export default function BankContent(): ReactNode {
   const createAccount = useCreateBankAccount();
   const deleteAccount = useDeleteBankAccount();
   const createTransfer = useCreateTransfer();
-  const reconcileTransaction = useReconcileTransaction();
   const createFD = useCreateFD();
   const matureFD = useMatureFD();
   const renewFD = useRenewFD();
@@ -318,8 +302,6 @@ export default function BankContent(): ReactNode {
   const transfers = (transfersQuery.data?.data ?? []) as unknown as BankTransferRow[];
   const totalTransfers = transfersQuery.data?.total ?? 0;
   const totalTransferPages = Math.max(1, Math.ceil(totalTransfers / ITEMS_PER_PAGE));
-  const reconData = reconQuery.data;
-  const brsSummary = brsSummaryQuery.data;
   const fixedDeposits = (fdQuery.data ?? []) as unknown as FixedDepositRow[];
 
   // ---------------------------------------------------------------------------
@@ -420,35 +402,6 @@ export default function BankContent(): ReactNode {
         },
         onError(error) {
           addToast({ title: 'Failed to record transfer', description: friendlyError(error), variant: 'destructive' });
-        },
-      },
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Reconciliation handlers
-  // ---------------------------------------------------------------------------
-
-  function handleReconcile(e: FormEvent): void {
-    e.preventDefault();
-    reconcileTransaction.mutate(
-      {
-        id: selectedReconId,
-        data: {
-          statement_date: reconStatementDate,
-          statement_balance: Number(reconStatementBalance),
-        },
-      },
-      {
-        onSuccess() {
-          setReconcileDialogOpen(false);
-          setSelectedReconId('');
-          setReconStatementDate('');
-          setReconStatementBalance('');
-          addToast({ title: 'Transaction reconciled', variant: 'success' });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to reconcile', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -1006,161 +959,7 @@ export default function BankContent(): ReactNode {
       {/* ------------------------------------------------------------------- */}
       {/* Reconciliation Tab                                                   */}
       {/* ------------------------------------------------------------------- */}
-      {activeTab === 'reconciliation' && (
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                Bank Reconciliation
-                <HelpTooltip text={TOOLTIP.bank.reconciliation} />
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap items-end gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="recon-account">Bank Account</Label>
-                  <Select
-                    id="recon-account"
-                    value={reconAccountId}
-                    onChange={(e) => setReconAccountId(e.target.value)}
-                    className="w-64"
-                  >
-                    <option value="">Select bank account</option>
-                    {bankAccounts.map((ba) => (
-                      <option key={ba.id} value={ba.id}>
-                        {ba.bank_name} - {ba.account_number}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="recon-start">Start Date</Label>
-                  <Input
-                    id="recon-start"
-                    type="date"
-                    value={reconStartDate}
-                    onChange={(e) => setReconStartDate(e.target.value)}
-                    className="w-40"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="recon-end">End Date</Label>
-                  <Input
-                    id="recon-end"
-                    type="date"
-                    value={reconEndDate}
-                    onChange={(e) => setReconEndDate(e.target.value)}
-                    className="w-40"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {reconAccountId && brsSummary && (
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Book Balance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">{formatCurrency(brsSummary.book_balance)}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Bank Statement Balance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">{formatCurrency(brsSummary.statement_balance)}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Difference</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className={`text-2xl font-bold ${brsSummary.difference !== 0 ? 'text-destructive' : 'text-success'}`}>
-                    {formatCurrency(brsSummary.difference)}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {reconAccountId && reconStartDate && reconEndDate && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  Unreconciled Transactions
-                  <HelpTooltip text={TOOLTIP.bank.unreconciledItems} />
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {reconQuery.isLoading ? (
-                  <div className="space-y-2">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton key={i} className="h-10 w-full" />
-                    ))}
-                  </div>
-                ) : reconData?.unreconciled_items && reconData.unreconciled_items.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead className="text-right">Debit</TableHead>
-                        <TableHead className="text-right">Credit</TableHead>
-                        <TableHead>Source</TableHead>
-                        <TableHead className="w-24">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {reconData.unreconciled_items.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="text-muted-foreground">
-                            {formatDate(item.date)}
-                          </TableCell>
-                          <TableCell className="font-medium">{item.description}</TableCell>
-                          <TableCell className="text-right">
-                            {item.type === 'debit' ? formatCurrency(item.amount) : '-'}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {item.type === 'credit' ? formatCurrency(item.amount) : '-'}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {item.source_type}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 p-1 text-xs"
-                              onClick={() => {
-                                setSelectedReconId(item.id);
-                                setReconcileDialogOpen(true);
-                              }}
-                            >
-                              <FileCheck className="mr-1 h-3 w-3" />
-                              Reconcile
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <FileCheck className="mb-4 h-12 w-12 text-muted-foreground" />
-                    <p className="text-lg font-medium">All transactions reconciled</p>
-                    <p className="text-sm text-muted-foreground">No unreconciled items for this period</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
+      {activeTab === 'reconciliation' && <ReconciliationTab accounts={bankAccounts} />}
 
       {/* ------------------------------------------------------------------- */}
       {/* Statement Import Tab (Batch 11)                                      */}
@@ -1569,52 +1368,6 @@ export default function BankContent(): ReactNode {
                 disabled={deleteAccount.isPending}
               >
                 {deleteAccount.isPending ? 'Deleting…' : 'Delete Account'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* ------------------------------------------------------------------- */}
-      {/* Reconcile Transaction Dialog                                         */}
-      {/* ------------------------------------------------------------------- */}
-      <Dialog open={reconcileDialogOpen} onOpenChange={setReconcileDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleReconcile}>
-            <DialogHeader>
-              <DialogTitle>Reconcile Transaction</DialogTitle>
-              <DialogDescription>Enter the bank statement details for this transaction</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="recon-stmt-date">Statement Date</Label>
-                <Input
-                  id="recon-stmt-date"
-                  type="date"
-                  required
-                  value={reconStatementDate}
-                  onChange={(e) => setReconStatementDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="recon-stmt-balance">Statement Balance</Label>
-                <Input
-                  id="recon-stmt-balance"
-                  type="number"
-                  step="0.01"
-                  required
-                  placeholder="0.00"
-                  value={reconStatementBalance}
-                  onChange={(e) => setReconStatementBalance(e.target.value)}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose>
-                <Button type="button" variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit" disabled={reconcileTransaction.isPending}>
-                {reconcileTransaction.isPending ? 'Reconciling...' : 'Reconcile'}
               </Button>
             </DialogFooter>
           </form>

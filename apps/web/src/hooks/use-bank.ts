@@ -19,32 +19,40 @@ interface PaginatedResponse<T> {
   total: number;
 }
 
-interface ReconciliationData {
-  bank_account: BankAccount;
-  book_balance: number;
-  statement_balance: number;
-  unreconciled_items: Array<{
-    id: string;
-    date: string;
-    description: string;
-    amount: number;
-    type: 'debit' | 'credit';
-    source_type: string;
-    source_id: string;
-  }>;
+/** One bank-ledger line in the reconciliation register (journal line id). */
+export interface ReconciliationRow {
+  id: string;
+  journal_entry_id: string;
+  /** YYYY-MM-DD */
+  entry_date: string;
+  entry_number: string;
+  document_no: string;
+  instrument_no: string | null;
+  narration: string;
+  /** Positive: money in (debit to the bank ledger). Negative: money out. */
+  amount: number;
+  transaction_type: 'debit' | 'credit';
+  /** YYYY-MM-DD; null until the line is reconciled. */
+  bank_date: string | null;
+  is_reconciled: boolean;
 }
 
-interface BRSSummary {
-  bank_account_id: string;
+export interface ReconciliationData {
+  bank_account: {
+    id: string;
+    account_name: string | null;
+    bank_name: string;
+    account_number: string;
+  };
   book_balance: number;
-  add_credits_not_in_book: number;
-  less_debits_not_in_book: number;
-  adjusted_book_balance: number;
-  statement_balance: number;
-  add_deposits_in_transit: number;
-  less_outstanding_checks: number;
-  adjusted_statement_balance: number;
-  difference: number;
+  bank_balance: number;
+  rows: ReconciliationRow[];
+}
+
+export interface BRSSummary {
+  book_balance: number;
+  bank_balance: number;
+  last_statement: { date: string; balance: number; difference: number } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,11 +94,8 @@ interface CreateTransferInput {
 }
 
 interface ReconcileTransactionInput {
-  bank_date?: string;
-  // Admin-web passes `statement_date` + `statement_balance`; backend
-  // accepts either naming.
-  statement_date?: string;
-  statement_balance?: number;
+  /** The date the bank value-dated the line, YYYY-MM-DD. */
+  bank_date: string;
 }
 
 interface CreateFDInput {
@@ -367,6 +372,44 @@ export function useReconcileTransaction() {
   });
 }
 
+export function useUnreconcileTransaction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function unreconcileTransaction(lineId: string) {
+      return api.post<{ data: { id: string; is_reconciled: boolean } }>(
+        `/bank/reconciliation/${lineId}/unreconcile`,
+      );
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.all });
+    },
+  });
+}
+
+/** Logs the bank statement's closing balance and what is left unexplained against the bank balance. */
+export function useSaveStatementBalance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function saveStatementBalance(params: {
+      accountId: string;
+      statement_date: string;
+      statement_balance: number;
+    }) {
+      return api.post<{
+        data: { statement_balance: number; book_balance: number; bank_balance: number; difference: number };
+      }>(`/bank/reconciliation/${params.accountId}/statement-balance`, {
+        statement_date: params.statement_date,
+        statement_balance: params.statement_balance,
+      });
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.all });
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Fixed Deposit queries
 // ---------------------------------------------------------------------------
@@ -461,6 +504,7 @@ export interface StatementRow {
   balance: number | null;
   match_status: 'unmatched' | 'auto_matched' | 'manual_matched' | 'excluded';
   matched_journal_entry_id: string | null;
+  matched_journal_line_id?: string | null;
   je_narration?: string;
   je_entry_number?: string;
   import_batch_id: string;
@@ -519,6 +563,19 @@ export function useManualMatchRow() {
       return api.post(`/bank/statement-rows/${input.row_id}/match`, {
         journal_entry_id: input.journal_entry_id,
       });
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.all });
+    },
+  });
+}
+
+export function useUnmatchRow() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function unmatchRow(rowId: string) {
+      return api.post(`/bank/statement-rows/${rowId}/unmatch`);
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: bankKeys.all });
