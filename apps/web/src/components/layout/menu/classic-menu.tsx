@@ -56,6 +56,9 @@ export interface MenuNode {
   logs?: string[];
   // Button on every page of the module, e.g. "Create Request" (SB-03).
   create?: { label: string; href: string };
+  // Key of the count shown beside the entry, e.g. a status list's
+  // number of records (SB-05, menu-badges.ts).
+  badgeKey?: string;
 }
 
 const icon = (Icon: typeof Home): ReactNode => <Icon className="h-4 w-4" />;

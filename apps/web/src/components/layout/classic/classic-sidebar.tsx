@@ -13,6 +13,15 @@ interface ClassicSidebarProps {
   menu: readonly MenuNode[];
   open: boolean;
   onClose: () => void;
+  // Counts beside entries, by their badgeKey (SB-05).
+  badges?: Readonly<Record<string, number>>;
+}
+
+function Badge({ count }: { count: number | undefined }): ReactNode {
+  if (count === undefined) return null;
+  return (
+    <span className="ml-auto rounded bg-black/20 px-1.5 text-xs font-semibold tabular-nums">{count}</span>
+  );
 }
 
 function openStateKey(): string {
@@ -48,7 +57,7 @@ const itemClass = (active: boolean): string =>
  * order, each opening to its children. Open modules are remembered per
  * user; the module holding the current page is always open.
  */
-export function ClassicSidebar({ menu, open, onClose }: ClassicSidebarProps): ReactNode {
+export function ClassicSidebar({ menu, open, onClose, badges = {} }: ClassicSidebarProps): ReactNode {
   const pathname = usePathname();
   const location = locate(pathname, menu);
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
@@ -115,7 +124,8 @@ export function ClassicSidebar({ menu, open, onClose }: ClassicSidebarProps): Re
                             aria-current={location?.child?.id === child.id ? 'page' : undefined}
                             className={cn(itemClass(location?.child?.id === child.id), 'pl-10')}
                           >
-                            {child.label}
+                            <span>{child.label}</span>{' '}
+                            <Badge count={child.badgeKey ? badges[child.badgeKey] : undefined} />
                           </Link>
                         </li>
                       ))}
