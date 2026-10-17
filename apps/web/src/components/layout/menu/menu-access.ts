@@ -26,8 +26,18 @@ export function governingItem(
     .sort((a, b) => b.href.length - a.href.length)[0];
 }
 
-export function isHrefAllowed(href: string, access: MenuAccess): boolean {
-  const item = governingItem(href);
+/**
+ * The standard entry that gates a classic entry: the one for today's
+ * route when the entry has one (`aliases`), else the one for its own
+ * route. A new classic route such as /income/registers/invoices is
+ * gated exactly like /invoices.
+ */
+export function gatingItem(node: Pick<MenuNode, 'href' | 'aliases'>): NavItem | undefined {
+  const route = node.aliases?.[0] ?? node.href;
+  return route ? governingItem(route) : undefined;
+}
+
+function isAllowed(item: NavItem | undefined, access: MenuAccess): boolean {
   if (!item) return false;
   const featureOn =
     !item.feature || !access.enabledFeatures || access.enabledFeatures.includes(item.feature);
@@ -46,7 +56,7 @@ function visibleNode(node: MenuNode, access: MenuAccess): MenuNode | null {
   if (node.planned) return null;
   const children = visibleNodes(node.children, access);
   const tabs = visibleNodes(node.tabs, access);
-  const href = node.href && isHrefAllowed(node.href, access) ? node.href : undefined;
+  const href = node.href && isAllowed(gatingItem(node), access) ? node.href : undefined;
   if (!href && children.length === 0 && tabs.length === 0) return null;
   return {
     ...node,
@@ -74,8 +84,7 @@ export interface MenuLocation {
   tab?: MenuNode;
 }
 
-function matchLength(pathname: string, href: string | undefined): number {
-  if (!href) return -1;
+function matchLength(pathname: string, href: string): number {
   if (href === '/') return pathname === '/' ? 1 : -1;
   return pathname === href || pathname.startsWith(`${href}/`) ? href.length : -1;
 }
@@ -91,8 +100,9 @@ function candidates(nodes: readonly MenuNode[]): MenuLocation[] {
   ]);
 }
 
-function targetHref(location: MenuLocation): string | undefined {
-  return (location.tab ?? location.child ?? location.module).href;
+function targetHrefs(location: MenuLocation): string[] {
+  const node = location.tab ?? location.child ?? location.module;
+  return [...(node.href ? [node.href] : []), ...(node.aliases ?? [])];
 }
 
 /**
@@ -104,13 +114,22 @@ export function locate(pathname: string, nodes: readonly MenuNode[]): MenuLocati
   let best: MenuLocation | null = null;
   let bestLength = -1;
   for (const location of candidates(nodes)) {
-    const length = matchLength(pathname, targetHref(location));
+    const length = Math.max(-1, ...targetHrefs(location).map((href) => matchLength(pathname, href)));
     if (length > bestLength) {
       best = location;
       bestLength = length;
     }
   }
   return best;
+}
+
+/** Today's routes that classic entries also claim (`aliases`). */
+export function menuAliases(nodes: readonly MenuNode[]): string[] {
+  return nodes.flatMap((node) => [
+    ...(node.aliases ?? []),
+    ...menuAliases(node.children ?? []),
+    ...menuAliases(node.tabs ?? []),
+  ]);
 }
 
 /** Every route the menu points at, planned entries excluded. */

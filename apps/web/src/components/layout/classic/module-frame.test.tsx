@@ -38,8 +38,8 @@ describe('ModuleFrame', () => {
     const tabs = screen.getByRole('navigation', { name: 'Sub-tabs' });
     const links = Array.from(tabs.querySelectorAll('a'));
     expect(links.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
-      ['Receipts', '/receipts'],
-      ['Invoices', '/invoices'],
+      ['Receipts', '/income/registers/receipts'],
+      ['Invoices', '/income/registers/invoices'],
     ]);
     expect(screen.getByRole('link', { name: 'Invoices' }).getAttribute('aria-current')).toBe('page');
     expect(screen.getByRole('link', { name: 'Receipts' }).getAttribute('aria-current')).toBeNull();
@@ -76,7 +76,10 @@ describe('screen finder', () => {
 
   it('finds a screen by any words of its menu path', () => {
     expect(matchScreens(entries, 'chart accounts').map((e) => e.href)).toEqual(['/accounts']);
-    expect(matchScreens(entries, 'income invoices').map((e) => e.href)).toEqual(['/receipts', '/invoices']);
+    expect(matchScreens(entries, 'income invoices').map((e) => e.href)).toEqual([
+      '/income/registers/receipts',
+      '/income/registers/invoices',
+    ]);
     expect(matchScreens(entries, 'panic').map((e) => e.path)).toEqual([
       'Gate & Visitors › Incident Investigator › Panic Alerts',
     ]);

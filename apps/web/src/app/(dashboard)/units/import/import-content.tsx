@@ -220,7 +220,7 @@ export default function ImportContent(): ReactNode {
   // are missing block OR floor so we don't seed new rows that'd need
   // manual backfill to appear in the guard app. Default ON. Admin can
   // opt out when migrating from a legacy source that genuinely has
-  // neither field (e.g. ADDA export only exposes block; floor has to
+  // neither field (e.g. a previous portal's export that only exposes block; floor has to
   // be derived later).
   const [strictBlockFloor, setStrictBlockFloor] = useState(true);
   const [skippedByStrict, setSkippedByStrict] = useState<number[]>([]);
@@ -309,7 +309,7 @@ export default function ImportContent(): ReactNode {
     if (!selectedSource || mappedRows.length === 0) return;
 
     csvImport.mutate(
-      { rows: mappedRows, source: selectedSource },
+      { rows: mappedRows },
       {
         onSuccess(response) {
           const result = (response as { data: typeof importResult }).data;

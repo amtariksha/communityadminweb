@@ -88,7 +88,6 @@ interface CsvImportRow {
 
 interface CsvImportInput {
   rows: CsvImportRow[];
-  source?: 'adda' | 'nobroker' | 'mygate' | 'apnacomplex' | 'custom';
 }
 
 interface CsvImportResult {

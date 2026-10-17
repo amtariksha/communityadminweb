@@ -1,7 +1,7 @@
 import type { CsvImportRow } from '@/hooks';
 
 /** Source app identifiers */
-export type ImportSource = 'adda' | 'nobroker' | 'mygate' | 'apnacomplex' | 'custom';
+export type ImportSource = 'portal_export' | 'nobroker' | 'mygate' | 'apnacomplex' | 'custom';
 
 export interface TemplateInfo {
   id: ImportSource;
@@ -12,9 +12,9 @@ export interface TemplateInfo {
 
 export const TEMPLATES: TemplateInfo[] = [
   {
-    id: 'adda',
-    name: 'ADDA',
-    description: 'Import from ADDA (TheApartmentApp). Supports the standard unit export format with owner/tenant details, maintenance rates, meter info, and Khata details.',
+    id: 'portal_export',
+    name: 'Previous society portal export',
+    description: 'Import the unit export from the portal your society used before: owner and tenant details, maintenance rates, meter info and Khata details.',
     sampleColumns: [
       'SL.NO', 'Block', 'Unit', 'Type of Apartment', 'Previous Owner',
       'Current Owner', 'Trf Amount Rcvd Y/N', 'Email', 'Phone',
@@ -153,8 +153,8 @@ export function mapRowToImport(
   }
 
   switch (source) {
-    case 'adda':
-      return mapAddaRow(row);
+    case 'portal_export':
+      return mapPortalExportRow(row);
     case 'nobroker':
       return mapNoBrokerRow(row);
     case 'mygate':
@@ -168,7 +168,7 @@ export function mapRowToImport(
   }
 }
 
-function mapAddaRow(row: Record<string, string>): CsvImportRow {
+function mapPortalExportRow(row: Record<string, string>): CsvImportRow {
   const unitNumber = row['unit'] || row['unit_number'] || row['flat_no'] || '';
   const block = row['block'] || null;
 

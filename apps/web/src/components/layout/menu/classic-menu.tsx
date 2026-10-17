@@ -35,6 +35,9 @@ import {
  *   opens the first one the user may see.
  * - `planned`: the ticket that builds the screen. Planned entries are
  *   kept here so the menu shape is complete, but are never shown.
+ * - `aliases`: today's routes for the same screen. Links inside pages
+ *   still use them, and they keep such pages inside their classic
+ *   module and frame.
  *
  * Feature flags and supervisor visibility are not repeated here: they
  * come from the standard menu entry for the same route (menu-access.ts).
@@ -47,6 +50,7 @@ export interface MenuNode {
   children?: MenuNode[];
   tabs?: MenuNode[];
   planned?: string;
+  aliases?: string[];
   // Button on every page of the module, e.g. "Create Request" (SB-03).
   create?: { label: string; href: string };
 }
@@ -67,20 +71,24 @@ export const classicMenu: MenuNode[] = [
     id: 'units',
     label: 'Units & Users',
     icon: icon(Home),
+    // Classic routes (UNIT-10). Add Users, Approved Users and Broadcast
+    // show today's screens until UNIT-14, UNIT-12 and UNIT-09 rebuild them.
     children: [
       planned('units.unapproved', 'Unapproved Users', 'UNIT-13'),
-      { id: 'units.add', label: 'Add Users', href: '/units/import' },
-      { id: 'units.approved', label: 'Approved Users', href: '/units' },
-      // Ours; their portal has no people list of its own.
-      { id: 'units.directory', label: 'Member Directory', href: '/units/directory' },
-      planned('units.access', 'Access Control', 'UNIT-10'),
-      { id: 'units.broadcast', label: 'Broadcast', href: '/notifications' },
-      planned('units.statistics', 'Statistics', 'UNIT-10'),
-      planned('units.deactivated', 'De-Activated Users', 'UNIT-10'),
+      { id: 'units.add', label: 'Add Users', href: '/units/add-users', aliases: ['/units/import'] },
+      { id: 'units.approved', label: 'Approved Users', href: '/units/approved', aliases: ['/units'] },
+      planned('units.access', 'Access Control', 'UNIT-22'),
+      { id: 'units.broadcast', label: 'Broadcast', href: '/units/broadcast', aliases: ['/notifications'] },
+      planned('units.statistics', 'Statistics', 'UNIT-31'),
+      planned('units.deactivated', 'De-Activated Users', 'UNIT-18'),
       planned('units.survey', 'Survey', 'P9'),
-      planned('units.pets', 'Pet Setup', 'P9'),
+      planned('units.pets', 'Pet Setup', 'UNIT-35'),
       planned('units.consent', 'Consent Activity', 'P9'),
       planned('units.reports', 'Reports', 'REP-04'),
+      // Ours, after their children: people list, resident tags, KYC queue.
+      { id: 'units.directory', label: 'Member Directory', href: '/units/directory' },
+      { id: 'units.categories', label: 'Member Categories', href: '/setup/categories' },
+      { id: 'units.kyc', label: 'KYC Verification', href: '/setup/kyc' },
     ],
   },
   {
@@ -106,15 +114,29 @@ export const classicMenu: MenuNode[] = [
       planned('income.track-units', 'Track Units', 'INC-37'),
       planned('income.member-income', 'Member Income', 'INC-35'),
       {
+        // Classic routes (INC-33) over today's two registers until INC-36
+        // turns them into fetch boxes.
         id: 'income.registers',
         label: 'Receipts & Invoices',
         tabs: [
-          { id: 'income.registers.receipts', label: 'Receipts', href: '/receipts' },
-          { id: 'income.registers.invoices', label: 'Invoices', href: '/invoices' },
+          {
+            id: 'income.registers.receipts',
+            label: 'Receipts',
+            href: '/income/registers/receipts',
+            aliases: ['/receipts'],
+          },
+          planned('income.registers.credit-notes', 'Credit Notes', 'INC-25'),
+          {
+            id: 'income.registers.invoices',
+            label: 'Invoices',
+            href: '/income/registers/invoices',
+            aliases: ['/invoices'],
+          },
+          planned('income.registers.email-status', 'Email Status Monitor', 'INC-31'),
         ],
       },
-      planned('income.defaulters', 'Defaulters', 'INC-36'),
-      planned('income.non-member', 'Non Member Income', 'VEND-07'),
+      planned('income.defaulters', 'Defaulters', 'INC-29'),
+      planned('income.non-member', 'Non Member Income', 'INC-46'),
       planned('income.reports', 'Reports', 'REP-04'),
     ],
   },
@@ -349,8 +371,6 @@ export const classicMenu: MenuNode[] = [
       { id: 'more.analytics', label: 'Analytics', href: '/analytics' },
       { id: 'more.payments', label: 'Online Payments', href: '/payments' },
       { id: 'more.reconcile', label: 'Reconcile Debtors', href: '/accounts/reconcile-debtors' },
-      { id: 'more.categories', label: 'Member Categories', href: '/setup/categories' },
-      { id: 'more.kyc', label: 'KYC Verification', href: '/setup/kyc' },
       { id: 'more.patrol', label: 'Guard Patrol', href: '/patrol' },
       { id: 'more.cctv', label: 'CCTV', href: '/cctv' },
       { id: 'more.voting', label: 'Voting', href: '/voting' },
