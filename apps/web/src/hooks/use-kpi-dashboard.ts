@@ -3,43 +3,48 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
+/**
+ * `GET /analytics/kpi-dashboard`. Each section is computed on its own; a
+ * section that failed arrives as `null` (all of its keys), and the page shows
+ * "—" for it instead of a zero.
+ */
 export interface KpiBackendData {
-  totalUnits: number;
-  occupiedUnits: number;
-  vacantUnits: number;
-  activeResidents: number;
-  ownersCount: number;
-  tenantsCount: number;
-  totalBilled: number;
-  totalCollected: number;
-  totalOutstanding: number;
-  collectionRate: string;
-  totalTickets: number;
-  openTickets: number;
-  resolvedTickets: number;
-  slaBreaches: number;
-  goldenQueueCount: number;
+  totalUnits: number | null;
+  occupiedUnits: number | null;
+  vacantUnits: number | null;
+  activeResidents: number | null;
+  ownersCount: number | null;
+  tenantsCount: number | null;
+  totalBilled: number | null;
+  totalCollected: number | null;
+  totalOutstanding: number | null;
+  collectionRate: string | null;
+  totalTickets: number | null;
+  openTickets: number | null;
+  resolvedTickets: number | null;
+  slaBreaches: number | null;
+  goldenQueueCount: number | null;
   parking: {
     total_slots: number;
     vacant_slots: number;
     occupied_slots: number;
     ev_slots: number;
-  };
+  } | null;
   assets: {
     total_assets: number;
     active_assets: number;
     maintenance_assets: number;
-  };
+  } | null;
   gate: {
     today_visitors: number;
     today_staff_entries: number;
     active_overstays: number;
-  };
+  } | null;
   monthlyTrend: Array<{
     month: string;
     income: number;
     expense: number;
-  }>;
+  }> | null;
 }
 
 export function useKpiDashboardData() {

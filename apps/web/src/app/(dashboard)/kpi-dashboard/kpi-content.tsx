@@ -47,6 +47,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency } from '@/lib/utils';
+import type { KpiBackendData } from '@/hooks/use-kpi-dashboard';
 import {
   useKpiDashboardData,
   useCountsSummary,
@@ -55,6 +56,26 @@ import {
 } from '@/hooks';
 
 const PIE_COLORS = ['#10b981', '#6b7280', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+/** What a figure shows when the API could not compute it. */
+const DASH = '—';
+
+function orDash(value: number | string | null | undefined): number | string {
+  return value ?? DASH;
+}
+
+function moneyOrDash(value: number | null | undefined): string {
+  return value == null ? DASH : formatCurrency(value);
+}
+
+function occupancyRateOf(kpi: KpiBackendData | null | undefined): string {
+  if (kpi?.totalUnits == null || kpi.occupiedUnits == null) return DASH;
+  return kpi.totalUnits > 0 ? `${Math.round((kpi.occupiedUnits / kpi.totalUnits) * 100)}%` : '0%';
+}
+
+function hasTrendActivity(trend: KpiBackendData['monthlyTrend']): boolean {
+  return (trend ?? []).some((point) => point.income !== 0 || point.expense !== 0);
+}
 
 export function KpiDashboardContent(): ReactNode {
   const { data: kpi, isLoading: loadingKpi, refetch: refetchKpi, isFetching } = useKpiDashboardData();
@@ -70,15 +91,15 @@ export function KpiDashboardContent(): ReactNode {
   };
 
   const operationalModules = [
-    { title: 'Units & Flats', href: '/units', count: kpi?.totalUnits ?? 0, label: 'Units Total', icon: Building2, color: 'text-blue-500' },
-    { title: 'Helpdesk SLA', href: '/tickets', count: kpi?.openTickets ?? 0, label: 'Open Tickets', icon: Ticket, color: 'text-orange-500' },
+    { title: 'Units & Flats', href: '/units', count: orDash(kpi?.totalUnits), label: 'Units Total', icon: Building2, color: 'text-blue-500' },
+    { title: 'Helpdesk SLA', href: '/tickets', count: orDash(kpi?.openTickets), label: 'Open Tickets', icon: Ticket, color: 'text-orange-500' },
     { title: 'PMS Inventory', href: '/inventory', count: 'Active', label: 'Procurement', icon: Boxes, color: 'text-indigo-500' },
-    { title: 'Assets & Audits', href: '/assets', count: kpi?.assets?.total_assets ?? 0, label: 'Assets', icon: Wrench, color: 'text-teal-500' },
-    { title: 'Invoices & Dues', href: '/invoices', count: formatCurrency(kpi?.totalOutstanding ?? 0), label: 'Outstanding', icon: FileText, color: 'text-red-500' },
-    { title: 'Collections', href: '/receipts', count: formatCurrency(kpi?.totalCollected ?? 0), label: 'Collected', icon: Receipt, color: 'text-emerald-500' },
-    { title: 'Gate & Visitors', href: '/gate', count: kpi?.gate?.today_visitors ?? 0, label: "Today's Visitors", icon: ShieldAlert, color: 'text-cyan-500' },
+    { title: 'Assets & Audits', href: '/assets', count: orDash(kpi?.assets?.total_assets), label: 'Assets', icon: Wrench, color: 'text-teal-500' },
+    { title: 'Invoices & Dues', href: '/invoices', count: moneyOrDash(kpi?.totalOutstanding), label: 'Outstanding', icon: FileText, color: 'text-red-500' },
+    { title: 'Collections', href: '/receipts', count: moneyOrDash(kpi?.totalCollected), label: 'Collected', icon: Receipt, color: 'text-emerald-500' },
+    { title: 'Gate & Visitors', href: '/gate', count: orDash(kpi?.gate?.today_visitors), label: "Today's Visitors", icon: ShieldAlert, color: 'text-cyan-500' },
     { title: 'Guard Patrol', href: '/patrol', count: 'Active', label: 'Checkpoints', icon: Footprints, color: 'text-sky-500' },
-    { title: 'Parking & EV', href: '/parking', count: `${kpi?.parking?.vacant_slots ?? 0} Vacant`, label: 'Parking Lots', icon: Car, color: 'text-emerald-600' },
+    { title: 'Parking & EV', href: '/parking', count: kpi?.parking ? `${kpi.parking.vacant_slots} Vacant` : DASH, label: 'Parking Lots', icon: Car, color: 'text-emerald-600' },
     { title: 'Amenities', href: '/amenities', count: 'Bookings', label: 'Facilities', icon: CalendarCheck, color: 'text-purple-500' },
     { title: 'KYC Approvals', href: '/setup/kyc', count: 'Verify', label: 'Identity Proofs', icon: UserCheck, color: 'text-amber-500' },
     { title: 'Member Categories', href: '/setup/categories', count: 'Rules', label: 'Privileges', icon: Tags, color: 'text-pink-500' },
@@ -88,22 +109,22 @@ export function KpiDashboardContent(): ReactNode {
 
   // Prepare export dataset
   const exportData: Record<string, unknown>[] = [
-    { metric: 'Total Units', value: kpi?.totalUnits ?? 0 },
-    { metric: 'Occupied Units', value: kpi?.occupiedUnits ?? 0 },
-    { metric: 'Vacant Units', value: kpi?.vacantUnits ?? 0 },
-    { metric: 'Active Residents', value: kpi?.activeResidents ?? 0 },
-    { metric: 'Owners Count', value: kpi?.ownersCount ?? 0 },
-    { metric: 'Tenants Count', value: kpi?.tenantsCount ?? 0 },
-    { metric: 'Total Billed', value: kpi?.totalBilled ?? 0 },
-    { metric: 'Total Collected', value: kpi?.totalCollected ?? 0 },
-    { metric: 'Total Outstanding', value: kpi?.totalOutstanding ?? 0 },
-    { metric: 'Collection Rate (%)', value: kpi?.collectionRate ?? '0%' },
-    { metric: 'Total Tickets', value: kpi?.totalTickets ?? 0 },
-    { metric: 'Open Tickets', value: kpi?.openTickets ?? 0 },
-    { metric: 'Resolved Tickets', value: kpi?.resolvedTickets ?? 0 },
-    { metric: 'SLA Breaches', value: kpi?.slaBreaches ?? 0 },
-    { metric: 'Golden Queue Tickets', value: kpi?.goldenQueueCount ?? 0 },
-    { metric: 'Active Overstay Alerts', value: kpi?.gate?.active_overstays ?? 0 },
+    { metric: 'Total Units', value: kpi?.totalUnits ?? '' },
+    { metric: 'Occupied Units', value: kpi?.occupiedUnits ?? '' },
+    { metric: 'Vacant Units', value: kpi?.vacantUnits ?? '' },
+    { metric: 'Active Residents', value: kpi?.activeResidents ?? '' },
+    { metric: 'Owners Count', value: kpi?.ownersCount ?? '' },
+    { metric: 'Tenants Count', value: kpi?.tenantsCount ?? '' },
+    { metric: 'Total Billed', value: kpi?.totalBilled ?? '' },
+    { metric: 'Total Collected', value: kpi?.totalCollected ?? '' },
+    { metric: 'Total Outstanding', value: kpi?.totalOutstanding ?? '' },
+    { metric: 'Collection Rate (%)', value: kpi?.collectionRate ?? '' },
+    { metric: 'Total Tickets', value: kpi?.totalTickets ?? '' },
+    { metric: 'Open Tickets', value: kpi?.openTickets ?? '' },
+    { metric: 'Resolved Tickets', value: kpi?.resolvedTickets ?? '' },
+    { metric: 'SLA Breaches', value: kpi?.slaBreaches ?? '' },
+    { metric: 'Golden Queue Tickets', value: kpi?.goldenQueueCount ?? '' },
+    { metric: 'Active Overstay Alerts', value: kpi?.gate?.active_overstays ?? '' },
   ];
 
   const occupancyPieData = [
@@ -164,18 +185,16 @@ export function KpiDashboardContent(): ReactNode {
               <Skeleton className="h-8 w-28" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
-                  {kpi?.totalUnits ? Math.round(((kpi.occupiedUnits || 0) / kpi.totalUnits) * 100) : 0}%
-                </div>
+                <div className="text-2xl font-bold">{occupancyRateOf(kpi)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {kpi?.occupiedUnits ?? 0} occupied of {kpi?.totalUnits ?? 0} total units
+                  {orDash(kpi?.occupiedUnits)} occupied of {orDash(kpi?.totalUnits)} total units
                 </p>
                 <div className="mt-2 flex gap-2 text-xs">
                   <Badge variant="outline" className="text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30">
-                    {kpi?.ownersCount ?? 0} Owners
+                    {orDash(kpi?.ownersCount)} Owners
                   </Badge>
                   <Badge variant="outline" className="text-blue-600 bg-blue-50 dark:bg-blue-950/30">
-                    {kpi?.tenantsCount ?? 0} Tenants
+                    {orDash(kpi?.tenantsCount)} Tenants
                   </Badge>
                 </div>
               </>
@@ -195,13 +214,13 @@ export function KpiDashboardContent(): ReactNode {
             ) : (
               <>
                 <div className="text-2xl font-bold text-emerald-600">
-                  {kpi?.collectionRate ?? '0%'}
+                  {orDash(kpi?.collectionRate)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {formatCurrency(kpi?.totalCollected ?? 0)} collected of {formatCurrency(kpi?.totalBilled ?? 0)}
+                  {moneyOrDash(kpi?.totalCollected)} collected of {moneyOrDash(kpi?.totalBilled)}
                 </p>
                 <div className="mt-2 text-xs font-medium text-destructive">
-                  Outstanding: {formatCurrency(kpi?.totalOutstanding ?? 0)}
+                  Outstanding: {moneyOrDash(kpi?.totalOutstanding)}
                 </div>
               </>
             )}
@@ -220,14 +239,16 @@ export function KpiDashboardContent(): ReactNode {
             ) : (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold">{kpi?.openTickets ?? 0}</span>
+                  <span className="text-2xl font-bold">{orDash(kpi?.openTickets)}</span>
                   <span className="text-xs text-muted-foreground">Active Open</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                  {(kpi?.slaBreaches ?? 0) > 0 ? (
+                  {kpi?.slaBreaches == null ? (
+                    <Badge variant="outline">{DASH} SLA Breaches</Badge>
+                  ) : kpi.slaBreaches > 0 ? (
                     <Badge variant="destructive" className="flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />
-                      {kpi?.slaBreaches} SLA Breached
+                      {kpi.slaBreaches} SLA Breached
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-emerald-600">
@@ -256,14 +277,16 @@ export function KpiDashboardContent(): ReactNode {
               <Skeleton className="h-8 w-28" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{kpi?.gate?.today_visitors ?? 0}</div>
+                <div className="text-2xl font-bold">{orDash(kpi?.gate?.today_visitors)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Visitors logged today ({kpi?.gate?.today_staff_entries ?? 0} staff entries)
+                  Visitors logged today ({orDash(kpi?.gate?.today_staff_entries)} staff entries)
                 </p>
                 <div className="mt-2 text-xs">
-                  {(kpi?.gate?.active_overstays ?? 0) > 0 ? (
+                  {!kpi?.gate ? (
+                    <span className="text-muted-foreground">{DASH} Overstays</span>
+                  ) : kpi.gate.active_overstays > 0 ? (
                     <Badge variant="destructive">
-                      {kpi?.gate?.active_overstays} Active Overstays
+                      {kpi.gate.active_overstays} Active Overstays
                     </Badge>
                   ) : (
                     <span className="text-muted-foreground flex items-center gap-1">
@@ -323,7 +346,12 @@ export function KpiDashboardContent(): ReactNode {
           <CardContent>
             {loadingKpi ? (
               <Skeleton className="h-64 w-full" />
-            ) : !kpi?.monthlyTrend || kpi.monthlyTrend.length === 0 ? (
+            ) : !kpi?.monthlyTrend ? (
+              <div className="h-64 flex flex-col items-center justify-center text-muted-foreground text-sm border border-dashed rounded-lg">
+                <Receipt className="h-8 w-8 mb-2 opacity-50" />
+                Could not load the cashflow trend
+              </div>
+            ) : !hasTrendActivity(kpi.monthlyTrend) ? (
               <div className="h-64 flex flex-col items-center justify-center text-muted-foreground text-sm border border-dashed rounded-lg">
                 <Receipt className="h-8 w-8 mb-2 opacity-50" />
                 No financial cashflow data recorded yet
@@ -393,7 +421,7 @@ export function KpiDashboardContent(): ReactNode {
             ) : (kpi?.totalUnits ?? 0) === 0 ? (
               <div className="h-64 flex flex-col items-center justify-center text-muted-foreground text-sm border border-dashed rounded-lg">
                 <Building2 className="h-8 w-8 mb-2 opacity-50" />
-                No flat units configured in this community
+                {kpi?.totalUnits == null ? 'Could not load the unit figures' : 'No flat units configured in this community'}
               </div>
             ) : (
               <div className="h-64 flex items-center justify-center">
