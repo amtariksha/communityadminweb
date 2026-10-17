@@ -59,6 +59,7 @@ import { AutomatedReportsCard } from './automated-reports-card';
 import { DuesRemindersCard } from './dues-reminders-card';
 import { InterestCard } from './interest-card';
 import { TaxRegistrationCard } from './tax-registration-card';
+import { GatewayChargeCard } from './gateway-charge-card';
 import { BillingRulesCard } from './billing-rules-card';
 import { TdsConfigCard } from './tds-config-card';
 import { NotificationPolicyCard } from './notification-policy-card';
@@ -1516,6 +1517,11 @@ export default function SettingsContent(): ReactNode {
       {/* Tax registration — GSTIN, PAN, registration number (INC-11)         */}
       {/* ------------------------------------------------------------------- */}
       <TaxRegistrationCard />
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Online payment charges — who bears the gateway charge (INC-12)      */}
+      {/* ------------------------------------------------------------------- */}
+      <GatewayChargeCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Notification Policy — urgent allowlist + default quiet hours        */}

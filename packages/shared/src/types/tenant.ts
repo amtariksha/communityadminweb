@@ -46,6 +46,11 @@ export interface TenantSettings {
     days: number[];
   };
 
+  // INC-12 — who bears the online-payment (gateway) charge: `absorbed` = the
+  // society, `pass_through` = added to what the resident pays. Percent 0-5.
+  gateway_fee_mode?: 'pass_through' | 'absorbed';
+  gateway_fee_percent?: number;
+
   // INC-11 — the society's tax registrations, printed on invoices, receipts
   // and credit notes and carried into the GSTR-1 export (null = cleared).
   gstin?: string | null;
