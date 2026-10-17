@@ -221,3 +221,32 @@ export function getSidebarAllowlist(role: string | undefined): Set<string> | nul
   // rather than null so we never accidentally widen the menu.
   return SUPERVISOR_SIDEBAR_ALLOWLIST[role] ?? (EMPTY_NAV_SET as Set<string>);
 }
+
+/**
+ * Supervisor roles whose access to requests follows a role-delegation
+ * switch ("Security-category tickets", "Maintenance tickets").
+ */
+const DELEGATED_TICKET_ROLES: ReadonlySet<string> = new Set(['security_supervisor', 'facility_supervisor']);
+
+export function isDelegatedTicketRole(role: string | undefined): boolean {
+  return role !== undefined && DELEGATED_TICKET_ROLES.has(role);
+}
+
+/**
+ * The sidebar allowlist with Tickets taken away from a supervisor the server
+ * says has no access to requests (their switch is off). When the answer is
+ * not known — still loading, or a server that predates the route — the
+ * allowlist is returned unchanged.
+ */
+export function applyTicketScope(
+  allowlist: Set<string> | null,
+  role: string | undefined,
+  scope: { scope: 'all' | 'teams' | 'none' } | undefined,
+): Set<string> | null {
+  if (!allowlist || !isDelegatedTicketRole(role) || scope?.scope !== 'none') {
+    return allowlist;
+  }
+  const without = new Set(allowlist);
+  without.delete('Tickets');
+  return without;
+}

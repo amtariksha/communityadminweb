@@ -54,6 +54,8 @@ export interface EscalationRow {
   owner_l3_name: string | null;
   sla_hours: number | null;
   default_priority: string | null;
+  /** The team whose supervisors work on this category's requests. */
+  handled_by: 'security' | 'facility' | 'office';
 }
 
 /** What the row editor saves; a blank window or owner is sent as null. */
@@ -65,6 +67,7 @@ export interface EscalationRowInput {
   owner_l3_user_id: string | null;
   sla_hours: number;
   default_priority: string;
+  handled_by: 'security' | 'facility' | 'office';
 }
 
 /** The email alerts of Setup > Notification Alerts; each is on or off. */
@@ -248,6 +251,30 @@ export function useSaveHelpdeskSettings() {
     onSuccess: function showSaved(saved) {
       queryClient.setQueryData(helpdeskKeys.settings(), saved);
       queryClient.invalidateQueries({ queryKey: ['helpdesk', 'setup'] });
+    },
+  });
+}
+
+/** How much of the helpdesk the signed-in user works on (GET /tickets/scope). */
+export interface TicketScopeInfo {
+  scope: 'all' | 'teams' | 'none';
+  handled_by: string[];
+}
+
+/**
+ * Asked only for supervisors, whose access follows the role-delegation
+ * switches. An older server does not know the route and answers an error;
+ * callers then keep what they show today.
+ */
+export function useTicketScope(enabled: boolean) {
+  return useQuery({
+    queryKey: [...helpdeskKeys.all, 'ticket-scope'] as const,
+    enabled,
+    retry: false,
+    meta: { suppressToast: true },
+    queryFn: async function fetchTicketScope() {
+      const res = await api.get<{ data: TicketScopeInfo }>('/tickets/scope');
+      return res.data;
     },
   });
 }

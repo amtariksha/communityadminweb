@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { type ReactNode } from 'react';
 import { LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useEnabledFeatures } from '@/hooks';
+import { useEnabledFeatures, useTicketScope } from '@/hooks';
 import { useHelpMode } from '@/lib/help-mode-context';
 import { HELP_MODE_TEXT } from '@/lib/tooltip-content';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, getInitials } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { SocietyLogo } from '@/components/society-logo';
 import { getUser, getCurrentTenant, logout } from '@/lib/auth';
-import { getSidebarAllowlist, pickDisplayRole } from '@/lib/admin-roles';
+import { applyTicketScope, getSidebarAllowlist, isDelegatedTicketRole, pickDisplayRole } from '@/lib/admin-roles';
 import { standardMenu, type NavItem } from './menu/standard-menu';
 
 interface SidebarProps {
@@ -103,7 +103,10 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
   const currentRole = user?.isSuperAdmin
     ? 'super_admin'
     : user?.societies.find((s) => s.id === currentTenantId)?.role;
-  const roleAllowlist = getSidebarAllowlist(currentRole);
+  // A security or facility supervisor reaches Tickets only while their
+  // role-delegation switch is on; the server says whether it is.
+  const ticketScope = useTicketScope(isDelegatedTicketRole(currentRole));
+  const roleAllowlist = applyTicketScope(getSidebarAllowlist(currentRole), currentRole, ticketScope.data);
   // Display role at the bottom of the sidebar — picks the user's
   // admin-eligible role for the current tenant, falling back to
   // their highest-priority admin role across any tenant. Avoids the

@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useEnabledFeatures } from '@/hooks';
+import { useEnabledFeatures, useTicketScope } from '@/hooks';
 import { getCurrentTenant, getUser } from '@/lib/auth';
-import { getSidebarAllowlist } from '@/lib/admin-roles';
+import { applyTicketScope, getSidebarAllowlist, isDelegatedTicketRole } from '@/lib/admin-roles';
 import { classicMenu, type MenuNode } from '../menu/classic-menu';
 import { visibleMenu } from '../menu/menu-access';
 
@@ -23,8 +23,14 @@ export function currentMenuRole(): string | undefined {
 export function useClassicMenu(): MenuNode[] {
   const { data: enabledFeatures } = useEnabledFeatures();
   const role = currentMenuRole();
+  // Supervisors reach HelpDesk Tracker only while their delegation switch is on.
+  const { data: ticketScope } = useTicketScope(isDelegatedTicketRole(role));
   return useMemo(
-    () => visibleMenu(classicMenu, { enabledFeatures, roleAllowlist: getSidebarAllowlist(role) }),
-    [enabledFeatures, role],
+    () =>
+      visibleMenu(classicMenu, {
+        enabledFeatures,
+        roleAllowlist: applyTicketScope(getSidebarAllowlist(role), role, ticketScope),
+      }),
+    [enabledFeatures, role, ticketScope],
   );
 }

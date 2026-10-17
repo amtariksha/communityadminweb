@@ -943,6 +943,7 @@ export {
   useSaveEscalationRow,
   useHelpdeskSettings,
   useSaveHelpdeskSettings,
+  useTicketScope,
 } from './use-helpdesk';
 export type {
   HelpdeskCategory,
@@ -953,6 +954,7 @@ export type {
   NotificationAlerts,
   HelpdeskSettings,
   HelpdeskSettingsUpdate,
+  TicketScopeInfo,
 } from './use-helpdesk';
 
 // Events & RSVPs

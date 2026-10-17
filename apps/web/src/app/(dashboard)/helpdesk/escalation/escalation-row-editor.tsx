@@ -16,6 +16,11 @@ import type { EscalationRow, EscalationRowInput, HelpdeskAssignee } from '@/hook
 
 const WHOLE_HOURS_MESSAGE = 'Enter whole hours from 1 to 720.';
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
+const TEAMS = [
+  { value: 'security', label: 'Security' },
+  { value: 'facility', label: 'Facility' },
+  { value: 'office', label: 'Office' },
+] as const;
 
 /** The editor's fields as typed: hours stay text until they are checked. */
 export interface EscalationDraft {
@@ -26,6 +31,7 @@ export interface EscalationDraft {
   ownerL3: string;
   slaHours: string;
   defaultPriority: string;
+  handledBy: string;
 }
 
 export type EscalationDraftErrors = Partial<Record<keyof EscalationDraft, string>>;
@@ -72,6 +78,7 @@ function draftFrom(row: EscalationRow): EscalationDraft {
     ownerL3: row.owner_l3_user_id ?? '',
     slaHours: (row.sla_hours ?? 24).toString(),
     defaultPriority: row.default_priority ?? 'medium',
+    handledBy: row.handled_by ?? 'facility',
   };
 }
 
@@ -85,6 +92,7 @@ function toInput(draft: EscalationDraft): EscalationRowInput {
     owner_l3_user_id: draft.ownerL3 || null,
     sla_hours: Number(draft.slaHours),
     default_priority: draft.defaultPriority,
+    handled_by: draft.handledBy as EscalationRowInput['handled_by'],
   };
 }
 
@@ -203,6 +211,23 @@ function EditorForm({
           error={errors.ownerL3} onChange={(ownerL3) => set({ ownerL3 })} />
         <HoursField label="Resolve within (hours)" value={draft.slaHours} disabled={readOnly}
           error={errors.slaHours} onChange={(slaHours) => set({ slaHours })} />
+        <div className="space-y-1">
+          <Label htmlFor="Handled by">Handled by</Label>
+          <select
+            id="Handled by"
+            value={draft.handledBy}
+            disabled={readOnly}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+            onChange={(event) => set({ handledBy: event.target.value })}
+          >
+            {TEAMS.map((team) => (
+              <option key={team.value} value={team.value}>
+                {team.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">Supervisors of this team can work on its requests.</p>
+        </div>
         <div className="space-y-1">
           <Label htmlFor="Default priority">Default priority</Label>
           <select

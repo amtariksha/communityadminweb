@@ -62,6 +62,7 @@ function row(overrides: Partial<EscalationRow> & Pick<EscalationRow, 'category_i
     owner_l3_name: null,
     sla_hours: 24,
     default_priority: 'medium',
+    handled_by: 'facility',
     ...overrides,
   };
 }
@@ -139,9 +140,26 @@ describe('Escalation matrix', () => {
         owner_l3_user_id: null,
         sla_hours: 24,
         default_priority: 'medium',
+        handled_by: 'facility',
       },
     });
     await waitFor(() => expect(cells(tableRows()[1])[3]).toBe('6 hrs'));
+  });
+
+  it('lets the team that handles the category be chosen, facility to start with', async () => {
+    render(<EscalationContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'View Gas' }));
+    const editor = screen.getByRole('dialog');
+    const team = within(editor).getByLabelText('Handled by') as HTMLSelectElement;
+    expect(team.value).toBe('facility');
+    expect(within(team).getAllByRole('option').map((option) => option.textContent)).toEqual(['Security', 'Facility', 'Office']);
+
+    fireEvent.change(team, { target: { value: 'security' } });
+    fireEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    expect(mocks.save.mock.calls[0][0].body.handled_by).toBe('security');
   });
 
   it('refuses a window with no owner for the next level, and sends nothing', () => {
@@ -164,6 +182,7 @@ describe('Escalation matrix', () => {
     const editor = screen.getByRole('dialog');
 
     expect((within(editor).getByLabelText('Owner L1') as HTMLSelectElement).disabled).toBe(true);
+    expect((within(editor).getByLabelText('Handled by') as HTMLSelectElement).disabled).toBe(true);
     expect(within(editor).queryByRole('button', { name: 'Save' })).toBeNull();
   });
 });
@@ -177,6 +196,7 @@ describe('validateEscalationDraft', () => {
     ownerL3: '',
     slaHours: '24',
     defaultPriority: 'medium',
+    handledBy: 'facility',
   };
 
   it('accepts a matrix that stops at Level 1', () => {
