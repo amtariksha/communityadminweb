@@ -14,12 +14,12 @@ import { requestAgeDays } from '../../tickets/ticket-badges';
  */
 export function requestColumns(layout: AdminLayout, word: (standard: string) => string): DataTableColumn<Ticket>[] {
   return [
-    { key: 'number', header: word('Ticket #'), cell: (row) => row.ticket_number, className: 'font-mono text-xs' },
+    { key: 'number', header: word('Ticket #'), cell: (row) => row.ticket_number, className: 'whitespace-nowrap font-mono text-xs' },
     { key: 'category', header: 'Category', cell: (row) => row.category },
     { key: 'request', header: 'Request', cell: (row) => row.subject, className: 'max-w-[240px]' },
-    { key: 'opened', header: 'Opened On', cell: (row) => formatDate(row.created_at) },
+    { key: 'opened', header: 'Opened On', cell: (row) => formatDate(row.created_at), className: 'whitespace-nowrap' },
     { key: 'by', header: 'By', cell: (row) => row.created_by_name ?? '—' },
-    { key: 'unit', header: 'Unit', cell: (row) => row.unit_number ?? '—' },
+    { key: 'unit', header: 'Unit', cell: (row) => row.unit_number ?? '—', className: 'whitespace-nowrap' },
     { key: 'status', header: 'Status', cell: (row) => ticketStatusLabel(row.status, layout) },
     {
       key: 'last-update',
@@ -27,7 +27,7 @@ export function requestColumns(layout: AdminLayout, word: (standard: string) => 
       cell: (row) => row.last_comment_text ?? '—',
       className: 'max-w-[240px] text-muted-foreground',
     },
-    { key: 'updated', header: 'Updated On', cell: (row) => formatDate(row.updated_at) },
+    { key: 'updated', header: 'Updated On', cell: (row) => formatDate(row.updated_at), className: 'whitespace-nowrap' },
     { key: 'days', header: 'Days', cell: (row) => requestAgeDays(row), className: 'tabular-nums' },
   ];
 }
