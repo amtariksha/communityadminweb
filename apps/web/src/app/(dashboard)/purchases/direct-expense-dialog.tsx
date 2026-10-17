@@ -1,5 +1,6 @@
 'use client';
 
+import { VENDOR_PAYMENT_MODE_OPTIONS, type VendorPaymentMode } from '@/lib/vendor-payment-modes';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -42,7 +43,7 @@ interface DirectExpenseDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type PaymentMode = 'cash' | 'cheque' | 'bank_transfer' | 'upi';
+type PaymentMode = VendorPaymentMode;
 
 export function DirectExpenseDialog({
   open,
@@ -202,10 +203,11 @@ export function DirectExpenseDialog({
                     setPaymentMode(e.target.value as PaymentMode)
                   }
                 >
-                  <option value="cash">Cash</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="bank_transfer">Bank transfer</option>
-                  <option value="upi">UPI</option>
+                  {VENDOR_PAYMENT_MODE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </Select>
               </div>
               <div className="space-y-2">

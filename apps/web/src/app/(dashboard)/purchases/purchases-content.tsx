@@ -49,6 +49,7 @@ import { DirectExpenseDialog } from './direct-expense-dialog';
 import { DebitNoteDialog } from './debit-note-dialog';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
+import { VENDOR_PAYMENT_MODE_OPTIONS } from '@/lib/vendor-payment-modes';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import {
@@ -2003,12 +2004,11 @@ export default function PurchasesContent(): ReactNode {
                   value={paymentMode}
                   onChange={(e) => setPaymentMode(e.target.value)}
                 >
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="neft">NEFT</option>
-                  <option value="rtgs">RTGS</option>
+                  {VENDOR_PAYMENT_MODE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </Select>
               </div>
               <div className="space-y-2">
@@ -2597,10 +2597,11 @@ function VendorPaymentsTab({ vendors }: VendorPaymentsTabProps): ReactNode {
               }}
             >
               <option value="">All Modes</option>
-              <option value="cash">Cash</option>
-              <option value="cheque">Cheque</option>
-              <option value="bank_transfer">NEFT/RTGS</option>
-              <option value="upi">UPI</option>
+              {VENDOR_PAYMENT_MODE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.value === 'bank_transfer' ? 'Bank Transfer (NEFT/RTGS)' : option.label}
+                </option>
+              ))}
             </Select>
             <Input
               type="date"
