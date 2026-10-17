@@ -50,6 +50,7 @@ import { DebitNoteDialog } from './debit-note-dialog';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
 import { VENDOR_PAYMENT_MODE_OPTIONS } from '@/lib/vendor-payment-modes';
+import { BILL_STATUS_FILTER_OPTIONS, getBillStatusLabel, getBillStatusVariant } from './bill-status';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import {
@@ -150,42 +151,6 @@ function getPRStatusLabel(status: string): string {
       return 'Rejected';
     case 'converted':
       return 'Converted';
-    default:
-      return status;
-  }
-}
-
-function getBillStatusVariant(
-  status: string,
-): 'secondary' | 'warning' | 'success' | 'destructive' | 'default' {
-  switch (status) {
-    case 'draft':
-      return 'secondary';
-    case 'approved':
-      return 'success';
-    case 'partially_paid':
-      return 'warning';
-    case 'paid':
-      return 'success';
-    case 'cancelled':
-      return 'destructive';
-    default:
-      return 'default';
-  }
-}
-
-function getBillStatusLabel(status: string): string {
-  switch (status) {
-    case 'draft':
-      return 'Draft';
-    case 'approved':
-      return 'Approved';
-    case 'partially_paid':
-      return 'Partially Paid';
-    case 'paid':
-      return 'Paid';
-    case 'cancelled':
-      return 'Cancelled';
     default:
       return status;
   }
@@ -1353,11 +1318,11 @@ export default function PurchasesContent(): ReactNode {
                   onChange={(e) => { setBillStatusFilter(e.target.value); setBillPage(1); }}
                   className="w-40"
                 >
-                  <option value="">All Statuses</option>
-                  <option value="draft">Draft</option>
-                  <option value="approved">Approved</option>
-                  <option value="partially_paid">Partially Paid</option>
-                  <option value="paid">Paid</option>
+                  {BILL_STATUS_FILTER_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </Select>
                 <Select
                   value={billVendorFilter}
