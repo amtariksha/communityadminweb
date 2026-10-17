@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   FileBarChart,
   Scale,
@@ -29,6 +30,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { IncomeExpenditureView } from './income-expenditure-view';
+import { reportFromParam, type ReportId } from './report-param';
 import { ReportSkeleton } from './report-skeleton';
 import {
   useTrialBalance,
@@ -39,7 +41,6 @@ import {
   useLedgerAccounts,
 } from '@/hooks';
 
-type ReportId = 'trial-balance' | 'balance-sheet' | 'income-expenditure' | 'general-ledger' | 'defaulters' | 'vendor-aging';
 
 interface ReportCardInfo {
   id: ReportId;
@@ -592,7 +593,11 @@ function VendorAgingView(): ReactNode {
 }
 
 export default function ReportsContent(): ReactNode {
-  const [selectedReport, setSelectedReport] = useState<ReportId | null>(null);
+  // The dashboard's General Ledger card opens a report with ?report=<id>.
+  const searchParams = useSearchParams();
+  const [selectedReport, setSelectedReport] = useState<ReportId | null>(() =>
+    reportFromParam(searchParams?.get('report') ?? null),
+  );
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0]);
   const [startDate, setStartDate] = useState('2025-04-01');
   const [endDate, setEndDate] = useState('2026-03-31');

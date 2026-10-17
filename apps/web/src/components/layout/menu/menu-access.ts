@@ -55,6 +55,15 @@ function isAllowed(item: NavItem | undefined, access: MenuAccess): boolean {
   return featureOn && roleOn;
 }
 
+/**
+ * Whether this user may open a route: the standard entry that owns it is
+ * enabled for the society and visible to their role. A route no entry owns
+ * (a screen that does not exist yet) is closed. A query string is ignored.
+ */
+export function canOpenRoute(href: string, access: MenuAccess): boolean {
+  return isAllowed(governingItem(href.split('?')[0]), access);
+}
+
 function visibleNodes(nodes: readonly MenuNode[] | undefined, access: MenuAccess): MenuNode[] {
   return (nodes ?? []).flatMap((node) => {
     const visible = visibleNode(node, access);

@@ -12,7 +12,7 @@ import { visibleMenu } from '../menu/menu-access';
  * same way the standard sidebar does (super admins see everything). UI
  * only: the API checks roles on every request.
  */
-function currentMenuRole(): string | undefined {
+export function currentMenuRole(): string | undefined {
   const user = getUser();
   if (user?.isSuperAdmin) return 'super_admin';
   const tenantId = getCurrentTenant();
