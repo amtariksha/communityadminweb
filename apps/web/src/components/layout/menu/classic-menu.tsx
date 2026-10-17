@@ -57,8 +57,11 @@ export interface MenuNode {
   // Button on every page of the module, e.g. "Create Request" (SB-03).
   create?: { label: string; href: string };
   // Key of the count shown beside the entry, e.g. a status list's
-  // number of records (SB-05, menu-badges.ts).
+  // number of records (SB-05).
   badgeKey?: string;
+  // Where Close goes on the module's pages, when it is not the module's
+  // first child (SB-03), e.g. HelpDesk closes to its request list.
+  close?: string;
 }
 
 const icon = (Icon: typeof Home): ReactNode => <Icon className="h-4 w-4" />;
@@ -113,23 +116,28 @@ export const classicMenu: MenuNode[] = [
     id: 'helpdesk',
     label: 'HelpDesk Tracker',
     icon: icon(TicketCheck),
+    // HELP-11. Create Request opens today's dialog until HELP-13 gives it
+    // a page; Close goes to the request list, where the desk works.
+    create: { label: 'Create Request', href: '/tickets?new=1' },
+    close: '/tickets',
     children: [
       {
         id: 'helpdesk.setup',
         label: 'Setup',
         tabs: [
-          { id: 'helpdesk.setup.categories', label: 'Setup Helpdesk Categories', href: '/helpdesk/setup/categories' },
-          planned('helpdesk.setup.service-date', 'Setup Preferred Service Date', 'HELP-16'),
-          { id: 'helpdesk.setup.notifications', label: 'Notification Alerts', href: '/helpdesk/setup/notifications' },
-          { id: 'helpdesk.setup.auto-responses', label: 'Automated Responses', href: '/helpdesk/setup/auto-responses' },
+          { id: 'helpdesk.setup.categories', label: 'Setup Helpdesk Categories', href: '/helpdesk/setup/categories', logs: ['helpdesk'] },
+          { ...planned('helpdesk.setup.service-date', 'Setup Preferred Service Date', 'HELP-16'), logs: ['helpdesk'] },
+          { id: 'helpdesk.setup.notifications', label: 'Notification Alerts', href: '/helpdesk/setup/notifications', logs: ['helpdesk'] },
+          { id: 'helpdesk.setup.auto-responses', label: 'Automated Responses', href: '/helpdesk/setup/auto-responses', logs: ['helpdesk'] },
         ],
       },
-      { id: 'helpdesk.escalation', label: 'Escalation', href: '/helpdesk/escalation' },
+      { id: 'helpdesk.escalation', label: 'Escalation', href: '/helpdesk/escalation', logs: ['helpdesk'] },
       planned('helpdesk.open', 'Open Requests', 'HELP-12'),
       planned('helpdesk.closed', 'Closed Requests', 'HELP-12'),
-      // One list for every status until HELP-12 splits it.
+      planned('helpdesk.reports', 'Reports', 'HELP-21'),
+      // Ours, after their children: one list for every status until
+      // HELP-12 splits it into Open and Closed Requests.
       { id: 'helpdesk.all', label: 'All Requests', href: '/tickets' },
-      planned('helpdesk.reports', 'Reports', 'REP-04'),
     ],
   },
   {

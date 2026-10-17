@@ -8,6 +8,12 @@ describe('wordFor', () => {
     expect(wordFor('classic', 'Record Receipt')).toBe('Post Collection');
   });
 
+  it('uses the HelpDesk words in classic (HELP-11)', () => {
+    expect(wordFor('classic', 'Ticket #')).toBe('Request No.');
+    expect(wordFor('classic', 'Assigned To')).toBe('Driven By');
+    expect(wordFor('standard', 'Assigned To')).toBe('Assigned To');
+  });
+
   it('leaves the standard layout exactly as written', () => {
     expect(wordFor('standard', 'Tickets')).toBe('Tickets');
   });

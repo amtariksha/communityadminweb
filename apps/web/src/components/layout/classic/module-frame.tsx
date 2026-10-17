@@ -18,11 +18,12 @@ function frameTitle({ module, child }: MenuLocation): string {
   return child ? `${module.label} › ${child.label}` : module.label;
 }
 
-// Close goes back to where the module opens: its first child. The More
-// group is not a module, so it has nowhere to close to.
+// Close goes back to where the module opens: its first child, unless the
+// module names another screen. The More group is not a module, so it has
+// nowhere to close to.
 function closeHref(module: MenuNode): string | undefined {
   if (module.id === MORE_GROUP_ID) return undefined;
-  return entryHref(module.children?.[0] ?? module);
+  return module.close ?? entryHref(module.children?.[0] ?? module);
 }
 
 function SubTabs({ tabs, activeId }: { tabs: readonly MenuNode[]; activeId?: string }): ReactNode {

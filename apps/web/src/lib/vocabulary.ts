@@ -14,6 +14,8 @@ const CLASSIC_WORDS: Readonly<Record<string, string>> = {
   Ticket: 'Request',
   Tickets: 'Requests',
   'New Ticket': 'Create Request',
+  'Ticket #': 'Request No.',
+  'Assigned To': 'Driven By',
   'Record Receipt': 'Post Collection',
   'Generate Invoices': 'Post Invoice',
   Customers: 'Vendors for Non Member Income',
