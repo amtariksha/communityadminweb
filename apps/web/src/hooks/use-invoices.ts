@@ -54,6 +54,35 @@ interface LpiResponse {
   totalInterest: number;
 }
 
+// INC-01 — one row per society per scheduled billing run (GET /billing-runs).
+export type BillingRunStatus = 'running' | 'completed' | 'completed_with_errors' | 'failed';
+
+export interface BillingRunError {
+  rule_id: string | null;
+  rule_name: string | null;
+  message: string;
+}
+
+export interface BillingRun {
+  id: string;
+  run_type: string;
+  run_date: string;
+  period_label: string | null;
+  status: BillingRunStatus;
+  invoices_created: number;
+  units_skipped: number;
+  errors: BillingRunError[] | null;
+  triggered_by: string;
+  started_at: string;
+  finished_at: string | null;
+}
+
+export interface GenerateInvoicesResult {
+  count: number;
+  /** Units that already had an invoice for this rule and period. Absent on older APIs. */
+  skipped?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Filter types
 // ---------------------------------------------------------------------------
@@ -124,6 +153,7 @@ export const invoiceKeys = {
   rules: () => [...invoiceKeys.all, 'rules'] as const,
   defaulters: () => [...invoiceKeys.all, 'defaulters'] as const,
   lpi: (asOfDate: string) => [...invoiceKeys.all, 'lpi', asOfDate] as const,
+  billingRuns: (limit: number) => [...invoiceKeys.all, 'billing-runs', limit] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -201,6 +231,19 @@ export function useDefaulters() {
   });
 }
 
+export function useBillingRuns(limit = 24) {
+  return useQuery({
+    queryKey: invoiceKeys.billingRuns(limit),
+    queryFn: function fetchBillingRuns() {
+      return api
+        .get<{ data: BillingRun[] }>('/billing-runs', { params: { limit: String(limit) } })
+        .then(function unwrap(res) {
+          return res.data;
+        });
+    },
+  });
+}
+
 export function useCalculateLPI(asOfDate?: string) {
   const date = asOfDate ?? todayIST();
   return useQuery({
@@ -264,7 +307,7 @@ export function useGenerateInvoices() {
 
   return useMutation({
     mutationFn: function generateInvoices(input: GenerateInvoicesInput) {
-      return api.post<{ data: { count: number } }>('/invoices/generate', input);
+      return api.post<{ data: GenerateInvoicesResult }>('/invoices/generate', input);
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.all });

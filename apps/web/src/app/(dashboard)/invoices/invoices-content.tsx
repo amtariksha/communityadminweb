@@ -33,6 +33,8 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { CustomInvoiceDialog } from './custom-invoice-dialog';
+import { BillingRunsPanel } from './billing-runs-panel';
+import { describeGenerateResult } from './generate-summary';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
@@ -229,8 +231,12 @@ export default function InvoicesContent(): ReactNode {
   const setPage = listState.setPage;
   const limit = 20;
 
-  // Main Tab: invoices, other_bills, billing_cycles
-  const [mainTab, setMainTab] = useState<'invoices' | 'other_bills' | 'billing_cycles'>('invoices');
+  // Main Tab: invoices, other_bills, billing_cycles, billing_runs.
+  // `?tab=billing_runs` opens the runs list (the failed-run notification
+  // points admins there).
+  const [mainTab, setMainTab] = useState<
+    'invoices' | 'other_bills' | 'billing_cycles' | 'billing_runs'
+  >(() => (searchParams?.get('tab') === 'billing_runs' ? 'billing_runs' : 'invoices'));
 
   // Other Bills state & queries
   const { data: otherBills = [], isLoading: otherBillsLoading } = useOtherBills();
@@ -447,7 +453,7 @@ export default function InvoicesContent(): ReactNode {
           setBillingDate('');
           addToast({
             title: 'Invoices generated',
-            description: `${response.data.count} invoice(s) created`,
+            description: describeGenerateResult(response.data),
             variant: 'success',
           });
         },
@@ -750,6 +756,17 @@ export default function InvoicesContent(): ReactNode {
           }`}
         >
           Unit Billing Cycles
+        </button>
+        <button
+          type="button"
+          onClick={() => setMainTab('billing_runs')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            mainTab === 'billing_runs'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Billing Runs
         </button>
       </div>
 
@@ -1130,6 +1147,8 @@ export default function InvoicesContent(): ReactNode {
           </CardContent>
         </Card>
       )}
+
+      {mainTab === 'billing_runs' && <BillingRunsPanel />}
 
       {/* Unit Billing Cycles Mapping */}
       {mainTab === 'billing_cycles' && (

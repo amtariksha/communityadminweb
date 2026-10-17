@@ -61,6 +61,7 @@ import type { Amenity } from '@/hooks/use-amenities';
 import type { FinancialYear } from '@communityos/shared';
 import { RoleDelegationCard } from './role-delegation-card';
 import { AutomatedReportsCard } from './automated-reports-card';
+import { DuesRemindersCard } from './dues-reminders-card';
 import { TdsConfigCard } from './tds-config-card';
 import { NotificationPolicyCard } from './notification-policy-card';
 import { HelpContactCard } from './help-contact-card';
@@ -1870,6 +1871,11 @@ export default function SettingsContent(): ReactNode {
       {/* Automated Reports — monthly email digest (Batch 15)                  */}
       {/* ------------------------------------------------------------------- */}
       <AutomatedReportsCard />
+
+      {/* ------------------------------------------------------------------- */}
+      {/* Automatic dues reminders — days of the month (INC-02)               */}
+      {/* ------------------------------------------------------------------- */}
+      <DuesRemindersCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Notification Policy — urgent allowlist + default quiet hours        */}

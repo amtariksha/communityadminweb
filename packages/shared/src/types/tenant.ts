@@ -37,6 +37,15 @@ export interface TenantSettings {
     time_of_day?: string;
   };
 
+  // INC-02 — automatic dues reminders, read by the API's daily reminder
+  // job. `days`: up to four days of the month (1–31; 29–31 fall on the
+  // last day of a shorter month). Send both fields on save: settings_json
+  // merges top-level keys only, and the API requires both.
+  billing_reminders?: {
+    enabled: boolean;
+    days: number[];
+  };
+
   // NotifPlan §"Phase 5" — per-tenant notification policy. Two
   // levers, both optional so an unset tenant continues to behave as
   // it did before this field existed:

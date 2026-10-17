@@ -99,6 +99,7 @@ export {
   useCancelInvoice,
   useBulkUpdateDueDates,
   useDefaulters,
+  useBillingRuns,
   useCalculateLPI,
   usePostLPI,
   useWaiveInterest,
@@ -107,7 +108,14 @@ export {
   useUnitBillingCycles,
   useUpsertUnitBillingCycle,
 } from './use-invoices';
-export type { OtherBill, UnitBillingCycle } from './use-invoices';
+export type {
+  OtherBill,
+  UnitBillingCycle,
+  BillingRun,
+  BillingRunError,
+  BillingRunStatus,
+  GenerateInvoicesResult,
+} from './use-invoices';
 
 // Receipts
 export {
