@@ -93,12 +93,14 @@ vi.mock('@/components/ui/select', () => ({
   ),
 }));
 // The dashboard's "Create New Request" button links to /tickets?new=1.
-const nav = vi.hoisted(() => ({ search: '', replace: vi.fn() }));
+const nav = vi.hoisted(() => ({ search: '', replace: vi.fn(), push: vi.fn(), layout: 'standard' as 'standard' | 'classic' }));
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(nav.search),
   usePathname: () => '/tickets',
-  useRouter: () => ({ replace: nav.replace }),
+  useRouter: () => ({ replace: nav.replace, push: nav.push }),
 }));
+vi.mock('@/lib/layout-context', () => ({ useAdminLayout: () => nav.layout }));
+vi.mock('../helpdesk/new/use-unit-choices', () => ({ useUnitChoices: () => ({ data: [] }) }));
 vi.mock('next/link', () => ({
   default: ({ href, children, className }: { href: string; children: ReactNode; className?: string }) => (
     <a href={href} className={className}>{children}</a>
@@ -114,7 +116,9 @@ const ALL_FIVE = [...THREE_OVERDUE, ticket('4'), ticket('5')];
 
 beforeEach(() => {
   nav.search = '';
+  nav.layout = 'standard';
   nav.replace.mockClear();
+  nav.push.mockClear();
   mocks.assigneesSucceeded = true;
   mocks.bulkReassign.mockClear();
   mocks.useTickets.mockReset().mockImplementation((filters: { overdue?: boolean }) =>
@@ -272,5 +276,39 @@ describe('Tickets page — Open and Closed tabs, By, Unit and Days (HELP-12)', (
     expect(within(row).getByText('Asha Rao')).toBeTruthy();
     expect(within(row).getByText('A-101')).toBeTruthy();
     expect(within(row).getByText('4')).toBeTruthy();
+  });
+});
+
+describe('Tickets page — Create Request (HELP-13)', () => {
+  it('opens the same form as a dialog in standard', () => {
+    render(<TicketsContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'New Ticket' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: 'New Ticket' })).toBeTruthy();
+    expect(within(dialog).getByLabelText('Write your Request')).toBeTruthy();
+    expect(within(dialog).getByLabelText('Priority')).toBeTruthy();
+    expect(within(dialog).queryByLabelText('This is urgent!')).toBeNull();
+    expect(nav.push).not.toHaveBeenCalled();
+  });
+
+  it('goes to the Create Request page in classic', () => {
+    nav.layout = 'classic';
+    render(<TicketsContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Request' }));
+
+    expect(nav.push).toHaveBeenCalledWith('/helpdesk/new');
+    expect(screen.queryByRole('heading', { name: 'Create Request' })).toBeNull();
+  });
+
+  it('sends ?new=1 to the page in classic', () => {
+    nav.layout = 'classic';
+    nav.search = 'new=1';
+
+    render(<TicketsContent />);
+
+    expect(nav.replace).toHaveBeenCalledWith('/helpdesk/new');
   });
 });

@@ -118,10 +118,10 @@ export const classicMenu: MenuNode[] = [
     id: 'helpdesk',
     label: 'HelpDesk Tracker',
     icon: icon(TicketCheck),
-    // HELP-11. Create Request opens today's dialog until HELP-13 gives it
-    // a page; Close goes to Open Requests, where the desk works. Today's
-    // /tickets list stays inside the module.
-    create: { label: 'Create Request', href: '/tickets?new=1' },
+    // HELP-11. Create Request is a page of its own (HELP-13); Close goes
+    // to Open Requests, where the desk works. Today's /tickets list stays
+    // inside the module.
+    create: { label: 'Create Request', href: '/helpdesk/new' },
     close: '/helpdesk/open',
     aliases: ['/tickets'],
     children: [

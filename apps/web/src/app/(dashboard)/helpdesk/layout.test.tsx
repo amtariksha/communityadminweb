@@ -71,6 +71,14 @@ describe('HelpDesk Tracker frame', () => {
     expect(screen.getByRole('heading').textContent?.startsWith('HelpDesk Tracker')).toBe(true);
   });
 
+  it('frames Create Request as a page of the module, leaving Save and Close to the form', () => {
+    renderAt('/helpdesk/new');
+
+    expect(screen.getByRole('heading', { name: 'HelpDesk Tracker › Create Request' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Create Request' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Close' })).toBeNull();
+  });
+
   it('closes the other lists to Open Requests', () => {
     renderAt('/helpdesk/closed');
 

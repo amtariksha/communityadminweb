@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, type ReactNode } from 'react';
+import { useCallback, useState, useEffect, type ReactNode } from 'react';
 import {
   AlertCircle,
   Clock,
@@ -19,12 +19,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
   TableBody,
@@ -33,15 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,18 +48,18 @@ import {
   useHelpdeskCategories,
   useHelpdeskAssignees,
   useTicketCategories,
-  useCreateTicket,
   useBulkCloseTickets,
   useBulkReassignTickets,
-  useUploadFileToS3,
   useHelpdeskKpi,
 } from '@/hooks';
 import type { Ticket } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
 import { useOpenOnNewParam } from '@/hooks/use-open-on-new-param';
-import { UploadProgress } from '@/components/ui/upload-progress';
 import { useAdminLayout } from '@/lib/layout-context';
 import { ticketStatusLabel } from '@/lib/ticket-status';
+import { useFormMode, useOpenForm } from '@/components/form-page';
+import { useWord } from '@/lib/vocabulary';
+import { CreateRequestForm } from '../helpdesk/new/create-request-form';
 import { CannedTemplatesDialog } from './canned-templates-dialog';
 import { priorityTone, requestAgeDays, statusTone } from './ticket-badges';
 import { TicketDetailDialog } from './ticket-detail-dialog';
@@ -78,6 +67,8 @@ import { useTicketStatusUpdate } from './use-ticket-status-update';
 import { categoryChoices } from './category-choices';
 import { BulkReassignDialog } from './bulk-reassign-dialog';
 import { QueueTabs, type QueueTab } from './queue-tabs';
+
+const CREATE_REQUEST_PAGE = '/helpdesk/new';
 
 const TICKET_SORTS = [
   'created_at',
@@ -117,6 +108,7 @@ function StatCardSkeleton(): ReactNode {
 export default function TicketsContent(): ReactNode {
   const { addToast } = useToast();
   const layout = useAdminLayout();
+  const word = useWord();
   const PAGE_SIZE = 20;
 
   // Filters
@@ -132,22 +124,14 @@ export default function TicketsContent(): ReactNode {
   const currentPage = listState.state.page;
   const setCurrentPage = listState.setPage;
 
-  // Create dialog
+  // Create dialog (standard); classic opens the Create Request page (SB-07).
   const [createOpen, setCreateOpen] = useState(false);
-  const [newSubject, setNewSubject] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [newCategory, setNewCategory] = useState('');
-  // Empty = the category's own default priority.
-  const [newPriority, setNewPriority] = useState('');
-  // QA #231 — optional single attachment per ticket. The picker
-  // selects the File; on submit we upload via useUploadFileToS3 and
-  // pass the resulting URL + display name into createTicket.
-  const [newAttachment, setNewAttachment] = useState<File | null>(null);
-  const [newAttachmentPercent, setNewAttachmentPercent] = useState<number | null>(null);
-  const [newAttachmentFailed, setNewAttachmentFailed] = useState(false);
+  const openCreateDialog = useCallback(() => setCreateOpen(true), []);
+  const openCreate = useOpenForm(CREATE_REQUEST_PAGE, openCreateDialog);
+  const formMode = useFormMode();
 
   // The dashboard's "Create New Request" button links here with ?new=1.
-  useOpenOnNewParam(() => setCreateOpen(true));
+  useOpenOnNewParam(openCreateDialog, formMode === 'page' ? CREATE_REQUEST_PAGE : undefined);
 
   // Detail dialog: open while a request is chosen.
   const [selectedTicketId, setSelectedTicketId] = useState('');
@@ -179,9 +163,7 @@ export default function TicketsContent(): ReactNode {
   const statsQuery = useTicketStats();
 
   // Mutations
-  const createMutation = useCreateTicket();
   const statusUpdate = useTicketStatusUpdate();
-  const uploadAttachment = useUploadFileToS3();
   const bulkCloseMutation = useBulkCloseTickets();
   const bulkReassignMutation = useBulkReassignTickets();
 
@@ -218,83 +200,8 @@ export default function TicketsContent(): ReactNode {
     return choice?.categoryId ? { category_id: choice.categoryId } : { category: choiceValue };
   }
 
-  /** What to send for the category chosen in the New Ticket dialog. */
-  function newCategoryFields(): { category_id?: string; category: string } {
-    const choice = categories.find((entry) => entry.value === newCategory);
-    // Both are sent: a server that knows categories files by id, an older one by name.
-    return choice?.categoryId
-      ? { category_id: choice.categoryId, category: choice.label }
-      : { category: newCategory.trim() };
-  }
-
   function handleViewTicket(ticket: Ticket): void {
     setSelectedTicketId(ticket.id);
-  }
-
-  async function handleCreateTicket(): Promise<void> {
-    if (!newSubject.trim() || !newCategory.trim()) {
-      addToast({ title: 'Subject and category are required', variant: 'destructive' });
-      return;
-    }
-
-    // QA #231 — if the user picked an attachment, upload it via the
-    // presigned-PUT flow first and then create the ticket with the
-    // resulting URL + display name. The backend refuse-half-payload
-    // refine() pass enforces "both or neither" so we never persist an
-    // orphaned URL.
-    let attachmentUrl: string | undefined;
-    let attachmentName: string | undefined;
-    if (newAttachment) {
-      setNewAttachmentFailed(false);
-      setNewAttachmentPercent(0);
-      try {
-        const result = await uploadAttachment.mutateAsync({
-          file: newAttachment,
-          onProgress: setNewAttachmentPercent,
-        });
-        attachmentUrl = result.fileUrl;
-        attachmentName = newAttachment.name;
-      } catch (err) {
-        setNewAttachmentFailed(true);
-        addToast({
-          title: 'Attachment upload failed',
-          description: (err as Error).message ?? 'Could not upload the attached file.',
-          variant: 'destructive',
-        });
-        return;
-      }
-    }
-
-    createMutation.mutate(
-      {
-        subject: newSubject.trim(),
-        description: newDescription.trim() || undefined,
-        ...newCategoryFields(),
-        priority: newPriority || undefined,
-        attachment_url: attachmentUrl,
-        attachment_name: attachmentName,
-      },
-      {
-        onSuccess() {
-          addToast({ title: 'Ticket created successfully', variant: 'success' });
-          setCreateOpen(false);
-          setNewSubject('');
-          setNewDescription('');
-          setNewCategory('');
-          setNewPriority('');
-          setNewAttachment(null);
-          setNewAttachmentPercent(null);
-          setNewAttachmentFailed(false);
-        },
-        onError(error) {
-          addToast({
-            title: 'Failed to create ticket',
-            description: friendlyError(error),
-            variant: 'destructive',
-          });
-        },
-      },
-    );
   }
 
   function handleUpdateStatus(ticketId: string, status: string): void {
@@ -395,9 +302,9 @@ export default function TicketsContent(): ReactNode {
                 Setup
               </Link>
             )}
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Button size="sm" onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
-              New Ticket
+              {word('New Ticket')}
             </Button>
           </div>
         }
@@ -741,121 +648,9 @@ export default function TicketsContent(): ReactNode {
         </CardContent>
       </Card>
 
-      {/* Create ticket dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>New Ticket</DialogTitle>
-            <DialogDescription>
-              Create a new maintenance request or complaint
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="new-subject">Subject</Label>
-              <Input
-                id="new-subject"
-                placeholder="Brief description of the issue"
-                value={newSubject}
-                onChange={(e) => setNewSubject(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="new-description">Description</Label>
-              <Textarea
-                id="new-description"
-                placeholder="Detailed description (optional)"
-                rows={3}
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-category">Category</Label>
-                <Select
-                  id="new-category"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                >
-                  <option value="">Select category</option>
-                  {categories.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="new-priority">Priority</Label>
-                <Select
-                  id="new-priority"
-                  value={newPriority}
-                  onChange={(e) => setNewPriority(e.target.value)}
-                >
-                  <option value="">Category default</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </Select>
-              </div>
-            </div>
-
-            {/* QA #231 — optional single attachment per ticket. */}
-            <div className="space-y-2">
-              <Label htmlFor="new-attachment">Attachment (optional)</Label>
-              <Input
-                id="new-attachment"
-                type="file"
-                accept="application/pdf,image/jpeg,image/png,image/webp"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null;
-                  setNewAttachment(file);
-                  setNewAttachmentPercent(null);
-                  setNewAttachmentFailed(false);
-                }}
-              />
-              {newAttachment && (
-                <p className="text-xs text-muted-foreground">
-                  {newAttachment.name} — {(newAttachment.size / 1024).toFixed(1)} KB
-                </p>
-              )}
-              <UploadProgress
-                percent={newAttachmentPercent}
-                fileName={newAttachment?.name}
-                state={
-                  newAttachmentFailed
-                    ? 'error'
-                    : newAttachmentPercent === 100
-                      ? 'done'
-                      : 'uploading'
-                }
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <DialogClose>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button
-              disabled={createMutation.isPending || uploadAttachment.isPending}
-              onClick={handleCreateTicket}
-            >
-              {uploadAttachment.isPending
-                ? 'Uploading...'
-                : createMutation.isPending
-                  ? 'Creating...'
-                  : 'Create Ticket'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {createOpen && (
+        <CreateRequestForm mode="dialog" open onClose={() => setCreateOpen(false)} onSaved={() => setCreateOpen(false)} />
+      )}
 
       <TicketDetailDialog ticketId={selectedTicketId} onClose={() => setSelectedTicketId('')} />
 

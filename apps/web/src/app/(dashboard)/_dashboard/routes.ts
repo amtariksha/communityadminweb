@@ -11,7 +11,8 @@ export const DASHBOARD_ROUTES = {
   settings: '/settings',
   // The classic HelpDesk list (HELP-12).
   tickets: '/helpdesk/open',
-  newRequest: '/tickets?new=1',
+  // Create Request as a page (HELP-13, SB-07).
+  newRequest: '/helpdesk/new',
   defaulters: '/invoices?filter=defaulters',
   purchases: '/purchases',
   invoices: '/invoices',

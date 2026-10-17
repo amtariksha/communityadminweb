@@ -9,10 +9,11 @@ import { useEffect, useRef } from 'react';
  * Announcement" link there). The parameter is removed from the URL once
  * handled so Back and a reload do not open the form again.
  *
- * In the classic layout this should land on the form page (SB-07); that block
- * is not built, so both layouts open the same dialog.
+ * Where the form has a page of its own and the layout shows forms as pages
+ * (SB-07), pass `formPage`: the link then goes to that page instead of
+ * opening the dialog.
  */
-export function useOpenOnNewParam(open: () => void): void {
+export function useOpenOnNewParam(open: () => void, formPage?: string): void {
   const query = useSearchParams()?.toString() ?? '';
   const pathname = usePathname();
   const router = useRouter();
@@ -25,9 +26,13 @@ export function useOpenOnNewParam(open: () => void): void {
   useEffect(() => {
     const params = new URLSearchParams(query);
     if (params.get('new') !== '1') return;
+    if (formPage) {
+      latestRouter.current.replace(formPage);
+      return;
+    }
     latestOpen.current();
     params.delete('new');
     const rest = params.toString();
     latestRouter.current.replace(rest ? `${pathname}?${rest}` : pathname);
-  }, [query, pathname]);
+  }, [query, pathname, formPage]);
 }

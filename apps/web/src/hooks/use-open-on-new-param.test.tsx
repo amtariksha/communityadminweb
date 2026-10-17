@@ -39,6 +39,17 @@ describe('useOpenOnNewParam', () => {
     expect(nav.replace).toHaveBeenCalledWith('/announcements?tab=active');
   });
 
+  it('goes to the form page instead, where forms are pages (SB-07)', () => {
+    nav.search = 'new=1';
+    const open = vi.fn();
+
+    renderHook(() => useOpenOnNewParam(open, '/helpdesk/new'));
+
+    expect(open).not.toHaveBeenCalled();
+    expect(nav.replace).toHaveBeenCalledTimes(1);
+    expect(nav.replace).toHaveBeenCalledWith('/helpdesk/new');
+  });
+
   it('does nothing without the parameter', () => {
     const open = vi.fn();
 
