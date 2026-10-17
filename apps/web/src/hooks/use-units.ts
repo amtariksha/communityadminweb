@@ -331,6 +331,23 @@ export function useCsvImportUnits() {
   });
 }
 
+export interface MemberImportRowResult {
+  /** 1-based position of the row in the request. */
+  row: number;
+  status: 'imported' | 'skipped';
+  error?: string;
+  /** Something not done even though the member was added. */
+  note?: string;
+}
+
+export interface MemberImportResult {
+  imported: number;
+  skipped: number;
+  /** One line per skipped row, from before per-row results existed. */
+  errors: string[];
+  results?: MemberImportRowResult[];
+}
+
 export function useBulkImportMembers() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -344,10 +361,9 @@ export function useBulkImportMembers() {
         move_in_date?: string;
       }>;
     }) {
-      return api.post<{ data: { imported: number; skipped: number; errors: string[] } }>(
-        '/units/import-members',
-        input,
-      );
+      // `results` (one entry per row) arrives with UNIT-04; an API that
+      // is not updated yet sends only the counts and `errors`.
+      return api.post<{ data: MemberImportResult }>('/units/import-members', input);
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: unitKeys.all });

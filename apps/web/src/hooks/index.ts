@@ -54,7 +54,12 @@ export {
   useCsvImportUnits,
   useBulkImportMembers,
 } from './use-units';
-export type { CsvImportRow, CsvImportResult } from './use-units';
+export type {
+  CsvImportRow,
+  CsvImportResult,
+  MemberImportResult,
+  MemberImportRowResult,
+} from './use-units';
 
 // Ledger
 export {

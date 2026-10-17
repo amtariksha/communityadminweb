@@ -20,8 +20,6 @@ import {
   Mail,
   Upload,
   Download,
-  AlertCircle,
-  CheckCircle2,
   CalendarPlus,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -76,7 +74,11 @@ import {
   isDuplicateOnboardError,
   useUploadFileToS3,
 } from '@/hooks';
-import type { UnitDetailMember } from '@/hooks';
+import type { MemberImportResult, UnitDetailMember } from '@/hooks';
+import {
+  ImportMembersResult,
+  rowErrorsFromApiError,
+} from './components/import-members-result';
 import { useOcrIdDocument } from '@/hooks/use-ocr';
 import { cn, formatDate } from '@/lib/utils';
 import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
@@ -281,11 +283,9 @@ export default function UnitsContent(): ReactNode {
   // Import members dialog state
   const [importMembersOpen, setImportMembersOpen] = useState(false);
   const [importCsvText, setImportCsvText] = useState('');
-  const [importResult, setImportResult] = useState<{
-    imported: number;
-    skipped: number;
-    errors: string[];
-  } | null>(null);
+  const [importResult, setImportResult] = useState<MemberImportResult | null>(null);
+  // Rows the server named when it refused the whole file (UNIT-04).
+  const [importRowErrors, setImportRowErrors] = useState<string[]>([]);
 
   // Add member dialog (family / tenant)
   const [addMemberOpen, setAddMemberOpen] = useState(false);
@@ -612,13 +612,16 @@ export default function UnitsContent(): ReactNode {
       {
         onSuccess(response) {
           const result = response.data;
+          setImportRowErrors([]);
           setImportResult(result);
           addToast({
             title: `Imported ${result.imported} members, ${result.skipped} skipped`,
-            variant: result.errors.length > 0 ? 'warning' : 'success',
+            variant: result.skipped > 0 ? 'warning' : 'success',
           });
         },
         onError(error) {
+          setImportResult(null);
+          setImportRowErrors(rowErrorsFromApiError(error));
           addToast({ title: 'Import failed', description: friendlyError(error), variant: 'destructive' });
         },
       },
@@ -1339,6 +1342,7 @@ export default function UnitsContent(): ReactNode {
                 if (!open) {
                   setImportCsvText('');
                   setImportResult(null);
+                  setImportRowErrors([]);
                 }
               }}
             >
@@ -1390,34 +1394,7 @@ export default function UnitsContent(): ReactNode {
                     />
                   </div>
 
-                  {importResult && (
-                    <div className="space-y-2 rounded-md border p-3">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        <span className="text-sm font-medium">
-                          Imported: {importResult.imported}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          Skipped: {importResult.skipped}
-                        </span>
-                      </div>
-                      {importResult.errors.length > 0 && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1 text-sm font-medium text-destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            Errors ({importResult.errors.length}):
-                          </div>
-                          <ul className="max-h-32 overflow-y-auto text-xs text-destructive">
-                            {importResult.errors.map((err, idx) => (
-                              <li key={idx} className="py-0.5">
-                                {err}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <ImportMembersResult result={importResult} rowErrors={importRowErrors} />
                 </div>
 
                 <DialogFooter>
