@@ -19,6 +19,8 @@ export interface Unit {
   tenant_name?: string | null;
   tenant_phone?: string | null;
   tenant_email?: string | null;
+  // UNIT-07 — the unit's member category; absent from an API that predates it.
+  member_category_id?: string | null;
 }
 
 export type MemberType = 'owner' | 'tenant' | 'family_member' | 'owner_family' | 'tenant_family';

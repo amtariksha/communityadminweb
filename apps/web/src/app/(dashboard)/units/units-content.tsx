@@ -75,11 +75,13 @@ import {
   useUploadFileToS3,
 } from '@/hooks';
 import type { MemberImportResult, UnitDetailMember } from '@/hooks';
+import { UnitCategorySelect } from './components/unit-category-select';
 import {
   ImportMembersResult,
   rowErrorsFromApiError,
 } from './components/import-members-result';
 import { useOcrIdDocument } from '@/hooks/use-ocr';
+import { useMemberCategories } from '@/hooks/use-categories-kyc';
 import { cn, formatDate } from '@/lib/utils';
 import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
 import { UserSearchSelect } from '@/components/ui/user-search-select';
@@ -262,6 +264,8 @@ export default function UnitsContent(): ReactNode {
   const [editArea, setEditArea] = useState('');
   const [editUnitType, setEditUnitType] = useState('residential');
   const [editIsActive, setEditIsActive] = useState(true);
+  const [editCategoryId, setEditCategoryId] = useState('');
+  const categoriesQuery = useMemberCategories();
 
   // Edit member dialog state
   const [editMemberOpen, setEditMemberOpen] = useState(false);
@@ -690,6 +694,7 @@ export default function UnitsContent(): ReactNode {
     area_sqft: number;
     unit_type: string;
     is_active: boolean;
+    member_category_id?: string | null;
   }): void {
     setDetailUnitId(unit.id);
     setEditUnitNumber(unit.unit_number);
@@ -698,6 +703,7 @@ export default function UnitsContent(): ReactNode {
     setEditArea(String(unit.area_sqft));
     setEditUnitType(unit.unit_type);
     setEditIsActive(unit.is_active);
+    setEditCategoryId(unit.member_category_id ?? '');
     setActiveTab('members');
     setDetailDialogOpen(true);
   }
@@ -735,6 +741,7 @@ export default function UnitsContent(): ReactNode {
           area_sqft: Number(editArea),
           unit_type: editUnitType,
           is_active: editIsActive,
+          member_category_id: editCategoryId || null,
         },
       },
       {
@@ -1840,6 +1847,11 @@ export default function UnitsContent(): ReactNode {
                   <option value="parking">Parking only</option>
                 </Select>
               </div>
+              <UnitCategorySelect
+                categories={categoriesQuery.data ?? []}
+                value={editCategoryId}
+                onChange={setEditCategoryId}
+              />
               <div className="flex items-center gap-2">
                 <input
                   id="edit-unit-active"

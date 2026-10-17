@@ -46,6 +46,8 @@ interface CreateUnitInput {
 interface UpdateUnitInput extends Partial<CreateUnitInput> {
   is_occupied?: boolean;
   is_active?: boolean;
+  /** UNIT-07 — null clears the unit's member category. */
+  member_category_id?: string | null;
 }
 
 interface BulkImportUnitsInput {
