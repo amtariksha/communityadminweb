@@ -21,6 +21,12 @@ export interface FetchPanelProps {
   initial?: Partial<FetchCriteria>;
   requireRange?: boolean;
   busy?: boolean;
+  /**
+   * Further controls of the register's own (e.g. an amenity select and
+   * status ticks, AMEN-S6), shown before Fetch. The page keeps their
+   * values and applies them when onFetch is called.
+   */
+  extra?: ReactNode;
   onFetch: (criteria: FetchCriteria) => void;
 }
 
@@ -103,6 +109,7 @@ export function FetchPanel(props: FetchPanelProps): ReactNode {
             ))}
           </fieldset>
         )}
+        {props.extra}
         <Button type="submit" disabled={props.busy}>
           {props.busy ? 'Fetching…' : 'Fetch'}
         </Button>

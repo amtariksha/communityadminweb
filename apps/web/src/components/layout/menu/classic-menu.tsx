@@ -468,7 +468,7 @@ export const classicMenu: MenuNode[] = [
         label: 'Amenity',
         aliases: ['/amenities'],
         tabs: [
-          planned('amenity.reservations', 'Amenity Reservations', 'AMEN-11'),
+          { id: 'amenity.reservations', label: 'Amenity Reservations', href: '/amenities/reservations', logs: ['amenity'] },
           { id: 'amenity.calendar', label: 'Reservations Calendar', href: '/amenities/calendar', logs: ['amenity'] },
         ],
       },

@@ -100,3 +100,23 @@ describe('FetchPanel in a DataTable (SB-09)', () => {
     expect((screen.getByLabelText('All') as HTMLInputElement).checked).toBe(true);
   });
 });
+
+describe('FetchPanel extra controls (AMEN-11)', () => {
+  it("shows the register's own controls before Fetch, and still fetches the range", () => {
+    const onFetch = vi.fn();
+    render(
+      <FetchPanel
+        title="Fetch reservations"
+        range="date"
+        extra={<label>Confirmed<input type="checkbox" /></label>}
+        onFetch={onFetch}
+      />,
+    );
+
+    const form = screen.getByRole('form', { name: 'Fetch reservations' });
+    const controls = Array.from(form.querySelectorAll('input, button')).map((el) => el.getAttribute('type') ?? el.tagName);
+    expect(controls.indexOf('checkbox')).toBeLessThan(controls.indexOf('submit'));
+    fireEvent.click(within(form).getByRole('button', { name: 'Fetch' }));
+    expect(onFetch).toHaveBeenCalledWith({ from: '', to: '', choice: '' });
+  });
+});
