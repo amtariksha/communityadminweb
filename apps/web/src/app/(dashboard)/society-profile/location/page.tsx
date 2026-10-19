@@ -3,43 +3,27 @@
 import { type ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTenant } from '@/hooks/use-tenants';
-import { getCurrentTenant } from '@/lib/auth';
+import { useSocietyProfile } from '@/hooks/use-society-profile';
+import { friendlyError } from '@/lib/api-error';
+import { currentRole } from '@/lib/current-role';
+import { isNotDeployed } from '@/lib/not-deployed';
+import { LocationEditor } from './location-editor';
+import { StoredAddress } from './stored-address';
 
-function Row({ label, value }: { label: string; value: string | null | undefined }): ReactNode {
-  return (
-    <div className="grid grid-cols-[10rem_1fr] gap-2 py-1 text-sm">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd>{value || '—'}</dd>
-    </div>
-  );
-}
+// PATCH /tenant-settings/profile: address and map point (decision PROF-D6).
+const LOCATION_EDITORS = new Set(['super_admin', 'community_admin']);
 
-/**
- * Society Profile › Location (PROF-S3) over today's data: the society's
- * name and address as stored. Editing, pin code, phone and the map point
- * arrive with PROF-20; until then the platform team changes them.
- */
+/** Society Profile › Location (PROF-S3, PROF-20). */
 export default function Page(): ReactNode {
-  const tenant = useTenant(getCurrentTenant() ?? '');
-  return (
-    <Card>
-      <CardContent className="space-y-3 pt-6">
-        <h3 className="font-semibold">Society Address</h3>
-        {tenant.isLoading ? (
-          <Skeleton className="h-24 w-full" />
-        ) : (
-          <dl>
-            <Row label="Society Name" value={tenant.data?.name} />
-            <Row label="Address" value={tenant.data?.address} />
-            <Row label="City" value={tenant.data?.city} />
-            <Row label="State" value={tenant.data?.state} />
-          </dl>
-        )}
-        <p className="text-xs text-muted-foreground">
-          The committee will be able to edit the address, pin code, phone and map location here soon.
-        </p>
-      </CardContent>
-    </Card>
-  );
+  const profile = useSocietyProfile();
+  if (profile.isLoading) return <Skeleton className="h-64 w-full" />;
+  if (isNotDeployed(profile.error)) return <StoredAddress />;
+  if (profile.error || !profile.data) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-sm text-destructive">Could not load the society profile: {friendlyError(profile.error)}</CardContent>
+      </Card>
+    );
+  }
+  return <LocationEditor profile={profile.data} canEdit={LOCATION_EDITORS.has(currentRole() ?? '')} />;
 }

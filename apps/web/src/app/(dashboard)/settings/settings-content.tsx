@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Save, Shield, CalendarClock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,10 +12,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/page-header';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
-import { getCurrentTenant, getUser } from '@/lib/auth';
+import { getCurrentTenant } from '@/lib/auth';
 import {
   useTenant,
-  useUpdateTenant,
   useTenantSettings,
   useRbacPermissions,
   useUpdatePermission,
@@ -42,6 +41,7 @@ import { AdminLayoutCard } from './admin-layout-card';
 import { OwnerDirectOnboardCard } from './owner-direct-onboard-card';
 import { FinancialYearsCard } from './financial-years-card';
 import { ModulesCard } from './modules-card';
+import { SocietyInfoCard } from './society-info-card';
 import { useEnforcedPermissions } from '@/hooks/use-enforced-permissions';
 
 
@@ -52,21 +52,14 @@ import { useEnforcedPermissions } from '@/hooks/use-enforced-permissions';
 export default function SettingsContent(): ReactNode {
   const { addToast } = useToast();
   const currentTenantId = getCurrentTenant() ?? '';
-  const currentUser = getUser();
-  const isSuperAdmin = currentUser?.isSuperAdmin === true;
 
   // Data queries
   const tenantQuery = useTenant(currentTenantId);
 
   // Mutations
-  const updateTenant = useUpdateTenant();
   const updateSettings = useTenantSettings();
 
   // Society info form state
-  const [societyName, setSocietyName] = useState('');
-  const [societyAddress, setSocietyAddress] = useState('');
-  const [societyCity, setSocietyCity] = useState('');
-  const [societyState, setSocietyState] = useState('');
 
   // Purchase Request approval config (stored inside tenant.settings_json)
   const [prApprovalLevels, setPrApprovalLevels] = useState<number>(1);
@@ -88,11 +81,6 @@ export default function SettingsContent(): ReactNode {
   // Populate form when tenant data loads
   useEffect(() => {
     if (tenant) {
-      setSocietyName(tenant.name ?? '');
-      setSocietyAddress(tenant.address ?? '');
-      setSocietyCity(tenant.city ?? '');
-      setSocietyState(tenant.state ?? '');
-
       const settingsJson = tenant.settings_json as Record<string, unknown> | undefined;
       if (settingsJson) {
         if (typeof settingsJson.pr_approval_levels === 'number') {
@@ -107,33 +95,6 @@ export default function SettingsContent(): ReactNode {
       }
     }
   }, [tenant]);
-
-  // ---------------------------------------------------------------------------
-  // Society info handlers
-  // ---------------------------------------------------------------------------
-
-  function handleSaveSocietyInfo(e: FormEvent): void {
-    e.preventDefault();
-    updateTenant.mutate(
-      {
-        id: currentTenantId,
-        data: {
-          name: societyName,
-          address: societyAddress,
-          city: societyCity,
-          state: societyState,
-        },
-      },
-      {
-        onSuccess() {
-          addToast({ title: 'Society info updated', variant: 'success' });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to update', description: friendlyError(error), variant: 'destructive' });
-        },
-      },
-    );
-  }
 
   // ---------------------------------------------------------------------------
   // Billing rule handlers
@@ -274,87 +235,8 @@ export default function SettingsContent(): ReactNode {
         description="Society settings — gates, amenities, roles & permissions"
       />
 
-      {/* ------------------------------------------------------------------- */}
-      {/* Society Info Section                                                 */}
-      {/* Editable only by super admin. Others see read-only fields and a     */}
-      {/* hint directing them to the super-admin dashboard for changes.       */}
-      {/* ------------------------------------------------------------------- */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Society Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {tenantQuery.isLoading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <div className="grid grid-cols-2 gap-4">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSaveSocietyInfo} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="society-name">Society Name</Label>
-                <Input
-                  id="society-name"
-                  required
-                  value={societyName}
-                  onChange={(e) => setSocietyName(e.target.value)}
-                  readOnly={!isSuperAdmin}
-                  disabled={!isSuperAdmin}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="society-address">Address</Label>
-                <Input
-                  id="society-address"
-                  value={societyAddress}
-                  onChange={(e) => setSocietyAddress(e.target.value)}
-                  readOnly={!isSuperAdmin}
-                  disabled={!isSuperAdmin}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="society-city">City</Label>
-                  <Input
-                    id="society-city"
-                    value={societyCity}
-                    onChange={(e) => setSocietyCity(e.target.value)}
-                    readOnly={!isSuperAdmin}
-                    disabled={!isSuperAdmin}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="society-state">State</Label>
-                  <Input
-                    id="society-state"
-                    value={societyState}
-                    onChange={(e) => setSocietyState(e.target.value)}
-                    readOnly={!isSuperAdmin}
-                    disabled={!isSuperAdmin}
-                  />
-                </div>
-              </div>
-              {isSuperAdmin ? (
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={updateTenant.isPending}>
-                    <Save className="mr-2 h-4 w-4" />
-                    {updateTenant.isPending ? 'Saving...' : 'Save Society Info'}
-                  </Button>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Society details can only be changed by a super admin. Contact
-                  support if any of the values above are incorrect.
-                </p>
-              )}
-            </form>
-          )}
-        </CardContent>
-      </Card>
+      {/* Society Info — the community admin edits the address (PROF-20). */}
+      <SocietyInfoCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Purchase Request Approval Configuration                             */}
