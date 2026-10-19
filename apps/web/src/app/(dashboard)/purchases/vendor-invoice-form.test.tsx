@@ -15,6 +15,14 @@ vi.mock('@/components/ui/select', () => ({
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('@/hooks/use-debounced-value', () => ({ useDebouncedValue: <T,>(value: T) => value }));
 vi.mock('@/hooks/use-ocr', () => ({ useOcrInvoice: () => ({ mutateAsync: vi.fn(), isPending: false }) }));
+vi.mock('@/hooks/use-documents', () => ({ useUploadFileToS3: () => ({ mutateAsync: vi.fn() }) }));
+// The convert hook (EXP-10) and the attachments hook (EXP-12) use react-query directly.
+vi.mock('@tanstack/react-query', async (original) => ({
+  ...(await original<typeof import('@tanstack/react-query')>()),
+  useMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+}));
+vi.mock('@/hooks/use-purchase-requests', () => ({ usePurchaseRequestDetail: () => ({ data: undefined }), purchaseRequestKeys: { all: ['pr'] } }));
 // EXP-10 — converting a purchase request: from-request.test.tsx covers it.
 vi.mock('./vendor-invoice/from-request', () => ({
   useRequestPrefill: () => ({ ready: true, detail: null }),
@@ -54,7 +62,13 @@ vi.mock('@/hooks/use-vendor-bills', () => ({
       gst: { society_state_code: '29', rate_options: [0, 5, 18, 40], pre_reform_rates: [12, 28], reform_date: '2025-09-22' },
     },
   }),
-  useCreateVendorInvoice: () => ({ mutate: mocks.create, isPending: false }),
+  useCreateVendorInvoice: () => ({
+    isPending: false,
+    mutate: (input: unknown, handlers?: { onSuccess?: (bill: unknown) => void }) => {
+      mocks.create(input);
+      handlers?.onSuccess?.({ id: 'bill-9', bill_number: 'BILL-00009' });
+    },
+  }),
   useBillPreview: (input: unknown) => {
     mocks.previewInputs.push(input);
     const taxable = (input as { lines?: Array<{ taxable_amount: number }> } | null)?.lines?.reduce((s, l) => s + l.taxable_amount, 0) ?? 0;
@@ -161,3 +175,28 @@ describe('Post vendor invoice', () => {
   });
 });
 
+
+describe('invoice attachments', () => {
+  const file = (name: string, type: string, size = 1000): File => {
+    const f = new File(['x'], name, { type });
+    Object.defineProperty(f, 'size', { value: size });
+    return f;
+  };
+
+  it('takes up to 3 PDF / JPEG / PNG files of 5 MB each', async () => {
+    const { checkInvoiceFiles } = await import('./vendor-invoice/use-invoice-files');
+    const result = checkInvoiceFiles(1, [
+      file('a.pdf', 'application/pdf'),
+      file('b.png', 'image/png'),
+      file('c.jpg', 'image/jpeg'),
+      file('d.doc', 'application/msword'),
+      file('e.pdf', 'application/pdf', 6 * 1024 * 1024),
+    ]);
+    expect(result.accepted.map((f) => f.name)).toEqual(['a.pdf', 'b.png']);
+    expect(result.refused).toEqual([
+      'c.jpg: an invoice holds at most 3 files',
+      'd.doc: attach a PDF, JPEG or PNG',
+      'e.pdf: each file must be 5 MB or smaller',
+    ]);
+  });
+});

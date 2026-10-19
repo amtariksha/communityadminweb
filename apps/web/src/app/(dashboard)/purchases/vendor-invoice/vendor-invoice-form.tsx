@@ -23,6 +23,8 @@ import {
   type InvoiceRow,
 } from './invoice-model';
 import { InvoiceLineGrid } from './invoice-line-grid';
+import { InvoiceFiles } from './invoice-files';
+import { useInvoiceFiles } from './use-invoice-files';
 import { useInvoiceScan } from './use-invoice-scan';
 import { InvoiceEntriesPanel, InvoiceTdsBlock } from './invoice-side-panels';
 import { useConvertRequestToInvoice, useRequestPrefill } from './from-request';
@@ -83,15 +85,26 @@ export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
   const preview = useBillPreview(debouncedInput);
   const issue = formIssue(header, rows);
   const patch = (next: Partial<InvoiceHeader>): void => setHeader((h) => ({ ...h, ...next }));
+  const invoiceFiles = useInvoiceFiles();
   const scan = useInvoiceScan(vendorList.data?.data ?? [], fixedVendorId, setHeader, setRows);
+
+  /** After posting: the waiting files go up and are recorded on the invoice. */
+  async function finish(bill: PostedVendorInvoice): Promise<void> {
+    const failed = await invoiceFiles.attachAll(bill.id);
+    addToast(
+      failed.length
+        ? { title: `Invoice posted as ${bill.bill_number}; some files were not attached`, description: failed.join(', '), variant: 'warning' }
+        : { title: `Invoice posted as ${bill.bill_number}`, variant: 'success' },
+    );
+    props.onSaved(bill);
+  }
 
   function save(): void {
     setTouched(true);
     if (!input) return;
     const handlers = {
       onSuccess(bill: PostedVendorInvoice) {
-        addToast({ title: `Invoice posted as ${bill.bill_number}`, variant: 'success' });
-        props.onSaved(bill);
+        void finish(bill);
       },
       onError(error: Error) {
         addToast({ title: 'Could not post the invoice', description: friendlyError(error), variant: 'destructive' });
@@ -128,6 +141,7 @@ export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
         <Label htmlFor="inv-payee">Payee Name</Label>
         <Input id="inv-payee" maxLength={255} value={header.payeeName} onChange={(e) => patch({ payeeName: e.target.value })} />
       </div>
+      <InvoiceFiles waiting={invoiceFiles.files} refused={invoiceFiles.refused} onAdd={invoiceFiles.add} onRemove={invoiceFiles.remove} />
       <InvoiceEntriesPanel preview={input ? preview.data : undefined} loading={preview.isFetching} error={input ? preview.error : null} />
       {touched && issue && <p role="alert" className="text-sm text-destructive">{issue}</p>}
     </FormFrame>

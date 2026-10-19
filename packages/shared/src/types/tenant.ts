@@ -5,6 +5,9 @@ export interface TenantSettings {
   overstay_threshold_minutes?: number;
   // EXP-06 — GST rates offered on purchase request lines (unset = 0/5/18/40).
   gst_rate_options?: number[];
+  // EXP-11 — input GST on vendor invoices claimed (input ledgers) or a cost
+  // (expense head); unset = claimed only when the society has a GSTIN.
+  gst_input_credit_claimable?: boolean | null;
 
   // Admin-web arrangement for this society: today's layout or the
   // classic menu, density and wording. Absent = standard.
