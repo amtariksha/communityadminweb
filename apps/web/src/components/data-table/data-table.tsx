@@ -69,6 +69,8 @@ export interface DataTableProps<Row> {
    * panel's Fetch is pressed). Leave it out for live filters.
    */
   fetchMode?: DataTableFetchMode;
+  /** Rows after the body, e.g. a report section's totals (REP-05); cells after S.No. */
+  footer?: ReactNode;
 }
 
 export interface DataTableFetchMode {
@@ -231,6 +233,7 @@ export function DataTable<Row>(props: DataTableProps<Row>): ReactNode {
         <TableBody>
           <BodyRows {...props} span={span} />
         </TableBody>
+        {props.footer && !waiting && rows.length > 0 && <tfoot>{props.footer}</tfoot>}
       </Table>
       {!waiting && (
         <DataTablePager

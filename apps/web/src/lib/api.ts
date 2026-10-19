@@ -395,4 +395,9 @@ export const api = {
   download(path: string, options?: Omit<ApiRequestOptions, 'responseType'>): Promise<Blob> {
     return request<Blob>('GET', path, undefined, { ...options, responseType: 'blob' });
   },
+
+  /** A file whose options travel in a JSON body (report exports, REP-05). */
+  downloadPost(path: string, body: unknown, options?: Omit<ApiRequestOptions, 'responseType'>): Promise<Blob> {
+    return request<Blob>('POST', path, body, { ...options, responseType: 'blob' });
+  },
 };

@@ -18,6 +18,8 @@ export interface DataTableExport {
   params: Record<string, string>;
   /** File name before the date, e.g. "open-requests". */
   filename: string;
+  /** Options sent as a JSON body instead (POST), e.g. a report's (REP-05). */
+  body?: Record<string, unknown>;
 }
 
 interface ExportStripProps {
@@ -54,7 +56,9 @@ export function ExportStrip({ config, copyText, printPage, rowCount }: ExportStr
     setError(null);
     setNotice(null);
     try {
-      const blob = await api.download(config.path, { params: { ...config.params, format } });
+      const blob = config.body
+        ? await api.downloadPost(config.path, { ...config.body, format })
+        : await api.download(config.path, { params: { ...config.params, format } });
       saveBlob(blob, exportFileName(config.filename, format));
     } catch (failure) {
       setError(exportError(failure));
