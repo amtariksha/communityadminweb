@@ -47,6 +47,27 @@ describe('RoleDelegationCard', () => {
     expect(screen.queryByText('Member directory with contact details')).toBeNull();
   });
 
+  // GATE-05, AMEN-04, ASSET-04, STAFF-03 — resolved by UNIT-08 + UNIT-D21:
+  // the switches those tickets named are not offered (the grid cells are the
+  // switches now).
+  it.each([
+    ['GATE-05', 'Parcel logs + mark collected'],
+    ['GATE-05', 'ANPR vehicle logs'],
+    ['GATE-05', 'Review unrecognized vehicles'],
+    ['GATE-05', 'Cancel / override visitor passes'],
+    ['AMEN-04', 'Amenity bookings (cancel, manage slots)'],
+    ['ASSET-04', 'Assets + AMC (view, log service)'],
+    ['STAFF-03', 'Create/edit non-guard staff'],
+    ['STAFF-03', 'Manage shifts (guards)'],
+    ['STAFF-03', 'Manage shifts (all staff)'],
+    ['STAFF-03', 'View attendance reports'],
+    ['STAFF-03', 'Approve leave — all staff'],
+  ])('%s: does not offer "%s"', (_ticket, label) => {
+    render(<RoleDelegationCard />);
+
+    expect(screen.queryByText(label)).toBeNull();
+  });
+
   it('still offers the role expiry control', () => {
     render(<RoleDelegationCard />);
 
