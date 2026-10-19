@@ -16,7 +16,6 @@ export interface ParkingSlot {
   assigned_to_member_id: string | null;
   has_ev_charger: boolean;
   is_occupied: boolean;
-  monthly_charge: number;
   status: string;
   sticker_number?: string | null;
   rfid_tag?: string | null;
@@ -42,6 +41,11 @@ export interface Vehicle {
   member_name?: string;
   unit_number?: string;
   slot_number?: string;
+  // PARK-02 — from the list: the unit's block, the slot's type and the
+  // register status (absent from an API built before PARK-02).
+  block?: string | null;
+  slot_type?: string | null;
+  register_status?: VehicleRegisterStatus;
   // FeatPlan #OW-3 — approval workflow. POST /vehicles defaults to
   // approval_status='pending' + is_active=false; community_admin /
   // committee_member must PATCH approve to flip is_active=true.
@@ -81,11 +85,24 @@ export interface SlotStats {
 export interface SlotFilters {
   slot_type?: string;
   status?: string;
+  /** Slot number or location. */
+  search?: string;
+  page?: number;
+  limit?: number;
 }
+
+/** GET /parking/vehicles `status` (PARK-02); none = in use and awaiting approval. */
+export type VehicleRegisterStatus = 'pending' | 'active' | 'expired' | 'rejected' | 'removed';
 
 export interface VehicleFilters {
   vehicle_type?: string;
   unit_id?: string;
+  /** Plate, sticker, member name or unit number. */
+  search?: string;
+  block?: string;
+  status?: VehicleRegisterStatus;
+  page?: number;
+  limit?: number;
   // FeatPlan #OW-3 — when set, the backend (parking.controller.ts:191)
   // bypasses the legacy is_active=true predicate and selects rows by
   // approval_status. Use 'pending' to populate the approval queue.
@@ -105,7 +122,6 @@ export interface CreateSlotInput {
   slot_type: string;
   location?: string | null;
   has_ev_charger?: boolean;
-  monthly_charge?: number;
   sticker_number?: string | null;
   rfid_tag?: string | null;
   is_ev_enabled?: boolean;
@@ -177,22 +193,29 @@ export const parkingKeys = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function slotFiltersToParams(filters?: SlotFilters): Record<string, string> | undefined {
+// Query-string params from a filter object: blank values are left out,
+// numbers become strings.
+function toParams(filters?: object): Record<string, string> | undefined {
   if (!filters) return undefined;
   const params: Record<string, string> = {};
-  if (filters.slot_type) params.slot_type = filters.slot_type;
-  if (filters.status) params.status = filters.status;
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === undefined || value === null || value === '') continue;
+    params[key] = String(value);
+  }
   return params;
 }
 
-function vehicleFiltersToParams(filters?: VehicleFilters): Record<string, string> | undefined {
-  if (!filters) return undefined;
-  const params: Record<string, string> = {};
-  if (filters.vehicle_type) params.vehicle_type = filters.vehicle_type;
-  if (filters.unit_id) params.unit_id = filters.unit_id;
-  if (filters.approval_status) params.approval_status = filters.approval_status;
-  return params;
+/** The slot and vehicle list filters as GET params (also the export's). */
+export function slotFiltersToParams(filters?: SlotFilters): Record<string, string> | undefined {
+  return toParams(filters);
 }
+
+export function vehicleFiltersToParams(filters?: VehicleFilters): Record<string, string> | undefined {
+  return toParams(filters);
+}
+
+/** Pickers load the whole slot list (GET /parking/slots allows up to 1,000). */
+export const SLOT_PICKER_LIMIT = 1000;
 
 function subletFiltersToParams(filters?: SubletFilters): Record<string, string> | undefined {
   if (!filters) return undefined;
@@ -216,6 +239,30 @@ export function useSlots(filters?: SlotFilters) {
         .then(function unwrap(res) {
           return res.data;
         });
+    },
+  });
+}
+
+/** One page of the slot list with its total (PARK-02). */
+export function useSlotPage(filters: SlotFilters) {
+  return useQuery({
+    queryKey: [...parkingKeys.slotList(filters), 'page'] as const,
+    queryFn: function fetchSlotPage() {
+      return api.get<{ data: ParkingSlot[]; total: number }>('/parking/slots', {
+        params: slotFiltersToParams(filters),
+      });
+    },
+  });
+}
+
+/** One page of the vehicle register with its total (PARK-02). */
+export function useVehiclePage(filters: VehicleFilters) {
+  return useQuery({
+    queryKey: [...parkingKeys.vehicleList(filters), 'page'] as const,
+    queryFn: function fetchVehiclePage() {
+      return api.get<{ data: Vehicle[]; total: number }>('/parking/vehicles', {
+        params: vehicleFiltersToParams(filters),
+      });
     },
   });
 }
