@@ -15,7 +15,20 @@ vi.mock('next/link', () => ({
 vi.mock('@/components/show-logs', () => ({ ShowLogsButton: (): ReactNode => <button type="button">Show Logs</button> }));
 
 const panelQuery = vi.hoisted(() => ({ result: {} as Record<string, unknown> }));
-vi.mock('@/hooks/use-unit-panel', () => ({ useUnitPanel: () => panelQuery.result }));
+vi.mock('@/hooks/use-unit-panel', () => ({
+  useUnitPanel: () => panelQuery.result,
+  unitPanelKeys: { panel: (id: string) => ['units', 'panel', id] },
+}));
+// UNIT-17 — the card and section actions' hooks and forms.
+const mutation = vi.hoisted(() => ({ mutate: () => undefined, isPending: false }));
+vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: () => undefined }) }));
+vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: () => undefined }) }));
+vi.mock('@/hooks/use-unit-members', () => ({ useUpdateMemberDetail: () => mutation, useDisconnectTenant: () => mutation }));
+vi.mock('@/hooks/use-units', () => ({ useRemoveMember: () => mutation }));
+vi.mock('@/hooks/use-unit-workers', () => ({ useRegisterUnitWorker: () => mutation, WORKER_CATEGORIES: ['maid'] }));
+vi.mock('@/hooks', () => ({ useDocumentCategories: () => ({ data: [] }) }));
+vi.mock('../../parking/components/vehicle-form', () => ({ VehicleForm: (): ReactNode => null }));
+vi.mock('../../documents/upload-document-dialog', () => ({ UploadDocumentDialog: (): ReactNode => <button type="button">Upload Document</button> }));
 
 const PANEL = {
   unit: { id: 'u-1', unit_number: '101', block: 'A' },

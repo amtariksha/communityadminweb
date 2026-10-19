@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ShowLogsButton } from '@/components/show-logs';
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useUnitPanel, type UnitPanel as UnitPanelData } from '@/hooks/use-unit-panel';
+import { useUnitPanel, type UnitPanel as UnitPanelData, type UnitPanelMember } from '@/hooks/use-unit-panel';
 import { ApiError } from '@/lib/api-error';
 import { isNotDeployed } from '@/lib/not-deployed';
 import { PanelDocuments } from './panel-documents';
@@ -13,6 +13,10 @@ import { PanelFamily } from './panel-family';
 import { PanelMembers } from './panel-members';
 import { PanelStaff } from './panel-staff';
 import { PanelVehicles } from './panel-vehicles';
+import { MemberForm } from '../components/member-form';
+import { memberFormValues } from '../components/member-form-values';
+import { StaffForm } from './staff-form';
+import { usePanelActions } from './use-panel-actions';
 import { APPROVED_USERS_ROUTE, blockUnitLabel, unitPanelHref } from './unit-labels';
 
 function PanelError({ error }: { error: unknown }): ReactNode {
@@ -40,6 +44,7 @@ function PanelError({ error }: { error: unknown }): ReactNode {
 }
 
 function PanelHeader({ panel }: { panel: UnitPanelData }): ReactNode {
+  const [addingStaff, setAddingStaff] = useState(false);
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h3 className="text-base font-semibold">Unit: {blockUnitLabel(panel.unit)}</h3>
@@ -53,8 +58,44 @@ function PanelHeader({ panel }: { panel: UnitPanelData }): ReactNode {
         >
           View/Edit Unit details
         </Link>
+        <Button type="button" variant="outline" size="sm" onClick={() => setAddingStaff(true)}>
+          + Create New Staff
+        </Button>
       </div>
+      {addingStaff && <StaffForm unitId={panel.unit.id} open onClose={() => setAddingStaff(false)} />}
     </div>
+  );
+}
+
+/** Edit Member as a page in the panel (SB-07 classic), Close back to the sections. */
+function MemberEditPage({ panel, member, onDone }: { panel: UnitPanelData; member: UnitPanelMember; onDone: () => void }): ReactNode {
+  const actions = usePanelActions(panel.unit.id);
+  const otherPrimary = [...panel.members, ...panel.family].find((m) => m.is_primary_contact && m.id !== member.id);
+  return (
+    <MemberForm
+      mode="page"
+      initial={memberFormValues(member)}
+      otherPrimaryName={otherPrimary?.name ?? null}
+      saving={actions.saving}
+      onClose={onDone}
+      onSave={(changes) => actions.saveMember(member.id, changes, onDone)}
+    />
+  );
+}
+
+function PanelSections({ panel }: { panel: UnitPanelData }): ReactNode {
+  const actions = usePanelActions(panel.unit.id);
+  const [editing, setEditing] = useState<UnitPanelMember | null>(null);
+  if (editing) return <MemberEditPage panel={panel} member={editing} onDone={() => setEditing(null)} />;
+  const unitId = panel.unit.id;
+  return (
+    <>
+      <PanelMembers members={panel.members} count={panel.counts.members} unitId={unitId} actions={actions} onEdit={setEditing} />
+      <PanelVehicles vehicles={panel.vehicles} count={panel.counts.vehicles} unitId={unitId} />
+      <PanelStaff staff={panel.staff} count={panel.counts.staff} unitId={unitId} />
+      <PanelDocuments documents={panel.documents} count={panel.counts.documents} unit={panel.unit} />
+      <PanelFamily family={panel.family} count={panel.counts.family} unitId={unitId} />
+    </>
   );
 }
 
@@ -75,11 +116,7 @@ export function UnitPanel({ unitId }: { unitId: string }): ReactNode {
   return (
     <div className="space-y-3">
       <PanelHeader panel={panel} />
-      <PanelMembers members={panel.members} count={panel.counts.members} />
-      <PanelVehicles vehicles={panel.vehicles} count={panel.counts.vehicles} />
-      <PanelStaff staff={panel.staff} count={panel.counts.staff} />
-      <PanelDocuments documents={panel.documents} count={panel.counts.documents} />
-      <PanelFamily family={panel.family} count={panel.counts.family} />
+      <PanelSections panel={panel} />
     </div>
   );
 }

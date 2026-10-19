@@ -1,5 +1,10 @@
-import { type ReactNode } from 'react';
-import type { UnitPanelVehicle } from '@/hooks/use-unit-panel';
+'use client';
+
+import { useQueryClient } from '@tanstack/react-query';
+import { useState, type ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
+import { unitPanelKeys, type UnitPanelVehicle } from '@/hooks/use-unit-panel';
+import { VehicleForm } from '../../parking/components/vehicle-form';
 import { PanelSection } from './panel-section';
 import { PanelTable, type PanelColumn } from './panel-table';
 
@@ -13,10 +18,35 @@ const COLUMNS: PanelColumn<UnitPanelVehicle>[] = [
   { header: 'Status', cell: (row) => STATUS_LABELS[row.status] ?? row.status },
 ];
 
-export function PanelVehicles({ vehicles, count }: { vehicles: UnitPanelVehicle[]; count: number }): ReactNode {
+/** Vehicles, with + Add Vehicle (PARK-09's form; an admin's vehicle is approved on save, PARK-03). */
+export function PanelVehicles({ vehicles, count, unitId }: { vehicles: UnitPanelVehicle[]; count: number; unitId: string }): ReactNode {
+  const [adding, setAdding] = useState(false);
+  const queryClient = useQueryClient();
   return (
-    <PanelSection title="Vehicles" count={count}>
-      <PanelTable label="Vehicles" columns={COLUMNS} rows={vehicles} rowKey={(row) => row.id} />
-    </PanelSection>
+    <>
+      <PanelSection
+        title="Vehicles"
+        count={count}
+        actions={
+          <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>
+            + Add Vehicle
+          </Button>
+        }
+      >
+        <PanelTable label="Vehicles" columns={COLUMNS} rows={vehicles} rowKey={(row) => row.id} />
+      </PanelSection>
+      {adding && (
+        <VehicleForm
+          mode="dialog"
+          open
+          unitId={unitId}
+          onClose={() => setAdding(false)}
+          onSaved={() => {
+            setAdding(false);
+            void queryClient.invalidateQueries({ queryKey: unitPanelKeys.panel(unitId) });
+          }}
+        />
+      )}
+    </>
   );
 }
