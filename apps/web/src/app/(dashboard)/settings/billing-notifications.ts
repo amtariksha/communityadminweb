@@ -16,8 +16,9 @@ export const BILLING_EMAIL_EVENTS: ReadonlyArray<{ key: BillingEmailEvent; label
   { key: 'non_member_credit_note_posted', label: 'Non-member credit note posted' },
 ];
 
+// Nothing is e-mailed until the community admin ticks it (as the API's default).
 export const DEFAULT_NOTIFICATIONS: BillingNotifications = {
-  email_events: ['invoice_posted', 'receipt_posted', 'credit_note_posted'],
+  email_events: [],
   attach_breakup: true,
   recipients: 'owners_only',
 };

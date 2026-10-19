@@ -42,12 +42,14 @@ afterEach(() => {
 });
 
 describe('Setup › Notifications (INC-30)', () => {
-  it('starts from invoice, receipt and credit note on, and saves the ticks, break-up and recipients whole', () => {
+  it('starts with every e-mail off, and saves the ticks, break-up and recipients whole', () => {
     render(<BillingNotificationsCard />);
-    expect((screen.getByLabelText('E-mail on Invoice posted') as HTMLInputElement).checked).toBe(true);
-    expect((screen.getByLabelText('E-mail on Receipt voided') as HTMLInputElement).checked).toBe(false);
+    const boxes = screen.getAllByRole('checkbox', { name: /^E-mail on / }) as HTMLInputElement[];
+    expect(boxes).toHaveLength(9);
+    expect(boxes.every((box) => !box.checked)).toBe(true);
+    fireEvent.click(screen.getByLabelText('E-mail on Receipt posted'));
+    fireEvent.click(screen.getByLabelText('E-mail on Credit note posted'));
     fireEvent.click(screen.getByLabelText('E-mail on Receipt voided'));
-    fireEvent.click(screen.getByLabelText('E-mail on Invoice posted'));
     fireEvent.click(screen.getByLabelText('Attach the line break-up'));
     fireEvent.click(screen.getByLabelText('All Owners and Tenants'));
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
