@@ -24,7 +24,7 @@ let nextId = 1;
  * storage when the form is submitted, each with its own progress. A file
  * that fails stays on the list, red with Retry, and holds the request back.
  */
-export function useRequestFiles() {
+export function useRequestFiles(types?: readonly string[]) {
   const upload = useUploadFileToS3();
   const [files, setFiles] = useState<AttachedFile[]>([]);
   const [refused, setRefused] = useState<string[]>([]);
@@ -34,7 +34,7 @@ export function useRequestFiles() {
   }, []);
 
   function add(picked: readonly File[]): void {
-    const check = checkFiles(files.length, picked);
+    const check = checkFiles(files.length, picked, types);
     setRefused(check.refused);
     setFiles((current) => [
       ...current,

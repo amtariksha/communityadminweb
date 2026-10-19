@@ -1,7 +1,14 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { TicketComment } from '@/hooks';
 import { TicketDetailThreads } from './ticket-detail-threads';
+
+const upload = vi.hoisted(() => vi.fn());
+vi.mock('@/hooks', () => ({
+  useUploadFileToS3: () => ({ mutateAsync: upload, isPending: false }),
+  fetchPresignedDownloadUrl: vi.fn(),
+}));
+vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 
 /**
  * The detail view used to drop the comment thread and send every admin
@@ -150,5 +157,42 @@ describe('TicketDetailThreads', () => {
     });
 
     expect(within(internalThread()).getByText('System')).toBeTruthy();
+  });
+
+  // HELP-19: images on a comment, on the record page.
+  it('uploads the images picked in one thread and posts them with the comment', async () => {
+    upload.mockReset().mockImplementation(async ({ file }: { file: File }) => ({ fileUrl: `https://files.test/${file.name}` }));
+    const { onPost } = renderThreads({ withFiles: true });
+    const internal = screen.getByRole('region', { name: 'Admin Internal Communication' });
+    const image = new File(['x'], 'meter.jpg', { type: 'image/jpeg' });
+
+    fireEvent.change(within(internal).getByLabelText('Add images'), { target: { files: [image] } });
+    fireEvent.change(within(internal).getByLabelText('Write to Admin Internal Communication'), { target: { value: 'Meter photo' } });
+    await act(async () => {
+      fireEvent.click(within(internal).getByRole('button', { name: /Comment/ }));
+    });
+
+    expect(onPost).toHaveBeenCalledWith('Meter photo', true, { urls: ['https://files.test/meter.jpg'], names: ['meter.jpg'] });
+  });
+
+  it('refuses a PDF on a comment', () => {
+    renderThreads({ withFiles: true });
+    const resident = screen.getByRole('region', { name: 'Resident Communication' });
+
+    fireEvent.change(within(resident).getByLabelText('Add images'), {
+      target: { files: [new File(['x'], 'bill.pdf', { type: 'application/pdf' })] },
+    });
+
+    expect(within(resident).getByRole('alert').textContent).toMatch(/only JPEG, PNG or WebP images/);
+  });
+
+  it('shows a comment’s images in its own thread', () => {
+    renderThreads({
+      comments: [{ ...COMMENTS[1], attachment_urls: ['https://files.test/a.jpg'], attachment_names: ['a.jpg'] }],
+    });
+
+    const internal = screen.getByRole('region', { name: 'Admin Internal Communication' });
+    expect(within(internal).getByRole('button', { name: 'a.jpg' })).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: 'Resident Communication' })).queryByRole('button', { name: 'a.jpg' })).toBeNull();
   });
 });

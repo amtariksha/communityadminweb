@@ -9,6 +9,8 @@ export const MAX_FILES = 5;
 export const MAX_FILE_BYTES = 8 * 1024 * 1024;
 export const ACCEPTED_TYPES: readonly string[] = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 export const ACCEPT_ATTRIBUTE = ACCEPTED_TYPES.join(',');
+/** Files on a comment of the request record are images only (HELP-S9). */
+export const IMAGE_TYPES: readonly string[] = ['image/jpeg', 'image/png', 'image/webp'];
 export const MAX_TEXT = 5000;
 const MAX_SUBJECT = 120;
 
@@ -26,18 +28,21 @@ export interface FileCheck {
   refused: string[];
 }
 
-function refusal(file: File): string | null {
-  if (!ACCEPTED_TYPES.includes(file.type)) return `${file.name}: only JPEG, PNG, WebP or PDF files can be attached.`;
+function refusal(file: File, types: readonly string[]): string | null {
+  if (!types.includes(file.type)) {
+    const kinds = types.includes('application/pdf') ? 'JPEG, PNG, WebP or PDF files' : 'JPEG, PNG or WebP images';
+    return `${file.name}: only ${kinds} can be attached.`;
+  }
   if (file.size > MAX_FILE_BYTES) return `${file.name}: larger than 8 MB.`;
   return null;
 }
 
 /** Which picked files may join the `attached` ones, and why the others may not. */
-export function checkFiles(attached: number, picked: readonly File[]): FileCheck {
+export function checkFiles(attached: number, picked: readonly File[], types: readonly string[] = ACCEPTED_TYPES): FileCheck {
   const accepted: File[] = [];
   const refused: string[] = [];
   for (const file of picked) {
-    const reason = refusal(file);
+    const reason = refusal(file, types);
     if (reason) refused.push(reason);
     else if (attached + accepted.length >= MAX_FILES) refused.push(`${file.name}: a request takes at most ${MAX_FILES} files.`);
     else accepted.push(file);

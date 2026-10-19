@@ -27,12 +27,12 @@ describe('Create Request page', () => {
     expect(form.props?.mode).toBe('page');
   });
 
-  it('opens the new request on Open Requests once saved, in classic', () => {
+  it('opens the new request’s record page once saved, in classic (HELP-19)', () => {
     render(<CreateRequestPage />);
 
     form.props?.onSaved({ id: 't-9' } as never);
 
-    expect(push).toHaveBeenCalledWith('/helpdesk/open?view=t-9');
+    expect(push).toHaveBeenCalledWith('/helpdesk/requests/t-9');
   });
 
   it('closes to Open Requests in classic and to /tickets in standard', () => {

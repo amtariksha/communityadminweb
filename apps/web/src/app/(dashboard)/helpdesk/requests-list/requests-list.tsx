@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { DataTable, type DataTableAction } from '@/components/data-table';
 import { PageHeader } from '@/components/layout/page-header';
 import { useRouteStatus } from '@/components/layout/menu/use-route-status';
@@ -32,19 +32,29 @@ function listFilters(scope: HelpdeskScope, values: RequestFilterValues, q: strin
   };
 }
 
-/** `?view=<id>` opens a request (Create Request lands here after saving). */
-function useViewedRequest(): [string, (id: string) => void] {
+/**
+ * View opens the request record (HELP-19): its own page in classic, the
+ * wide dialog in standard. An old `?view=<id>` link still opens it.
+ */
+function useViewedRequest(classic: boolean): [string, (id: string) => void] {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const linked = searchParams.get('view') ?? '';
-  const [viewing, setViewing] = useState(linked);
+  const [viewing, setViewing] = useState(classic ? '' : linked);
+  useEffect(() => {
+    if (classic && linked) router.replace(`/helpdesk/requests/${linked}`);
+  }, [classic, linked, router]);
   const view = useCallback(
     (id: string) => {
+      if (classic && id) {
+        router.push(`/helpdesk/requests/${id}`);
+        return;
+      }
       setViewing(id);
       if (!id && linked) router.replace(pathname);
     },
-    [linked, router, pathname],
+    [classic, linked, router, pathname],
   );
   return [viewing, view];
 }
@@ -56,7 +66,7 @@ function ScopeList({ scope }: { scope: HelpdeskScope }): ReactNode {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [viewing, view] = useViewedRequest();
+  const [viewing, view] = useViewedRequest(layout === 'classic');
 
   const filters = listFilters(scope, values, q);
   const ticketsQuery = useTickets({ ...filters, page, limit: pageSize });

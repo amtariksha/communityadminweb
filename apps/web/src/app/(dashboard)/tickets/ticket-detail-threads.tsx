@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDate } from '@/lib/utils';
 import type { TicketComment } from '@/hooks';
+import { IMAGE_TYPES } from '../helpdesk/new/request-fields';
+import { useRequestFiles, type UploadedFiles } from '../helpdesk/new/use-request-files';
+import { CommentAttachments, CommentFilePicker } from './comment-files';
 
 type SortOrder = 'oldest' | 'newest';
 
@@ -21,7 +24,11 @@ interface TicketDetailThreadsProps {
   templates: CannedTemplate[];
   isPosting: boolean;
   /** Resolves once the comment is saved, so the box can be cleared. */
-  onPost: (message: string, isInternal: boolean) => Promise<void>;
+  onPost: (message: string, isInternal: boolean, files?: UploadedFiles) => Promise<void>;
+  /** Images on comments (the record page, HELP-19). */
+  withFiles?: boolean;
+  /** Each thread's class, e.g. to keep the internal one off a printout. */
+  threadClassName?: { resident?: string; internal?: string };
 }
 
 interface ThreadProps {
@@ -32,7 +39,9 @@ interface ThreadProps {
   comments: TicketComment[];
   templates: CannedTemplate[];
   isPosting: boolean;
-  onPost: (message: string, isInternal: boolean) => Promise<void>;
+  onPost: (message: string, isInternal: boolean, files?: UploadedFiles) => Promise<void>;
+  withFiles: boolean;
+  className?: string;
 }
 
 function authorLabel(comment: TicketComment): string {
@@ -65,24 +74,32 @@ function Thread({
   templates,
   isPosting,
   onPost,
+  withFiles,
+  className,
 }: ThreadProps): ReactNode {
   const [order, setOrder] = useState<SortOrder>('oldest');
   const [draft, setDraft] = useState('');
+  const files = useRequestFiles(IMAGE_TYPES);
   const headingId = `thread-${isInternal ? 'internal' : 'resident'}`;
   const message = draft.trim();
 
   async function handlePost(): Promise<void> {
     if (!message) return;
+    const uploaded = withFiles ? await files.uploadAll() : undefined;
+    // A file that did not upload stays on the list, marked, and holds the comment.
+    if (uploaded === null) return;
     try {
-      await onPost(message, isInternal);
+      if (uploaded && uploaded.urls.length > 0) await onPost(message, isInternal, uploaded);
+      else await onPost(message, isInternal);
       setDraft('');
+      files.reset();
     } catch {
       // The caller has already told the user; keep the text so nothing is lost.
     }
   }
 
   return (
-    <section aria-labelledby={headingId} className="space-y-3 rounded-md border p-3">
+    <section aria-labelledby={headingId} className={`space-y-3 rounded-md border p-3 ${className ?? ''}`}>
       <div className="flex items-center justify-between gap-2">
         <h3 id={headingId} className="text-sm font-semibold">
           {title}
@@ -113,6 +130,7 @@ function Thread({
               <span>{formatWhen(comment.created_at)}</span>
             </div>
             <p className="mt-1 whitespace-pre-wrap">{comment.message}</p>
+            <CommentAttachments comment={comment} />
           </li>
         ))}
       </ul>
@@ -141,6 +159,8 @@ function Thread({
           </select>
         </div>
       )}
+
+      {withFiles && <CommentFilePicker id={`${headingId}-files`} files={files} />}
 
       <div className="flex gap-2">
         <Textarea
@@ -174,6 +194,8 @@ export function TicketDetailThreads({
   templates,
   isPosting,
   onPost,
+  withFiles = false,
+  threadClassName,
 }: TicketDetailThreadsProps): ReactNode {
   const publicComments = comments.filter((comment) => !comment.is_internal);
   const internalComments = comments.filter((comment) => comment.is_internal);
@@ -189,6 +211,8 @@ export function TicketDetailThreads({
         templates={templates}
         isPosting={isPosting}
         onPost={onPost}
+        withFiles={withFiles}
+        className={threadClassName?.resident}
       />
       <Thread
         title="Admin Internal Communication"
@@ -199,6 +223,8 @@ export function TicketDetailThreads({
         templates={[]}
         isPosting={isPosting}
         onPost={onPost}
+        withFiles={withFiles}
+        className={threadClassName?.internal}
       />
     </div>
   );

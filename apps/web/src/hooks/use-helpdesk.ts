@@ -19,6 +19,8 @@ export interface HelpdeskCategory {
   owner_l1_name?: string | null;
   /** The category's own automatic reply; staff only. */
   auto_reply_text?: string | null;
+  /** Staff only: the priority a request gets unless it is marked urgent. */
+  default_priority?: string;
   /** Active sub-categories in grid order (HELP-17); an older server sends none. */
   subcategories?: HelpdeskSubcategory[];
 }

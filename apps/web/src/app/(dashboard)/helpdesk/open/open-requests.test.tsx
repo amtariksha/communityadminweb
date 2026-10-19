@@ -10,11 +10,11 @@ import { RequestsList } from '../requests-list/requests-list';
  * export strip asks for the whole filtered result.
  */
 
-const nav = vi.hoisted(() => ({ pathname: '/helpdesk/open', search: '', replace: vi.fn() }));
+const nav = vi.hoisted(() => ({ pathname: '/helpdesk/open', search: '', replace: vi.fn(), push: vi.fn() }));
 vi.mock('next/navigation', () => ({
   usePathname: () => nav.pathname,
   useSearchParams: () => new URLSearchParams(nav.search),
-  useRouter: () => ({ replace: nav.replace, push: vi.fn() }),
+  useRouter: () => ({ replace: nav.replace, push: nav.push }),
 }));
 vi.mock('next/link', () => ({
   default: ({ href, children, className }: { href: string; children: ReactNode; className?: string }) => (
@@ -108,6 +108,7 @@ beforeEach(() => {
   nav.pathname = '/helpdesk/open';
   nav.search = '';
   nav.replace.mockClear();
+  nav.push.mockClear();
   mocks.useTickets.mockReset().mockReturnValue({ data: { data: [request('1'), request('2')], total: 230 }, isLoading: false });
   mocks.useTicketFacets.mockReset().mockReturnValue({ data: FACETS });
   mocks.detailFor.mockReset();
@@ -267,19 +268,20 @@ describe('Open Requests', () => {
     });
   });
 
-  it('opens a request from View', () => {
+  it('opens a request’s record page from View (HELP-19)', () => {
     render(<RequestsList />);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'View' })[1]);
 
-    expect(screen.getByRole('dialog').textContent).toBe('Request 2');
+    expect(nav.push).toHaveBeenCalledWith('/helpdesk/requests/2');
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('opens the request named in the link', () => {
+  it('sends an old ?view= link on to the record page', () => {
     nav.search = 'view=7';
     render(<RequestsList />);
 
-    expect(screen.getByRole('dialog').textContent).toBe('Request 7');
+    expect(nav.replace).toHaveBeenCalledWith('/helpdesk/requests/7');
   });
 
   it('says so when there is nothing open', () => {
