@@ -34,7 +34,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('@/lib/api', () => ({ api: { download: mocks.download } }));
 vi.mock('@/lib/download', () => ({ saveBlob: vi.fn(), printHtml: vi.fn() }));
-vi.mock('@/hooks', () => ({ useUnits: () => ({ data: { data: [], total: 0 } }) }));
+vi.mock('@/hooks', () => ({ useUnits: () => ({ data: { data: [], total: 0 } }), useUnitMembers: () => ({ data: [] }) }));
 vi.mock('@/hooks/use-parking', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-parking')>();
   return {
@@ -43,9 +43,11 @@ vi.mock('@/hooks/use-parking', async (importOriginal) => {
       mocks.pageCalls.push(filters);
       return { data: { data: [SLOT], total: 120 }, isLoading: false };
     },
-    useCreateSlot: () => ({ mutate: mocks.create, isPending: false }),
-    useAssignSlot: () => ({ mutate: vi.fn(), isPending: false }),
-    useDeallocateSlot: () => ({ mutate: vi.fn(), isPending: false }),
+    useCreateSlot: () => ({ mutateAsync: mocks.create, isPending: false }),
+    useUpdateSlot: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useVehiclePage: () => ({ data: { data: [], total: 0 } }),
+    useAssignSlot: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+    useDeallocateSlot: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   };
 });
 
@@ -97,9 +99,10 @@ describe('SlotsTab', () => {
     expect(Array.from(type.options).map((option) => option.textContent)).toEqual(['Car', 'Bike', 'EV', 'Other']);
     expect(screen.queryByLabelText('Monthly Charge')).toBeNull();
 
-    fireEvent.change(screen.getByLabelText('Slot Number'), { target: { value: 'X-1' } });
+    mocks.create.mockResolvedValue({ data: { ...SLOT, id: 'slot-new' } });
+    fireEvent.change(screen.getByLabelText('Slot No'), { target: { value: 'X-1' } });
     fireEvent.change(type, { target: { value: 'other' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     const payload = mocks.create.mock.calls[0][0] as Record<string, unknown>;
     expect(payload).toMatchObject({ slot_number: 'X-1', slot_type: 'other' });
     expect(payload).not.toHaveProperty('monthly_charge');

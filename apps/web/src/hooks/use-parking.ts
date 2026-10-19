@@ -256,8 +256,9 @@ export function useSlotPage(filters: SlotFilters) {
 }
 
 /** One page of the vehicle register with its total (PARK-02). */
-export function useVehiclePage(filters: VehicleFilters) {
+export function useVehiclePage(filters: VehicleFilters, options: { enabled?: boolean } = {}) {
   return useQuery({
+    enabled: options.enabled ?? true,
     queryKey: [...parkingKeys.vehicleList(filters), 'page'] as const,
     queryFn: function fetchVehiclePage() {
       return api.get<{ data: Vehicle[]; total: number }>('/parking/vehicles', {

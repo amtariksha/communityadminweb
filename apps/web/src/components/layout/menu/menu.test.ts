@@ -259,6 +259,8 @@ describe('locate', () => {
     ['/staff/salaries', 'more', 'more.salaries', undefined],
     ['/parking/slots', 'parking', 'parking.slots', 'parking.slots.list'],
     ['/parking/slots/sublets', 'parking', 'parking.slots', 'parking.slots.sublets'],
+    // Add / Edit Slot pages (PARK-07) stay under Slots.
+    ['/parking/slots/new', 'parking', 'parking.slots', 'parking.slots.list'],
     ['/approvals/vehicles', 'parking', 'parking.vehicles', 'parking.vehicles.awaiting'],
     ['/parking', 'parking', undefined, undefined],
     ['/staff', 'staff', undefined, undefined],

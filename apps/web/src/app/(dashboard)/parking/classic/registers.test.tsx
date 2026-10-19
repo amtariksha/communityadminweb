@@ -21,7 +21,6 @@ vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }
 const download = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/api', () => ({ api: { download } }));
 vi.mock('@/lib/download', () => ({ saveBlob: vi.fn(), printHtml: vi.fn() }));
-vi.mock('../slot-dialogs', () => ({ AddSlotDialog: ({ open }: { open: boolean }) => (open ? <div role="dialog">Add Slot form</div> : null) }));
 vi.mock('../register-vehicle-dialog', () => ({ RegisterVehicleDialog: () => null }));
 
 const mocks = vi.hoisted(() => ({ slots: vi.fn(), vehicles: vi.fn(), remove: vi.fn(), blocks: vi.fn() }));
@@ -81,7 +80,7 @@ describe('Parking Manager › Slots', () => {
   it('shows Sr No · Slot No · Type with "Showing x to y of z"', () => {
     render(<SlotsRegister />);
 
-    expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['Sr No', 'Slot No', 'Type']);
+    expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['Sr No', 'Slot No', 'Type', 'Action']);
     expect(screen.getByText('Showing 1 to 25 of 120 entries')).toBeTruthy();
     expect(last(mocks.slots)).toEqual(expect.objectContaining({ page: 1, limit: 25 }));
   });
@@ -102,10 +101,11 @@ describe('Parking Manager › Slots', () => {
     expect(download).toHaveBeenCalledWith('/parking/slots/export', { params: { search: 'basement', format: 'xlsx' } });
   });
 
-  it('Add Slot opens the slot form', () => {
+  it('Add Slot and Edit open the slot form as pages (PARK-07)', () => {
     render(<SlotsRegister />);
-    fireEvent.click(screen.getByRole('button', { name: 'Add Slot' }));
-    expect(screen.getByRole('dialog').textContent).toBe('Add Slot form');
+    expect(screen.getByRole('link', { name: 'Add Slot' }).getAttribute('href')).toBe('/parking/slots/new');
+    const row = screen.getByText('P-02').closest('tr') as HTMLElement;
+    expect(within(row).getByRole('link', { name: 'Edit' }).getAttribute('href')).toBe('/parking/slots/s2/edit');
   });
 });
 

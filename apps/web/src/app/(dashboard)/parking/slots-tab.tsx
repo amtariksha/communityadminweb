@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { Plus, Search, UserMinus, UserPlus, Zap } from 'lucide-react';
+import { Pencil, Plus, Search, UserMinus, UserPlus, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,8 @@ import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { slotFiltersToParams, useDeallocateSlot, useSlotPage } from '@/hooks/use-parking';
 import type { ParkingSlot } from '@/hooks/use-parking';
-import { AddSlotDialog, AssignSlotDialog } from './slot-dialogs';
+import { AssignSlotDialog } from './slot-dialogs';
+import { SlotForm } from './components/slot-form';
 import {
   ListPager,
   PARKING_PAGE_SIZE,
@@ -28,7 +29,7 @@ import {
 
 const COLUMN_COUNT = 8;
 
-function SlotRow({ slot, onAssign, onDeallocate }: { slot: ParkingSlot; onAssign: () => void; onDeallocate: () => void }): ReactNode {
+function SlotRow({ slot, onEdit, onAssign, onDeallocate }: { slot: ParkingSlot; onEdit: () => void; onAssign: () => void; onDeallocate: () => void }): ReactNode {
   return (
     <TableRow>
       <TableCell className="font-mono text-xs">{slot.slot_number}</TableCell>
@@ -47,6 +48,9 @@ function SlotRow({ slot, onAssign, onDeallocate }: { slot: ParkingSlot; onAssign
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onEdit} title="Edit slot" aria-label={`Edit slot ${slot.slot_number}`}>
+            <Pencil className="h-4 w-4" />
+          </Button>
           {slot.status === 'vacant' && (
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onAssign} title="Assign to unit">
               <UserPlus className="h-4 w-4 text-green-500" />
@@ -63,9 +67,10 @@ function SlotRow({ slot, onAssign, onDeallocate }: { slot: ParkingSlot; onAssign
   );
 }
 
-function SlotTableBody({ slots, loading, onAssign, onDeallocate }: {
+function SlotTableBody({ slots, loading, onEdit, onAssign, onDeallocate }: {
   slots: ParkingSlot[];
   loading: boolean;
+  onEdit: (slot: ParkingSlot) => void;
   onAssign: (slot: ParkingSlot) => void;
   onDeallocate: (slot: ParkingSlot) => void;
 }): ReactNode {
@@ -88,14 +93,15 @@ function SlotTableBody({ slots, loading, onAssign, onDeallocate }: {
     );
   }
   return slots.map((slot) => (
-    <SlotRow key={slot.id} slot={slot} onAssign={() => onAssign(slot)} onDeallocate={() => onDeallocate(slot)} />
+    <SlotRow key={slot.id} slot={slot} onEdit={() => onEdit(slot)} onAssign={() => onAssign(slot)} onDeallocate={() => onDeallocate(slot)} />
   ));
 }
 
 /** Parking › Slots: paged, searchable, filterable, exported whole (PARK-02, PARK-04). */
 export function SlotsTab(): ReactNode {
   const { addToast } = useToast();
-  const [createOpen, setCreateOpen] = useState(false);
+  // Add Slot (null) or Edit Slot; undefined = the form is closed (PARK-07).
+  const [editing, setEditing] = useState<ParkingSlot | null | undefined>(undefined);
   const [assigning, setAssigning] = useState<ParkingSlot | null>(null);
   const [typeFilter, setTypeFilter] = useState('');
   const [searchText, setSearchText] = useState('');
@@ -137,7 +143,7 @@ export function SlotsTab(): ReactNode {
                 <option key={t} value={t}>{typeLabel(t)}</option>
               ))}
             </Select>
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button onClick={() => setEditing(null)}>
               <Plus className="mr-2 h-4 w-4" /> Add Slot
             </Button>
           </div>
@@ -164,7 +170,7 @@ export function SlotsTab(): ReactNode {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <SlotTableBody slots={slots} loading={slotsQuery.isLoading} onAssign={setAssigning} onDeallocate={handleDeallocate} />
+            <SlotTableBody slots={slots} loading={slotsQuery.isLoading} onEdit={setEditing} onAssign={setAssigning} onDeallocate={handleDeallocate} />
           </TableBody>
         </Table>
         <ListPager
@@ -175,7 +181,16 @@ export function SlotsTab(): ReactNode {
           onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
         />
       </CardContent>
-      <AddSlotDialog open={createOpen} onOpenChange={setCreateOpen} />
+      {editing !== undefined && (
+        <SlotForm
+          key={editing?.id ?? 'new'}
+          mode="dialog"
+          open
+          slot={editing}
+          onClose={() => setEditing(undefined)}
+          onSaved={() => setEditing(undefined)}
+        />
+      )}
       <AssignSlotDialog slot={assigning} onClose={() => setAssigning(null)} />
     </Card>
   );
