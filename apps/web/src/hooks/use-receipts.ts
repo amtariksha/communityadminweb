@@ -89,6 +89,10 @@ interface ReceiptFilters {
   payment_mode?: string;
   start_date?: string;
   end_date?: string;
+  /** INC-44: numeric part of the receipt number; voided only ('true') or live only ('false'). */
+  from_number?: string;
+  to_number?: string;
+  voided?: 'true' | 'false';
   page?: number;
   limit?: number;
   sort?: string;
@@ -173,6 +177,9 @@ function filtersToParams(filters?: ReceiptFilters): Record<string, string> | und
   if (filters.payment_mode) params.mode = filters.payment_mode;
   if (filters.start_date) params.start_date = filters.start_date;
   if (filters.end_date) params.end_date = filters.end_date;
+  if (filters.from_number) params.from_number = filters.from_number;
+  if (filters.to_number) params.to_number = filters.to_number;
+  if (filters.voided) params.voided = filters.voided;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   if (filters.sort) params.sort = filters.sort;

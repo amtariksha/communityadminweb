@@ -38,6 +38,8 @@ import { WaiveInterestButton } from './waive-interest-button';
 import { activeRules } from '@/lib/invoice-rule';
 import { describeInvoicePayer, INVOICE_PARTY_OPTIONS, type InvoiceParty } from './invoice-payer';
 import { INVOICE_LEDGER_OPTIONS, ledgerFilterIgnored, type InvoiceLedger } from './invoice-ledger';
+import { EMPTY_RANGE, NumberRangeFilter, numberRangeParams, type NumberRange } from '@/components/income-registers/number-range-filter';
+import { registerFiltersIgnored } from '@/hooks/use-income-registers';
 import { EmailStatusCell } from '@/components/billing-email/email-status-cell';
 import { canWriteFinance } from '@/lib/finance-roles';
 import { describeGenerateResult } from './generate-summary';
@@ -198,6 +200,8 @@ export default function InvoicesContent(): ReactNode {
   // actually sent to the API (debounced via useEffect below).
   const [searchInput, setSearchInput] = useState('');
   const [searchQ, setSearchQ] = useState('');
+  const [numberRange, setNumberRange] = useState<NumberRange>(EMPTY_RANGE);
+  const [accountFilter, setAccountFilter] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
   // QA #92 — bulk-update-due-date dialog
@@ -298,6 +302,8 @@ export default function InvoicesContent(): ReactNode {
     start_date: filterStartDate || undefined,
     end_date: filterEndDate || undefined,
     q: searchQ || undefined,
+    ...numberRangeParams(numberRange),
+    account_id: accountFilter || undefined,
     page,
     limit,
     sort: listState.state.sort ?? undefined,
@@ -306,6 +312,8 @@ export default function InvoicesContent(): ReactNode {
   const { data: rules } = useInvoiceRules();
   const { data: accountsResponse } = useLedgerAccounts({ limit: 500 });
   const ledgerAccounts = accountsResponse?.data ?? [];
+  // INC-44 — the income-account filter offers income ledgers only.
+  const { data: incomeAccountsResponse } = useLedgerAccounts({ account_type: 'income', limit: 500 });
 
   const generateInvoices = useGenerateInvoices();
   const createInvoiceRule = useCreateInvoiceRule();
@@ -771,6 +779,12 @@ export default function InvoicesContent(): ReactNode {
           </Button>
         </div>
       )}
+      {(accountFilter || numberRange.from || numberRange.to) &&
+        registerFiltersIgnored('invoices', invoices) && (
+        <div className="rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground">
+          The number and income-account filters are not available yet: this list shows every invoice.
+        </div>
+      )}
       {ledgerFilterIgnored(ledgerFilter, invoices) && (
         <div className="rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground">
           The ledger filter is not available yet: this list shows every ledger.
@@ -906,6 +920,30 @@ export default function InvoicesContent(): ReactNode {
                   </option>
                 ))}
               </Select>
+              <NumberRangeFilter
+                label="Invoice No."
+                value={numberRange}
+                onChange={(next) => {
+                  setNumberRange(next);
+                  setPage(1);
+                }}
+              />
+              <Select
+                value={accountFilter}
+                onChange={(e) => {
+                  setAccountFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="w-48"
+                aria-label="Income account"
+              >
+                <option value="">All income accounts</option>
+                {(incomeAccountsResponse?.data ?? []).map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </Select>
               {/* Invoice-date range. Native date inputs render
                   consistently in modern browsers — no third-party
                   picker for a single field. */}
@@ -930,7 +968,7 @@ export default function InvoicesContent(): ReactNode {
                 className="w-40"
                 aria-label="To date"
               />
-              {(searchInput || filterStartDate || filterEndDate || unitFilter || partyFilter || ledgerFilter) && (
+              {(searchInput || filterStartDate || filterEndDate || unitFilter || partyFilter || ledgerFilter || accountFilter || numberRange.from || numberRange.to) && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -942,6 +980,8 @@ export default function InvoicesContent(): ReactNode {
                     setUnitFilter('');
                     setPartyFilter('');
                     setLedgerFilter('');
+                    setAccountFilter('');
+                    setNumberRange(EMPTY_RANGE);
                     setPage(1);
                   }}
                 >

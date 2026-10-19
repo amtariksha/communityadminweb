@@ -100,6 +100,10 @@ interface InvoiceFilters {
   end_date?: string;
   /** Free-text search across invoice_number, billing_period, unit_number and the payer's name. */
   q?: string;
+  /** INC-44: the numeric part of the invoice number, and an income account on any line. */
+  from_number?: string;
+  to_number?: string;
+  account_id?: string;
   page?: number;
   limit?: number;
   sort?: string;
@@ -177,6 +181,9 @@ function filtersToParams(filters?: InvoiceFilters): Record<string, string> | und
   if (filters.start_date) params.start_date = filters.start_date;
   if (filters.end_date) params.end_date = filters.end_date;
   if (filters.q && filters.q.trim()) params.q = filters.q.trim();
+  if (filters.from_number) params.from_number = filters.from_number;
+  if (filters.to_number) params.to_number = filters.to_number;
+  if (filters.account_id) params.account_id = filters.account_id;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   if (filters.sort) params.sort = filters.sort;

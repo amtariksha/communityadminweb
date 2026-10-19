@@ -33,6 +33,8 @@ import { PageHeader } from '@/components/layout/page-header';
 import { DirectIncomeDialog } from './direct-income-dialog';
 import { ApplyAdvancesButton } from './apply-advances-button';
 import { VoidReceiptButton } from './void-receipt-button';
+import { EMPTY_RANGE, NumberRangeFilter, numberRangeParams, type NumberRange } from '@/components/income-registers/number-range-filter';
+import { registerFiltersIgnored } from '@/hooks/use-income-registers';
 import { receiptModeOf, mayVoidReceipt } from './receipt-void';
 import { describeReceiptAllocation, summarizeReceiptAllocation } from './receipt-allocation';
 import { creditableInvoices } from './credit-note-invoices';
@@ -162,6 +164,9 @@ export default function ReceiptsContent(): ReactNode {
   // whenever the operator changes either bound.
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  // INC-44 — receipt number range and voided / live.
+  const [numberRange, setNumberRange] = useState<NumberRange>(EMPTY_RANGE);
+  const [voidedFilter, setVoidedFilter] = useState<'' | 'true' | 'false'>('');
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [directIncomeDialogOpen, setDirectIncomeDialogOpen] = useState(false);
   const [creditNoteDialogOpen, setCreditNoteDialogOpen] = useState(false);
@@ -187,6 +192,8 @@ export default function ReceiptsContent(): ReactNode {
     payment_mode: modeFilter || undefined,
     start_date: filterStartDate || undefined,
     end_date: filterEndDate || undefined,
+    ...numberRangeParams(numberRange),
+    voided: voidedFilter || undefined,
     page,
     limit: ITEMS_PER_PAGE,
     sort: listState.state.sort ?? undefined,
@@ -635,7 +642,28 @@ export default function ReceiptsContent(): ReactNode {
                 className="w-40"
                 aria-label="To date"
               />
-              {(filterStartDate || filterEndDate || modeFilter) && (
+              <NumberRangeFilter
+                label="Receipt No."
+                value={numberRange}
+                onChange={(next) => {
+                  setNumberRange(next);
+                  setPage(1);
+                }}
+              />
+              <Select
+                className="w-full sm:w-36"
+                aria-label="Voided"
+                value={voidedFilter}
+                onChange={(e) => {
+                  setVoidedFilter(e.target.value as '' | 'true' | 'false');
+                  setPage(1);
+                }}
+              >
+                <option value="">All receipts</option>
+                <option value="false">Not voided</option>
+                <option value="true">Voided only</option>
+              </Select>
+              {(filterStartDate || filterEndDate || modeFilter || numberRange.from || numberRange.to || voidedFilter) && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -644,6 +672,8 @@ export default function ReceiptsContent(): ReactNode {
                     setFilterStartDate('');
                     setFilterEndDate('');
                     setModeFilter('');
+                    setNumberRange(EMPTY_RANGE);
+                    setVoidedFilter('');
                     setPage(1);
                   }}
                 >
@@ -654,6 +684,11 @@ export default function ReceiptsContent(): ReactNode {
           </div>
         </CardHeader>
         <CardContent>
+          {(numberRange.from || numberRange.to || voidedFilter) && registerFiltersIgnored('receipts', receipts) && (
+            <p className="mb-3 rounded-md border bg-muted p-3 text-sm text-muted-foreground">
+              The number and voided filters are not available yet: this list shows every receipt.
+            </p>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
