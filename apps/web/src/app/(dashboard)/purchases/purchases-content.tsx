@@ -74,6 +74,8 @@ import {
 } from '@/hooks';
 import type { TdsConfig, VendorPaymentRow } from '@/hooks';
 import { useOcrInvoice } from '@/hooks/use-ocr';
+import Link from 'next/link';
+import { CreatePurchaseRequestButton, ViewPurchaseRequestButton } from './create-request-button';
 
 // API responses may include joined fields beyond the base shared types
 interface PRRow {
@@ -1057,7 +1059,15 @@ export default function PurchasesContent(): ReactNode {
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle className="text-lg">Purchase Requests</CardTitle>
+              <div className="space-y-1">
+                <CardTitle className="text-lg">Purchase Requests</CardTitle>
+                {/* EXP-09 — the bucket lists (drafts, my approval, by level; closed). */}
+                <p className="text-xs text-muted-foreground">
+                  <Link className="underline" href="/expense-tracker/purchase-workflow/open">Open by approval level</Link>
+                  {' · '}
+                  <Link className="underline" href="/expense-tracker/purchase-workflow/closed">Closed</Link>
+                </p>
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative w-full sm:w-56">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1081,6 +1091,8 @@ export default function PurchasesContent(): ReactNode {
                   <option value="rejected">Rejected</option>
                   <option value="converted">Converted</option>
                 </Select>
+                {/* EXP-08 — the form with lines once the API has it; until then the old dialog. */}
+                <CreatePurchaseRequestButton legacy={
                 <Dialog open={createPRDialogOpen} onOpenChange={setCreatePRDialogOpen}>
                   <DialogTrigger>
                     <Button>
@@ -1171,6 +1183,7 @@ export default function PurchasesContent(): ReactNode {
                     </form>
                   </DialogContent>
                 </Dialog>
+                } />
               </div>
             </div>
           </CardHeader>
@@ -1217,6 +1230,7 @@ export default function PurchasesContent(): ReactNode {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          <ViewPurchaseRequestButton requestId={pr.id} />
                           {pr.status === 'pending_approval' && (
                             <>
                               <Button

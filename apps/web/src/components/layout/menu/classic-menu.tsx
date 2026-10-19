@@ -217,9 +217,35 @@ export const classicMenu: MenuNode[] = [
     id: 'expense',
     label: 'Expense Tracker',
     icon: icon(ShoppingCart),
+    // EXP-08 / EXP-09: Create Request is a page of its own; a request opens
+    // on its own page (view, or edit while it is a draft).
+    create: { label: 'Create Request', href: '/expense-tracker/purchase-workflow/new' },
+    forms: [{ label: 'Purchase Request', path: '/expense-tracker/purchase-workflow/:id' }],
     children: [
-      planned('expense.setup', 'Setup', 'EXP-20'),
-      { id: 'expense.purchase-workflow', label: 'Purchase Workflow', href: '/purchases' },
+      {
+        id: 'expense.setup',
+        label: 'Setup',
+        tabs: [
+          { id: 'expense.setup.heads', label: 'Expense Heads', href: '/expense-tracker/setup/expense-heads', logs: ['ledger_account'] },
+          {
+            id: 'expense.setup.purchase-request',
+            label: 'Purchase Request',
+            href: '/expense-tracker/setup/purchase-request',
+            logs: ['approvals', 'tenant'],
+          },
+          planned('expense.setup.numbering', 'Numbering', 'EXP-18'),
+        ],
+      },
+      {
+        id: 'expense.purchase-workflow',
+        label: 'Purchase Workflow',
+        // Today's /purchases (bills, payments) stays inside the module.
+        aliases: ['/purchases'],
+        tabs: [
+          { id: 'expense.purchase-workflow.open', label: 'Open Purchase Request', href: '/expense-tracker/purchase-workflow/open', logs: ['purchase'] },
+          { id: 'expense.purchase-workflow.closed', label: 'Closed Purchase Request', href: '/expense-tracker/purchase-workflow/closed', logs: ['purchase'] },
+        ],
+      },
       planned('expense.by-vendors', 'By Vendors', 'EXP-20'),
       planned('expense.by-date', 'By Date', 'EXP-20'),
       planned('expense.budget', 'Budget', 'EXP-20'),

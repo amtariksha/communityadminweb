@@ -372,6 +372,14 @@ export default function SettingsContent(): ReactNode {
               small purchases don&apos;t need signatures — only requests above
               the threshold go through the approval flow.
             </p>
+            {/* EXP-07 / SB-11 — named approvers replace these levels and roles once set. */}
+            <p className="text-xs text-muted-foreground">
+              To name approvers by person and level, with a minimum number of approvals per level, use{' '}
+              <Link className="underline" href="/expense-tracker/setup/purchase-request">
+                Expense Tracker › Setup › Purchase Request
+              </Link>
+              . Once anyone is placed at a level there, the levels and roles below are no longer used.
+            </p>
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="pr-levels">Approval Levels</Label>

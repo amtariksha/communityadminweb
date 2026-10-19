@@ -21,6 +21,8 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   // today's directory page.
   ['/society-profile/files', '/documents'],
   ['/society-profile', '/directory'],
+  // Expense Tracker screens follow the Purchases entry (EXP-08, EXP-09).
+  ['/expense-tracker', '/purchases'],
 ];
 
 /**
