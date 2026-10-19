@@ -101,7 +101,14 @@ export const classicMenu: MenuNode[] = [
     // screens until UNIT-14 and UNIT-09 rebuild them. Approved Users is the
     // master–detail page (UNIT-12); /units stays inside it.
     children: [
-      planned('units.unapproved', 'Unapproved Users', 'UNIT-13'),
+      {
+        // UNIT-13: self-signups waiting for a decision; Edit is a page.
+        id: 'units.unapproved',
+        label: 'Unapproved Users',
+        href: '/units/unapproved',
+        logs: ['tenant_onboarding'],
+        forms: [{ label: 'Edit Unapproved User', path: '/units/unapproved/:onboardingId/edit' }],
+      },
       {
         id: 'units.add',
         label: 'Add Users',

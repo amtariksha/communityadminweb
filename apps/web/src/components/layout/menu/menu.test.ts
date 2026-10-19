@@ -74,6 +74,7 @@ describe('classic modules', () => {
 
   it('Units & Users lists its built children in the committee’s order, then our extras', () => {
     expect(labels('units')).toEqual([
+      'Unapproved Users',
       'Add Users',
       'Approved Users',
       'Broadcast',
@@ -85,7 +86,8 @@ describe('classic modules', () => {
   });
 
   it('each Units & Users child opens its own classic route', () => {
-    expect(find(menu, 'units')?.children?.slice(0, 3).map((child) => child.href)).toEqual([
+    expect(find(menu, 'units')?.children?.slice(0, 4).map((child) => child.href)).toEqual([
+      '/units/unapproved',
       '/units/add-users',
       '/units/approved',
       '/units/broadcast',

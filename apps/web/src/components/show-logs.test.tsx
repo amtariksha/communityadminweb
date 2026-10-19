@@ -93,4 +93,17 @@ describe('ShowLogsButton', () => {
     const { container } = render(<ShowLogsButton recordTypes={['vendor']} />);
     expect(container.innerHTML).toBe('');
   });
+  it('can show one kind of change under its own name (UNIT-13 Declined Records)', () => {
+    signIn('community_admin');
+    mocks.useAuditLog.mockReturnValue({ data: { data: [], total: 0 }, isLoading: false });
+    render(<ShowLogsButton recordTypes={['tenant_onboarding']} action="reject" label="Declined Records" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Declined Records' }));
+
+    expect(mocks.useAuditLog).toHaveBeenLastCalledWith(
+      { entity_type: 'tenant_onboarding', action: 'reject', limit: 50 },
+      { enabled: true },
+    );
+    expect(screen.getByRole('heading', { name: 'Declined Records' })).toBeTruthy();
+  });
 });

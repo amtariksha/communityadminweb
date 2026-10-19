@@ -34,11 +34,16 @@ interface ShowLogsButtonProps {
   recordTypes: readonly string[];
   // On a record page, the record; otherwise every record of those types.
   recordId?: string;
+  // Only changes of this kind, e.g. 'reject' for "Declined Records".
+  action?: string;
+  // The button's and the panel's name, when not "Show Logs".
+  label?: string;
 }
 
-function auditTrailHref(recordTypes: readonly string[], recordId?: string): string {
+function auditTrailHref(recordTypes: readonly string[], recordId?: string, action?: string): string {
   const params = new URLSearchParams({ entity_type: recordTypes.join(',') });
   if (recordId) params.set('entity_id', recordId);
+  if (action) params.set('action', action);
   return `/audit?${params.toString()}`;
 }
 
@@ -66,12 +71,13 @@ function LogEntry({ entry }: { entry: AuditEntry }): ReactNode {
  * page shows — who, when, and each changed field as old → new. Only for
  * roles that may read the audit trail.
  */
-export function ShowLogsButton({ recordTypes, recordId }: ShowLogsButtonProps): ReactNode {
+export function ShowLogsButton({ recordTypes, recordId, action, label = 'Show Logs' }: ShowLogsButtonProps): ReactNode {
   const [open, setOpen] = useState(false);
   const { data, isLoading } = useAuditLog(
     {
       entity_type: recordTypes.join(','),
       ...(recordId ? { entity_id: recordId } : {}),
+      ...(action ? { action } : {}),
       limit: MAX_ENTRIES,
     },
     { enabled: open },
@@ -84,15 +90,15 @@ export function ShowLogsButton({ recordTypes, recordId }: ShowLogsButtonProps): 
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>
         <History className="mr-2 h-4 w-4" />
-        Show Logs
+        {label}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Logs</DialogTitle>
+            <DialogTitle>{label === 'Show Logs' ? 'Logs' : label}</DialogTitle>
             <DialogDescription>
               Latest {MAX_ENTRIES} changes, newest first.{' '}
-              <Link href={auditTrailHref(recordTypes, recordId)} className="text-primary underline">
+              <Link href={auditTrailHref(recordTypes, recordId, action)} className="text-primary underline">
                 Open in Audit Trail
               </Link>
             </DialogDescription>
