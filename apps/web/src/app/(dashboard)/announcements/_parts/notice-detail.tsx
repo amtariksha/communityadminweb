@@ -16,18 +16,34 @@ function Row({ label, children }: { label: string; children: ReactNode }): React
   );
 }
 
+/** Only an http(s) address becomes a link; anything else (a `javascript:` URL) is shown as text. */
+export function linkableUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}
+
 function Attachments({ notice }: { notice: Announcement }): ReactNode {
   const urls = notice.attachment_urls ?? (notice.attachment_url ? [notice.attachment_url] : []);
   if (urls.length === 0) return null;
   return (
     <ul className="space-y-1 text-sm">
-      {urls.map((url, index) => (
-        <li key={url}>
-          <a href={url} target="_blank" rel="noreferrer" className="text-primary underline">
-            {notice.attachment_names?.[index] ?? `Attachment ${index + 1}`}
-          </a>
-        </li>
-      ))}
+      {urls.map((url, index) => {
+        const name = notice.attachment_names?.[index] ?? `Attachment ${index + 1}`;
+        const href = linkableUrl(url);
+        return (
+          <li key={`${index}-${url}`}>
+            {href ? (
+              <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline">{name}</a>
+            ) : (
+              <span>{name}</span>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
