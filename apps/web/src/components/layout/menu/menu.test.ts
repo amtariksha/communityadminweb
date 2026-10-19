@@ -78,6 +78,7 @@ describe('classic modules', () => {
       'Add Users',
       'Approved Users',
       'Broadcast',
+      'Reports',
       'Member Directory',
       'Member Categories',
       'Blocks',
@@ -113,7 +114,7 @@ describe('classic modules', () => {
   });
 
   it('HelpDesk Tracker shows Setup with its built screens as sub-tabs, then the status lists', () => {
-    expect(labels('helpdesk')).toEqual(['Setup', 'Escalation', 'Open Requests', 'Closed Requests']);
+    expect(labels('helpdesk')).toEqual(['Setup', 'Escalation', 'Open Requests', 'Closed Requests', 'Reports']);
     expect(find(menu, 'helpdesk.escalation')?.href).toBe('/helpdesk/escalation');
     expect(find(menu, 'helpdesk.setup')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Setup Helpdesk Categories', '/helpdesk/setup/categories'],
@@ -211,7 +212,7 @@ describe('menus point only at screens that exist', () => {
 describe('visibleMenu', () => {
   it('hides planned entries and modules with nothing built yet', () => {
     const menu = visibleMenu(classicMenu, EVERYONE);
-    expect(find(menu, 'helpdesk.reports')).toBeUndefined();
+    expect(find(menu, 'gate.reports')).toBeUndefined();
     expect(find(menu, 'rules')).toBeUndefined();
     expect(find(menu, 'forms')).toBeUndefined();
     expect(find(menu, 'helpdesk.open')?.href).toBe('/helpdesk/open');

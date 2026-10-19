@@ -15,9 +15,14 @@ export interface ModuleReportsPage {
 }
 
 export const MODULE_REPORT_PAGES: readonly ModuleReportsPage[] = [
+  { menuId: 'units', catalogueModule: 'admin_residents', href: '/units/reports' },
+  { menuId: 'helpdesk', catalogueModule: 'complaint_tracker', href: '/helpdesk/reports' },
   { menuId: 'income', catalogueModule: 'maintenance_fee', href: '/income/reports' },
   { menuId: 'expense', catalogueModule: 'expense_tracker', href: '/expense-tracker/reports' },
+  { menuId: 'bank', catalogueModule: 'bank_cash', href: '/bank/reports' },
   { menuId: 'ledger', catalogueModule: 'general_ledger', href: '/accounts/reports' },
+  { menuId: 'projects', catalogueModule: 'issue_tracker', href: '/governance/reports' },
+  { menuId: 'assets', catalogueModule: 'asset_tracker', href: '/asset-inventory/reports' },
 ];
 
 /** Admin Reports itself; today's /reports is the same index (decision R1). */

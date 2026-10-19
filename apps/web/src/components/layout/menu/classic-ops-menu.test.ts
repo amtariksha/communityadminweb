@@ -78,6 +78,7 @@ describe('Projects & Meetings (PROJ-10 to PROJ-12)', () => {
     expect(children('projects')).toEqual([
       ['Meetings', undefined],
       ['Tasks', '/governance/tasks'],
+      ['Reports', '/governance/reports'],
     ]);
     expect(tabs('projects.meetings')).toEqual([
       ['Open', '/governance/meetings/open'],
@@ -115,7 +116,7 @@ describe('Society Profile (PROF-10)', () => {
 
 describe('Asset & Inventory (ASSET-07)', () => {
   it('expands to Setup · Assets · Inventory with their sub-tabs', () => {
-    expect(children('assets')?.map(([label]) => label)).toEqual(['Setup', 'Assets', 'Inventory']);
+    expect(children('assets')?.map(([label]) => label)).toEqual(['Setup', 'Assets', 'Inventory', 'Reports']);
     expect(tabs('assets.assets')).toEqual([
       ['Active Assets', '/asset-inventory/assets/active'],
       ['Under Service Assets', '/asset-inventory/assets/under-service'],
