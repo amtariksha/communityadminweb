@@ -1,5 +1,6 @@
 import { standardMenu, type NavGroup, type NavItem } from './standard-menu';
 import type { MenuNode } from './classic-menu';
+import { REPORT_ROUTE_FAMILIES } from '@/components/reports/module-reports';
 
 export interface MenuAccess {
   // Features enabled for the society; undefined while loading (show all,
@@ -12,6 +13,9 @@ export interface MenuAccess {
 // Classic-only route families that a standard entry governs: the classic
 // HelpDesk screens live under /helpdesk but follow the Tickets entry.
 const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string]> = [
+  // Admin Reports and each module's Reports page follow the Reports entry
+  // (first: a module's own family would otherwise claim its Reports page).
+  ...REPORT_ROUTE_FAMILIES,
   ['/helpdesk', '/tickets'],
   // Income Tracker › Setup is billing configuration: shown with Invoices.
   ['/income/setup', '/invoices'],

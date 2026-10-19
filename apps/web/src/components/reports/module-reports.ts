@@ -1,0 +1,48 @@
+import type { MenuNode } from '@/components/layout/menu/classic-menu';
+
+/**
+ * Module Reports pages (REP-S6): each classic module whose report section
+ * is in the registry gets a Reports child at `<module base>/reports`,
+ * showing that module's section of Admin Reports. The menu takes its
+ * entries from here, so a module is switched on in one place.
+ */
+export interface ModuleReportsPage {
+  /** The classic menu module, e.g. `ledger`. */
+  menuId: string;
+  /** The registry module the catalogue is filtered by, e.g. `general_ledger`. */
+  catalogueModule: string;
+  href: string;
+}
+
+export const MODULE_REPORT_PAGES: readonly ModuleReportsPage[] = [
+  { menuId: 'income', catalogueModule: 'maintenance_fee', href: '/income/reports' },
+  { menuId: 'expense', catalogueModule: 'expense_tracker', href: '/expense-tracker/reports' },
+  { menuId: 'ledger', catalogueModule: 'general_ledger', href: '/accounts/reports' },
+];
+
+/** Admin Reports itself; today's /reports is the same index (decision R1). */
+export const ADMIN_REPORTS_HREF = '/admin-reports';
+
+export function moduleReportsPage(menuId: string): ModuleReportsPage | undefined {
+  return MODULE_REPORT_PAGES.find((page) => page.menuId === menuId);
+}
+
+export function moduleReportsByCatalogue(catalogueModule: string): ModuleReportsPage | undefined {
+  return MODULE_REPORT_PAGES.find((page) => page.catalogueModule === catalogueModule);
+}
+
+/**
+ * The module's Reports child: its page when the module has one, else a
+ * planned entry naming the ticket that adds its reports.
+ */
+export function reportsMenuNode(menuId: string, plannedTicket: string): MenuNode {
+  const page = moduleReportsPage(menuId);
+  const id = `${menuId}.reports`;
+  return page ? { id, label: 'Reports', href: page.href } : { id, label: 'Reports', planned: plannedTicket };
+}
+
+/** Route families for the menu gate: every Reports page follows the Reports entry. */
+export const REPORT_ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string]> = [
+  [ADMIN_REPORTS_HREF, '/reports'],
+  ...MODULE_REPORT_PAGES.map((page) => [page.href, '/reports'] as const),
+];

@@ -13,7 +13,7 @@ const BUTTONS = [
 ] as const;
 
 // Society Profile opens Settings until its own screen exists (PROF);
-// Admin Reports has no screen yet (REP), so its tile stays hidden.
+// Admin Reports opens the numbered index (REP-04).
 const TILES = [
   { label: 'Vendor Master', href: DASHBOARD_ROUTES.vendors },
   { label: 'Admin Files', href: DASHBOARD_ROUTES.documents },

@@ -1,0 +1,45 @@
+'use client';
+
+import { useMemo, type ReactNode } from 'react';
+import { PageHeader } from '@/components/layout/page-header';
+import { useReportCatalogue } from '@/hooks/use-reports';
+import { useAdminLayout } from '@/lib/layout-context';
+import { CatalogueState } from './catalogue-state';
+import { indexSections } from './report-index-model';
+import { ReportIndexTable } from './report-index-table';
+import { moduleReportsByCatalogue } from './module-reports';
+
+/**
+ * A module's Reports page (REP-S6): its section of Admin Reports, inside
+ * the module frame. `module` is the registry module, e.g. `general_ledger`.
+ */
+export function ModuleReportsPage({ module }: { module: string }): ReactNode {
+  // The classic module frame names the page; the standard layout needs a header.
+  const standard = useAdminLayout() === 'standard';
+  return (
+    <div className="space-y-4">
+      {standard && <PageHeader title="Reports" />}
+      <ModuleReports module={module} />
+    </div>
+  );
+}
+
+function ModuleReports({ module }: { module: string }): ReactNode {
+  const catalogue = useReportCatalogue(module);
+  const sections = useMemo(() => indexSections(catalogue.data ?? []), [catalogue.data]);
+  const from = moduleReportsByCatalogue(module)?.menuId;
+
+  if (!catalogue.data) {
+    return <CatalogueState loading={catalogue.isLoading} error={catalogue.error} onRetry={() => void catalogue.refetch()} />;
+  }
+  if (sections.length === 0) {
+    return <p className="text-sm text-muted-foreground">No reports for this module yet.</p>;
+  }
+  return (
+    <div className="space-y-6">
+      {sections.map((section) => (
+        <ReportIndexTable key={section.section} section={section} from={from} />
+      ))}
+    </div>
+  );
+}

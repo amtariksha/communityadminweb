@@ -93,7 +93,7 @@ describe('classic modules', () => {
   });
 
   it('Income Tracker shows Setup and Receipts & Invoices with their sub-tabs', () => {
-    expect(labels('income')).toEqual(['Setup', 'Member Income', 'Receipts & Invoices']);
+    expect(labels('income')).toEqual(['Setup', 'Member Income', 'Receipts & Invoices', 'Reports']);
     expect(find(menu, 'income.member-income')?.href).toBe('/income/members');
     expect(find(menu, 'income.setup')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Auto Invoicing', '/income/setup/auto-invoicing'],
@@ -284,6 +284,11 @@ describe('locate', () => {
     ['/units', 'units', 'units.approved', undefined],
     ['/invoices', 'income', 'income.registers', 'income.registers.invoices'],
     ['/notifications', 'units', 'units.broadcast', undefined],
+    // REP-04: Admin Reports, its run pages, today's /reports and module Reports pages.
+    ['/admin-reports', 'reports', undefined, undefined],
+    ['/admin-reports/gl.balance_sheet', 'reports', undefined, undefined],
+    ['/reports', 'reports', undefined, undefined],
+    ['/accounts/reports', 'ledger', 'ledger.reports', undefined],
   ])('%s → %s › %s › %s', (path, module, child, tab) => {
     const location = locate(path, menu);
     expect(location?.module.id).toBe(module);

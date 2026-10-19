@@ -189,6 +189,7 @@ describe('ClassicDashboard', () => {
     expect(link('Vendor Master').getAttribute('href')).toBe('/vendors');
     expect(link('Admin Files').getAttribute('href')).toBe('/documents');
     expect(link('Society Profile').getAttribute('href')).toBe('/settings');
+    expect(link('Admin Reports').getAttribute('href')).toBe('/admin-reports');
   });
 
   it('sends a notification or an announcement from the send-now row', () => {
@@ -204,7 +205,6 @@ describe('ClassicDashboard', () => {
   it('leaves out tiles whose screen does not exist yet', () => {
     render(<ClassicDashboard />);
 
-    expect(screen.queryByText('Admin Reports')).toBeNull();
     expect(screen.queryByText(/Paid Intimations/)).toBeNull();
     expect(screen.queryByText(/Never Logged In/)).toBeNull();
     expect(screen.queryByText(/Variance/)).toBeNull();

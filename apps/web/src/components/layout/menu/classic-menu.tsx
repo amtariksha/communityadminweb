@@ -28,6 +28,7 @@ import { HELPDESK_BASE, HELPDESK_SCOPES } from '@/lib/helpdesk-scopes';
 import { STAFF_ACTIVE, STAFF_BASE, STAFF_RETIRED } from '@/lib/staff-statuses';
 import { ASSET_STATUS_ROUTES, ASSETS_BASE } from '@/lib/asset-statuses';
 import { MEETING_STATES, MEETINGS_BASE } from '@/lib/meeting-states';
+import { reportsMenuNode } from '@/components/reports/module-reports';
 import { statusMenuChildren } from './status-menu';
 
 /**
@@ -122,7 +123,7 @@ export const classicMenu: MenuNode[] = [
       planned('units.survey', 'Survey', 'P9'),
       planned('units.pets', 'Pet Setup', 'UNIT-35'),
       planned('units.consent', 'Consent Activity', 'P9'),
-      planned('units.reports', 'Reports', 'REP-04'),
+      reportsMenuNode('units', 'REP-06'),
       // Ours, after their children: people list, resident tags, KYC queue.
       { id: 'units.directory', label: 'Member Directory', href: '/units/directory', logs: ['member'] },
       { id: 'units.categories', label: 'Member Categories', href: '/setup/categories' },
@@ -155,7 +156,7 @@ export const classicMenu: MenuNode[] = [
       { id: 'helpdesk.escalation', label: 'Escalation', href: '/helpdesk/escalation', logs: ['helpdesk'] },
       // Open Requests, Closed Requests: status as menu items (SB-05, HELP-12).
       ...statusMenuChildren('helpdesk', HELPDESK_BASE, HELPDESK_SCOPES, { logs: ['ticket'] }),
-      planned('helpdesk.reports', 'Reports', 'HELP-21'),
+      reportsMenuNode('helpdesk', 'HELP-21'),
     ],
   },
   {
@@ -215,7 +216,7 @@ export const classicMenu: MenuNode[] = [
       },
       planned('income.defaulters', 'Defaulters', 'INC-29'),
       planned('income.non-member', 'Non Member Income', 'INC-46'),
-      planned('income.reports', 'Reports', 'REP-04'),
+      reportsMenuNode('income', 'REP-04'),
     ],
   },
   {
@@ -255,7 +256,7 @@ export const classicMenu: MenuNode[] = [
       planned('expense.by-date', 'By Date', 'EXP-20'),
       planned('expense.budget', 'Budget', 'EXP-20'),
       planned('expense.comparison', 'Expenses Comparison', 'EXP-20'),
-      planned('expense.reports', 'Reports', 'REP-04'),
+      reportsMenuNode('expense', 'REP-04'),
     ],
   },
   {
@@ -268,7 +269,7 @@ export const classicMenu: MenuNode[] = [
       { id: 'bank.accounts', label: 'Bank & Cash Accounts', href: '/bank' },
       { id: 'bank.taxes', label: 'Taxes', href: '/tax' },
       planned('bank.fixed-deposits', 'Fixed Deposits', 'BANK-06'),
-      planned('bank.reports', 'Reports', 'REP-04'),
+      reportsMenuNode('bank', 'REP-06'),
     ],
   },
   {
@@ -281,7 +282,7 @@ export const classicMenu: MenuNode[] = [
       planned('ledger.query', 'Query', 'GL-09'),
       planned('ledger.trial-balance', 'Trial Balance', 'GL-09'),
       planned('ledger.statements', 'Financial Statements', 'GL-09'),
-      planned('ledger.reports', 'Reports', 'REP-04'),
+      reportsMenuNode('ledger', 'REP-04'),
     ],
   },
   {
@@ -331,7 +332,7 @@ export const classicMenu: MenuNode[] = [
           { id: 'gate.investigator.overstays', label: 'Overstays', href: '/gate/investigator/overstays', logs: ['gate'] },
         ],
       },
-      planned('gate.reports', 'Reports', 'GATE-30'),
+      reportsMenuNode('gate', 'GATE-30'),
     ],
   },
   {
@@ -351,7 +352,7 @@ export const classicMenu: MenuNode[] = [
       planned('staff.temp', 'Temp', 'STAFF-40'),
       ...statusMenuChildren('staff', STAFF_BASE, [STAFF_RETIRED], { logs: ['staff'] }),
       planned('staff.blacklisted', 'Blacklisted', 'STAFF-40'),
-      planned('staff.reports', 'Reports', 'REP-04'),
+      reportsMenuNode('staff', 'STAFF-30'),
     ],
   },
   {
@@ -405,7 +406,7 @@ export const classicMenu: MenuNode[] = [
       planned('amenity.setup', 'Setup', 'AMEN-10'),
       { id: 'amenity.amenity', label: 'Amenity', href: '/amenities', logs: ['amenity'] },
       { id: 'amenity.event', label: 'Event', href: '/events' },
-      planned('amenity.reports', 'Reports', 'REP-04'),
+      reportsMenuNode('amenity', 'AMEN-30'),
     ],
   },
   {
@@ -425,7 +426,7 @@ export const classicMenu: MenuNode[] = [
     children: [
       planned('forms.setup', 'Setup', 'FORM-02'),
       planned('forms.responses', 'Responses', 'FORM-05'),
-      planned('forms.reports', 'Reports', 'REP-04'),
+      reportsMenuNode('forms', 'REP-04'),
     ],
   },
   {
@@ -450,7 +451,7 @@ export const classicMenu: MenuNode[] = [
         tabs: statusMenuChildren('projects.meetings', MEETINGS_BASE, MEETING_STATES, { logs: ['meeting'] }),
       },
       { id: 'projects.tasks', label: 'Tasks', href: '/governance/tasks', logs: ['meeting_task'] },
-      planned('projects.reports', 'Reports', 'PROJ-30'),
+      reportsMenuNode('projects', 'PROJ-30'),
     ],
   },
   {
@@ -502,7 +503,7 @@ export const classicMenu: MenuNode[] = [
           { id: 'assets.inventory.movements', label: 'Movement Log', href: '/asset-inventory/inventory/movements', logs: INVENTORY_LOGS },
         ],
       },
-      planned('assets.reports', 'Reports', 'ASSET-14'),
+      reportsMenuNode('assets', 'ASSET-14'),
     ],
   },
   {
@@ -585,8 +586,8 @@ export const classicMenu: MenuNode[] = [
       },
     ],
   },
-  // Today's finance reports; REP-04 turns this into the numbered index.
-  { id: 'reports', label: 'Admin Reports', icon: icon(BarChart3), href: '/reports' },
+  // The numbered index of every report (REP-04); today's /reports shows it too.
+  { id: 'reports', label: 'Admin Reports', icon: icon(BarChart3), href: '/admin-reports', aliases: ['/reports'] },
   {
     // Our screens with no place in their menu (decision D4).
     id: MORE_GROUP_ID,

@@ -1,8 +1,7 @@
 /**
  * Where each dashboard button goes. A target that is a create form carries
  * `?new=1`, which the target page turns into an open form (DASH-07).
- * `/admin-reports` has no screen yet (REP); the tile stays hidden until a
- * menu entry owns that route.
+ * A tile whose route no menu entry owns stays hidden (canOpenRoute).
  */
 export const DASHBOARD_ROUTES = {
   notifications: '/notifications',

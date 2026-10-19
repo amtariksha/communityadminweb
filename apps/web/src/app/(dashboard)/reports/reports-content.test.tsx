@@ -7,10 +7,15 @@ const mocks = vi.hoisted(() => ({ report: 'income-expenditure' }));
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(`report=${mocks.report}`),
 }));
-vi.mock('./income-expenditure-view', () => ({
+vi.mock('@/components/ledger-reports', () => ({
   IncomeExpenditureView: ({ startDate, endDate }: { startDate: string; endDate: string }) => (
     <p>{`I&E ${startDate} to ${endDate}`}</p>
   ),
+  TrialBalanceView: ({ asOfDate }: { asOfDate: string }) => <p>{`TB ${asOfDate}`}</p>,
+  BalanceSheetView: ({ asOfDate }: { asOfDate: string }) => <p>{`BS ${asOfDate}`}</p>,
+  GeneralLedgerView: () => <p>GL</p>,
+  DefaultersView: () => <p>Defaulters</p>,
+  VendorAgingView: () => <p>Vendor aging</p>,
 }));
 vi.mock('@/hooks', () => {
   const empty = () => ({ data: undefined, isLoading: false, isError: false });
