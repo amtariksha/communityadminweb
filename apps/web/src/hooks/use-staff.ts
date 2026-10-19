@@ -33,8 +33,10 @@ export interface Staff {
   address: string | null;
   emergency_contact: string | null;
   photo_url: string | null;
-  joined_at: string;
-  left_at: string | null;
+  // society_staff.join_date / exit_date (DATE); salary is NUMERIC (a string from pg).
+  join_date: string | null;
+  exit_date: string | null;
+  salary: string | number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -61,8 +63,8 @@ export interface ShiftAssignment {
   gate_name?: string;
   shift_id: string;
   shift_name?: string;
-  from_date: string;
-  until_date: string | null;
+  effective_from: string;
+  effective_until: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -89,9 +91,9 @@ export interface Leave {
   tenant_id: string;
   staff_id: string;
   staff_name?: string;
-  leave_type: 'casual' | 'sick' | 'earned' | 'unpaid';
-  from_date: string;
-  to_date: string;
+  leave_type: 'casual' | 'sick' | 'earned' | 'unpaid' | 'emergency' | 'compensatory';
+  start_date: string;
+  end_date: string;
   reason: string | null;
   status: 'pending' | 'approved' | 'rejected';
   approved_by: string | null;
@@ -174,7 +176,8 @@ interface CreateEmployeeInput {
   id_proof_number?: string;
   address?: string;
   emergency_contact?: string;
-  joined_at?: string;
+  join_date?: string;
+  salary?: number;
 }
 
 interface UpdateEmployeeInput {
@@ -193,15 +196,13 @@ interface UpdateShiftInput {
   data: Partial<CreateShiftInput>;
 }
 
+// POST /staff/assignments (assignStaffSchema): effective_from is required.
 interface AssignStaffInput {
   staff_id: string;
-  gate_id: string;
+  gate_id?: string;
   shift_id: string;
-  // Accept both naming conventions; backend tolerates either.
-  effective_from?: string;
+  effective_from: string;
   effective_until?: string;
-  from_date?: string;
-  until_date?: string;
 }
 
 interface ClockInInput {

@@ -3,7 +3,6 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import {
   Plus,
-  Clock,
   LogIn,
   LogOut,
   CheckCircle,
@@ -62,7 +61,6 @@ import {
   useCreateEmployee,
   useUpdateEmployee,
   useDeactivateEmployee,
-  useCreateShift,
   useAssignStaff,
   useClockIn,
   useClockOut,
@@ -80,6 +78,15 @@ import type {
   AttendanceFilters,
   LeaveFilters,
 } from '@/hooks/use-staff';
+import {
+  EMPLOYEE_EXPORT_COLUMNS,
+  LEAVE_TYPE_OPTIONS,
+  dateOnly,
+  employeeExportRows,
+  formatDuration,
+  salaryFromInput,
+} from './staff-fields';
+import { ShiftTemplatesCard } from './shift-templates-card';
 
 type TabKey = 'employees' | 'shifts' | 'attendance' | 'leaves';
 
@@ -97,26 +104,12 @@ const STAFF_TYPE_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-const LEAVE_TYPE_OPTIONS = [
-  { value: 'casual', label: 'Casual Leave' },
-  { value: 'sick', label: 'Sick Leave' },
-  { value: 'earned', label: 'Earned Leave' },
-  { value: 'unpaid', label: 'Unpaid Leave' },
-];
-
 function formatTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleTimeString('en-IN', {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-function formatDuration(minutes: number | null | undefined): string {
-  if (!minutes) return '-';
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${hours}h ${mins}m`;
 }
 
 // ---------------------------------------------------------------------------
@@ -167,6 +160,7 @@ export default function StaffContent(): ReactNode {
   const [empAddress, setEmpAddress] = useState('');
   const [empEmergencyContact, setEmpEmergencyContact] = useState('');
   const [empJoinedAt, setEmpJoinedAt] = useState('');
+  const [empSalary, setEmpSalary] = useState('');
 
   // QA #89 — join date can't be more than 30 days in the future. Same
   // ceiling enforced server-side in employeeJoinDate Zod helper.
@@ -175,12 +169,6 @@ export default function StaffContent(): ReactNode {
     d.setDate(d.getDate() + 30);
     return d.toISOString().split('T')[0];
   }, []);
-
-  // Shift dialog state
-  const [addShiftOpen, setAddShiftOpen] = useState(false);
-  const [shiftName, setShiftName] = useState('');
-  const [shiftStart, setShiftStart] = useState('');
-  const [shiftEnd, setShiftEnd] = useState('');
 
   // Assignment dialog state
   const [assignOpen, setAssignOpen] = useState(false);
@@ -259,7 +247,6 @@ export default function StaffContent(): ReactNode {
   const createEmployee = useCreateEmployee();
   const updateEmployee = useUpdateEmployee();
   const deactivateEmployee = useDeactivateEmployee();
-  const createShift = useCreateShift();
   const assignStaff = useAssignStaff();
   const clockIn = useClockIn();
   const clockOut = useClockOut();
@@ -281,6 +268,7 @@ export default function StaffContent(): ReactNode {
     setEmpAddress('');
     setEmpEmergencyContact('');
     setEmpJoinedAt('');
+    setEmpSalary('');
   }
 
   function handleOpenEditEmployee(emp: Staff): void {
@@ -292,7 +280,8 @@ export default function StaffContent(): ReactNode {
     setEmpDesignation(emp.designation ?? '');
     setEmpAddress(emp.address ?? '');
     setEmpEmergencyContact(emp.emergency_contact ?? '');
-    setEmpJoinedAt(emp.joined_at ? emp.joined_at.split('T')[0] : '');
+    setEmpJoinedAt(dateOnly(emp.join_date));
+    setEmpSalary(emp.salary == null ? '' : String(Number(emp.salary)));
     setAddEmployeeOpen(true);
   }
 
@@ -312,6 +301,11 @@ export default function StaffContent(): ReactNode {
       });
       return;
     }
+    const salary = salaryFromInput(empSalary);
+    if (!salary.ok) {
+      addToast({ title: 'Invalid salary', description: 'Enter a monthly amount above zero.', variant: 'destructive' });
+      return;
+    }
 
     if (editingEmployeeId) {
       updateEmployee.mutate(
@@ -323,6 +317,7 @@ export default function StaffContent(): ReactNode {
             designation: empDesignation || undefined,
             address: empAddress || undefined,
             emergency_contact: emergency.value || undefined,
+            salary: salary.value,
           },
         },
         {
@@ -370,7 +365,8 @@ export default function StaffContent(): ReactNode {
           designation: empDesignation || undefined,
           address: empAddress || undefined,
           emergency_contact: emergency.value || undefined,
-          joined_at: empJoinedAt || undefined,
+          join_date: empJoinedAt || undefined,
+          salary: salary.value,
         },
         {
           onSuccess() {
@@ -398,33 +394,6 @@ export default function StaffContent(): ReactNode {
   }
 
   // ---------------------------------------------------------------------------
-  // Shift handlers
-  // ---------------------------------------------------------------------------
-
-  function resetShiftForm(): void {
-    setShiftName('');
-    setShiftStart('');
-    setShiftEnd('');
-  }
-
-  function handleCreateShift(e: FormEvent): void {
-    e.preventDefault();
-    createShift.mutate(
-      { name: shiftName, start_time: shiftStart, end_time: shiftEnd },
-      {
-        onSuccess() {
-          setAddShiftOpen(false);
-          resetShiftForm();
-          addToast({ title: 'Shift created', variant: 'success' });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to create shift', description: friendlyError(error), variant: 'destructive' });
-        },
-      },
-    );
-  }
-
-  // ---------------------------------------------------------------------------
   // Assignment handlers
   // ---------------------------------------------------------------------------
 
@@ -441,10 +410,10 @@ export default function StaffContent(): ReactNode {
     assignStaff.mutate(
       {
         staff_id: assignStaffId,
-        gate_id: assignGateId,
+        gate_id: assignGateId || undefined,
         shift_id: assignShiftId,
-        from_date: assignFromDate,
-        until_date: assignUntilDate || undefined,
+        effective_from: assignFromDate,
+        effective_until: assignUntilDate || undefined,
       },
       {
         onSuccess() {
@@ -573,15 +542,9 @@ export default function StaffContent(): ReactNode {
         description="Manage society staff — employees, shifts, attendance, and leaves"
         actions={
           <ExportButton
-            data={employees as unknown as Record<string, unknown>[]}
+            data={employeeExportRows(employees)}
             filename={`staff-${new Date().toISOString().split('T')[0]}`}
-            columns={[
-              { key: 'name', label: 'Name' },
-              { key: 'staff_type', label: 'Type' },
-              { key: 'phone', label: 'Phone' },
-              { key: 'status', label: 'Status' },
-              { key: 'joined_at', label: 'Joined' },
-            ]}
+            columns={[...EMPLOYEE_EXPORT_COLUMNS]}
           />
         }
       />
@@ -764,6 +727,19 @@ export default function StaffContent(): ReactNode {
                             </div>
                           )}
                         </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="emp-salary">Monthly Salary (₹)</Label>
+                          <Input
+                            id="emp-salary"
+                            type="number"
+                            inputMode="decimal"
+                            min="0"
+                            step="0.01"
+                            placeholder="Optional"
+                            value={empSalary}
+                            onChange={(e) => setEmpSalary(e.target.value)}
+                          />
+                        </div>
                       </div>
                       <DialogFooter>
                         <DialogClose>
@@ -817,7 +793,7 @@ export default function StaffContent(): ReactNode {
                       <TableCell><ClickablePhone phone={emp.phone} /></TableCell>
                       <TableCell className="capitalize">{emp.staff_type}</TableCell>
                       <TableCell>{emp.designation ?? '-'}</TableCell>
-                      <TableCell>{emp.joined_at ? formatDate(emp.joined_at) : '-'}</TableCell>
+                      <TableCell>{emp.join_date ? formatDate(emp.join_date) : '-'}</TableCell>
                       <TableCell>
                         <Badge variant={emp.is_active ? 'success' : 'secondary'}>
                           {emp.is_active ? 'Active' : 'Inactive'}
@@ -866,102 +842,7 @@ export default function StaffContent(): ReactNode {
       {/* ================================================================= */}
       {activeTab === 'shifts' && (
         <div className="space-y-6">
-          {/* Shift Templates */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Shift Templates</CardTitle>
-                <Dialog open={addShiftOpen} onOpenChange={setAddShiftOpen}>
-                  <DialogTrigger>
-                    <Button size="sm" onClick={() => resetShiftForm()}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Shift
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <form onSubmit={handleCreateShift}>
-                      <DialogHeader>
-                        <DialogTitle>Create Shift</DialogTitle>
-                        <DialogDescription>Define a new shift template</DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="shift-name">Shift Name</Label>
-                          <Input
-                            id="shift-name"
-                            required
-                            placeholder="e.g., Morning Shift"
-                            value={shiftName}
-                            onChange={(e) => setShiftName(e.target.value)}
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="shift-start">Start Time</Label>
-                            <Input
-                              id="shift-start"
-                              type="time"
-                              required
-                              value={shiftStart}
-                              onChange={(e) => setShiftStart(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="shift-end">End Time</Label>
-                            <Input
-                              id="shift-end"
-                              type="time"
-                              required
-                              value={shiftEnd}
-                              onChange={(e) => setShiftEnd(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <DialogClose>
-                          <Button type="button" variant="outline">Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={createShift.isPending}>
-                          {createShift.isPending ? 'Creating...' : 'Create'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {shiftsQuery.isLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
-                  ))}
-                </div>
-              ) : shifts.length > 0 ? (
-                <div className="space-y-3">
-                  {shifts.map((shift) => (
-                    <div key={shift.id} className="flex items-center justify-between rounded-md border p-4">
-                      <div className="flex items-center gap-3">
-                        <Clock className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{shift.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {shift.start_time} - {shift.end_time}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant="success">Active</Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="py-8 text-center text-muted-foreground">
-                  No shifts defined. Create shift templates to assign staff.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          <ShiftTemplatesCard />
 
           {/* Assignments */}
           <Card>
@@ -1080,8 +961,8 @@ export default function StaffContent(): ReactNode {
                         <TableCell className="font-medium">{assignment.staff_name ?? '-'}</TableCell>
                         <TableCell>{assignment.gate_name ?? '-'}</TableCell>
                         <TableCell>{assignment.shift_name ?? '-'}</TableCell>
-                        <TableCell>{formatDate(assignment.from_date)}</TableCell>
-                        <TableCell>{assignment.until_date ? formatDate(assignment.until_date) : 'Ongoing'}</TableCell>
+                        <TableCell>{formatDate(assignment.effective_from)}</TableCell>
+                        <TableCell>{assignment.effective_until ? formatDate(assignment.effective_until) : 'Ongoing'}</TableCell>
                         <TableCell>
                           <Badge variant={assignment.is_active ? 'success' : 'secondary'}>
                             {assignment.is_active ? 'Active' : 'Ended'}
@@ -1387,8 +1268,8 @@ export default function StaffContent(): ReactNode {
                     <TableRow key={leave.id}>
                       <TableCell className="font-medium">{leave.staff_name ?? '-'}</TableCell>
                       <TableCell className="capitalize">{leave.leave_type.replace('_', ' ')}</TableCell>
-                      <TableCell>{formatDate(leave.from_date)}</TableCell>
-                      <TableCell>{formatDate(leave.to_date)}</TableCell>
+                      <TableCell>{formatDate(leave.start_date)}</TableCell>
+                      <TableCell>{formatDate(leave.end_date)}</TableCell>
                       <TableCell className="max-w-[200px] truncate">{leave.reason ?? '-'}</TableCell>
                       <TableCell>
                         <Badge
