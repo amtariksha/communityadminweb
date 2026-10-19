@@ -47,6 +47,8 @@ interface MemberIncomeTableProps {
    * search is used. The defaulter count is the society's until then.
    */
   opensEmpty?: boolean;
+  /** Utility Income lists only the units billed for utilities (UTIL-08). */
+  trackedOnly?: boolean;
 }
 
 const CHOOSE_PROMPT = 'Choose a block above, or search, to list the units.';
@@ -61,12 +63,14 @@ function emptyText(filters: UnitDuesFilters): string {
  * field, then every unit with its primary contact, billing name, status
  * and what it owes, with the row buttons the page passes in.
  */
-export function MemberIncomeTable({ scope, title, rowActions, exportFilename, opensEmpty = false }: MemberIncomeTableProps): ReactNode {
+export function MemberIncomeTable(props: MemberIncomeTableProps): ReactNode {
+  const { scope, title, rowActions, exportFilename, opensEmpty = false, trackedOnly = false } = props;
   const [filters, setFilters] = useState<UnitDuesFilters>({
     block: null,
     q: '',
     q_field: 'any',
     scope,
+    tracked_only: trackedOnly,
     page: 1,
     limit: 25,
   });

@@ -1,4 +1,4 @@
-import type { AdhocInvoiceInput, PostingOptions } from '@/hooks/use-unit-posting';
+import type { AdhocInvoiceInput, PostingOptions, PostingScope } from '@/hooks/use-unit-posting';
 
 /** The Post Invoice form (INC-S18) as typed. */
 export interface PostInvoiceForm {
@@ -58,7 +58,12 @@ export function postInvoiceErrors(form: PostInvoiceForm, options: PostingOptions
   return errors;
 }
 
-export function toAdhocPayload(unitId: string, form: PostInvoiceForm, options: PostingOptions | undefined): AdhocInvoiceInput {
+export function toAdhocPayload(
+  unitId: string,
+  form: PostInvoiceForm,
+  options: PostingOptions | undefined,
+  scope: PostingScope = 'member',
+): AdhocInvoiceInput {
   const applyGst = form.applyGst && options?.show_gst_on_adhoc !== false;
   return {
     unit_id: unitId,
@@ -72,5 +77,14 @@ export function toAdhocPayload(unitId: string, form: PostInvoiceForm, options: P
     apply_gst: applyGst,
     ...(applyGst ? { gst_rate: Number(form.gstRate) } : {}),
     as_debit_note: form.asDebitNote,
+    ...(scope === 'utility' ? { scope } : {}),
   };
+}
+
+/**
+ * UTIL-08 — utility dues may only be posted by an API that knows the scope:
+ * an older one would drop it and post the invoice as maintenance.
+ */
+export function utilityScopeMissing(scope: PostingScope, options: PostingOptions | undefined): boolean {
+  return scope === 'utility' && options !== undefined && options.scope !== 'utility';
 }

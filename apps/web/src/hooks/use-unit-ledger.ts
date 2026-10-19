@@ -34,6 +34,8 @@ export interface UnitDuesFilters {
   q: string;
   q_field: UnitDuesSearchField;
   scope: UnitLedgerScope;
+  /** UTIL-08 — only the units billed for utilities (Utility Income). */
+  tracked_only?: boolean;
   page: number;
   limit: number;
 }
@@ -51,6 +53,7 @@ export function unitDuesParams(filters: UnitDuesFilters, opts: { paged?: boolean
     params.limit = String(filters.limit);
   }
   if (filters.block) params.block = filters.block;
+  if (filters.tracked_only) params.tracked_only = 'true';
   if (filters.q) {
     params.q = filters.q;
     params.q_field = filters.q_field;

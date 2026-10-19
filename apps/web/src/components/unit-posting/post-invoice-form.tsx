@@ -11,11 +11,18 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
-import { usePostAdhocInvoice, usePostingOptions, type PostedUnitInvoice } from '@/hooks/use-unit-posting';
+import { usePostAdhocInvoice, usePostingOptions, type PostedUnitInvoice, type PostingScope } from '@/hooks/use-unit-posting';
 import { friendlyError } from '@/lib/api-error';
 import { isNotDeployed } from '@/lib/not-deployed';
 import { formatCurrency } from '@/lib/utils';
-import { defaultDueDate, emptyPostInvoiceForm, postInvoiceErrors, toAdhocPayload, type PostInvoiceForm } from './post-invoice-state';
+import {
+  defaultDueDate,
+  emptyPostInvoiceForm,
+  postInvoiceErrors,
+  toAdhocPayload,
+  utilityScopeMissing,
+  type PostInvoiceForm,
+} from './post-invoice-state';
 import { UnitPostingHeader } from './unit-posting-header';
 
 export interface PostInvoiceFormProps {
@@ -29,6 +36,8 @@ export interface PostInvoiceFormProps {
   /** Other postings from the unit's row, shown as a button column under the form. */
   moreActions?: ReadonlyArray<{ label: string; href: string }>;
   today: string;
+  /** Member dues (default) or utility dues from Utility Income (UTIL-08). */
+  scope?: PostingScope;
 }
 
 function PeriodFields({ form, set, errors }: { form: PostInvoiceForm; set: (patch: Partial<PostInvoiceForm>) => void; errors: Partial<Record<keyof PostInvoiceForm, string>> }): ReactNode {
@@ -108,22 +117,24 @@ function GstFields({ form, set, rates, error }: { form: PostInvoiceForm; set: Se
 }
 
 /** INC-23 — Post Invoice for a unit (INC-S18): posted at once, no draft. */
-export function PostInvoiceForm({ unitId, mode, open, onClose, onPosted, onPostedAndCollect, moreActions = [], today }: PostInvoiceFormProps): ReactNode {
+export function PostInvoiceForm(props: PostInvoiceFormProps): ReactNode {
+  const { unitId, mode, open, onClose, onPosted, onPostedAndCollect, moreActions = [], today, scope = 'member' } = props;
   const { addToast } = useToast();
   const [form, setForm] = useState<PostInvoiceForm>(() => emptyPostInvoiceForm(today));
   const [submitted, setSubmitted] = useState(false);
-  const optionsQuery = usePostingOptions(form.invoiceDate);
+  const optionsQuery = usePostingOptions(form.invoiceDate, scope);
   const options = optionsQuery.data;
   const post = usePostAdhocInvoice();
   const set = (patch: Partial<PostInvoiceForm>): void => setForm((current) => ({ ...current, ...patch }));
   const errors = useMemo(() => postInvoiceErrors(form, options), [form, options]);
   const shown = submitted ? errors : {};
   const dueHint = options ? defaultDueDate(form.invoiceDate, options.due_days) : '';
+  const scopeMissing = utilityScopeMissing(scope, options);
 
   function save(collect: boolean): void {
     setSubmitted(true);
-    if (Object.keys(errors).length > 0) return;
-    post.mutate(toAdhocPayload(unitId, form, options), {
+    if (Object.keys(errors).length > 0 || scopeMissing) return;
+    post.mutate(toAdhocPayload(unitId, form, options, scope), {
       onSuccess: (response) => {
         const invoice = response.data;
         addToast({ title: `${invoice.invoice_number} posted`, description: `${formatCurrency(Number(invoice.net_amount))} is now due from the unit.`, variant: 'success' });
@@ -150,7 +161,12 @@ export function PostInvoiceForm({ unitId, mode, open, onClose, onPosted, onPoste
       savingLabel="Posting…"
       dialogClassName="max-w-2xl"
     >
-      <UnitPostingHeader unitId={unitId} />
+      <UnitPostingHeader unitId={unitId} scope={scope} />
+      {scopeMissing && (
+        <p role="alert" className="text-sm text-destructive">
+          Posting utility invoices is not available yet on this server.
+        </p>
+      )}
       <MainFields form={form} set={set} errors={shown} dueHint={dueHint} />
       <PeriodFields form={form} set={set} errors={shown} />
       <div className="space-y-1">

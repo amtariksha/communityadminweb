@@ -13,7 +13,12 @@ export interface PostingOptions {
   gst_rates: number[];
   due_days: number;
   date: string;
+  /** The ledger the options are for; absent on an API older than UTIL-08. */
+  scope?: PostingScope;
 }
+
+/** Member dues, or utility dues posted from Utility Income (UTIL-08). */
+export type PostingScope = 'member' | 'utility';
 
 export interface PostedUnitInvoice {
   id: string;
@@ -41,6 +46,8 @@ export interface AdhocInvoiceInput {
   apply_gst: boolean;
   gst_rate?: number;
   as_debit_note: boolean;
+  /** UTIL-08 — sent only for utility dues. */
+  scope?: PostingScope;
 }
 
 export interface MultiLineInvoiceInput {
@@ -77,26 +84,32 @@ export interface PostedUnitCreditNote {
 const quiet = { meta: { suppressToast: true }, retry: false } as const;
 
 export const postingKeys = {
-  options: (date: string) => [...unitLedgerKeys.all, 'posting-options', date] as const,
-  unitRow: (unitId: string) => [...unitLedgerKeys.all, 'unit-row', unitId] as const,
+  options: (date: string, scope: PostingScope = 'member') => [...unitLedgerKeys.all, 'posting-options', date, scope] as const,
+  unitRow: (unitId: string, scope: PostingScope = 'member') => [...unitLedgerKeys.all, 'unit-row', unitId, scope] as const,
 };
 
-export function usePostingOptions(date: string) {
+function scopeParam(scope: PostingScope): Record<string, string> {
+  return scope === 'utility' ? { scope } : {};
+}
+
+export function usePostingOptions(date: string, scope: PostingScope = 'member') {
   return useQuery({
-    queryKey: postingKeys.options(date),
+    queryKey: postingKeys.options(date, scope),
     queryFn: () =>
-      api.get<{ data: PostingOptions }>('/unit-ledger/posting-options', { params: date ? { date } : {} }).then((res) => res.data),
+      api
+        .get<{ data: PostingOptions }>('/unit-ledger/posting-options', { params: { ...(date ? { date } : {}), ...scopeParam(scope) } })
+        .then((res) => res.data),
     ...quiet,
   });
 }
 
-/** One unit's Member Income row: the header of its posting forms. */
-export function useUnitDuesRow(unitId: string) {
+/** One unit's Member Income (or Utility Income) row: the header of its posting forms. */
+export function useUnitDuesRow(unitId: string, scope: PostingScope = 'member') {
   return useQuery({
-    queryKey: postingKeys.unitRow(unitId),
+    queryKey: postingKeys.unitRow(unitId, scope),
     queryFn: () =>
       api
-        .get<UnitDuesResult>('/unit-ledger/units', { params: { unit_id: unitId, limit: '1' } })
+        .get<UnitDuesResult>('/unit-ledger/units', { params: { unit_id: unitId, limit: '1', ...scopeParam(scope) } })
         .then((res): UnitDuesRow | null => res.data[0] ?? null),
     enabled: unitId !== '',
     ...quiet,

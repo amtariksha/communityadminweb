@@ -63,11 +63,19 @@ function ActionDialog({ pending, onClose }: { pending: PendingAction | null; onC
  * From / To / Show Reversals, the rows with their Actions, and Export,
  * Auto Allocate, Print and Close underneath.
  */
-export function StatementContent({ unitId }: { unitId: string }): ReactNode {
+interface StatementContentProps {
+  unitId: string;
+  /** Member dues (default) or utility dues (Utility Income › View, UTIL-08). */
+  scope?: 'member' | 'utility';
+  /** Where Close goes; the Member Income list by default. */
+  closeHref?: string;
+}
+
+export function StatementContent({ unitId, scope = 'member', closeHref = MEMBER_INCOME_BASE }: StatementContentProps): ReactNode {
   const pathname = usePathname();
   const tab = tabFrom(useSearchParams().get('tab'));
   const access = useFinanceAccess();
-  const [filters, setFilters] = useState<StatementFilters>({ from: '', to: '', showReversals: false, scope: 'member', view: 'admin' });
+  const [filters, setFilters] = useState<StatementFilters>({ from: '', to: '', showReversals: false, scope, view: 'admin' });
   const [pending, setPending] = useState<PendingAction | null>(null);
   const view = tab === 'user' ? 'resident' : 'admin';
   const effective: StatementFilters = { ...filters, view, showReversals: view === 'admin' && filters.showReversals };
@@ -100,7 +108,7 @@ export function StatementContent({ unitId }: { unitId: string }): ReactNode {
             filters={effective}
             documentRows={statement.rows.length}
             canWrite={access.canWrite}
-            closeHref={MEMBER_INCOME_BASE}
+            closeHref={closeHref}
           />
         </>
       )}

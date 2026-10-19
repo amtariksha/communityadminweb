@@ -40,6 +40,8 @@ export interface CollectionFormProps {
   onClose: () => void;
   /** `print` when "Post and Print Receipt" was used. */
   onPosted: (receipt: CreatedReceipt, print: boolean) => void;
+  /** Member dues (default) or the unit's utility bills only (Utility Income, UTIL-08). */
+  scope?: 'member' | 'utility';
 }
 
 type SetForm = (patch: Partial<CollectionForm>) => void;
@@ -189,11 +191,12 @@ function PayerField({ unitId, form, set, error }: { unitId: string; form: Collec
 }
 
 /** INC-26 — Post Collection for a unit (INC-S21): against the bills it pays, with cheque / DD details and TDS. */
-export function CollectionFormView({ unitId, mode, open, today, preselectBillId = null, onClose, onPosted }: CollectionFormProps): ReactNode {
+export function CollectionFormView(props: CollectionFormProps): ReactNode {
+  const { unitId, mode, open, today, preselectBillId = null, onClose, onPosted, scope = 'member' } = props;
   const { addToast } = useToast();
   const [form, setForm] = useState<CollectionForm>(() => emptyCollectionForm(today, preselectBillId));
   const [submitted, setSubmitted] = useState(false);
-  const bills = useOpenBills(unitId, 'member').data ?? [];
+  const bills = useOpenBills(unitId, scope).data ?? [];
   const create = useCreateReceipt();
   const set: SetForm = (patch) => setForm((current) => ({ ...current, ...patch }));
   const errors = useMemo(() => collectionErrors(form, bills), [form, bills]);
@@ -212,7 +215,7 @@ export function CollectionFormView({ unitId, mode, open, today, preselectBillId 
   function post(print: boolean): void {
     setSubmitted(true);
     if (Object.keys(errors).length > 0) return;
-    create.mutate(toCollectionPayload(unitId, form, bills), {
+    create.mutate(toCollectionPayload(unitId, form, bills, scope), {
       onSuccess: (response) => {
         addToast({ title: `${response.data.receipt_number} posted`, description: `${formatCurrency(collectionTotal(form, bills))} received.`, variant: 'success' });
         onPosted(response.data, print);
@@ -237,7 +240,7 @@ export function CollectionFormView({ unitId, mode, open, today, preselectBillId 
       savingLabel="Posting…"
       dialogClassName="max-w-5xl"
     >
-      <UnitPostingHeader unitId={unitId} />
+      <UnitPostingHeader unitId={unitId} scope={scope} />
       <PayerField unitId={unitId} form={form} set={set} error={shown.payerMemberId} />
       {bills.length > 0 ? (
         <>

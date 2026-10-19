@@ -6,10 +6,13 @@ import type { FinanceAccess } from '@/lib/finance-roles';
 
 export const MEMBER_INCOME_BASE = '/income/members';
 
-export const statementHref = (unitId: string): string => `${MEMBER_INCOME_BASE}/${unitId}/statement`;
-export const invoiceHref = (unitId: string): string => `${MEMBER_INCOME_BASE}/${unitId}/invoice`;
-export const collectionHref = (unitId: string, billId?: string): string =>
-  `${MEMBER_INCOME_BASE}/${unitId}/collection${billId ? `?bill=${billId}` : ''}`;
+/** Utility Income's rows open the same screens under its own route (UTIL-08). */
+export const UTILITY_INCOME_BASE = '/utilities/income';
+
+export const statementHref = (unitId: string, base = MEMBER_INCOME_BASE): string => `${base}/${unitId}/statement`;
+export const invoiceHref = (unitId: string, base = MEMBER_INCOME_BASE): string => `${base}/${unitId}/invoice`;
+export const collectionHref = (unitId: string, billId?: string, base = MEMBER_INCOME_BASE): string =>
+  `${base}/${unitId}/collection${billId ? `?bill=${billId}` : ''}`;
 
 /** "Post and Print Receipt": the receipt PDF (GET /receipts/:id/pdf). */
 export async function printReceipt(receiptId: string, receiptNumber: string): Promise<void> {
@@ -43,13 +46,17 @@ export interface MemberRowHandlers {
  * Account History (View) and Print for every finance reader; Post Invoice
  * and Post Collection, for the finance writers, as their screens ship.
  */
-export function memberRowActions(access: FinanceAccess, handlers: MemberRowHandlers): DataTableAction<UnitDuesRow>[] {
+export function memberRowActions(
+  access: FinanceAccess,
+  handlers: MemberRowHandlers,
+  base = MEMBER_INCOME_BASE,
+): DataTableAction<UnitDuesRow>[] {
   if (!access.canRead) return [];
   const history: DataTableAction<UnitDuesRow> = {
     key: 'history',
     header: 'Account History',
     label: 'View',
-    href: (row) => statementHref(row.unit_id),
+    href: (row) => statementHref(row.unit_id, base),
   };
   const print: DataTableAction<UnitDuesRow> = { key: 'print', header: 'Print', label: 'Print', onClick: handlers.print };
   if (!access.canWrite) return [history, print];

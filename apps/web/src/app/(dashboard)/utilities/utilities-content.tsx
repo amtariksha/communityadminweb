@@ -46,6 +46,7 @@ import {
 import type { Meter, Slab } from '@/hooks/use-utilities';
 import { MeterConsumptionChart } from '@/components/utilities/meter-consumption-chart';
 import { BillsTab } from './bills-tab';
+import { UtilityIncomeContent } from './income/utility-income-content';
 import { MetersTab } from './meters-tab';
 import { METER_TYPES, meterTypeIcon, today } from './utility-ui';
 
@@ -53,13 +54,15 @@ import { METER_TYPES, meterTypeIcon, today } from './utility-ui';
 // Tab constants
 // ---------------------------------------------------------------------------
 
-type Tab = 'meters' | 'slabs' | 'readings' | 'bills' | 'trends';
+type Tab = 'meters' | 'slabs' | 'readings' | 'bills' | 'dues' | 'trends';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'meters', label: 'Meters' },
   { key: 'slabs', label: 'Slab Rates' },
   { key: 'readings', label: 'Readings' },
   { key: 'bills', label: 'Bills' },
+  // UTIL-08 — utility dues unit by unit (Utility Income in classic).
+  { key: 'dues', label: 'Utility dues' },
   { key: 'trends', label: 'Trends' },
 ];
 
@@ -172,6 +175,7 @@ export default function UtilitiesContent(): ReactNode {
       {activeTab === 'slabs' && <SlabsTab />}
       {activeTab === 'readings' && <ReadingsTab />}
       {activeTab === 'bills' && <BillsTab />}
+      {activeTab === 'dues' && <UtilityIncomeContent embedded />}
       {activeTab === 'trends' && <TrendsTab />}
     </div>
   );

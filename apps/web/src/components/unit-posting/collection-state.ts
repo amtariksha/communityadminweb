@@ -96,13 +96,41 @@ export function collectionErrors(form: CollectionForm, bills: readonly OpenBill[
   return errors;
 }
 
-export function toCollectionPayload(unitId: string, form: CollectionForm, bills: readonly OpenBill[]): CreateReceiptInput {
+/**
+ * UTIL-08 — "Any Invoice on FiFo Basis" from Utility Income spreads the
+ * amount over the unit's open utility bills only (oldest first, as listed);
+ * what is left over is the unit's advance. The server's own FIFO would take
+ * maintenance bills too.
+ */
+export function fifoOverBills(amount: number, bills: readonly OpenBill[]): Array<{ invoice_id: string; amount: number }> {
+  let unspent = Math.round(amount * 100);
+  const allocations: Array<{ invoice_id: string; amount: number }> = [];
+  for (const bill of bills) {
+    const take = Math.min(unspent, Math.round(Number(bill.remaining) * 100));
+    if (take <= 0) continue;
+    allocations.push({ invoice_id: bill.id, amount: take / 100 });
+    unspent -= take;
+  }
+  return allocations;
+}
+
+export function toCollectionPayload(
+  unitId: string,
+  form: CollectionForm,
+  bills: readonly OpenBill[],
+  scope: 'member' | 'utility' = 'member',
+): CreateReceiptInput {
   const spread = form.fifo || bills.length === 0;
+  const total = Math.round(collectionTotal(form, bills) * 100) / 100;
+  const spreadAllocation =
+    scope === 'utility'
+      ? { allocation_mode: 'selected' as const, allocations: fifoOverBills(total, bills) }
+      : { allocation_mode: 'fifo' as const, allocations: [] };
   return {
     financial_year_id: '',
     unit_id: unitId,
     receipt_date: form.date,
-    amount: Math.round(collectionTotal(form, bills) * 100) / 100,
+    amount: total,
     mode: form.mode,
     reference_number: form.reference.trim() || null,
     bank_account_id: form.bankAccountId || null,
@@ -111,7 +139,7 @@ export function toCollectionPayload(unitId: string, form: CollectionForm, bills:
     payment_bank: needsBank(form.mode) ? form.bank.trim() : null,
     instrument_date: needsBank(form.mode) && form.instrumentDate ? form.instrumentDate : null,
     ...(spread
-      ? { allocation_mode: 'fifo' as const, allocations: [] }
+      ? spreadAllocation
       : {
           allocation_mode: 'selected' as const,
           allocations: tickedBills(form, bills).map((row) => ({

@@ -1,12 +1,12 @@
 'use client';
 
 import { type ReactNode } from 'react';
-import { useUnitDuesRow } from '@/hooks/use-unit-posting';
+import { useUnitDuesRow, type PostingScope } from '@/hooks/use-unit-posting';
 import { formatCurrency } from '@/lib/utils';
 
 /** The unit, its billing name and what it owes, above every posting form of the unit. */
-export function UnitPostingHeader({ unitId }: { unitId: string }): ReactNode {
-  const row = useUnitDuesRow(unitId).data;
+export function UnitPostingHeader({ unitId, scope = 'member' }: { unitId: string; scope?: PostingScope }): ReactNode {
+  const row = useUnitDuesRow(unitId, scope).data;
   if (!row) return null;
   const unit = row.block ? `${row.block}-${row.unit_number}` : row.unit_number;
   return (
