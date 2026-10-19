@@ -86,6 +86,8 @@ import { cn, formatDate } from '@/lib/utils';
 import { ClickablePhone, ClickableEmail } from '@/components/ui/clickable-contact';
 import { UserSearchSelect } from '@/components/ui/user-search-select';
 import { getUser } from '@/lib/auth';
+import { useAdminLayout } from '@/lib/layout-context';
+import { UnitBlockLinks } from '@/components/block-links';
 import type { UserSearchHit } from '@/hooks/use-user-search';
 
 const ITEMS_PER_PAGE = 20;
@@ -383,6 +385,8 @@ export default function UnitsContent(): ReactNode {
   // Queries
   const blocksQuery = useBlocks();
   const blocks = blocksQuery.data ?? [];
+  // Classic shows the block links above the list (SB-10).
+  const classicLayout = useAdminLayout() === 'classic';
 
   const unitsQuery = useUnits({
     search: searchQuery || undefined,
@@ -1560,7 +1564,16 @@ export default function UnitsContent(): ReactNode {
 
       {/* Units table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-3">
+          {classicLayout && (
+            <UnitBlockLinks
+              value={blockFilter || null}
+              onChange={(block) => {
+                setBlockFilter(block ?? '');
+                setPage(1);
+              }}
+            />
+          )}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-lg">All Units</CardTitle>
             <div className="flex gap-2">

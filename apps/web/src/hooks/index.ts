@@ -61,6 +61,10 @@ export type {
   MemberImportRowResult,
 } from './use-units';
 
+// Block master and block links (SB-10)
+export { unitBlockKeys, useSaveUnitBlocks, useUnitBlocks } from './use-unit-blocks';
+export type { UnitBlock, UnitBlockList, UnitBlockRow } from './use-unit-blocks';
+
 // Ledger
 export {
   ledgerKeys,

@@ -79,6 +79,7 @@ describe('classic modules', () => {
       'Broadcast',
       'Member Directory',
       'Member Categories',
+      'Blocks',
       'KYC Verification',
     ]);
   });

@@ -111,6 +111,8 @@ export const classicMenu: MenuNode[] = [
       // Ours, after their children: people list, resident tags, KYC queue.
       { id: 'units.directory', label: 'Member Directory', href: '/units/directory', logs: ['member'] },
       { id: 'units.categories', label: 'Member Categories', href: '/setup/categories' },
+      // Block master (SB-10): add, rename and order blocks.
+      { id: 'units.blocks', label: 'Blocks', href: '/units/blocks', logs: ['unit-blocks'] },
       { id: 'units.kyc', label: 'KYC Verification', href: '/setup/kyc' },
     ],
   },

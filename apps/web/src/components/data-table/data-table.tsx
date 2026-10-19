@@ -59,7 +59,22 @@ export interface DataTableProps<Row> {
   error?: unknown;
   onRetry?: () => void;
   emptyText: string;
+  /**
+   * Fetch mode (SB-09): the classic register opens empty with this panel
+   * above it and shows rows only once `fetched` (the page sets it when the
+   * panel's Fetch is pressed). Leave it out for live filters.
+   */
+  fetchMode?: DataTableFetchMode;
 }
+
+export interface DataTableFetchMode {
+  panel: ReactNode;
+  fetched: boolean;
+  /** Shown in the empty table before the first Fetch. */
+  prompt?: string;
+}
+
+const DEFAULT_FETCH_PROMPT = 'Choose what to show above and press Fetch.';
 
 const DEFAULT_PAGE_SIZES = [10, 25, 50, 100] as const;
 const SEARCH_DELAY_MS = 300;
@@ -120,6 +135,9 @@ function StateRow({ span, children }: { span: number; children: ReactNode }): Re
 
 function BodyRows<Row>(props: DataTableProps<Row> & { span: number }): ReactNode {
   const { rows, columns, actions = [], page, pageSize, span } = props;
+  if (props.fetchMode && !props.fetchMode.fetched) {
+    return <StateRow span={span}>{props.fetchMode.prompt ?? DEFAULT_FETCH_PROMPT}</StateRow>;
+  }
   if (props.loading) {
     return Array.from({ length: 3 }, (_, i) => (
       <StateRow key={i} span={span}>
@@ -172,11 +190,14 @@ export function DataTable<Row>(props: DataTableProps<Row>): ReactNode {
   }));
   const serial = { serial: { page, pageSize } };
   const span = columns.length + actions.length + 1;
+  // Before the first Fetch there is nothing to search, export or page.
+  const waiting = props.fetchMode !== undefined && !props.fetchMode.fetched;
 
   return (
     <div className="space-y-3">
+      {props.fetchMode?.panel}
       <div className="flex flex-wrap items-start justify-between gap-2">
-        {props.export ? (
+        {props.export && !waiting ? (
           <ExportStrip
             config={props.export}
             rowCount={rows.length}
@@ -188,7 +209,7 @@ export function DataTable<Row>(props: DataTableProps<Row>): ReactNode {
         )}
         <div className="flex flex-wrap items-center gap-2">
           {props.filters}
-          {props.search && <SearchBox search={props.search} />}
+          {props.search && !waiting && <SearchBox search={props.search} />}
         </div>
       </div>
       <Table aria-label={title}>
@@ -207,14 +228,16 @@ export function DataTable<Row>(props: DataTableProps<Row>): ReactNode {
           <BodyRows {...props} span={span} />
         </TableBody>
       </Table>
-      <DataTablePager
-        page={page}
-        pageSize={pageSize}
-        total={props.total}
-        pageSizeOptions={props.pageSizeOptions ?? DEFAULT_PAGE_SIZES}
-        onPageChange={props.onPageChange}
-        onPageSizeChange={props.onPageSizeChange}
-      />
+      {!waiting && (
+        <DataTablePager
+          page={page}
+          pageSize={pageSize}
+          total={props.total}
+          pageSizeOptions={props.pageSizeOptions ?? DEFAULT_PAGE_SIZES}
+          onPageChange={props.onPageChange}
+          onPageSizeChange={props.onPageSizeChange}
+        />
+      )}
     </div>
   );
 }
