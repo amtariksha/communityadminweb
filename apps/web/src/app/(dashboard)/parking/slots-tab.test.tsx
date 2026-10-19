@@ -35,6 +35,7 @@ vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }
 vi.mock('@/lib/api', () => ({ api: { download: mocks.download } }));
 vi.mock('@/lib/download', () => ({ saveBlob: vi.fn(), printHtml: vi.fn() }));
 vi.mock('@/hooks', () => ({ useUnits: () => ({ data: { data: [], total: 0 } }), useUnitMembers: () => ({ data: [] }) }));
+vi.mock('@/app/(dashboard)/helpdesk/new/use-unit-choices', () => ({ useUnitChoices: () => ({ data: [] }) }));
 vi.mock('@/hooks/use-parking', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-parking')>();
   return {

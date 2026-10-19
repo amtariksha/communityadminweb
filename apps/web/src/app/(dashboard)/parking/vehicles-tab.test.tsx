@@ -7,6 +7,8 @@ import type { Vehicle } from '@/hooks/use-parking';
 /**
  * PARK-02 / PARK-03 — the Vehicles tab sends its filters (the type filter
  * used to be ignored), pages, and lists pending vehicles with a badge.
+ * PARK-08 / PARK-09 — RFID, the extra field and To Date; Edit opens the
+ * vehicle form.
  */
 
 const base: Vehicle = {
@@ -27,6 +29,9 @@ const base: Vehicle = {
   block: 'A',
   register_status: 'active',
   approval_status: 'approved',
+  rfid_number: 'RF-1',
+  valid_to: '2026-12-31',
+  additional_field: 'FT-9',
 };
 
 const PENDING: Vehicle = {
@@ -39,7 +44,14 @@ const PENDING: Vehicle = {
   approval_status: 'pending',
 };
 
-const mocks = vi.hoisted(() => ({ calls: [] as Array<Record<string, unknown>> }));
+const mocks = vi.hoisted(() => ({ calls: [] as Array<Record<string, unknown>>, label: '' }));
+
+vi.mock('@/hooks/use-parking-settings', () => ({ useAdditionalFieldLabel: () => mocks.label }));
+vi.mock('./components/vehicle-form', () => ({
+  VehicleForm: ({ vehicle }: { vehicle?: Vehicle | null }) => (
+    <div role="dialog">{vehicle ? `Edit form for ${vehicle.registration_number}` : 'Add form'}</div>
+  ),
+}));
 
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('@/lib/api', () => ({ api: { download: vi.fn() } }));
@@ -65,6 +77,7 @@ vi.mock('@/hooks/use-parking', async (importOriginal) => {
 afterEach(() => {
   vi.clearAllMocks();
   mocks.calls = [];
+  mocks.label = '';
 });
 
 const lastCall = () => mocks.calls[mocks.calls.length - 1];
@@ -103,6 +116,37 @@ describe('VehiclesTab', () => {
     expect(within(row).getByText('Pending')).toBeTruthy();
     const active = screen.getByText('KA01AB1234').closest('tr') as HTMLElement;
     expect(within(active).getByText('Active')).toBeTruthy();
+  });
+});
+
+describe('VehiclesTab register fields (PARK-08, PARK-09)', () => {
+  it('shows RFID and Valid Till, and the extra field only while Setup names it', () => {
+    const { unmount } = render(<VehiclesTab />);
+    const row = screen.getByText('KA01AB1234').closest('tr') as HTMLElement;
+    expect(within(row).getByText('RF-1')).toBeTruthy();
+    expect(within(row).getByText('31/12/2026')).toBeTruthy();
+    expect(within(row).queryByText('FT-9')).toBeNull();
+    unmount();
+
+    mocks.label = 'Fastag';
+    render(<VehiclesTab />);
+    expect(screen.getByRole('columnheader', { name: 'Fastag' })).toBeTruthy();
+    expect(screen.getAllByText('FT-9')).toHaveLength(2);
+  });
+
+  it('opens the vehicle form for Edit and for Register', () => {
+    render(<VehiclesTab />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit KA01AB1234' }));
+    expect(screen.getByRole('dialog').textContent).toBe('Edit form for KA01AB1234');
+
+    fireEvent.click(screen.getByRole('button', { name: /Register Vehicle/ }));
+    expect(screen.getByText('Add form')).toBeTruthy();
+  });
+
+  it('offers Expired on the status filter', () => {
+    render(<VehiclesTab />);
+    const select = screen.getByLabelText('Status') as HTMLSelectElement;
+    expect(Array.from(select.options).map((option) => option.value)).toContain('expired');
   });
 });
 

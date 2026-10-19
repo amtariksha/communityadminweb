@@ -5,9 +5,9 @@ import { FormFrame, type FormMode } from '@/components/form-page';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { useUnitMembers, useUnits } from '@/hooks';
+import { useUnitMembers } from '@/hooks';
+import { useUnitChoices } from '@/app/(dashboard)/helpdesk/new/use-unit-choices';
 import type { ParkingSlot } from '@/hooks/use-parking';
-import { SLOT_PICKER_LIMIT } from '@/hooks/use-parking';
 import { SLOT_TYPES, typeLabel } from '../parking-ui';
 import { useSlotForm } from './use-slot-form';
 
@@ -25,7 +25,8 @@ type Form = ReturnType<typeof useSlotForm>;
 
 function AssignmentFields({ form }: { form: Form }): ReactNode {
   const { draft, set } = form;
-  const units = useUnits({ limit: SLOT_PICKER_LIMIT }).data?.data ?? [];
+  // GET /units pages at most 100 rows; the picker reads them 100 at a time.
+  const units = useUnitChoices().data ?? [];
   const members = useUnitMembers(draft.unitId).data ?? [];
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

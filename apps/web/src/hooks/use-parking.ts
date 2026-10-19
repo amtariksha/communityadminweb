@@ -36,6 +36,12 @@ export interface Vehicle {
   color: string | null;
   parking_slot_id: string | null;
   sticker_number: string | null;
+  // PARK-08 (migration 216): absent from an older API. Dates are `YYYY-MM-DD`.
+  rfid_number?: string | null;
+  valid_from?: string | null;
+  valid_to?: string | null;
+  comments?: string | null;
+  additional_field?: string | null;
   is_active: boolean;
   created_at: string;
   member_name?: string;
@@ -85,6 +91,8 @@ export interface SlotStats {
 export interface SlotFilters {
   slot_type?: string;
   status?: string;
+  /** The unit's slots (the vehicle form's own-unit choices). */
+  unit_id?: string;
   /** Slot number or location. */
   search?: string;
   page?: number;
@@ -137,27 +145,29 @@ interface AssignSlotInput {
   member_id?: string;
 }
 
-interface RegisterVehicleInput {
+/** The register fields an Add / Edit Vehicle sends (PARK-08); null clears one. */
+export interface VehicleFieldsInput {
   registration_number: string;
   vehicle_type: string;
   make?: string | null;
   model?: string | null;
   color?: string | null;
-  member_id: string;
-  unit_id: string;
   parking_slot_id?: string | null;
   sticker_number?: string | null;
+  rfid_number?: string | null;
+  additional_field?: string | null;
+  valid_from?: string | null;
+  valid_to?: string | null;
+  comments?: string | null;
 }
 
-interface UpdateVehicleInput {
+export interface RegisterVehicleInput extends VehicleFieldsInput {
+  member_id: string;
+  unit_id: string;
+}
+
+export interface UpdateVehicleInput extends Partial<VehicleFieldsInput> {
   id: string;
-  registration_number?: string;
-  vehicle_type?: string;
-  make?: string | null;
-  model?: string | null;
-  color?: string | null;
-  parking_slot_id?: string | null;
-  sticker_number?: string | null;
   is_active?: boolean;
 }
 

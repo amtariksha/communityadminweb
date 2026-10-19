@@ -26,8 +26,8 @@ const mocks = vi.hoisted(() => ({
   deallocate: vi.fn(),
   vehicles: [] as Vehicle[],
 }));
+vi.mock('@/app/(dashboard)/helpdesk/new/use-unit-choices', () => ({ useUnitChoices: () => ({ data: UNITS }) }));
 vi.mock('@/hooks', () => ({
-  useUnits: () => ({ data: { data: UNITS, total: 2 } }),
   useUnitMembers: (unitId: string) => ({ data: unitId ? [{ id: `m-${unitId}`, name: `Test Owner ${unitId}`, member_type: 'owner' }] : [] }),
 }));
 vi.mock('@/hooks/use-parking', async (importOriginal) => ({

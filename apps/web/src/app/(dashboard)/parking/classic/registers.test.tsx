@@ -21,7 +21,9 @@ vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }
 const download = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/api', () => ({ api: { download } }));
 vi.mock('@/lib/download', () => ({ saveBlob: vi.fn(), printHtml: vi.fn() }));
-vi.mock('../register-vehicle-dialog', () => ({ RegisterVehicleDialog: () => null }));
+const settings = vi.hoisted(() => ({ label: '' }));
+vi.mock('@/hooks/use-parking-settings', () => ({ useAdditionalFieldLabel: () => settings.label }));
+vi.mock('../components/vehicle-form', () => ({ VehicleForm: () => null }));
 
 const mocks = vi.hoisted(() => ({ slots: vi.fn(), vehicles: vi.fn(), remove: vi.fn(), blocks: vi.fn() }));
 vi.mock('@/hooks/use-parking', async (importOriginal) => ({
@@ -64,6 +66,11 @@ const vehicle: Vehicle = {
   block: 'A',
   slot_type: 'car',
   register_status: 'active',
+  rfid_number: 'RF-77',
+  valid_from: '2026-01-01',
+  valid_to: '2026-06-30',
+  comments: 'Second car',
+  additional_field: 'FT-12',
 };
 
 const last = (mock: ReturnType<typeof vi.fn>): Record<string, unknown> => mock.mock.calls.at(-1)?.[0] ?? {};
@@ -72,6 +79,7 @@ beforeEach(() => {
   mocks.slots.mockReset().mockReturnValue({ data: { data: [slot('s1', 'P-01'), slot('s2', 'P-02')], total: 120 }, isLoading: false });
   mocks.vehicles.mockReset().mockReturnValue({ data: { data: [vehicle], total: 1 }, isLoading: false });
   mocks.remove.mockReset();
+  settings.label = '';
   mocks.blocks.mockReset().mockReturnValue({ data: { data: [{ id: 'b', name: 'A', unit_count: 4, position: 0 }], total_units: 4 } });
   download.mockReset().mockResolvedValue(new Blob(['x']));
 });
@@ -124,7 +132,12 @@ describe('Parking Manager › Vehicles', () => {
       'Vehicle No',
       'Vehicle Type',
       'Sticker No',
+      'RFID No',
+      'From Date',
+      'To Date',
+      'Comments',
       'Action',
+      '',
     ]);
     fireEvent.click(screen.getByRole('button', { name: 'A (4)' }));
     expect(last(mocks.vehicles)).toEqual(expect.objectContaining({ block: 'A', page: 1 }));
@@ -133,6 +146,40 @@ describe('Parking Manager › Vehicles', () => {
     const row = screen.getByText('KA01AB1234').closest('tr') as HTMLElement;
     fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
     expect(mocks.remove).toHaveBeenCalledWith('v1', expect.anything());
+  });
+
+  // PARK-08: the register's fields; the extra field is named in Parking Setup.
+  it('shows RFID, From / To and Comments, and the extra field only while Setup names it', () => {
+    const { unmount } = render(<VehiclesRegister />);
+    const row = screen.getByText('KA01AB1234').closest('tr') as HTMLElement;
+    expect(within(row).getByText('RF-77')).toBeTruthy();
+    expect(within(row).getByText('01/01/2026')).toBeTruthy();
+    expect(within(row).getByText('30/06/2026')).toBeTruthy();
+    expect(within(row).getByText('Second car')).toBeTruthy();
+    expect(within(row).queryByText('FT-12')).toBeNull();
+    unmount();
+
+    settings.label = 'Fastag';
+    render(<VehiclesRegister />);
+    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
+    expect(headers.slice(headers.indexOf('RFID No'), headers.indexOf('RFID No') + 3)).toEqual(['RFID No', 'Fastag', 'From Date']);
+    expect(screen.getByText('FT-12')).toBeTruthy();
+  });
+
+  // PARK-09: Add Vehicle and Edit open the vehicle form as pages.
+  it('opens Add Vehicle and Edit as pages', () => {
+    render(<VehiclesRegister />);
+    expect(screen.getByRole('link', { name: 'Add Vehicle' }).getAttribute('href')).toBe('/parking/vehicles/new');
+    const row = screen.getByText('KA01AB1234').closest('tr') as HTMLElement;
+    expect(within(row).getByRole('link', { name: 'Edit' }).getAttribute('href')).toBe('/parking/vehicles/v1/edit?plate=KA01AB1234');
+  });
+
+  it('offers Expired on the status filter', () => {
+    const { container } = render(<VehiclesRegister />);
+    const filter = container.querySelector('select#vehicle-status') as HTMLSelectElement;
+    expect(Array.from(filter.options).map((option) => option.value)).toContain('expired');
+    fireEvent.change(filter, { target: { value: 'expired' } });
+    expect(last(mocks.vehicles)).toEqual(expect.objectContaining({ status: 'expired' }));
   });
 
   it('lists rejected or removed vehicles only through the status filter', () => {

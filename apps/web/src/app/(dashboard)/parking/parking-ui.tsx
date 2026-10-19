@@ -71,6 +71,10 @@ export const VEHICLE_TEXT_COLUMNS: readonly TextColumn<Vehicle>[] = [
   { header: 'Name', text: (v) => v.member_name ?? '' },
   { header: 'Slot', text: (v) => v.slot_number ?? '' },
   { header: 'Sticker No', text: (v) => v.sticker_number ?? '' },
+  { header: 'RFID No', text: (v) => v.rfid_number ?? '' },
+  { header: 'From Date', text: (v) => v.valid_from ?? '' },
+  { header: 'To Date', text: (v) => v.valid_to ?? '' },
+  { header: 'Comments', text: (v) => v.comments ?? '' },
   { header: 'Status', text: (v) => vehicleStatus(v).label },
 ];
 
