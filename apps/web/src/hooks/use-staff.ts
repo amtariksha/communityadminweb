@@ -52,6 +52,8 @@ export interface Shift {
   // older API, where every shift is active.
   is_active?: boolean;
   created_at: string;
+  // STAFF-22: the shift's length, worked out by the API (absent from an older one).
+  hours?: number;
 }
 
 export interface ShiftAssignment {

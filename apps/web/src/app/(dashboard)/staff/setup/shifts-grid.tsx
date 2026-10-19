@@ -33,6 +33,14 @@ export function hoursBetween(start: string, end: string): number {
   return (span === 0 ? MINUTES_PER_DAY : span) / 60;
 }
 
+/** `22:00` → `10:00 PM`; the grid shows times with AM / PM (STAFF-22). */
+export function clock12(time: string): string {
+  if (!/^\d{2}:\d{2}/.test(time)) return '';
+  const hour = Number(time.slice(0, 2));
+  const suffix = hour < 12 ? 'AM' : 'PM';
+  return `${String(hour % 12 === 0 ? 12 : hour % 12).padStart(2, '0')}:${time.slice(3, 5)} ${suffix}`;
+}
+
 /** The end time the server will store, or '' while start or hours are not valid. */
 export function shiftEnds(values: ShiftValues): string {
   const hours = Number(values.hours);
@@ -59,7 +67,7 @@ export const savedShiftRows = (shifts: readonly Shift[]) =>
     values: {
       name: shift.name,
       start: shift.start_time.slice(0, 5),
-      hours: String(hoursBetween(shift.start_time, shift.end_time)),
+      hours: String(shift.hours ?? hoursBetween(shift.start_time, shift.end_time)),
     },
     // An older API sends no is_active: every shift is active there.
     inactive: shift.is_active === false,
@@ -83,11 +91,14 @@ const COLUMNS: GridColumn<ShiftValues>[] = [
     header: 'Shift Start Time',
     kind: 'custom',
     render: ({ row, label, disabled, change }) => (
-      <Input type="time" aria-label={label} disabled={disabled} value={row.values.start} onChange={(event) => change({ start: event.target.value })} />
+      <div className="space-y-1">
+        <Input type="time" aria-label={label} disabled={disabled} value={row.values.start} onChange={(event) => change({ start: event.target.value })} />
+        {row.values.start && <p className="text-xs tabular-nums text-muted-foreground">{clock12(row.values.start)}</p>}
+      </div>
     ),
   },
   { key: 'hours', header: 'Shift Hours', kind: 'number', field: 'hours', min: 0.5, max: 24, step: 0.5 },
-  { key: 'ends', header: 'Ends', kind: 'custom', render: ({ row }) => <span className="tabular-nums">{shiftEnds(row.values) || '—'}</span> },
+  { key: 'ends', header: 'Ends', kind: 'custom', render: ({ row }) => <span className="tabular-nums">{clock12(shiftEnds(row.values)) || '—'}</span> },
 ];
 
 interface ShiftsGridProps {
@@ -99,8 +110,9 @@ interface ShiftsGridProps {
 }
 
 /**
- * Staff Shift Management (STAFF-11, STAFF-S1 block 3) on the shared grid:
- * name, start time and hours edited in place, Ends worked out, a shift
+ * Staff Shift Management (STAFF-11, STAFF-22, STAFF-S1 block 3) on the shared
+ * grid: name, start time and hours edited in place, start and Ends shown with
+ * AM / PM, a shift
  * retired (never deleted) and one Save Changes for the whole list.
  */
 export function ShiftsGrid({ shifts, readOnly, isSaving, save }: ShiftsGridProps): ReactNode {

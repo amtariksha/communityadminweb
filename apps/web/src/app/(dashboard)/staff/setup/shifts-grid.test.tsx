@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api-error';
 import type { Shift } from '@/hooks/use-staff';
-import { ShiftsGrid, hoursBetween, shiftEnds } from './shifts-grid';
+import { ShiftsGrid, clock12, hoursBetween, shiftEnds } from './shifts-grid';
 
 /**
  * Staff Shift Management as an editable grid (STAFF-11, SB-08): shifts are
@@ -41,7 +41,25 @@ describe('Shifts grid', () => {
 
     expect(cell('Shift Name', 1).value).toBe('Morning');
     expect(cell('Shift Hours', 2).value).toBe('8');
-    expect(screen.getByRole('table', { name: 'Shifts' }).textContent).toContain('06:00');
+    expect(screen.getByRole('table', { name: 'Shifts' }).textContent).toContain('06:00 AM');
+  });
+
+  // STAFF-22: 10:00 PM for 8 hours ends at 06:00 the next morning.
+  it('shows the start and the end with AM / PM', () => {
+    renderGrid();
+
+    const text = screen.getByRole('table', { name: 'Shifts' }).textContent ?? '';
+    expect(text).toContain('10:00 PM');
+    expect(text).toContain('02:00 PM');
+    expect(clock12('00:30')).toBe('12:30 AM');
+    expect(clock12('12:00')).toBe('12:00 PM');
+    expect(clock12('')).toBe('');
+  });
+
+  it('reads the hours the API sends when it sends them', () => {
+    render(<ShiftsGrid shifts={[{ ...SHIFTS[0], hours: 7.5 }]} readOnly={false} isSaving={false} save={vi.fn()} />);
+
+    expect(cell('Shift Hours', 1).value).toBe('7.5');
   });
 
   it('saves two edited shifts and a new one in one request', async () => {
