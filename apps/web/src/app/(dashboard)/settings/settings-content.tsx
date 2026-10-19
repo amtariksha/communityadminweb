@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import Link from 'next/link';
 import { Save, Plus, CalendarRange, MoreVertical, Lock, Unlock, Star, Shield, CalendarClock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,7 +29,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { getCurrentTenant, getUser } from '@/lib/auth';
@@ -44,12 +45,8 @@ import {
   useRbacPermissions,
   useUpdatePermission,
   useSeedPermissions,
-  useAmenities,
-  useCreateAmenity,
-  useUpdateAmenity,
 } from '@/hooks';
 import type { RbacPermission } from '@/hooks/use-staff';
-import type { Amenity } from '@/hooks/use-amenities';
 import type { FinancialYear } from '@communityos/shared';
 import { RoleDelegationCard } from './role-delegation-card';
 import { GatesCard } from './gates-card';
@@ -133,30 +130,11 @@ export default function SettingsContent(): ReactNode {
   // Permissions state
   const [permissionChanges, setPermissionChanges] = useState<Record<string, { can_read: boolean; can_write: boolean; can_delete: boolean }>>({});
 
-  // Amenity dialog state
-  const [amenityDialogOpen, setAmenityDialogOpen] = useState(false);
-  const [editingAmenityId, setEditingAmenityId] = useState('');
-  const [amenityName, setAmenityName] = useState('');
-  const [amenityType, setAmenityType] = useState('clubhouse');
-  const [amenityLocation, setAmenityLocation] = useState('');
-  const [amenityCapacity, setAmenityCapacity] = useState('');
-  const [amenityPricingType, setAmenityPricingType] = useState('free');
-  const [amenityPrice, setAmenityPrice] = useState('');
-  const [amenityDeposit, setAmenityDeposit] = useState('');
-  const [amenityRules, setAmenityRules] = useState('');
-  const [amenityTimeSlots, setAmenityTimeSlots] = useState('');
-
   // RBAC queries/mutations
   const permissionsQuery = useRbacPermissions();
   const permissions: RbacPermission[] = permissionsQuery.data ?? [];
   const updatePermissionM = useUpdatePermission();
   const seedPermissions = useSeedPermissions();
-
-  // Amenity queries/mutations
-  const amenitiesQuery = useAmenities();
-  const amenitiesList: Amenity[] = amenitiesQuery.data?.data ?? [];
-  const createAmenityM = useCreateAmenity();
-  const updateAmenityM = useUpdateAmenity();
 
   const tenant = tenantQuery.data;
   const financialYears = fyQuery.data ?? [];
@@ -421,98 +399,6 @@ export default function SettingsContent(): ReactNode {
         },
         onError(error) {
           addToast({ title: 'Failed to create financial year', description: friendlyError(error), variant: 'destructive' });
-        },
-      },
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Amenity handlers
-  // ---------------------------------------------------------------------------
-
-  function openAmenityDialog(amenity?: Amenity): void {
-    if (amenity) {
-      setEditingAmenityId(amenity.id);
-      setAmenityName(amenity.name);
-      setAmenityType(amenity.amenity_type);
-      setAmenityLocation(amenity.location ?? '');
-      setAmenityCapacity(amenity.capacity ? String(amenity.capacity) : '');
-      setAmenityPricingType(amenity.pricing_type);
-      setAmenityPrice(amenity.price_per_unit ? String(amenity.price_per_unit) : '');
-      setAmenityDeposit(amenity.deposit_amount ? String(amenity.deposit_amount) : '');
-      setAmenityRules(amenity.rules ?? '');
-      setAmenityTimeSlots(amenity.time_slots ?? '');
-    } else {
-      setEditingAmenityId('');
-      setAmenityName('');
-      setAmenityType('clubhouse');
-      setAmenityLocation('');
-      setAmenityCapacity('');
-      setAmenityPricingType('free');
-      setAmenityPrice('');
-      setAmenityDeposit('');
-      setAmenityRules('');
-      setAmenityTimeSlots('');
-    }
-    setAmenityDialogOpen(true);
-  }
-
-  function handleSaveAmenity(e: FormEvent): void {
-    e.preventDefault();
-    if (!amenityName.trim()) {
-      addToast({ title: 'Amenity name is required', variant: 'destructive' });
-      return;
-    }
-
-    const payload = {
-      name: amenityName.trim(),
-      amenity_type: amenityType,
-      location: amenityLocation.trim() || null,
-      capacity: amenityCapacity ? Number(amenityCapacity) : null,
-      pricing_type: amenityPricingType,
-      price_per_unit: amenityPrice ? Number(amenityPrice) : 0,
-      deposit_amount: amenityDeposit ? Number(amenityDeposit) : 0,
-      rules: amenityRules.trim() || null,
-    };
-
-    if (editingAmenityId) {
-      updateAmenityM.mutate(
-        { id: editingAmenityId, ...payload },
-        {
-          onSuccess() {
-            setAmenityDialogOpen(false);
-            addToast({ title: 'Amenity updated', variant: 'success' });
-          },
-          onError(error) {
-            addToast({ title: 'Failed to update amenity', description: friendlyError(error), variant: 'destructive' });
-          },
-        },
-      );
-    } else {
-      createAmenityM.mutate(payload, {
-        onSuccess() {
-          setAmenityDialogOpen(false);
-          addToast({ title: 'Amenity created', variant: 'success' });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to create amenity', description: friendlyError(error), variant: 'destructive' });
-        },
-      });
-    }
-  }
-
-  function handleToggleAmenity(amenity: Amenity): void {
-    updateAmenityM.mutate(
-      { id: amenity.id, is_active: !amenity.is_active },
-      {
-        onSuccess() {
-          addToast({
-            title: amenity.is_active ? 'Amenity deactivated' : 'Amenity activated',
-            variant: 'success',
-          });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to update amenity', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -949,209 +835,28 @@ export default function SettingsContent(): ReactNode {
       </GatesCard>
 
       {/* ------------------------------------------------------------------- */}
-      {/* Amenities Section                                                    */}
+      {/* Amenities — set up on the Amenities page (AMEN-03). The copy that   */}
+      {/* lived here offered types and pricing the API refused and never sent */}
+      {/* its time slots.                                                      */}
       {/* ------------------------------------------------------------------- */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CalendarClock className="h-5 w-5 text-muted-foreground" />
-              <CardTitle>Amenities</CardTitle>
-            </div>
-            <Button size="sm" onClick={() => openAmenityDialog()}>
-              <Plus className="mr-2 h-4 w-4" /> Add Amenity
-            </Button>
+          <div className="flex items-center gap-2">
+            <CalendarClock className="h-5 w-5 text-muted-foreground" />
+            <CardTitle>Amenities</CardTitle>
           </div>
         </CardHeader>
-        <CardContent>
-          {amenitiesQuery.isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : amenitiesList.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Capacity</TableHead>
-                  <TableHead>Pricing</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-28">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {amenitiesList.map((amenity) => (
-                  <TableRow key={amenity.id}>
-                    <TableCell className="font-medium">{amenity.name}</TableCell>
-                    <TableCell className="capitalize">{amenity.amenity_type}</TableCell>
-                    <TableCell className="text-muted-foreground">{amenity.location ?? '-'}</TableCell>
-                    <TableCell>{amenity.capacity ?? '-'}</TableCell>
-                    <TableCell className="capitalize">{amenity.pricing_type}</TableCell>
-                    <TableCell className="text-right">{amenity.price_per_unit > 0 ? formatCurrency(amenity.price_per_unit) : 'Free'}</TableCell>
-                    <TableCell>
-                      <Badge variant={amenity.is_active ? 'success' : 'secondary'}>
-                        {amenity.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openAmenityDialog(amenity)}>
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggleAmenity(amenity)}>
-                            {amenity.is_active ? 'Deactivate' : 'Activate'}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="py-8 text-center text-muted-foreground">
-              No amenities configured. Add amenities to enable booking.
-            </p>
-          )}
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Add amenities, set how each is charged and manage bookings on the Amenities page.
+          </p>
+          <Link
+            href="/amenities"
+            className="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"
+          >
+            Open Amenities
+          </Link>
         </CardContent>
-
-        {/* Create/Edit amenity dialog */}
-        <Dialog open={amenityDialogOpen} onOpenChange={setAmenityDialogOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{editingAmenityId ? 'Edit Amenity' : 'Add Amenity'}</DialogTitle>
-              <DialogDescription>
-                {editingAmenityId ? 'Update amenity details' : 'Create a new bookable amenity'}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSaveAmenity} className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="amenity-name">Name</Label>
-                  <Input
-                    id="amenity-name"
-                    value={amenityName}
-                    onChange={(e) => setAmenityName(e.target.value)}
-                    placeholder="e.g. Clubhouse"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="amenity-type">Type</Label>
-                  <Select
-                    id="amenity-type"
-                    value={amenityType}
-                    onChange={(e) => setAmenityType(e.target.value)}
-                  >
-                    <option value="clubhouse">Clubhouse</option>
-                    <option value="swimming_pool">Swimming Pool</option>
-                    <option value="gym">Gym</option>
-                    <option value="sports_court">Sports Court</option>
-                    <option value="party_hall">Party Hall</option>
-                    <option value="terrace">Terrace</option>
-                    <option value="guest_room">Guest Room</option>
-                    <option value="other">Other</option>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="amenity-location">Location</Label>
-                  <Input
-                    id="amenity-location"
-                    value={amenityLocation}
-                    onChange={(e) => setAmenityLocation(e.target.value)}
-                    placeholder="e.g. Block A Ground Floor"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="amenity-capacity">Capacity</Label>
-                  <Input
-                    id="amenity-capacity"
-                    type="number"
-                    value={amenityCapacity}
-                    onChange={(e) => setAmenityCapacity(e.target.value)}
-                    placeholder="e.g. 50"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="amenity-pricing">Pricing Type</Label>
-                  <Select
-                    id="amenity-pricing"
-                    value={amenityPricingType}
-                    onChange={(e) => setAmenityPricingType(e.target.value)}
-                  >
-                    <option value="free">Free</option>
-                    <option value="per_hour">Per Hour</option>
-                    <option value="per_slot">Per Slot</option>
-                    <option value="per_day">Per Day</option>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="amenity-price">Price</Label>
-                  <Input
-                    id="amenity-price"
-                    type="number"
-                    value={amenityPrice}
-                    onChange={(e) => setAmenityPrice(e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="amenity-deposit">Deposit</Label>
-                  <Input
-                    id="amenity-deposit"
-                    type="number"
-                    value={amenityDeposit}
-                    onChange={(e) => setAmenityDeposit(e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="amenity-rules">Rules</Label>
-                <Input
-                  id="amenity-rules"
-                  value={amenityRules}
-                  onChange={(e) => setAmenityRules(e.target.value)}
-                  placeholder="e.g. No shoes, max 4 hours"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="amenity-timeslots">Time Slots</Label>
-                <Input
-                  id="amenity-timeslots"
-                  value={amenityTimeSlots}
-                  onChange={(e) => setAmenityTimeSlots(e.target.value)}
-                  placeholder="e.g. 06:00-09:00, 16:00-21:00"
-                />
-              </div>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline" type="button">Cancel</Button>
-                </DialogClose>
-                <Button
-                  type="submit"
-                  disabled={createAmenityM.isPending || updateAmenityM.isPending}
-                >
-                  {(createAmenityM.isPending || updateAmenityM.isPending) ? 'Saving...' : 'Save'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
       </Card>
 
       {/* ------------------------------------------------------------------- */}

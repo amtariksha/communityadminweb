@@ -555,6 +555,7 @@ export {
   useAmenities,
   useAmenitySlots,
   useAmenityBookings,
+  useAmenityQuote,
   useCreateAmenity,
   useUpdateAmenity,
   useCreateBooking,
@@ -566,6 +567,8 @@ export type {
   AmenitySlot,
   AmenityBooking,
   AmenityBookingFilters,
+  AmenityQuote,
+  CancelBookingResult,
 } from './use-amenities';
 
 // Voting

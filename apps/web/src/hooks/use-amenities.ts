@@ -155,6 +155,8 @@ export const amenityKeys = {
   bookings: () => [...amenityKeys.all, 'bookings'] as const,
   bookingList: (filters?: AmenityBookingFilters) =>
     [...amenityKeys.bookings(), filters] as const,
+  quote: (amenityId: string, startTime: string, endTime: string) =>
+    [...amenityKeys.all, 'quote', amenityId, startTime, endTime] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -220,6 +222,45 @@ export function useAmenityBookings(filters?: AmenityBookingFilters) {
   });
 }
 
+/**
+ * AMEN-01 — what a booking would cost under the amenity's charging basis
+ * (hours × rate, days × rate, the slot rate, or nothing). Amounts are
+ * decimal strings. An API without the route answers 404; callers show
+ * "not available yet" then.
+ */
+export interface AmenityQuote {
+  pricing_type: 'free' | 'hourly' | 'per_slot' | 'per_day';
+  rate: string;
+  quantity: string;
+  unit: 'hour' | 'day' | 'slot' | null;
+  amount: string;
+  deposit_amount: string;
+  total: string;
+}
+
+const TIME_PATTERN = /^\d{2}:\d{2}$/;
+
+export function useAmenityQuote(amenityId: string, startTime: string, endTime: string) {
+  return useQuery({
+    queryKey: amenityKeys.quote(amenityId, startTime, endTime),
+    queryFn: function fetchQuote() {
+      return api
+        .get<{ data: AmenityQuote }>(`/amenities/${amenityId}/quote`, {
+          params: { start_time: startTime, end_time: endTime },
+        })
+        .then(function unwrap(res) {
+          return res.data;
+        });
+    },
+    enabled:
+      amenityId !== '' &&
+      TIME_PATTERN.test(startTime) &&
+      TIME_PATTERN.test(endTime) &&
+      startTime < endTime,
+    retry: false,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Mutations
 // ---------------------------------------------------------------------------
@@ -271,6 +312,8 @@ export interface CancelBookingResult {
   refunded_payment_order_ids: string[];
   refund_failed: boolean;
   refund_skipped_reason?: 'not_paid' | 'no_invoice' | 'caller_opted_out';
+  /** AMEN-02 — the invoice was cancelled with a credit note (absent on an older API). */
+  invoice_cancelled?: boolean;
 }
 
 export function useCancelBooking() {
@@ -279,10 +322,11 @@ export function useCancelBooking() {
   return useMutation({
     mutationFn: function cancelBooking(input: {
       id: string;
+      // Required of an admin (3–500 characters); printed on the credit note.
       reason?: string;
-      // When true, every paid payment_order linked to the booking's
-      // invoice gets refunded via Razorpay and the invoice is voided.
-      // When false / omitted, the booking is just marked cancelled.
+      // When true, a paid invoice is refunded via Razorpay and then
+      // cancelled with a credit note. An unpaid invoice is always
+      // cancelled; a paid one without a refund stands.
       refund?: boolean;
     }) {
       return api.post<{ data: CancelBookingResult }>(
