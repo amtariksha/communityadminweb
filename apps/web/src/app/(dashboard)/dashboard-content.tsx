@@ -39,6 +39,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/layout/page-header';
+import { StandardSendNow } from './_dashboard/send-now-band';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { TOOLTIP } from '@/lib/tooltip-content';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -208,6 +209,9 @@ export default function DashboardContent(): ReactNode {
           </Button>
         </Link>
       </div>
+
+      {/* ANN-09 — SMS · Instant Notification · Post Announcement, above the cards. */}
+      <StandardSendNow />
 
       {widgetOrder.map((widgetId) => {
         if (widgetId === 'stats') {

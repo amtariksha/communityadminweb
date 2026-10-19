@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   error: null as unknown,
   features: undefined as string[] | undefined,
   role: 'community_admin',
+  sms: false,
 }));
 
 vi.mock('@/hooks', () => ({
@@ -28,6 +29,7 @@ vi.mock('@/hooks', () => ({
     refetch: mocks.refetch,
   }),
   useEnabledFeatures: () => ({ data: mocks.features }),
+  useNotificationChannels: () => ({ data: { email: true, sms: mocks.sms, sms_essential: false, sms_message_max: 120 } }),
 }));
 
 vi.mock('@/lib/auth', async (importOriginal) => ({
@@ -196,9 +198,12 @@ describe('ClassicDashboard', () => {
     render(<ClassicDashboard />);
 
     const sendNow = screen.getByRole('heading', { name: 'Send now' }).closest('section') as HTMLElement;
-    const sends = within(sendNow).getAllByRole('link', { name: 'Send' });
+    const sends = within(sendNow).getAllByRole('link', { name: /^Send/ });
 
-    expect(sends.map((send) => send.getAttribute('href'))).toEqual(['/notifications', '/announcements?new=1']);
+    expect(sends.map((send) => send.getAttribute('href'))).toEqual([
+      '/notifications?compose=1&channel=push',
+      '/announcements?new=1',
+    ]);
     expect(within(sendNow).queryByText('SMS')).toBeNull();
   });
 

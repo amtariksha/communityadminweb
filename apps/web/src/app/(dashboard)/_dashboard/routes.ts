@@ -5,6 +5,9 @@
  */
 export const DASHBOARD_ROUTES = {
   notifications: '/notifications',
+  // The composer opened on a channel (ANN-09 / DASH-10).
+  composePush: '/notifications?compose=1&channel=push',
+  composeSms: '/notifications?compose=1&channel=sms_general',
   announcements: '/announcements',
   newAnnouncement: '/announcements?new=1',
   settings: '/settings',
