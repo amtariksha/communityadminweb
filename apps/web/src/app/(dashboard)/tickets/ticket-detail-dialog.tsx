@@ -23,6 +23,7 @@ import { useAdminLayout } from '@/lib/layout-context';
 import { ticketStatusLabel } from '@/lib/ticket-status';
 import { formatDate } from '@/lib/utils';
 import { priorityTone, statusTone } from './ticket-badges';
+import { StatusPicker } from './status-picker';
 import { TicketDetailThreads } from './ticket-detail-threads';
 import { useTicketStatusUpdate } from './use-ticket-status-update';
 
@@ -164,8 +165,8 @@ export function TicketDetailDialog({ ticketId, onClose }: TicketDetailDialogProp
         ) : detail ? (
           <div className="space-y-4 py-4">
             <Facts detail={detail} />
-            {next && (
-              <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {next && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -174,8 +175,14 @@ export function TicketDetailDialog({ ticketId, onClose }: TicketDetailDialogProp
                 >
                   {next.icon} {next.label}
                 </Button>
-              </div>
-            )}
+              )}
+              <StatusPicker
+                id="ticket-detail-status"
+                current={detail.status}
+                disabled={statusUpdate.isPending}
+                onChange={(status) => statusUpdate.update(detail.id, status)}
+              />
+            </div>
             <Separator />
             <TicketDetailThreads
               comments={detail.comments ?? []}

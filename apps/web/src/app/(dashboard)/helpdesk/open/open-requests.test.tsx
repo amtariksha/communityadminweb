@@ -168,6 +168,8 @@ describe('Open Requests', () => {
       'All Open',
       'New (3)',
       'In Progress (1)',
+      'On Hold (0)',
+      'Awaiting Resident Response (0)',
       'Reopened (0)',
     ]);
     fireEvent.change(status, { target: { value: 'in_progress' } });

@@ -3,8 +3,8 @@ import type { StatusRoute } from '@/components/layout/menu/status-menu';
 /**
  * The HelpDesk Tracker status lists (SB-05, HELP-12): Open Requests and
  * Closed Requests, each a route under /helpdesk and a classic menu entry.
- * `statuses` is the Status filter of the list, in the screen's order;
- * HELP-14 adds On Hold and Awaiting Resident Response to the open one.
+ * `statuses` is the Status filter of the list, in the screen's order
+ * (On Hold and Awaiting Resident Response came with HELP-14).
  */
 export interface HelpdeskScope extends StatusRoute {
   slug: 'open' | 'closed';
@@ -32,7 +32,7 @@ export const HELPDESK_SCOPES: readonly HelpdeskScope[] = [
     slug: 'open',
     label: 'Open Requests',
     emptyText: 'There are no open requests.',
-    statuses: ['open', 'in_progress', 'reopened'],
+    statuses: ['open', 'in_progress', 'on_hold', 'awaiting_resident', 'reopened'],
   },
   {
     slug: 'closed',

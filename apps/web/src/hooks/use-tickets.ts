@@ -51,7 +51,7 @@ export interface Ticket {
   subject: string;
   description: string | null;
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'open' | 'in_progress' | 'resolved' | 'closed' | 'reopened';
+  status: 'open' | 'in_progress' | 'on_hold' | 'awaiting_resident' | 'resolved' | 'closed' | 'reopened';
   sla_due_at: string | null;
   resolved_at: string | null;
   closed_at: string | null;
@@ -94,6 +94,9 @@ export interface TicketComment {
 export interface TicketStats {
   open: number;
   in_progress: number;
+  // HELP-14; older servers do not send them.
+  on_hold?: number;
+  awaiting_resident?: number;
   resolved: number;
   closed: number;
   total?: number;
@@ -410,6 +413,8 @@ export interface HelpdeskKpi {
   total_tickets: number;
   open_tickets: number;
   in_progress_tickets: number;
+  on_hold_tickets?: number;
+  awaiting_resident_tickets?: number;
   resolved_tickets: number;
   closed_tickets: number;
   sla_breached: number;

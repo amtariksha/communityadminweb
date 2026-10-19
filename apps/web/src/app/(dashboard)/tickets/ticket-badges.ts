@@ -21,6 +21,10 @@ export function statusTone(status: string): BadgeTone {
       return 'warning';
     case 'in_progress':
       return 'default';
+    // Waiting on someone outside the desk (HELP-14).
+    case 'on_hold':
+    case 'awaiting_resident':
+      return 'secondary';
     case 'resolved':
       return 'success';
     case 'reopened':

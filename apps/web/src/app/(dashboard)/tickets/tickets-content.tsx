@@ -70,6 +70,9 @@ import { QueueTabs, type QueueTab } from './queue-tabs';
 
 const CREATE_REQUEST_PAGE = '/helpdesk/new';
 
+// Open statuses first (On Hold and Awaiting Resident came with HELP-14), then completed.
+const FILTER_STATUSES = ['open', 'in_progress', 'on_hold', 'awaiting_resident', 'reopened', 'resolved', 'closed'] as const;
+
 const TICKET_SORTS = [
   'created_at',
   'updated_at',
@@ -386,11 +389,11 @@ export default function TicketsContent(): ReactNode {
                 }}
               >
                 <option value="">All</option>
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-                <option value="reopened">Reopened</option>
+                {FILTER_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {ticketStatusLabel(status, layout)}
+                  </option>
+                ))}
               </Select>
             </div>
             <div className="space-y-2">
