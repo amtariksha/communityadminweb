@@ -40,6 +40,13 @@ export interface TenantSettings {
   billing_reminders?: {
     enabled: boolean;
     days: number[];
+    /** INC-30 — the reminder text the composer and the automatic reminders start from. */
+    template?: {
+      reply_to?: string | null;
+      from_name?: string | null;
+      subject: string;
+      message_html: string;
+    } | null;
   };
 
   // INC-12 — who bears the online-payment (gateway) charge: `absorbed` = the
@@ -77,6 +84,25 @@ export interface TenantSettings {
     rounding: 'two_decimals' | 'whole_rupee';
     auto_post: boolean;
   };
+
+  // INC-30 — Setup › Notifications: billing documents e-mailed (INC-31), with
+  // the line break-up or not, and to whom. Setup › Defaulters: privacy switches.
+  billing_notifications?: {
+    email_events: Array<
+      | 'invoice_posted'
+      | 'receipt_posted'
+      | 'credit_note_posted'
+      | 'receipt_voided'
+      | 'invoice_cancelled'
+      | 'interest_posted'
+      | 'non_member_invoice_posted'
+      | 'non_member_receipt_posted'
+      | 'non_member_credit_note_posted'
+    >;
+    attach_breakup: boolean;
+    recipients: 'owners_only' | 'owners_and_tenants';
+  };
+  billing_defaulters?: { hide_phone: boolean; hide_email: boolean };
 
   // INC-23 — Setup › GST: whether Post Invoice offers GST on an ad-hoc
   // invoice (unset = on). Read by POST /invoices/adhoc and the form.

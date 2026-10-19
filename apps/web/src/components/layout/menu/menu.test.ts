@@ -103,6 +103,7 @@ describe('classic modules', () => {
       ['Payment Gateway', '/income/setup/payment-gateway'],
       ['Customize Invoice', '/income/setup/customize-invoice'],
       ['GST', '/income/setup/gst'],
+      ['Notifications', '/income/setup/notifications'],
       ['Defaulters', '/income/setup/defaulters'],
     ]);
     expect(entryHref(find(menu, 'income.setup') as MenuNode)).toBe('/income/setup/auto-invoicing');

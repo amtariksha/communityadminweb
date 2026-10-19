@@ -190,7 +190,7 @@ export const classicMenu: MenuNode[] = [
           { id: 'income.setup.customize-invoice', label: 'Customize Invoice', href: '/income/setup/customize-invoice', logs: ['tenant_settings'] },
           planned('income.setup.other', 'Other', 'INC-42'),
           { id: 'income.setup.gst', label: 'GST', href: '/income/setup/gst', logs: ['tenant_settings'] },
-          planned('income.setup.notifications', 'Notifications', 'INC-30'),
+          { id: 'income.setup.notifications', label: 'Notifications', href: '/income/setup/notifications', logs: ['tenant_settings'] },
           { id: 'income.setup.defaulters', label: 'Defaulters', href: '/income/setup/defaulters', logs: ['tenant_settings'] },
         ],
       },

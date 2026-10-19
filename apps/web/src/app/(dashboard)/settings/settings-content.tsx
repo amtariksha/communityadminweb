@@ -550,6 +550,28 @@ export default function SettingsContent(): ReactNode {
       {/* ------------------------------------------------------------------- */}
       <DuesRemindersCard />
 
+      {/* Billing e-mails, Defaulters list and reminder text (INC-30) live on
+          the Income Tracker Setup pages; linked here for the standard layout. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Billing e-mails and defaulters</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Link
+            href="/income/setup/notifications"
+            className="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"
+          >
+            Billing e-mails (Notifications)
+          </Link>
+          <Link
+            href="/income/setup/defaulters"
+            className="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"
+          >
+            Defaulters list, reminder text and log
+          </Link>
+        </CardContent>
+      </Card>
+
       {/* ------------------------------------------------------------------- */}
       {/* Late payment interest — rate, due days, basis (INC-07)              */}
       {/* ------------------------------------------------------------------- */}

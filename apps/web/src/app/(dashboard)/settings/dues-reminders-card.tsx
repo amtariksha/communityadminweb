@@ -68,7 +68,12 @@ export function DuesRemindersCard(): ReactNode {
 
   function save(): void {
     updateSettings.mutate(
-      { tenant_id: tenantId, settings: { billing_reminders: draft } },
+      // Keep the reminder text saved on Setup › Defaulters (INC-30): the
+      // settings save replaces the whole key.
+      {
+        tenant_id: tenantId,
+        settings: { billing_reminders: { ...draft, template: tenantQuery.data?.settings_json?.billing_reminders?.template } },
+      },
       {
         onSuccess: (tenant) => {
           // A server without this setting drops the key and still answers 200.

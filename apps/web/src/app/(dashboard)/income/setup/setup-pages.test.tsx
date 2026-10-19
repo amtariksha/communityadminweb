@@ -26,6 +26,7 @@ vi.mock('../../invoices/billing-runs-panel', () => ({ BillingRunsPanel: () => <s
 vi.mock('./auto-invoicing/components/auto-invoice-form', () => ({ AutoInvoiceForm: () => <section>Auto invoicing form</section> }));
 vi.mock('./auto-invoicing/components/rule-book', () => ({ RuleBook: () => <section>Rules per unit type</section> }));
 vi.mock('./auto-invoicing/components/run-now-control', () => ({ RunNowControl: () => <section>Run now</section> }));
+vi.mock('./defaulters/reminder-log-list', () => ({ ReminderLogList: () => <section>Reminder log</section> }));
 vi.mock('@/hooks/use-billing-rules', () => ({
   useAutoInvoiceSettings: () => ({ data: { billing_auto_invoice: { enabled: mocks.ruleLinesOn } } }),
 }));
