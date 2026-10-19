@@ -1,5 +1,13 @@
 import type { Vendor } from '@communityos/shared';
 import type { TdsConfig } from '@/hooks/use-tax';
+import {
+  changedDefaultsPayload,
+  defaultsFromVendor,
+  defaultsPayload,
+  emptyDefaults,
+  type VendorDefaultsPayload,
+  type VendorDefaultsValues,
+} from './vendor-defaults-form';
 
 /**
  * The Add / Edit Vendor form (VEND-02, VEND-03): its values, the request
@@ -22,9 +30,11 @@ export interface VendorFormValues {
   /** Percent as typed; blank = none. */
   tds_rate: string;
   is_active: boolean;
+  /** VEND-05 — accounting defaults that fill the vendor's new invoices. */
+  defaults: VendorDefaultsValues;
 }
 
-export type VendorPayload = Partial<{
+export type VendorPayload = Partial<VendorDefaultsPayload> & Partial<{
   name: string;
   contact_person: string | null;
   phone: string | null;
@@ -41,7 +51,7 @@ export type VendorPayload = Partial<{
   is_active: boolean;
 }>;
 
-type TextField = Exclude<keyof VendorFormValues, 'is_active' | 'tds_rate' | 'name'>;
+type TextField = Exclude<keyof VendorFormValues, 'is_active' | 'tds_rate' | 'name' | 'defaults'>;
 
 const TEXT_FIELDS: readonly TextField[] = [
   'contact_person', 'phone', 'email', 'address', 'pan', 'gstin',
@@ -52,7 +62,7 @@ export function emptyVendorForm(): VendorFormValues {
   return {
     name: '', contact_person: '', phone: '', email: '', address: '', pan: '', gstin: '',
     bank_name: '', bank_branch: '', bank_account_number: '', bank_ifsc: '',
-    tds_section: '', tds_rate: '', is_active: true,
+    tds_section: '', tds_rate: '', is_active: true, defaults: emptyDefaults(),
   };
 }
 
@@ -91,6 +101,7 @@ export function vendorFormFromVendor(vendor: Vendor): VendorFormValues {
     tds_section: vendor.tds_section ?? '',
     tds_rate: vendor.tds_rate == null ? '' : String(Number(vendor.tds_rate)),
     is_active: vendor.is_active,
+    defaults: defaultsFromVendor(vendor),
   };
 }
 
@@ -103,7 +114,7 @@ function rateValue(typed: string): number | null {
 export function createVendorPayload(values: VendorFormValues): VendorPayload {
   const payload: VendorPayload = { name: values.name.trim(), tds_rate: rateValue(values.tds_rate) };
   for (const field of TEXT_FIELDS) payload[field] = values[field].trim() || null;
-  return payload;
+  return { ...payload, ...defaultsPayload(values.defaults, values.gstin) };
 }
 
 const BANK_FIELDS: readonly TextField[] = ['bank_name', 'bank_branch', 'bank_account_number', 'bank_ifsc'];
@@ -126,7 +137,7 @@ export function updateVendorPayload(initial: VendorFormValues, values: VendorFor
   }
   if (rateValue(values.tds_rate) !== rateValue(initial.tds_rate)) payload.tds_rate = rateValue(values.tds_rate);
   if (values.is_active !== initial.is_active) payload.is_active = values.is_active;
-  return payload;
+  return { ...payload, ...changedDefaultsPayload(initial.defaults, values.defaults, initial.gstin, values.gstin) };
 }
 
 /** The rate % configured for a TDS section code, if any. */

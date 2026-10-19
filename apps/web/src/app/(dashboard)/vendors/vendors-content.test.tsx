@@ -24,6 +24,7 @@ vi.mock('@/components/ui/dialog', () => ({
 vi.mock('@/components/ui/user-search-select', () => ({ UserSearchSelect: () => null }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('./vendor-ratings-tab', () => ({ VendorRatingsTab: () => null }));
+vi.mock('@/hooks/use-vendor-bills', () => ({ useInvoiceHeads: () => ({ data: undefined }) }));
 
 const mocks = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), listCalls: [] as Array<Record<string, unknown>> }));
 const vendor = vi.hoisted(() => ({

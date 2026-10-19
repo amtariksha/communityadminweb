@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTdsConfig } from '@/hooks';
 import { chooseTdsSection, type VendorFormValues } from './vendor-form';
+import { VendorDefaultsFields } from './vendor-defaults-fields';
 
 interface VendorFormFieldsProps {
   idPrefix: string;
@@ -150,6 +151,7 @@ export function VendorFormFields({ idPrefix, values, onChange, showActive, phone
       </Field>
       <BankFields idPrefix={idPrefix} values={values} set={set} />
       <TdsFields idPrefix={idPrefix} values={values} onChange={onChange} />
+      <VendorDefaultsFields idPrefix={idPrefix} values={values.defaults} onChange={(defaults) => onChange({ ...values, defaults })} />
       {showActive && (
         <label className="flex items-center gap-2 text-sm" htmlFor={`${idPrefix}-active`}>
           <input
