@@ -37,10 +37,21 @@ export interface Staff {
   join_date: string | null;
   exit_date: string | null;
   salary: string | number | null;
+  // STAFF-20 (migration 215); absent from an older API.
+  badge_no?: string | null;
+  badge_issued_on?: string | null;
+  badge_valid_until?: string | null;
+  gender?: StaffGender | null;
+  qualification?: string | null;
+  skills?: string | null;
+  languages?: string | null;
+  notes?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
 }
+
+export type StaffGender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
 export interface Shift {
   id: string;
@@ -147,7 +158,7 @@ export interface RbacPermission {
 // Filter types
 // ---------------------------------------------------------------------------
 
-export type StaffSearchKey = 'any' | 'name' | 'category' | 'phone';
+export type StaffSearchKey = 'any' | 'badge' | 'name' | 'category' | 'phone';
 
 export interface StaffFilters {
   staff_type?: string;
@@ -190,11 +201,20 @@ interface CreateEmployeeInput {
   emergency_contact?: string;
   join_date?: string;
   salary?: number;
+  // STAFF-20: no badge = the next free number; validity 0 / 3 / 6 / 9 months.
+  badge_no?: string | null;
+  badge_issued_on?: string | null;
+  badge_validity_months?: number;
+  gender?: StaffGender | null;
+  qualification?: string | null;
+  skills?: string | null;
+  languages?: string | null;
+  notes?: string | null;
 }
 
 interface UpdateEmployeeInput {
   id: string;
-  data: Partial<Omit<CreateEmployeeInput, 'phone'>>;
+  data: Partial<Omit<CreateEmployeeInput, 'phone'>> & { exit_date?: string | null };
 }
 
 interface CreateShiftInput {

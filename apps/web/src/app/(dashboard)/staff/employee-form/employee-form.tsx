@@ -10,6 +10,7 @@ import { UserSearchSelect } from '@/components/ui/user-search-select';
 import type { Staff } from '@/hooks/use-staff';
 import { STAFF_TYPE_OPTIONS } from '../staff-fields';
 import { useEmployeeForm } from './use-employee-form';
+import { RecordFields } from './record-fields';
 
 export interface EmployeeFormProps {
   mode: FormMode;
@@ -125,7 +126,7 @@ function EmployeeFields({ form }: { form: Form }): ReactNode {
 /**
  * Add / Edit Employee (STAFF-10, SB-07): the standard Staff page's dialog
  * and the classic Staff Manager's own page are this one form. Add keeps
- * Save and New on the page.
+ * Save and New on the page. STAFF-20 adds the badge and profile fields.
  */
 export function EmployeeForm({ mode, open, employee, onClose, onSaved }: EmployeeFormProps): ReactNode {
   const form = useEmployeeForm(employee);
@@ -143,6 +144,7 @@ export function EmployeeForm({ mode, open, employee, onClose, onSaved }: Employe
       saveLabel={mode === 'page' ? (editing ? 'Save Changes' : 'Add Staff') : 'Save'}
     >
       <EmployeeFields form={form} />
+      <RecordFields draft={form.record} set={form.setRecord} employee={employee} error={form.error} />
     </FormFrame>
   );
 }

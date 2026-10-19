@@ -79,6 +79,21 @@ export const ERROR_CODES = {
   },
 
   // ---------------------------------------------------------------
+  // Staff (mirrors communityos packages/shared/src/error-codes.ts)
+  // ---------------------------------------------------------------
+  staff_phone_exists: {
+    status: 409,
+    userMessage:
+      'A staff member with this phone already exists in this society.',
+  },
+  // STAFF-20: a badge number is unique in the society across society
+  // staff and household help.
+  staff_badge_exists: {
+    status: 409,
+    userMessage: 'This badge number is already given to someone in this society.',
+  },
+
+  // ---------------------------------------------------------------
   // Invoicing
   // ---------------------------------------------------------------
   invoice_already_cancelled: {

@@ -45,6 +45,11 @@ vi.mock('@/components/ui/export-button', () => ({
 }));
 vi.mock('@/components/ui/user-search-select', () => ({ UserSearchSelect: () => null }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
+vi.mock('@/hooks/use-next-badge', () => ({ useNextBadge: () => ({ data: null }) }));
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+}));
 
 vi.mock('@/hooks', () => {
   const mutation = (fn?: () => void) => () => ({ mutate: fn ?? vi.fn(), isPending: false });

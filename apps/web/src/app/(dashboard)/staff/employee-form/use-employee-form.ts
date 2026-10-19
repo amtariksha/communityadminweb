@@ -1,13 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast';
 import { useCreateEmployee, useUpdateEmployee } from '@/hooks';
+import { useNextBadge } from '@/hooks/use-next-badge';
 import type { Staff } from '@/hooks/use-staff';
 import type { UserSearchHit } from '@/hooks/use-user-search';
 import { friendlyError } from '@/lib/api-error';
 import { normalizePhone } from '@/lib/validation';
 import { dateOnly, salaryFromInput } from '../staff-fields';
+import { recordDraftError, recordDraftFrom, recordPayload, type StaffRecordDraft } from './staff-record';
 
 /** What the Add / Edit Employee form holds while it is open. */
 export interface EmployeeDraft {
@@ -75,11 +78,25 @@ function checkNew(draft: EmployeeDraft, ceiling: string): Checked<string> {
  * State and saving of the employee form (STAFF-10, SB-07): one set of
  * checks and payloads for the standard dialog and the classic page.
  */
+/** The badge and profile part, Badge No. pre-filled with the next free number on Add (STAFF-20). */
+function useRecordDraft(employee: Staff | null | undefined) {
+  const [record, setRecord] = useState<StaffRecordDraft>(() => recordDraftFrom(employee));
+  const nextBadge = useNextBadge(!employee).data;
+  useEffect(() => {
+    if (nextBadge) setRecord((current) => (current.badgeNo ? current : { ...current, badgeNo: nextBadge }));
+  }, [nextBadge]);
+  const setField = <K extends keyof StaffRecordDraft>(key: K, value: StaffRecordDraft[K]) =>
+    setRecord((current) => ({ ...current, [key]: value }));
+  return { record, setField, resetRecord: () => setRecord(recordDraftFrom(employee)) };
+}
+
 export function useEmployeeForm(employee: Staff | null | undefined) {
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
   const createEmployee = useCreateEmployee();
   const updateEmployee = useUpdateEmployee();
   const [draft, setDraft] = useState<EmployeeDraft>(() => draftFrom(employee));
+  const { record, setField, resetRecord } = useRecordDraft(employee);
   const maxJoinDate = useMemo(joinDateCeiling, []);
   const editing = Boolean(employee);
   const set = <K extends keyof EmployeeDraft>(key: K, value: EmployeeDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
@@ -89,6 +106,8 @@ export function useEmployeeForm(employee: Staff | null | undefined) {
   function save(onDone: () => void): void {
     const common = checkCommon(draft);
     if (!common.ok) return refuse(common);
+    const recordError = recordDraftError(record);
+    if (recordError) return refuse({ title: recordError, description: 'Shorten the field and save again.' });
     const fields = {
       name: draft.name,
       staff_type: draft.type,
@@ -96,6 +115,7 @@ export function useEmployeeForm(employee: Staff | null | undefined) {
       address: draft.address || undefined,
       emergency_contact: common.value.emergency,
       salary: common.value.salary,
+      ...recordPayload(record, editing),
     };
     const failed = (title: string) => (error: unknown) =>
       addToast({ title, description: friendlyError(error), variant: 'destructive' });
@@ -110,14 +130,27 @@ export function useEmployeeForm(employee: Staff | null | undefined) {
     if (!phone.ok) return refuse(phone);
     createEmployee.mutate(
       { ...fields, phone: phone.value, join_date: draft.joinedAt || undefined },
-      { onSuccess: () => { addToast({ title: 'Employee added', variant: 'success' }); onDone(); }, onError: failed('Failed to add employee') },
+      {
+        onSuccess: () => {
+          addToast({ title: 'Employee added', variant: 'success' });
+          // The next Add (Save and New) offers the next number again.
+          void queryClient.invalidateQueries({ queryKey: ['staff', 'badges', 'next'] });
+          onDone();
+        },
+        onError: failed('Failed to add employee'),
+      },
     );
   }
 
   return {
     draft,
     set,
-    reset: () => setDraft(draftFrom(employee)),
+    record,
+    setRecord: setField,
+    reset: () => {
+      setDraft(draftFrom(employee));
+      resetRecord();
+    },
     save,
     editing,
     maxJoinDate,
