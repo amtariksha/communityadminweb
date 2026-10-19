@@ -155,12 +155,13 @@ describe('classic modules', () => {
     expect(find(withoutGate, 'gate.investigator')?.tabs?.map((tab) => tab.href)).toEqual(['/gate/investigator/panic-alerts']);
   });
 
-  it('Staff Manager lists Setup, the status lists and Attendance; Add Staff is a page', () => {
+  it('Staff Manager lists Setup, the status lists, Attendance and Reports; Add Staff is a page', () => {
     expect(find(menu, 'staff')?.children?.map((child) => [child.label, child.href])).toEqual([
       ['Setup', '/staff/setup'],
       ['Active', '/staff/active'],
       ['Attendance', '/staff/attendance'],
       ['Retired', '/staff/retired'],
+      ['Reports', '/staff/reports'],
     ]);
     expect(find(menu, 'staff')?.create).toEqual({ label: 'Add Staff', href: '/staff/new' });
     expect(governingItem('/staff/retired')?.href).toBe('/staff');

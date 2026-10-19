@@ -24,6 +24,7 @@ export const MODULE_REPORT_PAGES: readonly ModuleReportsPage[] = [
   { menuId: 'projects', catalogueModule: 'issue_tracker', href: '/governance/reports' },
   { menuId: 'assets', catalogueModule: 'asset_tracker', href: '/asset-inventory/reports' },
   { menuId: 'gate', catalogueModule: 'attendance_manager', href: '/gate/reports' },
+  { menuId: 'staff', catalogueModule: 'staff_manager', href: '/staff/reports' },
 ];
 
 /** Admin Reports itself; today's /reports is the same index (decision R1). */
