@@ -24,6 +24,7 @@ export type ReportParamType =
   | 'ticket_category'
   | 'user'
   | 'poll'
+  | 'amenity'
   | 'select'
   | 'boolean'
   | 'number';

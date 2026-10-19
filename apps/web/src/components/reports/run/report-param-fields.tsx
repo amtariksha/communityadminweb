@@ -12,6 +12,7 @@ import { useUnitBlocks } from '@/hooks/use-unit-blocks';
 import { UNIT_PICKER_LIMIT, useUnits } from '@/hooks/use-units';
 import { useVendors } from '@/hooks/use-vendors';
 import { usePolls } from '@/hooks/use-voting';
+import { useAmenities } from '@/hooks/use-amenities';
 import type { UserSearchHit } from '@/hooks/use-user-search';
 import type { CatalogueParam } from '@/hooks/use-reports';
 import { useHelpdeskCategories } from '@/hooks/use-helpdesk';
@@ -144,6 +145,17 @@ function PollField({ param, value, onChange }: FieldProps): ReactNode {
   );
 }
 
+function AmenityField({ param, value, onChange }: FieldProps): ReactNode {
+  const amenities = useAmenities();
+  const first = param.required ? 'Choose an amenity' : 'All amenities';
+  const options = [{ value: '', label: first }, ...(amenities.data?.data ?? []).map((amenity) => ({ value: amenity.id, label: amenity.name }))];
+  return (
+    <Select id={fieldId(param)} aria-label={param.label} value={String(value)} onChange={(event) => onChange(event.target.value)}>
+      <Options options={options} />
+    </Select>
+  );
+}
+
 function ChoiceField({ param, value, onChange, options }: FieldProps & { options: ReadonlyArray<{ value: string; label: string }> }): ReactNode {
   // An optional choice can be left on All (no filter).
   const shown = param.required || param.type !== 'select' ? options : [{ value: ANY, label: 'All' }, ...options];
@@ -175,6 +187,8 @@ function Widget(props: FieldProps): ReactNode {
       return <UserField {...props} />;
     case 'poll':
       return <PollField {...props} />;
+    case 'amenity':
+      return <AmenityField {...props} />;
     case 'financial_year':
       return <ChoiceField {...props} options={financialYearOptions(today)} />;
     case 'block':
