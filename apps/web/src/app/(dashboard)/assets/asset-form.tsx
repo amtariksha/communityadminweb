@@ -8,7 +8,7 @@ import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { useCreateAsset, useUpdateAsset, type Asset } from '@/hooks/use-assets';
 import { friendlyError } from '@/lib/api-error';
-import { assetFormError, assetFormValues, assetPayload, type AssetFormValues } from './asset-form-fields';
+import { LOCATION_PARTS, assetFormError, assetFormValues, assetPayload, type AssetFormValues } from './asset-form-fields';
 import { ASSET_TYPES, CONDITIONS } from './asset-ui';
 
 export interface AssetFormProps {
@@ -43,6 +43,10 @@ function AssetFields({ values, set }: { values: AssetFormValues; set: Set }): Re
         </Select>
       </div>
       <Text id="asset-location" label="Location *" value={values.location} onChange={(location) => set({ location })} />
+      <Text id="asset-code" label="Asset Code" value={values.assetCode} onChange={(assetCode) => set({ assetCode })} />
+      {LOCATION_PARTS.map((part) => (
+        <Text key={part.key} id={`asset-${part.key}`} label={part.label} value={values[part.key]} onChange={(value) => set({ [part.key]: value })} />
+      ))}
       <Text id="asset-manufacturer" label="Manufacturer" value={values.manufacturer} onChange={(manufacturer) => set({ manufacturer })} />
       <Text id="asset-model" label="Model" value={values.model} onChange={(model) => set({ model })} />
       <Text id="asset-serial" label="Serial Number" value={values.serial} onChange={(serial) => set({ serial })} />
@@ -99,6 +103,7 @@ export function AssetForm(props: AssetFormProps): ReactNode {
       saveLabel={props.mode === 'dialog' ? (editing ? 'Update' : 'Create') : 'Save'}
       dialogClassName="max-w-lg"
     >
+      {!editing && <p className="mb-2 text-xs text-muted-foreground">Leave Asset Code blank to get the next AST- number; the QR badge carries the code.</p>}
       <AssetFields values={values} set={set} />
     </FormFrame>
   );

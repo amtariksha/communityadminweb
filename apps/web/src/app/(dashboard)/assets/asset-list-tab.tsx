@@ -58,7 +58,10 @@ function AssetRow({ asset, onEdit, onQr }: { asset: Asset } & Pick<AssetListTabP
   const warranty = warrantyStatus(asset.warranty_expiry);
   return (
     <TableRow>
-      <TableCell className="font-medium">{asset.name}</TableCell>
+      <TableCell className="font-medium">
+        {asset.name}
+        {asset.asset_code && <span className="block font-mono text-xs text-muted-foreground">{asset.asset_code}</span>}
+      </TableCell>
       <TableCell>
         <span className="mr-1">{ASSET_TYPE_ICONS[asset.asset_type] ?? ''}</span>
         <span className="capitalize">{asset.asset_type.replace(/_/g, ' ')}</span>

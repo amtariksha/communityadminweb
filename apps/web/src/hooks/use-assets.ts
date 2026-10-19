@@ -27,6 +27,14 @@ export interface Asset {
   condition: string;
   status: string;
   created_at: string;
+  /** ASSET-13 — the society's code (AST-0001 … when left blank) and the QR value (the code at creation). */
+  asset_code?: string | null;
+  qr_code?: string | null;
+  site?: string | null;
+  building?: string | null;
+  wing?: string | null;
+  floor?: string | null;
+  room?: string | null;
 }
 
 export interface AMCContract {
