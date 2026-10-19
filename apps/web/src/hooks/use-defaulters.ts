@@ -20,8 +20,13 @@ export interface DefaulterRow {
   phone?: string | null;
 }
 
+/** Income Tracker › Defaulters: maintenance dues; Utility Tracker › Defaulters: utility dues (UTIL-09). */
+export type DefaulterScope = 'member' | 'utility';
+
 export interface DefaulterFilters {
   view: 'invoices' | 'other';
+  /** Unset = every ledger (the API's default, kept for older callers). */
+  scope?: DefaulterScope;
   posted_before?: string;
   min_due?: string;
   max_due?: string;
@@ -32,6 +37,7 @@ export interface DefaulterFilters {
 
 export function defaulterParams(filters: DefaulterFilters): Record<string, string> {
   const params: Record<string, string> = { view: filters.view };
+  if (filters.scope) params.scope = filters.scope;
   if (filters.posted_before) params.posted_before = filters.posted_before;
   if (filters.min_due) params.min_due = filters.min_due;
   if (filters.max_due) params.max_due = filters.max_due;
@@ -44,7 +50,7 @@ export function defaulterParams(filters: DefaulterFilters): Record<string, strin
 export const defaulterKeys = {
   all: ['defaulters'] as const,
   list: (filters: DefaulterFilters) => [...defaulterKeys.all, 'list', filters] as const,
-  log: (from: string, to: string, page: number) => [...defaulterKeys.all, 'log', from, to, page] as const,
+  log: (from: string, to: string, page: number, scope?: DefaulterScope) => [...defaulterKeys.all, 'log', from, to, page, scope ?? 'all'] as const,
 };
 
 export function useDefaulterList(filters: DefaulterFilters) {
@@ -64,6 +70,8 @@ export interface ReminderInput {
   from_name?: string;
   subject: string;
   message_html: string;
+  /** UTIL-09 — only this ledger's bills; sent by Utility Tracker › Defaulters. */
+  scope?: DefaulterScope;
 }
 
 export interface ReminderResult {
@@ -98,15 +106,16 @@ export interface ReminderLogRow {
   notes: string | null;
 }
 
-export function useReminderLog(from: string, to: string, page: number) {
+export function useReminderLog(from: string, to: string, page: number, scope?: DefaulterScope) {
   return useQuery({
-    queryKey: defaulterKeys.log(from, to, page),
+    queryKey: defaulterKeys.log(from, to, page, scope),
     meta: { suppressToast: true },
     retry: false,
     queryFn: function fetchReminderLog() {
       const params: Record<string, string> = { page: String(page), limit: '50' };
       if (from) params.from = from;
       if (to) params.to = to;
+      if (scope) params.scope = scope;
       return api.get<{ data: ReminderLogRow[]; total: number }>('/invoices/defaulters/reminder-log', { params });
     },
   });

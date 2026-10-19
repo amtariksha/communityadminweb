@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useReminderLog } from '@/hooks/use-defaulters';
+import { useReminderLog, type DefaulterScope } from '@/hooks/use-defaulters';
 import { ApiError, friendlyError } from '@/lib/api-error';
 import { formatDate } from '@/lib/utils';
 
@@ -18,11 +18,11 @@ const STATUS: Record<string, string> = {
 };
 
 /** Setup › Defaulters › Defaulter Reminder Logs (INC-S12): automatic and manual reminders. */
-export function ReminderLogList(): ReactNode {
+export function ReminderLogList({ scope }: { scope?: DefaulterScope } = {}): ReactNode {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
-  const log = useReminderLog(from, to, page);
+  const log = useReminderLog(from, to, page, scope);
   const rows = log.data?.data ?? [];
   const total = log.data?.total ?? 0;
 

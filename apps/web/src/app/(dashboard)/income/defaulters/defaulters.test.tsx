@@ -72,6 +72,17 @@ describe('Income Tracker › Defaulters (INC-29)', () => {
     expect(mocks.filters.at(-1)).toMatchObject({ view: 'invoices', min_due: '1000', max_due: '5000', category_ids: ['type-1'], account_ids: ['acc-1'] });
   });
 
+  it('lists and reminds maintenance dues only (UTIL-09: utility dues have their own page)', async () => {
+    mocks.send.mockResolvedValue({ batch_id: 'b', units: 1, no_dues: 0, sent: 1, skipped_no_email: 0, failed: 0 });
+    render(<DefaultersContent />);
+    expect(mocks.filters.at(-1)?.scope).toBe('member');
+    fireEvent.click(screen.getByRole('button', { name: 'Select All' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send Email' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, send' }));
+    await vi.waitFor(() => expect(mocks.send).toHaveBeenCalled());
+    expect(mocks.send.mock.calls[0][0].scope).toBe('member');
+  });
+
   it('opens on Other from the link', () => {
     mocks.view = 'other';
     render(<DefaultersContent />);

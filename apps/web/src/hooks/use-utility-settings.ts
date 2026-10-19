@@ -20,8 +20,20 @@ export interface UtilitySettingsView {
   /** True while the society has saved no utility rule of its own. */
   utility_interest_inherited: boolean;
   maintenance_interest: UtilityInterest;
-  /** UTIL-07 — post a batch of utility invoices on creation; absent on an older API. */
-  utility_billing?: { auto_post: boolean };
+  /**
+   * UTIL-07 — post a batch of utility invoices on creation. UTIL-09 — the
+   * utility reminder text (null = ours; absent on an API older than UTIL-09).
+   * The whole object is absent on an API older than UTIL-07.
+   */
+  utility_billing?: { auto_post: boolean; reminder_template?: UtilityReminderText | null };
+}
+
+/** The utility reminder text (UTIL-09). */
+export interface UtilityReminderText {
+  reply_to: string | null;
+  from_name: string | null;
+  subject: string;
+  message_html: string;
 }
 
 export const utilitySettingsKeys = {
@@ -50,4 +62,22 @@ export function useSaveUtilityInterest() {
       queryClient.setQueryData(utilitySettingsKeys.all, saved);
     },
   });
+}
+
+/** PUT /utilities/settings/billing: the fields sent are merged into what is saved. */
+export function useSaveUtilityBilling() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: function saveUtilityBilling(input: { auto_post?: boolean; reminder_template?: UtilityReminderText | null }) {
+      return api.put<{ data: UtilitySettingsView }>('/utilities/settings/billing', input).then((res) => res.data);
+    },
+    onSuccess: function refresh(saved) {
+      queryClient.setQueryData(utilitySettingsKeys.all, saved);
+    },
+  });
+}
+
+/** Whether the server keeps the utility reminder text and reminds utility dues on their own (UTIL-09). */
+export function knowsUtilityReminders(view: UtilitySettingsView | undefined): boolean {
+  return view?.utility_billing !== undefined && 'reminder_template' in view.utility_billing;
 }

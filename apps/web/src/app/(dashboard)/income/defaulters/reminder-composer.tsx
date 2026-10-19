@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
-import { useSendReminders } from '@/hooks/use-defaulters';
+import { useSendReminders, type DefaulterScope } from '@/hooks/use-defaulters';
 import { ApiError, friendlyError } from '@/lib/api-error';
 import { PLACEHOLDER_HINT } from './reminder-template';
 
@@ -19,7 +19,17 @@ export interface ComposerValues {
 }
 
 /** The reminder composer under the Defaulters list (INC-S29): e-mail only until an SMS transport exists. */
-export function ReminderComposer({ unitIds, initial, canSend }: { unitIds: string[]; initial: ComposerValues; canSend: boolean }): ReactNode {
+interface ReminderComposerProps {
+  unitIds: string[];
+  initial: ComposerValues;
+  canSend: boolean;
+  /** UTIL-09 — remind only this ledger's bills. */
+  scope?: DefaulterScope;
+  /** Why sending is not possible on this server, if it is not. */
+  unavailable?: string | null;
+}
+
+export function ReminderComposer({ unitIds, initial, canSend, scope, unavailable = null }: ReminderComposerProps): ReactNode {
   const { addToast } = useToast();
   const send = useSendReminders();
   const [values, setValues] = useState<ComposerValues>(initial);
@@ -44,6 +54,7 @@ export function ReminderComposer({ unitIds, initial, canSend }: { unitIds: strin
         from_name: values.from_name.trim() || undefined,
         subject: values.subject,
         message_html: values.message_html,
+        ...(scope ? { scope } : {}),
       });
       addToast({
         title: `Reminders: ${result.sent} sent`,
@@ -89,7 +100,8 @@ export function ReminderComposer({ unitIds, initial, canSend }: { unitIds: strin
         <p className="text-xs text-muted-foreground">Placeholders: {PLACEHOLDER_HINT}. Simple formatting (paragraphs, bold, lists, links) is kept.</p>
       </div>
       {problem && <p role="alert" className="text-sm text-destructive">{problem}</p>}
-      {canSend &&
+      {unavailable && <p role="note" className="text-sm text-muted-foreground">{unavailable}</p>}
+      {canSend && !unavailable &&
         (confirming ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm">Send this e-mail to {unitIds.length} unit(s)?</span>

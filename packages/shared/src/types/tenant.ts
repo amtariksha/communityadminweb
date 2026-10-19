@@ -119,6 +119,13 @@ export interface TenantSettings {
   // request says). Written by PUT /utilities/settings/billing.
   utility_billing?: {
     auto_post?: boolean;
+    /** UTIL-09 — the utility reminder text; null = ours. */
+    reminder_template?: {
+      reply_to?: string | null;
+      from_name?: string | null;
+      subject: string;
+      message_html: string;
+    } | null;
   };
 
   // INC-23 — Setup › GST: whether Post Invoice offers GST on an ad-hoc
