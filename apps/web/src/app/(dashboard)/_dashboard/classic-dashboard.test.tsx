@@ -30,6 +30,14 @@ vi.mock('@/hooks', () => ({
   }),
   useEnabledFeatures: () => ({ data: mocks.features }),
   useNotificationChannels: () => ({ data: { email: true, sms: mocks.sms, sms_essential: false, sms_message_max: 120 } }),
+  // DASH-09's year select; no years here, so the band shows the period label.
+  useFinancialYears: () => ({ data: [] }),
+}));
+
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  usePathname: () => '/',
 }));
 
 vi.mock('@/lib/auth', async (importOriginal) => ({

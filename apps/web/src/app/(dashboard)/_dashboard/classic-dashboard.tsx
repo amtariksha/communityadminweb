@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api-error';
 import { AccountingBand } from './accounting-band';
 import { type SummaryStatus } from './card-parts';
 import { GateBand } from './gate-band';
+import { useDashboardYearParam } from './fy-selector';
 import { ManagementBand } from './management-band';
 import { SendNowBand } from './send-now-band';
 import { SummaryBand } from './summary-band';
@@ -44,7 +45,8 @@ function scrollToTop(): void {
  * A role whose dashboard the society switched off sees a notice instead.
  */
 export function ClassicDashboard(): ReactNode {
-  const summaryQuery = useDashboardSummary(undefined);
+  // DASH-09: the ACCOUNTING band's year comes from ?fy= (default the current year).
+  const summaryQuery = useDashboardSummary(useDashboardYearParam());
   const access = useDashboardAccess();
   if (refusedForRole(summaryQuery.error)) return <DashboardOff />;
   const band = { status: statusOf(summaryQuery), summary: summaryQuery.data, access };

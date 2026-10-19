@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { BankCard, ExpenseCard, LedgerCard, UtilityCard } from './accounting-cards';
 import { BandHeading, type BandProps } from './card-parts';
+import { FinancialYearSelect } from './fy-selector';
 import { IncomeCard } from './income-card';
 import { DASHBOARD_ROUTES } from './routes';
 
@@ -16,7 +17,8 @@ const CARDS: ReadonlyArray<{ route: string; Card: (props: BandProps) => ReactNod
 
 function PeriodLabel({ summary }: Pick<BandProps, 'summary'>): ReactNode {
   if (!summary) return null;
-  if (summary.period) return <span className="text-sm font-medium">{summary.period.label}</span>;
+  // DASH-09: the band's year is chosen here; its figures follow ?fy=.
+  if (summary.period) return <FinancialYearSelect period={summary.period} />;
   return (
     <span className="text-sm text-muted-foreground">
       No financial year is set up{' '}
