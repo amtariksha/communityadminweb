@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 import { useReverseVendorRecord } from '@/hooks/use-vendor-ledger';
-import { friendlyError } from '@/lib/api-error';
+import { ApiError, friendlyError } from '@/lib/api-error';
 import { todayIST } from '@/lib/date';
 
 export interface ReverseTarget {
@@ -43,7 +43,9 @@ export function ReverseDialog({ target, onClose }: { target: ReverseTarget | nul
           onClose();
         },
         onError(err) {
-          setError(friendlyError(err));
+          // The admin web ships before the API: an older server has no reverse route.
+          const notYet = err instanceof ApiError && err.status === 404 && /^Cannot /.test(err.message);
+          setError(notYet ? 'Reversing is not available yet on this server.' : friendlyError(err));
         },
       },
     );
