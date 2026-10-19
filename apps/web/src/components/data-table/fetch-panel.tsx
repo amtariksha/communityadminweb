@@ -27,6 +27,8 @@ export interface FetchPanelProps {
    * values and applies them when onFetch is called.
    */
   extra?: ReactNode;
+  /** What is wrong with those controls, checked on Fetch; null when fine (BANK-08). */
+  extraError?: () => string | null;
   onFetch: (criteria: FetchCriteria) => void;
 }
 
@@ -78,7 +80,8 @@ export function FetchPanel(props: FetchPanelProps): ReactNode {
   };
 
   function submit(): void {
-    const problem = fetchCriteriaError(criteria, { range: props.range, requireRange: props.requireRange });
+    const problem =
+      fetchCriteriaError(criteria, { range: props.range, requireRange: props.requireRange }) ?? props.extraError?.() ?? null;
     setError(problem);
     if (!problem) props.onFetch({ ...criteria, from: criteria.from.trim(), to: criteria.to.trim() });
   }

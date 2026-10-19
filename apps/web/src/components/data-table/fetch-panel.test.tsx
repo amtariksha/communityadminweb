@@ -120,3 +120,22 @@ describe('FetchPanel extra controls (AMEN-11)', () => {
     expect(onFetch).toHaveBeenCalledWith({ from: '', to: '', choice: '' });
   });
 });
+
+describe('FetchPanel extra controls (BANK-08)', () => {
+  it('shows them and refuses Fetch while they are not set', () => {
+    const onFetch = vi.fn();
+    let account = '';
+    const { rerender } = render(
+      <FetchPanel title="Fetch register" range="date" extra={<span>Account picker</span>} extraError={() => (account ? null : 'Choose an account.')} onFetch={onFetch} />,
+    );
+    expect(screen.getByText('Account picker')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Fetch' }));
+    expect(screen.getByRole('alert').textContent).toBe('Choose an account.');
+    expect(onFetch).not.toHaveBeenCalled();
+
+    account = 'ba-1';
+    rerender(<FetchPanel title="Fetch register" range="date" extra={<span>Account picker</span>} extraError={() => (account ? null : 'Choose an account.')} onFetch={onFetch} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Fetch' }));
+    expect(onFetch).toHaveBeenCalled();
+  });
+});
