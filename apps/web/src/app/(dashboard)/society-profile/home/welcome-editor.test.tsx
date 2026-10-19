@@ -25,6 +25,11 @@ describe('WelcomeEditor', () => {
     expect(screen.getByRole('textbox', { name: 'Welcome Message' }).innerHTML).toBe(DEFAULT_WELCOME);
   });
 
+  it('never puts a script, a handler or a javascript: link into the editor', () => {
+    render(<WelcomeEditor savedHtml={'<p onclick="alert(1)">Hi<script>alert(2)</script></p><a href="javascript:alert(3)">x</a><img src="x" onerror="alert(4)">'} canEdit />);
+    expect(screen.getByRole('textbox', { name: 'Welcome Message' }).innerHTML).toBe('<p>Hi</p>x');
+  });
+
   it('saves what the editor holds, in the API’s words', () => {
     render(<WelcomeEditor savedHtml={null} canEdit />);
     type('<div><b>Pool</b> opens at 6</div>');

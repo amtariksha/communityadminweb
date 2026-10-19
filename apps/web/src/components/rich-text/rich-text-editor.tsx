@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { Bold, Image as ImageIcon, Italic, Link as LinkIcon, List, ListOrdered, Subscript, Superscript } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { isSafeLink, normaliseEditorHtml } from './editor-html';
+import { safeWelcomeHtml } from './safe-html';
 
 interface RichTextEditorProps {
   id: string;
@@ -39,11 +40,12 @@ function run(command: string, value?: string): void {
  */
 export function RichTextEditor(props: RichTextEditorProps): ReactNode {
   const box = useRef<HTMLDivElement>(null);
-  const report = (): void => props.onChange(normaliseEditorHtml(box.current?.innerHTML ?? ''));
+  const report = (): void => props.onChange(safeWelcomeHtml(normaliseEditorHtml(box.current?.innerHTML ?? '')));
 
   useEffect(() => {
-    if (box.current) box.current.innerHTML = props.initialHtml;
-    // Only the first text: the editor owns its content afterwards.
+    // Only the first text: the editor owns its content afterwards. Cut down
+    // to the allow-list first, whatever the API sent (never raw innerHTML).
+    if (box.current) box.current.innerHTML = safeWelcomeHtml(props.initialHtml);
   }, []);
 
   function apply(command: string, value?: string): void {
