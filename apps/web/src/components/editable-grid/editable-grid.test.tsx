@@ -129,3 +129,39 @@ describe('EditableGrid (SB-08)', () => {
     expect(box('Shift, row 6')).toBeTruthy();
   });
 });
+
+describe('EditableGrid saved by its page (GL-13)', () => {
+  it('has no Save Changes, reports each change and shows the page’s errors', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <EditableGrid<Shift>
+        label="Shifts"
+        columns={columns}
+        rows={saved}
+        blank={() => ({ name: '', hours: '', night: false })}
+        spareRows={1}
+        hideSave
+        onChange={onChange}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'Save Changes' })).toBeNull();
+
+    fireEvent.change(box('Shift, row 1'), { target: { value: 'Early' } });
+    const { change, rows } = onChange.mock.calls.at(-1)?.[0];
+    expect(change.upserts.map((row: { values: Shift }) => row.values.name)).toEqual(['Early']);
+
+    rerender(
+      <EditableGrid<Shift>
+        label="Shifts"
+        columns={columns}
+        rows={saved}
+        blank={() => ({ name: '', hours: '', night: false })}
+        spareRows={1}
+        hideSave
+        onChange={onChange}
+        errors={{ [rows[1].key]: 'Name already used' }}
+      />,
+    );
+    expect(screen.getByRole('alert').textContent).toBe('Name already used');
+  });
+});

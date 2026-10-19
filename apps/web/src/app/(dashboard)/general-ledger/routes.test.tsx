@@ -90,7 +90,7 @@ describe('General Ledger classic routes', () => {
   it('shows the chart of accounts types as sub-tabs', () => {
     renderAt('/general-ledger/chart-of-accounts/income');
     const tabs = screen.getByRole('navigation', { name: 'Sub-tabs' });
-    expect([...tabs.querySelectorAll('a')].map((link) => link.textContent)).toEqual(['Assets', 'Liabilities', 'Income', 'Expense']);
+    expect([...tabs.querySelectorAll('a')].map((link) => link.textContent)).toEqual(['Assets', 'Liabilities', 'Income', 'Expense', 'Groups']);
     expect(screen.getByRole('link', { name: 'Income' }).getAttribute('aria-current')).toBe('page');
   });
 

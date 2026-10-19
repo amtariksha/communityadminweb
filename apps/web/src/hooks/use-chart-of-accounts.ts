@@ -65,3 +65,31 @@ export function useSaveAccountsBulk() {
     },
   });
 }
+
+/** One group row of PUT /ledger/account-groups/bulk (GL-13). */
+export interface GroupBulkRow {
+  id?: string;
+  type: 'asset' | 'liability' | 'equity' | 'income' | 'expense';
+  code: string;
+  name: string;
+  parent_id: string | null;
+}
+
+export interface GroupBulkResult {
+  created: number;
+  updated: number;
+  deactivated: number;
+}
+
+/** Save the four group grids at once: added and changed groups, and groups to deactivate. */
+export function useSaveAccountGroupsBulk() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { rows: GroupBulkRow[]; deactivations: string[] }) =>
+      api.put<{ data: GroupBulkResult }>('/ledger/account-groups/bulk', input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.accountGroups() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.accounts() });
+    },
+  });
+}

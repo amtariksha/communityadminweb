@@ -356,7 +356,7 @@ export const classicMenu: MenuNode[] = [
           { id: 'ledger.chart.liabilities', label: 'Liabilities', href: '/general-ledger/chart-of-accounts/liabilities', logs: ['ledger_account'] },
           { id: 'ledger.chart.income', label: 'Income', href: '/general-ledger/chart-of-accounts/income', logs: ['ledger_account'] },
           { id: 'ledger.chart.expense', label: 'Expense', href: '/general-ledger/chart-of-accounts/expense', logs: ['ledger_account'] },
-          planned('ledger.chart.groups', 'Groups', 'GL-13'),
+          { id: 'ledger.chart.groups', label: 'Groups', href: '/general-ledger/chart-of-accounts/groups', logs: ['account_group'] },
         ],
       },
       {

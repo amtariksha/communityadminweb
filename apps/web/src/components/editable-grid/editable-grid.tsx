@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, Plus, Save, Trash2, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -43,7 +43,15 @@ export interface EditableGridProps<Values> {
   isSaving?: boolean;
   serialHeader?: string;
   emptyText?: string;
-  onSave: (change: GridChange<Values>) => Promise<GridSaveResult | void> | GridSaveResult | void;
+  onSave?: (change: GridChange<Values>) => Promise<GridSaveResult | void> | GridSaveResult | void;
+  /**
+   * For a page that saves several grids with one button: no Save Changes
+   * here; the grid reports every change, and shows the errors the page
+   * found (by row key).
+   */
+  hideSave?: boolean;
+  onChange?: (state: { change: GridChange<Values>; rows: readonly GridRowState<Values>[] }) => void;
+  errors?: Record<string, string>;
 }
 
 const DEFAULT_SPARE_ROWS = 5;
@@ -195,11 +203,20 @@ export function EditableGrid<Values>(props: EditableGridProps<Values>): ReactNod
   const grid = useGridRows(props);
   const editable = !props.readOnly;
   const change = gridChange(grid.rows, props.blank, props.isBlank);
+  const latestOnChange = useRef(props.onChange);
+  latestOnChange.current = props.onChange;
+  const shown = props.errors ? { ...grid, errors: { ...grid.errors, ...props.errors } } : grid;
+
+  useEffect(() => {
+    latestOnChange.current?.({ change: gridChange(grid.rows, props.blank, props.isBlank), rows: grid.rows });
+    // The callback and blank-row helpers are read fresh; only the rows trigger it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grid.rows]);
 
   async function save(): Promise<void> {
     const found = props.validate?.(grid.rows) ?? {};
     grid.setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0 || !props.onSave) return;
     const result = await props.onSave(change);
     if (result?.rowErrors) grid.setErrors(result.rowErrors);
   }
@@ -213,7 +230,7 @@ export function EditableGrid<Values>(props: EditableGridProps<Values>): ReactNod
         <GridHeader props={props} editable={editable} />
         <TableBody>
           {grid.rows.map((row, index) => (
-            <GridBodyRow key={row.key} props={props} grid={grid} row={row} index={index} editable={editable} />
+            <GridBodyRow key={row.key} props={props} grid={shown} row={row} index={index} editable={editable} />
           ))}
         </TableBody>
       </Table>
@@ -224,9 +241,11 @@ export function EditableGrid<Values>(props: EditableGridProps<Values>): ReactNod
               <Plus className="mr-1 h-4 w-4" /> Add {grid.spareCount} more rows
             </Button>
           )}
-          <Button type="button" disabled={props.isSaving} onClick={() => void save()}>
-            <Save className="mr-1 h-4 w-4" /> {props.isSaving ? 'Saving…' : 'Save Changes'}
-          </Button>
+          {!props.hideSave && (
+            <Button type="button" disabled={props.isSaving} onClick={() => void save()}>
+              <Save className="mr-1 h-4 w-4" /> {props.isSaving ? 'Saving…' : 'Save Changes'}
+            </Button>
+          )}
         </div>
       )}
     </div>
