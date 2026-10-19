@@ -432,9 +432,32 @@ export const classicMenu: MenuNode[] = [
     id: 'amenity',
     label: 'Amenity & Event',
     icon: icon(CalendarCheck),
+    // AMEN-10: Reserve Amenity on every page; the amenity and booking forms
+    // are pages. Today's /amenities tabs stay inside the module.
+    create: { label: 'Reserve Amenity', href: '/amenities/reserve' },
+    forms: [
+      { label: 'Add Amenity', path: '/amenities/new' },
+      { label: 'Edit Amenity', path: '/amenities/:amenityId/edit' },
+    ],
     children: [
-      planned('amenity.setup', 'Setup', 'AMEN-10'),
-      { id: 'amenity.amenity', label: 'Amenity', href: '/amenities', logs: ['amenity'] },
+      {
+        id: 'amenity.setup',
+        label: 'Setup',
+        tabs: [
+          { id: 'amenity.setup.amenity', label: 'Amenity', href: '/amenities/setup', logs: ['amenity'] },
+          planned('amenity.setup.event', 'Event', 'AMEN-12'),
+          planned('amenity.setup.restrictions', 'Restrictions', 'AMEN-41'),
+        ],
+      },
+      {
+        id: 'amenity.amenity',
+        label: 'Amenity',
+        aliases: ['/amenities'],
+        tabs: [
+          planned('amenity.reservations', 'Amenity Reservations', 'AMEN-11'),
+          { id: 'amenity.calendar', label: 'Reservations Calendar', href: '/amenities/calendar', logs: ['amenity'] },
+        ],
+      },
       { id: 'amenity.event', label: 'Event', href: '/events' },
       reportsMenuNode('amenity', 'AMEN-30'),
     ],

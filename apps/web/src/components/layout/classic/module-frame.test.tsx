@@ -117,4 +117,17 @@ describe('screen finder', () => {
   it('returns nothing for an empty query', () => {
     expect(matchScreens(entries, '   ')).toEqual([]);
   });
+  it.each(['/amenities/setup', '/amenities/calendar', '/amenities', '/events'])(
+    'shows Reserve Amenity on the Amenity & Event page %s (AMEN-10)',
+    (path) => {
+      renderAt(path);
+      expect(screen.getByRole('link', { name: 'Reserve Amenity' }).getAttribute('href')).toBe('/amenities/reserve');
+    },
+  );
+
+  it('gives the amenity form pages their own Save and Close, without Reserve Amenity', () => {
+    renderAt('/amenities/am-1/edit');
+    expect(screen.getByRole('heading', { name: 'Amenity & Event › Edit Amenity' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Reserve Amenity' })).toBeNull();
+  });
 });
