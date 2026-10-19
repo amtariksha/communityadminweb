@@ -11,9 +11,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useCheques, type Cheque } from '@/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import type { BankAccountRow } from './bank-types';
+import { ChequeActionDialog, chequeActions, type ChequeAction } from './cheque-actions';
 import { IssueChequeDialog } from './issue-cheque-dialog';
 
-const HEADERS = ['Cheque #', 'Payee', 'Bank', 'Amount', 'Issue Date', 'Clearing Date', 'Status'];
+const HEADERS = ['Cheque #', 'Payee', 'Bank', 'Amount', 'Issue Date', 'Clearing Date', 'Status', 'Clear', 'Bounce', 'Cancel'];
+const ACTION_LABELS: Readonly<Record<ChequeAction, string>> = { clear: 'Clear', bounce: 'Bounce', cancel: 'Cancel' };
 
 function statusVariant(status: Cheque['status']): 'success' | 'destructive' | 'secondary' | 'warning' {
   if (status === 'cleared') return 'success';
@@ -21,7 +23,8 @@ function statusVariant(status: Cheque['status']): 'success' | 'destructive' | 's
   return status === 'cancelled' ? 'secondary' : 'warning';
 }
 
-function ChequeRow({ cheque }: { cheque: Cheque }): ReactNode {
+function ChequeRow({ cheque, onAction }: { cheque: Cheque; onAction: (action: ChequeAction) => void }): ReactNode {
+  const allowed = chequeActions(cheque);
   return (
     <TableRow>
       <TableCell className="font-mono text-xs">{cheque.cheque_number}</TableCell>
@@ -33,6 +36,15 @@ function ChequeRow({ cheque }: { cheque: Cheque }): ReactNode {
       <TableCell>
         <Badge variant={statusVariant(cheque.status)}>{cheque.status.charAt(0).toUpperCase() + cheque.status.slice(1)}</Badge>
       </TableCell>
+      {(['clear', 'bounce', 'cancel'] as const).map((action) => (
+        <TableCell key={action}>
+          {allowed.includes(action) && (
+            <Button type="button" variant="outline" size="sm" aria-label={`${ACTION_LABELS[action]} cheque ${cheque.cheque_number}`} onClick={() => onAction(action)}>
+              {ACTION_LABELS[action]}
+            </Button>
+          )}
+        </TableCell>
+      ))}
     </TableRow>
   );
 }
@@ -42,11 +54,12 @@ interface ChequesTabProps {
   ledgerAccounts: readonly LedgerAccount[];
 }
 
-/** /bank › Cheques: the cheque register and Issue Cheque. */
+/** /bank › Cheques: the cheque register, Issue Cheque, and Clear / Bounce / Cancel on an issued cheque (BANK-07). */
 export function ChequesTab({ accounts, ledgerAccounts }: ChequesTabProps): ReactNode {
   const chequesQuery = useCheques();
   const cheques = (chequesQuery.data?.data ?? []) as Cheque[];
   const [issuing, setIssuing] = useState(false);
+  const [target, setTarget] = useState<{ cheque: Cheque; action: ChequeAction } | null>(null);
 
   return (
     <Card>
@@ -69,7 +82,7 @@ export function ChequesTab({ accounts, ledgerAccounts }: ChequesTabProps): React
                 ? Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>{HEADERS.map((header) => <TableCell key={header}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>
                   ))
-                : cheques.map((cheque) => <ChequeRow key={cheque.id} cheque={cheque} />)}
+                : cheques.map((cheque) => <ChequeRow key={cheque.id} cheque={cheque} onAction={(action) => setTarget({ cheque, action })} />)}
             </TableBody>
           </Table>
         ) : (
@@ -81,6 +94,7 @@ export function ChequesTab({ accounts, ledgerAccounts }: ChequesTabProps): React
         )}
       </CardContent>
       <IssueChequeDialog open={issuing} onOpenChange={setIssuing} accounts={accounts} ledgerAccounts={ledgerAccounts} />
+      <ChequeActionDialog target={target} onClose={() => setTarget(null)} />
     </Card>
   );
 }

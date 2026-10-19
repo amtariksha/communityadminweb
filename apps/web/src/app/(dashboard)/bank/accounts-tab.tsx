@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { Landmark, Plus, Trash2 } from 'lucide-react';
+import { Landmark, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
 import { AddBankAccountForm } from './add-bank-account-form';
-import { DeleteBankAccountDialog } from './bank-account-dialogs';
+import { DeleteBankAccountDialog, EditBankAccountDialog } from './bank-account-dialogs';
 import type { BankAccountRow } from './bank-types';
 
 function AccountCardsSkeleton(): ReactNode {
@@ -29,7 +29,7 @@ function AccountCardsSkeleton(): ReactNode {
   );
 }
 
-function AccountCard({ account, onDelete }: { account: BankAccountRow; onDelete: () => void }): ReactNode {
+function AccountCard({ account, onEdit, onDelete }: { account: BankAccountRow; onEdit: () => void; onDelete: () => void }): ReactNode {
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -39,6 +39,9 @@ function AccountCard({ account, onDelete }: { account: BankAccountRow; onDelete:
             {account.bank_name}
           </CardTitle>
           <div className="flex gap-1">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" aria-label={`Edit ${account.bank_name}`} title="Edit bank account" onClick={onEdit}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" aria-label={`Delete ${account.bank_name}`} title="Delete bank account" onClick={onDelete}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -64,9 +67,10 @@ interface AccountsTabProps {
   loading: boolean;
 }
 
-/** /bank › Accounts: the bank account cards with Add and Delete. */
+/** /bank › Accounts: the bank account cards with Add, Edit (BANK-07) and Delete. */
 export function AccountsTab({ accounts, loading }: AccountsTabProps): ReactNode {
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<BankAccountRow | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   return (
@@ -82,7 +86,7 @@ export function AccountsTab({ accounts, loading }: AccountsTabProps): ReactNode 
       ) : accounts.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {accounts.map((account) => (
-            <AccountCard key={account.id} account={account} onDelete={() => setDeleting(account.id)} />
+            <AccountCard key={account.id} account={account} onEdit={() => setEditing(account)} onDelete={() => setDeleting(account.id)} />
           ))}
         </div>
       ) : (
@@ -93,6 +97,7 @@ export function AccountsTab({ accounts, loading }: AccountsTabProps): ReactNode 
         </div>
       )}
       <AddBankAccountForm mode="dialog" open={adding} onClose={() => setAdding(false)} onSaved={() => setAdding(false)} />
+      <EditBankAccountDialog account={editing} onClose={() => setEditing(null)} />
       <DeleteBankAccountDialog accountId={deleting} onClose={() => setDeleting(null)} />
     </div>
   );
