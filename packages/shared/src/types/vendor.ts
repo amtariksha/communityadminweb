@@ -19,6 +19,16 @@ export interface Vendor {
   // the right section rule from the resolved TDS config.
   tds_section?: string | null;
   tds_rate?: number | null;
+  // VEND-05 — accounting defaults that pre-fill the vendor's invoices.
+  // GST is either IGST or CGST + SGST (equal halves), never both.
+  default_expense_account_id?: string | null;
+  default_igst_rate?: number | string | null;
+  default_cgst_rate?: number | string | null;
+  default_sgst_rate?: number | string | null;
+  vendor_type?: 'company' | 'non_company' | 'professional' | null;
+  payee_name?: string | null;
+  state_code?: string | null;
+  legal_name?: string | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;

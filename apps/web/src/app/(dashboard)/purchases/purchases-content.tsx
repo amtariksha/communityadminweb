@@ -76,6 +76,8 @@ import type { TdsConfig, VendorPaymentRow } from '@/hooks';
 import { useOcrInvoice } from '@/hooks/use-ocr';
 import Link from 'next/link';
 import { CreatePurchaseRequestButton, ViewPurchaseRequestButton } from './create-request-button';
+import { useVendorInvoicesAvailable } from '@/hooks/use-vendor-bills';
+import { VendorInvoiceForm } from './vendor-invoice/vendor-invoice-form';
 
 // API responses may include joined fields beyond the base shared types
 interface PRRow {
@@ -238,6 +240,8 @@ export default function PurchasesContent(): ReactNode {
   const [billStatusFilter, setBillStatusFilter] = useState('');
   const [billVendorFilter, setBillVendorFilter] = useState('');
   const [createBillDialogOpen, setCreateBillDialogOpen] = useState(false);
+  const [newInvoiceOpen, setNewInvoiceOpen] = useState(false);
+  const invoicesAvailable = useVendorInvoicesAvailable();
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [agingDialogOpen, setAgingDialogOpen] = useState(false);
   const [selectedBillId, setSelectedBillId] = useState('');
@@ -1405,6 +1409,21 @@ export default function PurchasesContent(): ReactNode {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
+                {/* EXP-12: the multi-line invoice form once the API has it; the single-head dialog until then. */}
+                {invoicesAvailable.data ? (
+                  <>
+                    <Button onClick={() => setNewInvoiceOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Bill
+                    </Button>
+                    <VendorInvoiceForm
+                      mode="dialog"
+                      open={newInvoiceOpen}
+                      onClose={() => setNewInvoiceOpen(false)}
+                      onSaved={() => setNewInvoiceOpen(false)}
+                    />
+                  </>
+                ) : (
                 <Dialog open={createBillDialogOpen} onOpenChange={setCreateBillDialogOpen}>
                   <DialogTrigger>
                     <Button>
@@ -1672,6 +1691,7 @@ export default function PurchasesContent(): ReactNode {
                     </form>
                   </DialogContent>
                 </Dialog>
+                )}
               </div>
             </div>
           </CardHeader>
