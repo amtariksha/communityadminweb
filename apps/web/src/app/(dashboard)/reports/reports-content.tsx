@@ -32,6 +32,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { IncomeExpenditureView } from './income-expenditure-view';
 import { reportFromParam, type ReportId } from './report-param';
 import { ReportSkeleton } from './report-skeleton';
+import { useReportDates } from './use-report-dates';
 import {
   useTrialBalance,
   useBalanceSheet,
@@ -598,9 +599,8 @@ export default function ReportsContent(): ReactNode {
   const [selectedReport, setSelectedReport] = useState<ReportId | null>(() =>
     reportFromParam(searchParams?.get('report') ?? null),
   );
-  const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0]);
-  const [startDate, setStartDate] = useState('2025-04-01');
-  const [endDate, setEndDate] = useState('2026-03-31');
+  const dates = useReportDates();
+  const { asOfDate, setAsOfDate, startDate, setStartDate, endDate, setEndDate } = dates;
   const [selectedAccountId, setSelectedAccountId] = useState('');
 
   const accountsQuery = useLedgerAccounts({ limit: 500 });
@@ -735,7 +735,7 @@ export default function ReportsContent(): ReactNode {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setAsOfDate('2026-03-31')}
+                          onClick={dates.yearEnd}
                         >
                           <Calendar className="mr-1 h-3 w-3" />
                           Year End
@@ -743,9 +743,7 @@ export default function ReportsContent(): ReactNode {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() =>
-                            setAsOfDate(new Date().toISOString().split('T')[0])
-                          }
+                          onClick={dates.asOfToday}
                         >
                           Today
                         </Button>
@@ -776,10 +774,7 @@ export default function ReportsContent(): ReactNode {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            setStartDate('2025-04-01');
-                            setEndDate('2026-03-31');
-                          }}
+                          onClick={dates.fullYear}
                         >
                           <Calendar className="mr-1 h-3 w-3" />
                           Full Year
@@ -787,14 +782,7 @@ export default function ReportsContent(): ReactNode {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            const now = new Date();
-                            const year = now.getFullYear();
-                            const month = String(now.getMonth() + 1).padStart(2, '0');
-                            setStartDate(`${year}-${month}-01`);
-                            const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
-                            setEndDate(`${year}-${month}-${String(lastDay).padStart(2, '0')}`);
-                          }}
+                          onClick={dates.thisMonth}
                         >
                           This Month
                         </Button>

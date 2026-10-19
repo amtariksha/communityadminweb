@@ -54,3 +54,20 @@ export function lastMonthRanges(count: number, today: string = todayIST()): Mont
   }
   return ranges;
 }
+
+export interface FinancialYearRange {
+  start_date: string;
+  end_date: string;
+}
+
+/**
+ * The April–March financial year that `today` (a `YYYY-MM-DD` string; defaults
+ * to today in IST) falls in: 2026-10-14 → 2026-04-01 to 2027-03-31, and
+ * 2027-02-10 → the same year.
+ */
+export function currentFinancialYear(today: string = todayIST()): FinancialYearRange {
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7));
+  const startYear = month >= 4 ? year : year - 1;
+  return { start_date: `${startYear}-04-01`, end_date: `${startYear + 1}-03-31` };
+}

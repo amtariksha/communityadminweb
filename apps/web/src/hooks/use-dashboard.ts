@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { currentFinancialYear } from '@/lib/date';
 
 // ---------------------------------------------------------------------------
 // Response types
@@ -76,15 +77,6 @@ export const dashboardKeys = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getFYDates(): { start_date: string; end_date: string } {
-  const now = new Date();
-  const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-  return {
-    start_date: `${year}-04-01`,
-    end_date: `${year + 1}-03-31`,
-  };
-}
-
 const EMPTY_RECEIPT_SUMMARY: ReceiptSummary = {
   total_collected: 0,
   cash: 0,
@@ -103,7 +95,7 @@ export function useDashboardData() {
   return useQuery({
     queryKey: dashboardKeys.data(),
     queryFn: async function fetchDashboardData(): Promise<DashboardData> {
-      const { start_date, end_date } = getFYDates();
+      const { start_date, end_date } = currentFinancialYear();
       const today = new Date().toISOString().split('T')[0];
 
       // QA #58 / #59 / #244 — the dashboard KPIs used to read:

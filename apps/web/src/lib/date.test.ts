@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lastMonthRanges } from './date';
+import { currentFinancialYear, lastMonthRanges } from './date';
 
 describe('lastMonthRanges', () => {
   it('lists whole calendar months, oldest first, ending with the month of today', () => {
@@ -21,5 +21,14 @@ describe('lastMonthRanges', () => {
 
   it('returns nothing for a count below one', () => {
     expect(lastMonthRanges(0, '2026-10-17')).toEqual([]);
+  });
+});
+
+describe('currentFinancialYear (REP-02)', () => {
+  it('runs April to March around the given day', () => {
+    expect(currentFinancialYear('2026-10-14')).toEqual({ start_date: '2026-04-01', end_date: '2027-03-31' });
+    expect(currentFinancialYear('2027-03-31')).toEqual({ start_date: '2026-04-01', end_date: '2027-03-31' });
+    expect(currentFinancialYear('2027-04-01')).toEqual({ start_date: '2027-04-01', end_date: '2028-03-31' });
+    expect(currentFinancialYear('2027-01-05')).toEqual({ start_date: '2026-04-01', end_date: '2027-03-31' });
   });
 });
