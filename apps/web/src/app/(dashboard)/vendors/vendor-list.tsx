@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, Pencil, Search, Users, XCircle } from 'lucide-react';
 import type { Vendor } from '@communityos/shared';
@@ -53,6 +54,14 @@ function VendorRow({ vendor, props }: { vendor: Vendor; props: VendorListProps }
       <TableCell>
         <p className="font-medium">{vendor.name}</p>
         {vendor.contact_person && <p className="text-xs text-muted-foreground">{vendor.contact_person}</p>}
+        {/* EXP-15: the vendor's account statement. */}
+        <Link
+          className="text-xs text-primary underline"
+          href={`/expense-tracker/by-vendors/${vendor.id}/statement?tab=full`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          Account statement
+        </Link>
       </TableCell>
       <TableCell>{vendor.pan ? <span className="font-mono text-xs">{vendor.pan}</span> : <span className="text-xs text-muted-foreground">-</span>}</TableCell>
       <TableCell>

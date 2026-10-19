@@ -248,7 +248,7 @@ export const classicMenu: MenuNode[] = [
             href: '/expense-tracker/setup/purchase-request',
             logs: ['approvals', 'tenant'],
           },
-          planned('expense.setup.numbering', 'Numbering', 'EXP-18'),
+          { id: 'expense.setup.numbering', label: 'Numbering', href: '/expense-tracker/setup/numbering', logs: ['purchase'] },
         ],
       },
       {
@@ -261,8 +261,22 @@ export const classicMenu: MenuNode[] = [
           { id: 'expense.purchase-workflow.closed', label: 'Closed Purchase Request', href: '/expense-tracker/purchase-workflow/closed', logs: ['purchase'] },
         ],
       },
-      planned('expense.by-vendors', 'By Vendors', 'EXP-20'),
-      planned('expense.by-date', 'By Date', 'EXP-20'),
+      {
+        // EXP-12 / EXP-14 / EXP-15 / EXP-16: the vendor-first desk. A vendor's
+        // statement (/expense-tracker/by-vendors/:id/statement) stays inside it.
+        id: 'expense.by-vendors',
+        label: 'By Vendors',
+        aliases: ['/expense-tracker/by-vendors'],
+        forms: [
+          { label: 'Post Invoice', path: '/expense-tracker/by-vendors/:vendorId/invoice' },
+          { label: 'Payment', path: '/expense-tracker/by-vendors/:vendorId/payment' },
+        ],
+        tabs: [
+          { id: 'expense.by-vendors.subledgers', label: 'SubLedgers', href: '/expense-tracker/by-vendors/subledgers', logs: ['purchase', 'vendor'] },
+          planned('expense.by-vendors.bulk-posting', 'Bulk Posting', 'EXP-26'),
+        ],
+      },
+      { id: 'expense.by-date', label: 'By Date', href: '/expense-tracker/by-date', logs: ['purchase'] },
       planned('expense.budget', 'Budget', 'EXP-20'),
       planned('expense.comparison', 'Expenses Comparison', 'EXP-20'),
       reportsMenuNode('expense', 'REP-04'),

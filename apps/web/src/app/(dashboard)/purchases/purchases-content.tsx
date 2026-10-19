@@ -79,6 +79,9 @@ import { ConvertToInvoiceButton, CreatePurchaseRequestButton, ViewPurchaseReques
 import { useVendorInvoicesAvailable } from '@/hooks/use-vendor-bills';
 import { VendorInvoiceForm } from './vendor-invoice/vendor-invoice-form';
 import { VendorPaymentForm } from './vendor-payment/vendor-payment-form';
+import { NumberingForm } from './vendor-ledger/numbering-form';
+import { PaymentRegisterContent } from './vendor-ledger/payment-register-content';
+import { VendorPayablesContent } from './vendor-ledger/vendor-payables-content';
 
 // API responses may include joined fields beyond the base shared types
 interface PRRow {
@@ -119,7 +122,7 @@ interface BillRow {
 
 const ITEMS_PER_PAGE = 20;
 
-type ActiveTab = 'requests' | 'bills' | 'payments';
+type ActiveTab = 'requests' | 'bills' | 'payments' | 'vendors' | 'numbering';
 
 // ---------------------------------------------------------------------------
 // Status helpers
@@ -1056,6 +1059,20 @@ export default function PurchasesContent(): ReactNode {
           <CreditCard className="mr-2 inline-block h-4 w-4" />
           Vendor Payments
         </button>
+        {/* EXP-16 / EXP-18: By Vendors and Numbering, once the API has them. */}
+        {invoicesAvailable.data &&
+          ([['vendors', 'By Vendors'], ['numbering', 'Numbering']] as const).map(([tab, label]) => (
+            <button
+              key={tab}
+              type="button"
+              className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {label}
+            </button>
+          ))}
       </div>
 
       {/* ------------------------------------------------------------------- */}
@@ -1727,7 +1744,13 @@ export default function PurchasesContent(): ReactNode {
                       <TableCell>
                         <span className="font-mono text-xs">{bill.bill_number ?? bill.id.slice(0, 8)}</span>
                       </TableCell>
-                      <TableCell className="font-medium">{bill.vendor_name ?? '-'}</TableCell>
+                      <TableCell className="font-medium">
+                        {invoicesAvailable.data && bill.vendor_id ? (
+                          <Link className="underline" href={`/expense-tracker/by-vendors/${bill.vendor_id}/statement?tab=full`}>{bill.vendor_name ?? '-'}</Link>
+                        ) : (
+                          bill.vendor_name ?? '-'
+                        )}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {formatDate(String(bill.bill_date))}
                       </TableCell>
@@ -1900,7 +1923,11 @@ export default function PurchasesContent(): ReactNode {
       {/* ------------------------------------------------------------------- */}
       {/* Vendor Payments Tab                                                  */}
       {/* ------------------------------------------------------------------- */}
-      {activeTab === 'payments' && <VendorPaymentsTab vendors={vendors} />}
+      {/* EXP-17: the register with Voucher, Bank A/c GL, Reverse and export once the API has it. */}
+      {activeTab === 'payments' &&
+        (invoicesAvailable.data ? <PaymentRegisterContent fetchFirst={false} /> : <VendorPaymentsTab vendors={vendors} />)}
+      {activeTab === 'vendors' && <VendorPayablesContent />}
+      {activeTab === 'numbering' && <NumberingForm />}
 
       {/* ------------------------------------------------------------------- */}
       {/* Approve PR Dialog                                                    */}
