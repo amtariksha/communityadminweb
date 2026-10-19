@@ -95,9 +95,11 @@ describe('Projects & Meetings (PROJ-10 to PROJ-12)', () => {
   });
 });
 
-describe('Society Profile (PROF-10)', () => {
-  it('shows Location, Downloadable Files and Emergency Contacts, each with the module’s log', () => {
+describe('Society Profile (PROF-10, PROF-21, PROF-22)', () => {
+  it('shows Home, Images, Location, Downloadable Files and Emergency Contacts, each with the module’s log', () => {
     expect(children('profile')).toEqual([
+      ['Home', '/society-profile/home'],
+      ['Images', '/society-profile/images'],
       ['Location', '/society-profile/location'],
       ['Downloadable Files', '/society-profile/files'],
       ['Emergency Contacts', '/society-profile/emergency'],
@@ -109,7 +111,7 @@ describe('Society Profile (PROF-10)', () => {
     expect(governingItem('/society-profile/files')?.href).toBe('/documents');
     expect(governingItem('/society-profile/location')?.href).toBe('/directory');
     const noDocuments = visibleMenu(classicMenu, { roleAllowlist: null, enabledFeatures: ['units'] });
-    expect(find(noDocuments, 'profile')?.children?.map((child) => child.label)).toEqual(['Location', 'Emergency Contacts']);
+    expect(find(noDocuments, 'profile')?.children?.map((child) => child.label)).toEqual(['Home', 'Images', 'Location', 'Emergency Contacts']);
     expect(locate('/directory', menu)?.child?.id).toBe('profile.emergency');
   });
 });
