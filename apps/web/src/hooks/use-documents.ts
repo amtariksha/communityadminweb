@@ -63,7 +63,7 @@ interface UploadDocumentInput {
   folder_type?: 'common' | 'unit' | 'committee';
 }
 
-interface UpdateDocumentInput {
+export interface UpdateDocumentInput {
   title?: string;
   description?: string | null;
   category_id?: string;
@@ -74,6 +74,12 @@ interface UpdateDocumentInput {
   folder_type?: 'common' | 'unit' | 'committee';
   /** YYYY-MM-DD; null clears it. */
   expiry_date?: string | null;
+  // A replaced file becomes the next version (FILE-11).
+  file_url?: string;
+  file_name?: string;
+  file_size?: number;
+  mime_type?: string;
+  change_notes?: string;
 }
 
 /** A row of GET /documents/expiring: the document plus its days to expiry. */

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   FileText,
   File,
@@ -11,16 +11,14 @@ import {
   Eye,
   Grid,
   List,
-  Plus,
   Trash2,
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Pencil,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -32,16 +30,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-} from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
@@ -50,13 +38,15 @@ import {
   useDocumentCategories,
   useDocuments,
   useExpiringDocuments,
-  useCreateCategory,
   useDeleteDocument,
   fetchPresignedDownloadUrl,
 } from '@/hooks';
 import type { Document as SocietyDocument } from '@communityos/shared';
 import { useUnitChoices } from '../helpdesk/new/use-unit-choices';
 import { UploadDocumentDialog } from './upload-document-dialog';
+import { CreateCategoryDialog } from './create-category-dialog';
+import { DocumentEditForm } from './edit/document-edit-form';
+import { canWriteDocuments } from './files/file-actions';
 
 type ViewMode = 'grid' | 'list';
 
@@ -139,10 +129,9 @@ export default function DocumentsContent(): ReactNode {
   const [showExpiringOnly, setShowExpiringOnly] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [page, setPage] = useState(1);
+  // FILE-11: Edit File as a dialog in the standard layout.
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Category dialog
-  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
-  const [categoryName, setCategoryName] = useState('');
 
   const categoriesQuery = useDocumentCategories();
   // Every unit, read 100 at a time (GET /units refuses a larger page).
@@ -159,7 +148,6 @@ export default function DocumentsContent(): ReactNode {
     limit: ITEMS_PER_PAGE,
   });
   const expiringQuery = useExpiringDocuments(EXPIRY_WINDOW_DAYS);
-  const createCategory = useCreateCategory();
   const deleteDocument = useDeleteDocument();
 
   const categories = categoriesQuery.data ?? [];
@@ -176,23 +164,6 @@ export default function DocumentsContent(): ReactNode {
   const listLoading = showExpiringOnly ? expiringQuery.isLoading : documentsQuery.isLoading;
   const totalDocuments = showExpiringOnly ? documents.length : (documentsQuery.data?.total ?? 0);
   const totalPages = Math.max(1, Math.ceil(totalDocuments / ITEMS_PER_PAGE));
-
-  function handleCreateCategory(e: FormEvent): void {
-    e.preventDefault();
-    createCategory.mutate(
-      { name: categoryName },
-      {
-        onSuccess() {
-          setCategoryDialogOpen(false);
-          setCategoryName('');
-          addToast({ title: 'Category created successfully', variant: 'success' });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to create category', description: friendlyError(error), variant: 'destructive' });
-        },
-      },
-    );
-  }
 
   function handleDeleteDocument(docId: string): void {
     deleteDocument.mutate(docId, {
@@ -231,48 +202,22 @@ export default function DocumentsContent(): ReactNode {
 
   return (
     <div className="space-y-6">
+      {editingId && (
+        <DocumentEditForm
+          mode="dialog"
+          open
+          documentId={editingId}
+          onClose={() => setEditingId(null)}
+          onSaved={() => setEditingId(null)}
+        />
+      )}
       <PageHeader
         breadcrumbs={[{ label: 'Documents' }]}
         title="Documents"
         description="Document vault — store society documents with categorization and expiry tracking"
         actions={
           <>
-            <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-              <DialogTrigger>
-                <Button variant="outline">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Category
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <form onSubmit={handleCreateCategory}>
-                  <DialogHeader>
-                    <DialogTitle>Create Category</DialogTitle>
-                    <DialogDescription>Add a new document category</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="category-name">Category Name</Label>
-                      <Input
-                        id="category-name"
-                        placeholder="e.g., Insurance"
-                        required
-                        value={categoryName}
-                        onChange={(e) => setCategoryName(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose>
-                      <Button type="button" variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button type="submit" disabled={createCategory.isPending}>
-                      {createCategory.isPending ? 'Creating...' : 'Create'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <CreateCategoryDialog />
 
             <UploadDocumentDialog categories={categories} units={units} />
           </>
@@ -494,6 +439,11 @@ export default function DocumentsContent(): ReactNode {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          {canWriteDocuments() && (
+                            <Button variant="ghost" size="icon" title="Edit" onClick={() => setEditingId(doc.id)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

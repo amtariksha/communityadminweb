@@ -64,6 +64,10 @@ export interface MenuNode {
   // Where Close goes on the module's pages, when it is not the module's
   // first child (SB-03), e.g. HelpDesk closes to its request list.
   close?: string;
+  // Form pages of a module or child besides the module's create page
+  // (SB-07), e.g. Upload File or Edit File. A `:name` segment matches
+  // any one segment: `/documents/:id/edit`.
+  forms?: ReadonlyArray<{ label: string; path: string }>;
 }
 
 const icon = (Icon: typeof Home): ReactNode => <Icon className="h-4 w-4" />;
@@ -403,10 +407,29 @@ export const classicMenu: MenuNode[] = [
     id: 'files',
     label: 'Admin Files',
     icon: icon(FolderOpen),
+    // FILE-10: the two roots as sub-tabs, the unit roster (FILE-12) and
+    // our posters (FILE-40). Upload and Edit are pages of their own.
+    forms: [
+      { label: 'Upload File', path: '/documents/upload' },
+      { label: 'Edit File', path: '/documents/:id/edit' },
+    ],
     children: [
-      { id: 'files.common', label: 'Common Files', href: '/documents' },
-      planned('files.unit', 'Unit Specific Files', 'FILE-10'),
-      planned('files.platform', 'Platform Files', 'FILE-10'),
+      {
+        id: 'files.common',
+        label: 'Common Files',
+        tabs: [
+          {
+            id: 'files.common.admin',
+            label: 'Admin Documents',
+            href: '/documents/common/admin',
+            aliases: ['/documents'],
+            logs: ['document'],
+          },
+          { id: 'files.common.residents', label: 'Resident Documents', href: '/documents/common/residents', logs: ['document'] },
+        ],
+      },
+      { id: 'files.unit', label: 'Unit Specific Files', href: '/documents/units', logs: ['document'] },
+      { id: 'files.platform', label: 'Platform Files', href: '/documents/platform' },
     ],
   },
   {

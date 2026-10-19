@@ -117,8 +117,28 @@ function createPage(module: MenuNode): MenuLocation[] {
   return [{ module, child: { id: `${module.id}.create`, label: create.label, href: create.href }, form: true }];
 }
 
+/** Other form pages of the module and its children (`forms`). */
+function formPages(module: MenuNode): MenuLocation[] {
+  return [module, ...(module.children ?? [])].flatMap((node) =>
+    (node.forms ?? []).map((form) => ({
+      module,
+      child: { id: `${node.id}.form:${form.path}`, label: form.label, href: form.path },
+      form: true as const,
+    })),
+  );
+}
+
+function formPattern(path: string): RegExp {
+  const source = path
+    .split('/')
+    .map((segment) => (segment.startsWith(':') ? '[^/]+' : segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    .join('/');
+  return new RegExp(`^${source}/?$`);
+}
+
 function matchLength(pathname: string, href: string): number {
   if (href === '/') return pathname === '/' ? 1 : -1;
+  if (href.includes('/:')) return formPattern(href).test(pathname) ? href.length : -1;
   return pathname === href || pathname.startsWith(`${href}/`) ? href.length : -1;
 }
 
@@ -126,6 +146,7 @@ function candidates(nodes: readonly MenuNode[]): MenuLocation[] {
   return nodes.flatMap((module) => [
     { module },
     ...createPage(module),
+    ...formPages(module),
     ...(module.children ?? []).flatMap((child) => [
       { module, child },
       ...(child.tabs ?? []).map((tab) => ({ module, child, tab })),

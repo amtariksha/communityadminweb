@@ -26,10 +26,11 @@ async function fetchAllUnits(): Promise<UnitChoice[]> {
 }
 
 /** Every unit of the society, for the unit picker of Create Request. */
-export function useUnitChoices() {
+export function useUnitChoices(enabled = true) {
   return useQuery({
     queryKey: ['units', 'choices'],
     queryFn: fetchAllUnits,
     staleTime: 5 * 60_000,
+    enabled,
   });
 }
