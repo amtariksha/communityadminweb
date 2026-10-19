@@ -78,6 +78,10 @@ const planned = (id: string, label: string, ticket: string): MenuNode => ({
   planned: ticket,
 });
 
+// Society Profile's activity log: society settings, help and contact,
+// emergency numbers and the downloadable files (PROF-S8).
+const PROFILE_LOGS = ['tenant_settings', 'tenant-setting', 'tenant', 'directory', 'document'];
+
 // "More" collects our extra screens; it is a group, not a module.
 export const MORE_GROUP_ID = 'more';
 
@@ -467,13 +471,21 @@ export const classicMenu: MenuNode[] = [
     id: 'profile',
     label: 'Society Profile',
     icon: icon(Building2),
+    // PROF-10: one activity log for the module (PROF-S8).
     children: [
-      planned('profile.home', 'Home', 'PROF-10'),
-      planned('profile.images', 'Images', 'PROF-10'),
-      planned('profile.location', 'Location', 'PROF-10'),
-      planned('profile.agreement', 'User Agreement', 'P9'),
-      planned('profile.downloads', 'Downloadable Files', 'PROF-10'),
-      { id: 'profile.emergency', label: 'Emergency Contacts', href: '/directory' },
+      planned('profile.home', 'Home', 'PROF-21'),
+      planned('profile.images', 'Images', 'PROF-22'),
+      { id: 'profile.location', label: 'Location', href: '/society-profile/location', logs: PROFILE_LOGS },
+      planned('profile.agreement', 'User Agreement', 'PROF-40'),
+      { id: 'profile.downloads', label: 'Downloadable Files', href: '/society-profile/files', logs: PROFILE_LOGS },
+      // Today's /directory (Emergency Desk and local listings) stays inside.
+      {
+        id: 'profile.emergency',
+        label: 'Emergency Contacts',
+        href: '/society-profile/emergency',
+        aliases: ['/directory'],
+        logs: PROFILE_LOGS,
+      },
     ],
   },
   // Today's finance reports; REP-04 turns this into the numbered index.

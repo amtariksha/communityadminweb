@@ -53,6 +53,10 @@ const ENTITY_TYPES = [
   { value: 'customer', label: 'Customer' },
   { value: 'amenity', label: 'Amenity' },
   { value: 'tenant_settings', label: 'Society Settings' },
+  { value: 'tenant-setting', label: 'Society Help & Contact' },
+  { value: 'directory', label: 'Directory & Emergency Numbers' },
+  { value: 'meeting', label: 'Meeting' },
+  { value: 'meeting_task', label: 'Meeting Task' },
 ];
 
 const ACTION_TYPES = [
