@@ -15,6 +15,8 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   ['/helpdesk', '/tickets'],
   // Income Tracker › Setup is billing configuration: shown with Invoices.
   ['/income/setup', '/invoices'],
+  // Panic Alerts reads the SOS list, so it is shown with SOS & Safety (GATE-11).
+  ['/gate/investigator/panic-alerts', '/sos'],
 ];
 
 /**

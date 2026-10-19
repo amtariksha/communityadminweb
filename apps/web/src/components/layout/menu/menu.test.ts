@@ -124,7 +124,7 @@ describe('classic modules', () => {
     expect(labels('gate')).toEqual(['Incident Investigator']);
     expect(find(menu, 'gate.investigator')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Visitors', '/gate/investigator/visitors'],
-      ['Panic Alerts', '/sos'],
+      ['Panic Alerts', '/gate/investigator/panic-alerts'],
       ['Vehicle Logs', '/gate/investigator/vehicles'],
       ['Staff Logs', '/gate/investigator/staff-logs'],
       ['Parcels', '/gate/investigator/parcels'],
@@ -132,7 +132,9 @@ describe('classic modules', () => {
     ]);
     expect(governingItem('/gate/investigator/parcels')?.href).toBe('/gate');
     const withoutGate = visibleMenu(classicMenu, { roleAllowlist: null, enabledFeatures: ['invoices'] });
-    expect(find(withoutGate, 'gate.investigator')?.tabs?.map((tab) => tab.href)).toEqual(['/sos']);
+    // Panic Alerts follows SOS & Safety, which no feature switches off.
+    expect(governingItem('/gate/investigator/panic-alerts')?.href).toBe('/sos');
+    expect(find(withoutGate, 'gate.investigator')?.tabs?.map((tab) => tab.href)).toEqual(['/gate/investigator/panic-alerts']);
   });
 
   it('HelpDesk screens follow the Tickets feature and supervisor visibility', () => {
@@ -222,7 +224,9 @@ describe('locate', () => {
     ['/', 'dashboard', undefined, undefined],
     ['/accounts/123', 'ledger', 'ledger.chart', undefined],
     ['/accounts/reconcile-debtors', 'more', 'more.reconcile', undefined],
-    ['/sos', 'gate', 'gate.investigator', 'gate.investigator.panic'],
+    ['/gate/investigator/panic-alerts', 'gate', 'gate.investigator', 'gate.investigator.panic'],
+    // The live SOS console sits under More (GATE-D2).
+    ['/sos', 'more', 'more.sos', undefined],
     ['/gate/investigator/visitors', 'gate', 'gate.investigator', 'gate.investigator.visitors'],
     ['/gate/investigator/overstays', 'gate', 'gate.investigator', 'gate.investigator.overstays'],
     // Today's gate page stays inside the module, as Visitors.

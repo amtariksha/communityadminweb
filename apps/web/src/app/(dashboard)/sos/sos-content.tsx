@@ -27,9 +27,9 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
+import { SosTimelineDialog } from './sos-timeline-dialog';
 import {
   useSosAlerts,
-  useSosDetail,
   useAcknowledgeSos,
   useResolveSos,
   useBroadcasts,
@@ -297,55 +297,9 @@ export default function SosContent(): ReactNode {
         </CardContent>
       </Card>
 
-      <TimelineDialog id={timelineId} onClose={() => setTimelineId('')} />
+      <SosTimelineDialog id={timelineId} onClose={() => setTimelineId('')} />
       <SirenDialog open={sirenOpen} onClose={() => setSirenOpen(false)} />
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Incident timeline
-// ---------------------------------------------------------------------------
-
-function TimelineDialog({
-  id,
-  onClose,
-}: {
-  id: string;
-  onClose: () => void;
-}): ReactNode {
-  const { data, isLoading } = useSosDetail(id);
-  return (
-    <Dialog open={id !== ''} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Incident timeline</DialogTitle>
-          <DialogDescription>
-            {data?.alert
-              ? `${data.alert.category.toUpperCase()} · ${data.alert.status}`
-              : 'Loading…'}
-          </DialogDescription>
-        </DialogHeader>
-        {isLoading ? (
-          <Skeleton className="h-32 w-full" />
-        ) : (
-          <ol className="space-y-3">
-            {(data?.events ?? []).map((e) => (
-              <li key={e.id} className="flex gap-3 text-sm">
-                <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                <div>
-                  <p className="font-medium">{e.event_type.replace(/_/g, ' ')}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {e.actor_name ? `${e.actor_name} · ` : ''}
-                    {new Date(e.created_at).toLocaleString()}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-      </DialogContent>
-    </Dialog>
   );
 }
 

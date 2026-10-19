@@ -281,7 +281,8 @@ export const classicMenu: MenuNode[] = [
             aliases: ['/gate'],
             logs: ['gate'],
           },
-          { id: 'gate.investigator.panic', label: 'Panic Alerts', href: '/sos' },
+          // GATE-11: alerts as a table; the live SOS console is under More.
+          { id: 'gate.investigator.panic', label: 'Panic Alerts', href: '/gate/investigator/panic-alerts', logs: ['safety'] },
           planned('gate.investigator.incidents', 'Incidents', 'GATE-42'),
           { id: 'gate.investigator.vehicles', label: 'Vehicle Logs', href: '/gate/investigator/vehicles' },
           { id: 'gate.investigator.staff-logs', label: 'Staff Logs', href: '/gate/investigator/staff-logs', logs: ['gate'] },
@@ -487,6 +488,7 @@ export const classicMenu: MenuNode[] = [
       { id: 'more.analytics', label: 'Analytics', href: '/analytics' },
       { id: 'more.payments', label: 'Online Payments', href: '/payments' },
       { id: 'more.reconcile', label: 'Reconcile Debtors', href: '/accounts/reconcile-debtors' },
+      { id: 'more.sos', label: 'SOS & Safety', href: '/sos' },
       { id: 'more.patrol', label: 'Guard Patrol', href: '/patrol' },
       { id: 'more.cctv', label: 'CCTV', href: '/cctv' },
       { id: 'more.voting', label: 'Voting', href: '/voting' },

@@ -24,6 +24,8 @@ export interface SosAlert {
   triggered_by_name: string | null;
   unit_id: string | null;
   unit_number: string | null;
+  // GATE-11: the unit's block.
+  block?: string | null;
   gate_id: string | null;
   latitude: string | null;
   longitude: string | null;
@@ -98,6 +100,33 @@ export function useSosAlerts(status?: string) {
     // Safety-critical — keep the desk console fresh without sockets.
     refetchInterval: 5000,
     refetchIntervalInBackground: true,
+  });
+}
+
+/** Filters of the Panic Alerts table (GATE-11): India days, status, search. */
+export interface SosListFilters {
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+  q?: string;
+}
+
+export function sosListParams(filters: SosListFilters): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(filters).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1] !== ''),
+  );
+}
+
+/** One page of alerts for the Panic Alerts table; the desk console keeps useSosAlerts. */
+export function useSosAlertList(filters: SosListFilters & { page: number; limit: number }) {
+  const { page, limit, ...rest } = filters;
+  return useQuery({
+    queryKey: [...sosKeys.all, 'table', filters] as const,
+    queryFn: function fetchSosTable() {
+      return api.get<Paginated<SosAlert>>('/safety/sos', {
+        params: { ...sosListParams(rest), page: String(page), limit: String(limit) },
+      });
+    },
   });
 }
 
