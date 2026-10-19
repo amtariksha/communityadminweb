@@ -161,6 +161,11 @@ export interface Receipt {
   owner_name?: string | null;
   created_by: string;
   created_at: Date;
+  /** The column the API stores the mode in (`mode` is the request-side name). */
+  payment_mode?: ReceiptMode;
+  /** INC-27 — set once the receipt is voided. Absent on an API older than INC-27. */
+  voided_at?: string | Date | null;
+  void_reason?: string | null;
 }
 
 export interface ReceiptAllocation {

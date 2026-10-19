@@ -31,6 +31,8 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { DirectIncomeDialog } from './direct-income-dialog';
 import { ApplyAdvancesButton } from './apply-advances-button';
+import { VoidReceiptButton } from './void-receipt-button';
+import { receiptModeOf, mayVoidReceipt } from './receipt-void';
 import { describeReceiptAllocation, summarizeReceiptAllocation } from './receipt-allocation';
 import { creditableInvoices } from './credit-note-invoices';
 import { ExportButton } from '@/components/ui/export-button';
@@ -51,6 +53,7 @@ import {
   useFinancialYears,
   useInvoices,
 } from '@/hooks';
+import { useFinanceAccess } from '@/hooks/use-finance-access';
 import { getToken, getCurrentTenant } from '@/lib/auth';
 import { Download } from 'lucide-react';
 import { useUnits } from '@/hooks';
@@ -138,6 +141,7 @@ function TableSkeleton(): ReactNode {
 
 export default function ReceiptsContent(): ReactNode {
   const { addToast } = useToast();
+  const finance = useFinanceAccess();
   // Clamp date inputs to prev FY start → next month end.
   const dateBounds = useMemo(() => financialDateBounds(), []);
   // QA #46 — page + sort live in the URL so /receipts?page=3&sort=amount
@@ -639,7 +643,7 @@ export default function ReceiptsContent(): ReactNode {
                 {/* QA #463 — actions column (Download PDF) added so the
                     operator can hand the payer a printed receipt
                     immediately after recording cash / cheque / UPI. */}
-                <TableHead className="w-24 text-right">Actions</TableHead>
+                <TableHead className="w-32 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -661,13 +665,26 @@ export default function ReceiptsContent(): ReactNode {
                         {receipt.owner_name ?? '\u2014'}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-medium text-success">
+                    <TableCell
+                      className={
+                        receipt.voided_at
+                          ? 'text-right font-medium text-muted-foreground line-through'
+                          : 'text-right font-medium text-success'
+                      }
+                    >
                       {formatCurrency(receipt.amount)}
                     </TableCell>
                     <TableCell>
-                      <Badge className={getPaymentModeBadgeClass(receipt.mode)}>
-                        {getPaymentModeLabel(receipt.mode)}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Badge className={getPaymentModeBadgeClass(receiptModeOf(receipt))}>
+                          {getPaymentModeLabel(receiptModeOf(receipt))}
+                        </Badge>
+                        {receipt.voided_at && (
+                          <Badge variant="destructive" title={receipt.void_reason ?? undefined}>
+                            Voided
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(receipt.receipt_date)}
@@ -711,16 +728,25 @@ export default function ReceiptsContent(): ReactNode {
                           a styled receipt with society header,
                           amount-in-words, and the allocation
                           breakdown. */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          handleDownloadReceiptPdf(receipt.id, receipt.receipt_number)
-                        }
-                        title="Download receipt PDF"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            handleDownloadReceiptPdf(receipt.id, receipt.receipt_number)
+                          }
+                          title="Download receipt PDF"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        {finance.canWrite && mayVoidReceipt(receipt) && (
+                          <VoidReceiptButton
+                            receiptId={receipt.id}
+                            receiptNumber={receipt.receipt_number}
+                            amount={Number(receipt.amount)}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

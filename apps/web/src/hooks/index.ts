@@ -148,6 +148,9 @@ export type {
   CreatedReceipt,
   CreditNoteRow,
 } from './use-receipts';
+export { useVoidReceipt } from './use-receipt-void';
+export type { VoidedReceipt } from './use-receipt-void';
+export { useFinanceAccess } from './use-finance-access';
 
 // Vendors
 export {
