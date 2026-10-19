@@ -81,11 +81,13 @@ describe('Staff Manager status lists', () => {
     expect(lastFilters()).toEqual(expect.objectContaining({ status: 'retired' }));
     expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
       'S.No',
+      'Badge No.',
       'Name',
       'Category',
       'Designation',
       'Contact No.',
       'Join Date',
+      'Badge Valid Till',
       'Since',
       'Edit',
       'Reactivate',
@@ -112,5 +114,29 @@ describe('Staff Manager status lists', () => {
     expect(download).toHaveBeenCalledWith('/staff/employees/export', {
       params: { status: 'active', q: '0000000045', search_by: 'phone', format: 'csv' },
     });
+  });
+
+  // STAFF-20 / STAFF-21: the badge in the list, and Badge on the search-by row.
+  it('shows the badge and searches by it', () => {
+    vi.useFakeTimers();
+    mocks.list.mockReturnValue({
+      data: { data: [employee({ badge_no: '104', badge_valid_until: '2026-06-30' })], total: 1 },
+      isLoading: false,
+    });
+    render(<StaffStatusList />);
+    const row = screen.getByText('Test Gardener').closest('tr') as HTMLElement;
+    expect(within(row).getByText('104')).toBeTruthy();
+    expect(within(row).getByText('30 Jun 2026')).toBeTruthy();
+
+    expect(Array.from(document.querySelectorAll('input[name="staff-search-by"]')).map((input) => (input as HTMLInputElement).value)).toEqual([
+      'badge', 'name', 'category', 'phone', 'any',
+    ]);
+    fireEvent.click(screen.getByLabelText('Badge'));
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '104' } });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    vi.useRealTimers();
+    expect(lastFilters()).toEqual(expect.objectContaining({ q: '104', search_by: 'badge', page: 1 }));
   });
 });

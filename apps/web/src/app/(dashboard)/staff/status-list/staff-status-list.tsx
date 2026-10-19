@@ -10,44 +10,25 @@ import { friendlyError } from '@/lib/api-error';
 import { STAFF_BASE, STAFF_STATUSES, type StaffStatusRoute } from '@/lib/staff-statuses';
 import { formatDate } from '@/lib/utils';
 import { staffTypeLabel } from '../staff-fields';
+import { StaffSearchBy } from '../staff-search';
 
 const PAGE_SIZES = [25, 50, 100] as const;
 
-// The "search by" choices we have data for; Badge and Unit come with STAFF-20 / STAFF-42.
-const SEARCH_KEYS: ReadonlyArray<{ value: StaffSearchKey; label: string }> = [
-  { value: 'any', label: 'Any' },
-  { value: 'name', label: 'Name' },
-  { value: 'category', label: 'Category' },
-  { value: 'phone', label: 'Phone' },
-];
-
 function columnsFor(status: StaffStatusRoute): DataTableColumn<Staff>[] {
   const columns: DataTableColumn<Staff>[] = [
+    { key: 'badge', header: 'Badge No.', cell: (row) => row.badge_no ?? '—' },
     { key: 'name', header: 'Name', cell: (row) => row.name },
     { key: 'category', header: 'Category', cell: (row) => staffTypeLabel(row.staff_type) },
     { key: 'designation', header: 'Designation', cell: (row) => row.designation ?? '—' },
     { key: 'phone', header: 'Contact No.', cell: (row) => row.phone, className: 'whitespace-nowrap' },
     { key: 'joined', header: 'Join Date', cell: (row) => formatDate(row.join_date), className: 'whitespace-nowrap' },
+    // STAFF-20: blank when the badge has no expiry (or none yet).
+    { key: 'valid-till', header: 'Badge Valid Till', cell: (row) => (row.badge_valid_until ? formatDate(row.badge_valid_until) : '—'), className: 'whitespace-nowrap' },
   ];
   if (status.slug === 'retired') {
     columns.push({ key: 'since', header: 'Since', cell: (row) => formatDate(row.exit_date), className: 'whitespace-nowrap' });
   }
   return columns;
-}
-
-function SearchBy({ value, onChange }: { value: StaffSearchKey; onChange: (key: StaffSearchKey) => void }): ReactNode {
-  return (
-    <fieldset className="flex items-center gap-2 text-sm">
-      <legend className="sr-only">Search by</legend>
-      <span className="text-muted-foreground">Search by</span>
-      {SEARCH_KEYS.map((key) => (
-        <label key={key.value} className="flex items-center gap-1">
-          <input type="radio" name="staff-search-by" value={key.value} checked={value === key.value} onChange={() => onChange(key.value)} />
-          {key.label}
-        </label>
-      ))}
-    </fieldset>
-  );
 }
 
 /** Retire on Active (today's Deactivate), Reactivate on Retired. */
@@ -104,7 +85,7 @@ function StatusList({ status }: { status: StaffStatusRoute }): ReactNode {
           setPage(1);
         }}
         search={{ value: q, onChange: onSearch, placeholder: 'Search staff' }}
-        filters={<SearchBy value={searchBy} onChange={(key) => { setSearchBy(key); setPage(1); }} />}
+        filters={<StaffSearchBy value={searchBy} onChange={(key) => { setSearchBy(key); setPage(1); }} />}
         export={{ path: '/staff/employees/export', params: staffFiltersToParams(filters) ?? {}, filename: `${status.slug}-staff` }}
         loading={query.isLoading}
         error={query.isError ? query.error : undefined}
