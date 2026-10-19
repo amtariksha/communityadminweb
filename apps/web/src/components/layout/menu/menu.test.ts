@@ -131,7 +131,7 @@ describe('classic modules', () => {
   });
 
   it('Gate & Visitors opens Incident Investigator with the gate registers as sub-tabs', () => {
-    expect(labels('gate')).toEqual(['Setup', 'Incident Investigator']);
+    expect(labels('gate')).toEqual(['Setup', 'Incident Investigator', 'Reports']);
     expect(find(menu, 'gate.setup')?.href).toBe('/gate/setup');
     expect(find(menu, 'gate')?.close).toBe('/gate/investigator/visitors');
     expect(find(menu, 'gate.investigator')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
@@ -221,7 +221,8 @@ describe('menus point only at screens that exist', () => {
 describe('visibleMenu', () => {
   it('hides planned entries and modules with nothing built yet', () => {
     const menu = visibleMenu(classicMenu, EVERYONE);
-    expect(find(menu, 'gate.reports')).toBeUndefined();
+    expect(find(menu, 'gate.move')).toBeUndefined();
+    expect(find(menu, 'gate.reports')?.href).toBe('/gate/reports');
     expect(find(menu, 'rules')).toBeUndefined();
     expect(find(menu, 'forms')).toBeUndefined();
     expect(find(menu, 'helpdesk.open')?.href).toBe('/helpdesk/open');

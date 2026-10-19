@@ -12,15 +12,18 @@ import { PublishSelectedButton, usePublishSelection } from './publish/publish-se
 
 /**
  * A module's Reports page (REP-S6): its section of Admin Reports, inside
- * the module frame. `module` is the registry module, e.g. `general_ledger`.
+ * the module frame. `module` is the registry module, e.g. `general_ledger`;
+ * `footer` is a line under the list (Gate & Visitors points to the
+ * Incident Investigator).
  */
-export function ModuleReportsPage({ module }: { module: string }): ReactNode {
+export function ModuleReportsPage({ module, footer }: { module: string; footer?: ReactNode }): ReactNode {
   // The classic module frame names the page; the standard layout needs a header.
   const standard = useAdminLayout() === 'standard';
   return (
     <div className="space-y-4">
       {standard && <PageHeader title="Reports" />}
       <ModuleReports module={module} />
+      {footer && <p className="text-sm text-muted-foreground">{footer}</p>}
     </div>
   );
 }
