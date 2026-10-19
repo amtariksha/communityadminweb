@@ -10,6 +10,7 @@ import { CatalogueState } from './catalogue-state';
 import { filterCatalogue, indexSections } from './report-index-model';
 import { ReportIndexTable } from './report-index-table';
 import { PublishSelectedButton, usePublishSelection, type PublishSelection } from './publish/publish-selection';
+import { ReportLogsButton } from './logs/report-logs';
 
 function SearchForm({ onSearch }: { onSearch: (text: string) => void }): ReactNode {
   const [draft, setDraft] = useState('');
@@ -73,6 +74,7 @@ export function ReportsIndex(): ReactNode {
         actions={
           <>
             <PublishSelectedButton rows={catalogue.data ?? []} selection={selection} />
+            <ReportLogsButton reports={catalogue.data ?? []} />
             <Link href="/" className={buttonVariants({ variant: 'outline' })} data-slot="button" data-size="default">
               Close
             </Link>

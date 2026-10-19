@@ -13,6 +13,7 @@ import { CatalogueState } from '../catalogue-state';
 import { ADMIN_REPORTS_HREF, moduleReportsPage } from '../module-reports';
 import { ScheduleCell } from '../report-index-table';
 import { PublishDialog } from '../publish/publish-dialog';
+import { ReportLogsButton } from '../logs/report-logs';
 import { ReportOutput } from './report-output';
 import { ReportParamField } from './report-param-fields';
 import { initialValues, requestParams, type ParamValue } from './report-param-state';
@@ -157,6 +158,7 @@ function ReportRun({ row, from }: { row: CatalogueRow; from?: string }): ReactNo
           <>
             {row.schedulable && <ScheduleCell row={row} />}
             {row.publishable && <PublishButton row={row} />}
+            <ReportLogsButton reportKey={row.key} />
             <Link href={origin.closeHref} className={buttonVariants({ variant: 'outline' })} data-slot="button" data-size="default">
               Close
             </Link>

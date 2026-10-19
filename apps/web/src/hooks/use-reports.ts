@@ -198,3 +198,51 @@ export function usePublishReports() {
     },
   });
 }
+
+export type ReportLogAction =
+  | 'viewed'
+  | 'exported'
+  | 'scheduled_run'
+  | 'published'
+  | 'schedule_created'
+  | 'schedule_changed'
+  | 'publication_retired';
+
+/** One line of a report's Show Logs (REP-10). */
+export interface ReportLogRow {
+  at: string;
+  user_id: string | null;
+  user_name: string | null;
+  report_key: string;
+  report_name: string;
+  options: Record<string, unknown> | null;
+  action: ReportLogAction;
+  format: string | null;
+  row_count: number | null;
+  result: string;
+  error_code: string | null;
+  announcement_id: string | null;
+}
+
+export interface ReportLogFilters {
+  reportKey?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+}
+
+export function useReportLogs(filters: ReportLogFilters, enabled = true) {
+  const params: Record<string, string> = { limit: '50', page: String(filters.page ?? 1) };
+  if (filters.reportKey) params.report_key = filters.reportKey;
+  if (filters.from) params.from = filters.from;
+  if (filters.to) params.to = filters.to;
+  return useQuery({
+    queryKey: [...reportKeys.all, 'logs', params] as const,
+    meta: { suppressToast: true },
+    retry: false,
+    enabled,
+    queryFn: function fetchReportLogs() {
+      return api.get<{ data: ReportLogRow[]; total: number }>('/report-catalogue/logs', { params });
+    },
+  });
+}

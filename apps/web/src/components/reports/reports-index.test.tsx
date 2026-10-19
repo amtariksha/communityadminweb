@@ -10,6 +10,7 @@ vi.mock('@/hooks/use-reports', () => ({
   useReportSchedules: () => ({ data: [] }),
   useSaveSchedule: () => ({ mutate: vi.fn(), isPending: false }),
   usePublishReports: () => ({ mutate: vi.fn(), isPending: false }),
+  useReportLogs: () => ({ data: undefined }),
 }));
 vi.mock('@/lib/vocabulary', () => ({ useWord: () => (word: string) => word }));
 
