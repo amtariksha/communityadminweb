@@ -77,6 +77,9 @@ import {
 } from '@/hooks';
 import type { MemberImportResult, UnitDetailMember } from '@/hooks';
 import { UnitCategorySelect } from './components/unit-category-select';
+import { area2Error, billingFieldsPayload, UnitBillingFields } from './components/unit-billing-fields';
+import { useUnitBillingCategories } from '@/hooks/use-unit-billing-categories';
+import { canReadFinance } from '@/lib/finance-roles';
 import { PoliceVerification } from './components/police-verification';
 import {
   ImportMembersResult,
@@ -270,6 +273,11 @@ export default function UnitsContent(): ReactNode {
   const [editIsActive, setEditIsActive] = useState(true);
   const [editCategoryId, setEditCategoryId] = useState('');
   const categoriesQuery = useMemberCategories();
+  // INC-15 — unit type for billing and the second area (Sq.ft 2).
+  const [editBillingTypeId, setEditBillingTypeId] = useState('');
+  const [editArea2, setEditArea2] = useState('');
+  const billingTypesQuery = useUnitBillingCategories({ enabled: canReadFinance() });
+  const billingTypes = billingTypesQuery.isSuccess ? billingTypesQuery.data.data : null;
 
   // Edit member dialog state
   const [editMemberOpen, setEditMemberOpen] = useState(false);
@@ -701,6 +709,8 @@ export default function UnitsContent(): ReactNode {
     unit_type: string;
     is_active: boolean;
     member_category_id?: string | null;
+    billing_category_id?: string | null;
+    garden_area?: number | string | null;
   }): void {
     setDetailUnitId(unit.id);
     setEditUnitNumber(unit.unit_number);
@@ -710,6 +720,8 @@ export default function UnitsContent(): ReactNode {
     setEditUnitType(unit.unit_type);
     setEditIsActive(unit.is_active);
     setEditCategoryId(unit.member_category_id ?? '');
+    setEditBillingTypeId(unit.billing_category_id ?? '');
+    setEditArea2(unit.garden_area == null ? '' : String(Number(unit.garden_area)));
     setActiveTab('members');
     setDetailDialogOpen(true);
   }
@@ -737,10 +749,16 @@ export default function UnitsContent(): ReactNode {
       });
       return;
     }
+    const area2Problem = area2Error(editArea2);
+    if (area2Problem) {
+      addToast({ title: area2Problem, variant: 'destructive' });
+      return;
+    }
     updateUnit.mutate(
       {
         id: detailUnitId,
         data: {
+          ...billingFieldsPayload(billingTypes, editBillingTypeId, editArea2),
           unit_number: editUnitNumber,
           block: normalizedBlock,
           floor: floorNum,
@@ -1866,6 +1884,13 @@ export default function UnitsContent(): ReactNode {
                 categories={categoriesQuery.data ?? []}
                 value={editCategoryId}
                 onChange={setEditCategoryId}
+              />
+              <UnitBillingFields
+                types={billingTypes}
+                typeId={editBillingTypeId}
+                onTypeChange={setEditBillingTypeId}
+                area2={editArea2}
+                onArea2Change={setEditArea2}
               />
               <div className="flex items-center gap-2">
                 <input

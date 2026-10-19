@@ -21,6 +21,9 @@ export interface Unit {
   tenant_email?: string | null;
   // UNIT-07 — the unit's member category; absent from an API that predates it.
   member_category_id?: string | null;
+  /** INC-15 — the unit type it is billed as and its second area; absent from an older API. */
+  billing_category_id?: string | null;
+  garden_area?: number | string | null;
 }
 
 export type MemberType = 'owner' | 'tenant' | 'family_member' | 'owner_family' | 'tenant_family';

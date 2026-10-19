@@ -64,6 +64,17 @@ export type {
 // Block master and block links (SB-10)
 export { unitBlockKeys, useSaveUnitBlocks, useUnitBlocks } from './use-unit-blocks';
 export type { UnitBlock, UnitBlockList, UnitBlockRow } from './use-unit-blocks';
+export {
+  unitBillingCategoryKeys,
+  useSaveUnitBillingCategories,
+  useUnitBillingCategories,
+} from './use-unit-billing-categories';
+export type {
+  AreaTotals,
+  UnitBillingCategory,
+  UnitBillingCategoryList,
+  UnitBillingCategoryRow,
+} from './use-unit-billing-categories';
 
 // Ledger
 export {

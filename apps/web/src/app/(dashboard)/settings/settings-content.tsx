@@ -32,6 +32,7 @@ import { InterestCard } from './interest-card';
 import { TaxRegistrationCard } from './tax-registration-card';
 import { GatewayChargeCard } from './gateway-charge-card';
 import { BillingRulesCard } from './billing-rules-card';
+import { UnitTypesCard } from './unit-types-card';
 import { TdsConfigCard } from './tds-config-card';
 import { NotificationPolicyCard } from './notification-policy-card';
 import { HelpContactCard } from './help-contact-card';
@@ -432,6 +433,9 @@ export default function SettingsContent(): ReactNode {
       </Card>
 
       <BillingRulesCard />
+
+      {/* Unit types for billing — names, GST threshold, units per type (INC-15) */}
+      <UnitTypesCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Modules — read-only; the platform admin switches them (SB-15)       */}

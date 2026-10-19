@@ -48,6 +48,9 @@ interface UpdateUnitInput extends Partial<CreateUnitInput> {
   is_active?: boolean;
   /** UNIT-07 — null clears the unit's member category. */
   member_category_id?: string | null;
+  /** INC-15 — the unit type it is billed as (null clears) and its second area. */
+  billing_category_id?: string | null;
+  garden_area?: number | null;
 }
 
 interface BulkImportUnitsInput {
