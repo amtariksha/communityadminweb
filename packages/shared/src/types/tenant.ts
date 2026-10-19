@@ -40,6 +40,9 @@ export interface TenantSettings {
     recipients?: string[];
     day_of_month?: number;
     time_of_day?: string;
+    // REP-01 — YYYY-MM (IST) of the last automatic send, written by the
+    // job. Send it back on save so a retry in that hour cannot send twice.
+    last_sent_period?: string;
   };
 
   // INC-02 — automatic dues reminders, read by the API's daily reminder

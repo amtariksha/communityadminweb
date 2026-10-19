@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import {
@@ -33,6 +34,15 @@ const ALL_REPORTS: ReportKey[] = [
   'defaulters',
   'collection_summary',
 ];
+
+/** REP-01: the digest goes out in an hour, so the time is a whole hour. */
+export const DIGEST_HOURS: string[] = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`);
+
+/** A stored "09:30" shows as its hour, "09:00". */
+export function digestHour(timeOfDay: unknown): string {
+  const match = typeof timeOfDay === 'string' ? /^([01]\d|2[0-3]):\d{2}$/.exec(timeOfDay) : null;
+  return match ? `${match[1]}:00` : '09:00';
+}
 
 /**
  * Settings → Automated reports.
@@ -79,7 +89,7 @@ export function AutomatedReportsCard(): ReactNode {
     );
     setRecipients(Array.isArray(c.recipients) ? c.recipients.join(', ') : '');
     setDayOfMonth(String(c.day_of_month ?? 1));
-    setTimeOfDay(typeof c.time_of_day === 'string' ? c.time_of_day : '09:00');
+    setTimeOfDay(digestHour(c.time_of_day));
   }, [tenant]);
 
   if (!tenantId) return null;
@@ -135,6 +145,9 @@ export function AutomatedReportsCard(): ReactNode {
             recipients: parsedRecipients(),
             day_of_month: day,
             time_of_day: timeOfDay,
+            // Written by the job; sent back so this save does not reopen
+            // the month it already went out in.
+            ...(current.last_sent_period ? { last_sent_period: current.last_sent_period } : {}),
           },
         },
         expected_row_version: tenant.row_version,
@@ -302,15 +315,13 @@ export function AutomatedReportsCard(): ReactNode {
           </div>
           <div className="space-y-2">
             <Label htmlFor="sr-time">Time of day (IST)</Label>
-            <Input
-              id="sr-time"
-              type="time"
-              value={timeOfDay}
-              onChange={(e) => setTimeOfDay(e.target.value)}
-            />
+            <Select id="sr-time" value={timeOfDay} onChange={(e) => setTimeOfDay(e.target.value)}>
+              {DIGEST_HOURS.map((hour) => (
+                <option key={hour} value={hour}>{hour}</option>
+              ))}
+            </Select>
             <p className="text-xs text-muted-foreground">
-              The monthly cron fires at 09:00 IST centrally; per-tenant time
-              is informational for now.
+              Sent once a month, in this hour of the chosen day.
             </p>
           </div>
         </div>
