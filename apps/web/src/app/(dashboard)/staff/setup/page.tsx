@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
-import { ShiftTemplatesCard } from '../shift-templates-card';
+import { SetupContent } from './setup-content';
 
-// Staff Manager › Setup (STAFF-10): Staff Shift Management; categories, ID card and devices join with STAFF-41 / STAFF-43.
+// Staff Manager › Setup (STAFF-10, STAFF-11): Staff Shift Management as an editable grid.
 export default function Page(): ReactNode {
-  return <ShiftTemplatesCard />;
+  return <SetupContent />;
 }

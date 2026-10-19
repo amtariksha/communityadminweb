@@ -48,8 +48,8 @@ export interface Shift {
   name: string;
   start_time: string;
   end_time: string;
-  // NOTE: `is_active` column does not exist on staff_shifts table; backend
-  // never returns it. Kept optional for forward-compat if added later.
+  // Migration 198 (STAFF-11): retired shifts stay for history. Absent from an
+  // older API, where every shift is active.
   is_active?: boolean;
   created_at: string;
 }
@@ -360,6 +360,39 @@ export function useStaffShifts() {
       return api.get<{ data: Shift[] }>('/staff/shifts').then(function unwrap(res) {
         return res.data;
       });
+    },
+  });
+}
+
+/** One row of PUT /staff/shifts/bulk (STAFF-11, SB-08). */
+export interface ShiftGridRow {
+  id?: string;
+  name: string;
+  start_time: string;
+  hours: number;
+  is_active: boolean;
+}
+
+/** Every shift, retired ones too, for Staff Manager › Setup. */
+export function useShiftGrid() {
+  return useQuery({
+    queryKey: [...staffKeys.shifts(), 'grid'] as const,
+    queryFn: function fetchShiftGrid() {
+      return api
+        .get<{ data: Shift[] }>('/staff/shifts', { params: { include_inactive: 'true' } })
+        .then((res) => res.data);
+    },
+  });
+}
+
+export function useSaveShiftGrid() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: function saveShiftGrid(rows: ShiftGridRow[]) {
+      return api.put<{ data: Shift[] }>('/staff/shifts/bulk', { rows });
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: staffKeys.shifts() });
     },
   });
 }
