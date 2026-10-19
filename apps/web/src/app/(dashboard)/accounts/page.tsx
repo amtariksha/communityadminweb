@@ -1,12 +1,12 @@
 import { Suspense, type ReactNode } from 'react';
-import AccountsContent from './accounts-content';
+import { AccountsTabs } from './accounts-tabs';
 
-// AccountsContent reads search params (?import=tally), which need a
-// Suspense boundary.
+// The tabs and AccountsContent read search params (?tab=, ?import=tally),
+// which need a Suspense boundary.
 export default function AccountsPage(): ReactNode {
   return (
     <Suspense fallback={null}>
-      <AccountsContent />
+      <AccountsTabs />
     </Suspense>
   );
 }

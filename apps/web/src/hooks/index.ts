@@ -97,16 +97,20 @@ export {
   useFreezeYear,
   useUnfreezeYear,
   useCloseFinancialYear,
-  useJournalEntries,
-  useJournalEntry,
   useCreateJournalEntry,
-  useReverseJournalEntry,
   useTrialBalance,
   useBalanceSheet,
   useIncomeExpenditure,
   useMonthlyIncomeExpense,
   useGeneralLedgerReport,
 } from './use-ledger';
+export {
+  useJournalEntries,
+  useJournalEntry,
+  useReverseJournalEntry,
+  type JournalEntryRow,
+  type JournalEntryView,
+} from './use-journal-entries';
 
 // Invoices
 export {

@@ -360,9 +360,11 @@ export const classicMenu: MenuNode[] = [
       {
         id: 'ledger.journal',
         label: 'Journal Entries',
+        // An entry's own page (/general-ledger/journal-entries/<id>) stays here.
+        aliases: ['/general-ledger/journal-entries'],
         tabs: [
           planned('ledger.journal.create', 'Create Journal Entry', 'GL-11'),
-          planned('ledger.journal.old', 'Old Journal Entries', 'GL-10'),
+          { id: 'ledger.journal.old', label: 'Old Journal Entries', href: '/general-ledger/journal-entries/old', logs: ['journal_entry'] },
           {
             id: 'ledger.journal.bulk-posting',
             label: 'Bulk Posting',

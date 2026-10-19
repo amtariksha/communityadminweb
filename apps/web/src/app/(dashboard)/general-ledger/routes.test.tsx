@@ -73,6 +73,8 @@ describe('General Ledger classic routes', () => {
   it.each([
     ['/general-ledger/chart-of-accounts/assets', 'General Ledger › Chart of Accounts'],
     ['/general-ledger/journal-entries/bulk-posting', 'General Ledger › Journal Entries'],
+    ['/general-ledger/journal-entries/old', 'General Ledger › Journal Entries'],
+    ['/general-ledger/journal-entries/3f2b0c1e-0000-4000-8000-000000000001', 'General Ledger › Journal Entries'],
     ['/general-ledger/journal-entries/bulk-posting/retained-earnings', 'General Ledger › Journal Entries'],
     ['/general-ledger/query/by-group', 'General Ledger › Query'],
     ['/general-ledger/trial-balance', 'General Ledger › Trial Balance'],

@@ -144,13 +144,8 @@ interface AccountFilters {
   limit?: number;
 }
 
-interface JournalFilters {
-  start_date?: string;
-  end_date?: string;
-  account_id?: string;
-  page?: number;
-  limit?: number;
-}
+// GL-10: hooks/use-journal-entries.ts owns the list filters.
+type JournalFilters = object;
 
 // ---------------------------------------------------------------------------
 // Input types
@@ -225,10 +220,6 @@ interface CreateJournalEntryInput {
   }>;
 }
 
-interface ReverseJournalEntryInput {
-  narration: string;
-}
-
 // ---------------------------------------------------------------------------
 // Query keys
 // ---------------------------------------------------------------------------
@@ -276,18 +267,6 @@ function accountFiltersToParams(filters?: AccountFilters): Record<string, string
       ? filters.account_type.join(',')
       : filters.account_type;
   }
-  if (filters.page !== undefined) params.page = String(filters.page);
-  if (filters.limit !== undefined) params.limit = String(filters.limit);
-  return params;
-}
-
-function journalFiltersToParams(filters?: JournalFilters): Record<string, string> | undefined {
-  if (!filters) return undefined;
-
-  const params: Record<string, string> = {};
-  if (filters.start_date) params.start_date = filters.start_date;
-  if (filters.end_date) params.end_date = filters.end_date;
-  if (filters.account_id) params.account_id = filters.account_id;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   return params;
@@ -588,31 +567,6 @@ export function useCloseFinancialYear() {
 // Journal Entry queries
 // ---------------------------------------------------------------------------
 
-export function useJournalEntries(filters?: JournalFilters) {
-  return useQuery({
-    queryKey: ledgerKeys.journalEntryList(filters),
-    queryFn: function fetchJournalEntries() {
-      return api.get<PaginatedResponse<JournalEntry>>('/ledger/journal-entries', {
-        params: journalFiltersToParams(filters),
-      });
-    },
-  });
-}
-
-export function useJournalEntry(id: string) {
-  return useQuery({
-    queryKey: ledgerKeys.journalEntry(id),
-    queryFn: function fetchJournalEntry() {
-      return api
-        .get<{ data: JournalEntryDetail }>(`/ledger/journal-entries/${id}`)
-        .then(function unwrap(res) {
-          return res.data;
-        });
-    },
-    enabled: id !== '',
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Journal Entry mutations
 // ---------------------------------------------------------------------------
@@ -625,29 +579,6 @@ export function useCreateJournalEntry() {
       return api.post<{ data: JournalEntryDetail }>('/ledger/journal-entries', input);
     },
     onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
-    },
-  });
-}
-
-export function useReverseJournalEntry() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: function reverseJournalEntry(params: {
-      id: string;
-      data: ReverseJournalEntryInput;
-    }) {
-      return api.post<{ data: JournalEntryDetail }>(
-        `/ledger/journal-entries/${params.id}/reverse`,
-        params.data,
-      );
-    },
-    onSuccess: function invalidate(_data, variables) {
-      queryClient.invalidateQueries({
-        queryKey: ledgerKeys.journalEntry(variables.id),
-      });
       queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
       queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
     },
