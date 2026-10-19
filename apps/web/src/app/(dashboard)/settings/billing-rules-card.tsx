@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Plus, Power } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -351,6 +352,14 @@ export function BillingRulesCard(): ReactNode {
           </DialogContent>
         </Dialog>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Society-wide rules, billed by the monthly job until auto-invoicing from rule lines per unit type is switched on
+        under{' '}
+        <Link href="/income/setup/auto-invoicing" className="underline">
+          Income Tracker › Setup › Auto Invoicing
+        </Link>
+        .
+      </p>
     </CardHeader>
     <CardContent>
       {rulesQuery.isLoading ? (

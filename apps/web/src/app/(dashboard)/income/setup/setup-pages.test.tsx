@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   layout: 'classic' as 'classic' | 'standard',
   mutate: vi.fn(),
   settings: {} as Record<string, unknown>,
+  ruleLinesOn: false,
 }));
 
 vi.mock('@/lib/layout-context', () => ({ useAdminLayout: () => mocks.layout }));
@@ -22,6 +23,11 @@ vi.mock('@/hooks/use-tenants', () => ({
 vi.mock('../../settings/billing-rules-card', () => ({ BillingRulesCard: () => <section>Billing rules card</section> }));
 vi.mock('../../settings/interest-card', () => ({ InterestCard: () => <section>Interest card</section> }));
 vi.mock('../../invoices/billing-runs-panel', () => ({ BillingRunsPanel: () => <section>Billing runs panel</section> }));
+vi.mock('./auto-invoicing/components/auto-invoice-form', () => ({ AutoInvoiceForm: () => <section>Auto invoicing form</section> }));
+vi.mock('./auto-invoicing/components/rule-book', () => ({ RuleBook: () => <section>Rules per unit type</section> }));
+vi.mock('@/hooks/use-billing-rules', () => ({
+  useAutoInvoiceSettings: () => ({ data: { billing_auto_invoice: { enabled: mocks.ruleLinesOn } } }),
+}));
 
 function signIn(role: string): void {
   localStorage.setItem('communityos_tenant', TENANT);
@@ -41,6 +47,7 @@ function signIn(role: string): void {
 beforeEach(() => {
   mocks.layout = 'classic';
   mocks.settings = {};
+  mocks.ruleLinesOn = false;
 });
 
 afterEach(() => {
@@ -49,13 +56,24 @@ afterEach(() => {
 });
 
 describe('Income Tracker › Setup › Auto Invoicing', () => {
-  it('holds the billing rules, the interest settings and the billing runs', () => {
+  it('holds the auto-invoicing form, the rule lines, interest, the billing runs and the old rules', () => {
     signIn('community_admin');
     render(<AutoInvoicingSetupPage />);
 
+    expect(screen.getByText('Auto invoicing form')).toBeTruthy();
+    expect(screen.getByText('Rules per unit type')).toBeTruthy();
     expect(screen.getByText('Billing rules card')).toBeTruthy();
     expect(screen.getByText('Interest card')).toBeTruthy();
     expect(screen.getByText('Billing runs panel')).toBeTruthy();
+  });
+
+  it('drops the old billing rules once auto-invoicing from rule lines is on (INC-17)', () => {
+    signIn('accountant');
+    mocks.ruleLinesOn = true;
+    render(<AutoInvoicingSetupPage />);
+
+    expect(screen.queryByText('Billing rules card')).toBeNull();
+    expect(screen.getByText('Rules per unit type')).toBeTruthy();
   });
 
   it('leaves the title to the classic frame, and draws its own header in standard', () => {

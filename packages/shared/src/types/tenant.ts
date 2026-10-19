@@ -65,6 +65,17 @@ export interface TenantSettings {
     auto_post?: boolean;
   };
 
+  // INC-17 — Setup › Auto Invoicing: the billing run bills from rule lines
+  // per unit type once enabled. Written by PUT /billing-rules/settings.
+  billing_auto_invoice?: {
+    enabled: boolean;
+    frequency: 'monthly' | 'quarterly' | 'half_yearly' | 'yearly';
+    /** The 1st of the month the first period starts (YYYY-MM-01). */
+    start_date: string | null;
+    rounding: 'two_decimals' | 'whole_rupee';
+    auto_post: boolean;
+  };
+
   // NotifPlan §"Phase 5" — per-tenant notification policy. Two
   // levers, both optional so an unset tenant continues to behave as
   // it did before this field existed:
