@@ -72,3 +72,24 @@ describe('Admin Files (FILE-10)', () => {
     expect(governingItem('/documents/units')?.href).toBe('/documents');
   });
 });
+
+describe('Projects & Meetings (PROJ-10 to PROJ-12)', () => {
+  it('shows Meetings with Open and Closed as sub-tabs, then Tasks', () => {
+    expect(children('projects')).toEqual([
+      ['Meetings', undefined],
+      ['Tasks', '/governance/tasks'],
+    ]);
+    expect(tabs('projects.meetings')).toEqual([
+      ['Open', '/governance/meetings/open'],
+      ['Closed', '/governance/meetings/closed'],
+    ]);
+  });
+
+  it('offers Create Meeting on every page and opens the meeting forms as pages', () => {
+    expect(find(menu, 'projects')?.create).toEqual({ label: 'Create Meeting', href: '/governance/meetings/new' });
+    expect(locate('/governance/meetings/new', menu)?.form).toBe(true);
+    expect(locate('/governance/meetings/m-1/minutes', menu)?.child?.label).toBe('Meeting Minutes');
+    expect(locate('/governance/meetings/m-1', menu)?.child?.id).toBe('projects.meetings');
+    expect(locate('/governance', menu)?.child?.id).toBe('projects.meetings');
+  });
+});

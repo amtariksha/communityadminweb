@@ -25,6 +25,7 @@ import {
   Ellipsis,
 } from 'lucide-react';
 import { HELPDESK_BASE, HELPDESK_SCOPES } from '@/lib/helpdesk-scopes';
+import { MEETING_STATES, MEETINGS_BASE } from '@/lib/meeting-states';
 import { statusMenuChildren } from './status-menu';
 
 /**
@@ -370,12 +371,25 @@ export const classicMenu: MenuNode[] = [
     id: 'projects',
     label: 'Projects & Meetings',
     icon: icon(ScrollText),
+    // PROJ-10 to PROJ-12. Create Meeting on every page; meetings and their
+    // minutes are pages of their own. Today's /governance stays inside.
+    create: { label: 'Create Meeting', href: '/governance/meetings/new' },
+    forms: [
+      { label: 'Edit Meeting', path: '/governance/meetings/:id/edit' },
+      { label: 'Meeting Minutes', path: '/governance/meetings/:id/minutes' },
+    ],
     children: [
       planned('projects.setup', 'SetUp', 'PROJ-22'),
-      planned('projects.projects', 'Projects', 'P9'),
-      { id: 'projects.meetings', label: 'Meetings', href: '/governance' },
-      planned('projects.tasks', 'Tasks', 'PROJ-11'),
-      planned('projects.reports', 'Reports', 'REP-04'),
+      planned('projects.projects', 'Projects', 'PROJ-41'),
+      {
+        id: 'projects.meetings',
+        label: 'Meetings',
+        aliases: ['/governance'],
+        // Open, Closed: state as sub-tabs (SB-05).
+        tabs: statusMenuChildren('projects.meetings', MEETINGS_BASE, MEETING_STATES, { logs: ['meeting'] }),
+      },
+      { id: 'projects.tasks', label: 'Tasks', href: '/governance/tasks', logs: ['meeting_task'] },
+      planned('projects.reports', 'Reports', 'PROJ-30'),
     ],
   },
   {

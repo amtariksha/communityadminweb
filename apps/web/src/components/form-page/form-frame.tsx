@@ -26,6 +26,8 @@ export interface FormFrameProps {
   onSave: () => void;
   /** Page only, where the screen has it: save, then start a blank form. */
   onSaveAndNew?: () => void;
+  /** A second way to save, in both presentations, e.g. "Save and Close Meeting". */
+  secondaryAction?: { label: string; onClick: () => void };
   saving?: boolean;
   /** The screen's own word for Save, e.g. "Submit". */
   saveLabel?: string;
@@ -57,6 +59,11 @@ export function FormFrame(props: FormFrameProps): ReactNode {
       {saving ? savingLabel : saveLabel}
     </Button>
   );
+  const secondary = props.secondaryAction && (
+    <Button type="button" variant="outline" disabled={saving} onClick={props.secondaryAction.onClick}>
+      {props.secondaryAction.label}
+    </Button>
+  );
   const form = (
     <form id={headingId + '-form'} aria-labelledby={headingId} noValidate onSubmit={submit} className="space-y-4">
       {props.children}
@@ -76,6 +83,7 @@ export function FormFrame(props: FormFrameProps): ReactNode {
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
+            {secondary}
             {saveButton}
           </DialogFooter>
         </DialogContent>
@@ -95,6 +103,7 @@ export function FormFrame(props: FormFrameProps): ReactNode {
         {form}
         <div className="flex flex-wrap gap-2 border-t pt-4">
           {saveButton}
+          {secondary}
           {props.onSaveAndNew && (
             <Button type="button" variant="outline" disabled={saving} onClick={props.onSaveAndNew}>
               Save and New

@@ -37,12 +37,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useFormMode } from '@/components/form-page';
 import { useToast } from '@/components/ui/toast';
 import { useOpenOnNewParam } from '@/hooks/use-open-on-new-param';
 import {
   useMeetings,
-  useCreateMeeting,
-  useUpdateMeeting,
   useDeleteMeeting,
   useMomTasks,
   useCreateMomTask,
@@ -50,11 +49,12 @@ import {
   useDeleteMomTask,
   type MeetingItem,
   type MomTask,
-  type CreateMeetingInput,
 } from '@/hooks';
 import { UserSearchSelect } from '@/components/ui/user-search-select';
 import type { UserSearchHit } from '@/hooks/use-user-search';
 import { formatDate } from '@/lib/utils';
+import { MeetingForm } from './meetings/meeting-form';
+import { MeetingMinutesForm } from './meetings/meeting-minutes-form';
 
 export function GovernanceContent() {
   const { addToast: toast } = useToast();
@@ -69,8 +69,6 @@ export function GovernanceContent() {
     taskFilter,
   );
 
-  const createMeetingMutation = useCreateMeeting();
-  const updateMeetingMutation = useUpdateMeeting();
   const deleteMeetingMutation = useDeleteMeeting();
 
   const createMomTaskMutation = useCreateMomTask();
@@ -81,22 +79,9 @@ export function GovernanceContent() {
   const [isCreateMeetingOpen, setIsCreateMeetingOpen] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<MeetingItem | null>(null);
   const [minutesMeeting, setMinutesMeeting] = useState<MeetingItem | null>(null);
-  const [minutesText, setMinutesText] = useState('');
 
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [taskTargetMeeting, setTaskTargetMeeting] = useState<MeetingItem | null>(null);
-
-  // Forms
-  const [meetingForm, setMeetingForm] = useState<CreateMeetingInput>({
-    title: '',
-    meeting_date: new Date().toISOString().split('T')[0],
-    start_time: '19:00',
-    end_time: '20:30',
-    location: 'Clubhouse Committee Boardroom',
-    agenda: '',
-    minutes: '',
-    status: 'scheduled',
-  });
 
   const [taskForm, setTaskForm] = useState({
     title: '',
@@ -110,67 +95,17 @@ export function GovernanceContent() {
 
   const handleOpenCreateMeeting = () => {
     setEditingMeeting(null);
-    setMeetingForm({
-      title: '',
-      meeting_date: new Date().toISOString().split('T')[0],
-      start_time: '19:00',
-      end_time: '20:30',
-      location: 'Clubhouse Committee Boardroom',
-      agenda: '',
-      minutes: '',
-      status: 'scheduled',
-    });
     setIsCreateMeetingOpen(true);
   };
 
-  // The dashboard's "Create Meeting" button links here with ?new=1.
-  useOpenOnNewParam(handleOpenCreateMeeting);
+  // The dashboard's "Create Meeting" button links here with ?new=1; in the
+  // classic layout it opens the meeting page (SB-07, PROJ-11).
+  const formMode = useFormMode();
+  useOpenOnNewParam(handleOpenCreateMeeting, formMode === 'page' ? '/governance/meetings/new' : undefined);
 
   const handleOpenEditMeeting = (m: MeetingItem) => {
     setEditingMeeting(m);
-    setMeetingForm({
-      title: m.title,
-      meeting_date: m.meeting_date,
-      start_time: m.start_time,
-      end_time: m.end_time,
-      location: m.location ?? '',
-      agenda: m.agenda ?? '',
-      minutes: m.minutes ?? '',
-      status: m.status,
-    });
     setIsCreateMeetingOpen(true);
-  };
-
-  const handleSaveMeeting = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!meetingForm.title.trim() || !meetingForm.meeting_date) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please provide a title and date for the committee meeting.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      if (editingMeeting) {
-        await updateMeetingMutation.mutateAsync({
-          id: editingMeeting.id,
-          data: meetingForm,
-        });
-        toast({ title: 'Meeting Updated', description: 'Changes saved successfully.' });
-      } else {
-        await createMeetingMutation.mutateAsync(meetingForm);
-        toast({ title: 'Meeting Scheduled', description: 'New committee meeting created.' });
-      }
-      setIsCreateMeetingOpen(false);
-    } catch {
-      toast({
-        title: 'Operation Failed',
-        description: 'Could not save meeting details.',
-        variant: 'destructive',
-      });
-    }
   };
 
   const handleDeleteMeeting = async (id: string) => {
@@ -189,28 +124,6 @@ export function GovernanceContent() {
 
   const handleOpenMinutes = (m: MeetingItem) => {
     setMinutesMeeting(m);
-    setMinutesText(m.minutes ?? '');
-  };
-
-  const handleSaveMinutes = async () => {
-    if (!minutesMeeting) return;
-    try {
-      await updateMeetingMutation.mutateAsync({
-        id: minutesMeeting.id,
-        data: {
-          minutes: minutesText,
-          status: 'completed',
-        },
-      });
-      toast({ title: 'Minutes Recorded', description: 'MoM saved and meeting marked completed.' });
-      setMinutesMeeting(null);
-    } catch {
-      toast({
-        title: 'Save Failed',
-        description: 'Could not update meeting minutes.',
-        variant: 'destructive',
-      });
-    }
   };
 
   const handleOpenCreateTask = (m: MeetingItem) => {
@@ -448,15 +361,18 @@ export function GovernanceContent() {
 
                   <CardFooter className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/20 px-4 py-3 text-xs">
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenMinutes(m)}
-                        className="gap-1 h-7 text-xs"
-                      >
-                        <FileText className="h-3 w-3" />
-                        {m.minutes ? 'Edit Minutes' : 'Record MoM'}
-                      </Button>
+                      {/* A completed or cancelled meeting is a record (PROJ-10). */}
+                      {m.status === 'scheduled' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenMinutes(m)}
+                          className="gap-1 h-7 text-xs"
+                        >
+                          <FileText className="h-3 w-3" />
+                          {m.minutes ? 'Edit Minutes' : 'Record MoM'}
+                        </Button>
+                      )}
                       <Button
                         variant="secondary"
                         size="sm"
@@ -468,24 +384,28 @@ export function GovernanceContent() {
                       </Button>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleOpenEditMeeting(m)}
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDeleteMeeting(m.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    {m.status === 'scheduled' && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Edit"
+                          onClick={() => handleOpenEditMeeting(m)}
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                          title="Delete"
+                          onClick={() => handleDeleteMeeting(m.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
                   </CardFooter>
                 </Card>
               ))}
@@ -607,155 +527,25 @@ export function GovernanceContent() {
         </div>
       )}
 
-      {/* Schedule / Edit Meeting Dialog */}
-      <Dialog open={isCreateMeetingOpen} onOpenChange={setIsCreateMeetingOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <form onSubmit={handleSaveMeeting}>
-            <DialogHeader>
-              <DialogTitle>{editingMeeting ? 'Edit Committee Meeting' : 'Schedule Meeting'}</DialogTitle>
-              <DialogDescription>
-                Set date, time, location, and proposed agenda for the managing committee.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-4 py-4 text-sm">
-              <div className="space-y-1.5">
-                <Label htmlFor="m-title">Meeting Title *</Label>
-                <Input
-                  id="m-title"
-                  placeholder="e.g. Monthly Managing Committee Meeting (Oct 2026)"
-                  value={meetingForm.title}
-                  onChange={(e) => setMeetingForm({ ...meetingForm, title: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="m-date">Meeting Date *</Label>
-                  <Input
-                    id="m-date"
-                    type="date"
-                    value={meetingForm.meeting_date}
-                    onChange={(e) => setMeetingForm({ ...meetingForm, meeting_date: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="m-location">Location / Venue</Label>
-                  <Input
-                    id="m-location"
-                    placeholder="Clubhouse Boardroom"
-                    value={meetingForm.location ?? ''}
-                    onChange={(e) => setMeetingForm({ ...meetingForm, location: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="m-start">Start Time *</Label>
-                  <Input
-                    id="m-start"
-                    type="time"
-                    value={meetingForm.start_time}
-                    onChange={(e) => setMeetingForm({ ...meetingForm, start_time: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="m-end">End Time *</Label>
-                  <Input
-                    id="m-end"
-                    type="time"
-                    value={meetingForm.end_time}
-                    onChange={(e) => setMeetingForm({ ...meetingForm, end_time: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="m-status">Meeting Status</Label>
-                <select
-                  id="m-status"
-                  value={meetingForm.status}
-                  onChange={(e) =>
-                    setMeetingForm({
-                      ...meetingForm,
-                      status: e.target.value as CreateMeetingInput['status'],
-                    })
-                  }
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm"
-                >
-                  <option value="scheduled">Scheduled</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="m-agenda">Proposed Agenda Items</Label>
-                <Textarea
-                  id="m-agenda"
-                  rows={3}
-                  placeholder="1. Review of annual maintenance contracts&#10;2. Lift modernizations approval&#10;3. Festival preparations"
-                  value={meetingForm.agenda ?? ''}
-                  onChange={(e) => setMeetingForm({ ...meetingForm, agenda: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsCreateMeetingOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={createMeetingMutation.isPending || updateMeetingMutation.isPending}
-              >
-                {editingMeeting ? 'Save Changes' : 'Schedule Meeting'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Record Minutes (MoM) Dialog */}
-      <Dialog open={!!minutesMeeting} onOpenChange={(open) => !open && setMinutesMeeting(null)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Record Minutes of Meeting (MoM)</DialogTitle>
-            <DialogDescription>
-              {minutesMeeting?.title} &bull; {minutesMeeting && formatDate(minutesMeeting.meeting_date)}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3 py-2 text-sm">
-            <Label htmlFor="minutes-input">Official Decisions & Minutes</Label>
-            <Textarea
-              id="minutes-input"
-              rows={8}
-              placeholder="Record the decisions made, attendance quorum, resolutions passed, and major discussion points..."
-              value={minutesText}
-              onChange={(e) => setMinutesText(e.target.value)}
-            />
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setMinutesMeeting(null)}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSaveMinutes}
-              disabled={updateMeetingMutation.isPending}
-            >
-              Save Minutes & Complete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Schedule / Edit Meeting and Minutes: the shared forms as dialogs (SB-07). */}
+      {isCreateMeetingOpen && (
+        <MeetingForm
+          mode="dialog"
+          open
+          meeting={editingMeeting}
+          onClose={() => setIsCreateMeetingOpen(false)}
+          onSaved={() => setIsCreateMeetingOpen(false)}
+        />
+      )}
+      {minutesMeeting && (
+        <MeetingMinutesForm
+          mode="dialog"
+          open
+          meeting={minutesMeeting}
+          onClose={() => setMinutesMeeting(null)}
+          onSaved={() => setMinutesMeeting(null)}
+        />
+      )}
 
       {/* Assign MoM Action Task Dialog */}
       <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
