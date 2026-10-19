@@ -41,6 +41,7 @@ const ENTITY_TYPES = [
   { value: 'ledger_account', label: 'Ledger Account' },
   { value: 'account_group', label: 'Account Group' },
   { value: 'journal_entry', label: 'Journal Entry' },
+  { value: 'financial_year', label: 'Financial Year' },
   { value: 'purchase', label: 'Purchase' },
   { value: 'bank_account', label: 'Bank Account' },
   { value: 'document', label: 'Document' },
