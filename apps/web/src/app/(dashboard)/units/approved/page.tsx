@@ -1,8 +1,11 @@
-import { type ReactNode } from 'react';
-import UnitsContent from '../units-content';
+import { Suspense, type ReactNode } from 'react';
+import { ApprovedUsersIndex } from './approved-users-index';
 
-// Units & Users › Approved Users (classic route, UNIT-10). Today's unit
-// list until UNIT-12 builds the master–detail page.
+// Units & Users › Approved Users (classic route, UNIT-10 / UNIT-12).
 export default function ApprovedUsersPage(): ReactNode {
-  return <UnitsContent />;
+  return (
+    <Suspense fallback={null}>
+      <ApprovedUsersIndex />
+    </Suspense>
+  );
 }

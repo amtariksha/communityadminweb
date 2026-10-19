@@ -92,8 +92,9 @@ export const classicMenu: MenuNode[] = [
     id: 'units',
     label: 'Units & Users',
     icon: icon(Home),
-    // Classic routes (UNIT-10). Add Users, Approved Users and Broadcast
-    // show today's screens until UNIT-14, UNIT-12 and UNIT-09 rebuild them.
+    // Classic routes (UNIT-10). Add Users and Broadcast show today's
+    // screens until UNIT-14 and UNIT-09 rebuild them. Approved Users is the
+    // master–detail page (UNIT-12); /units stays inside it.
     children: [
       planned('units.unapproved', 'Unapproved Users', 'UNIT-13'),
       {

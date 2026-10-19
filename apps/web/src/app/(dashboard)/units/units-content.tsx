@@ -93,6 +93,7 @@ import { UserSearchSelect } from '@/components/ui/user-search-select';
 import { getUser } from '@/lib/auth';
 import { useAdminLayout } from '@/lib/layout-context';
 import { UnitBlockLinks } from '@/components/block-links';
+import { useOpenUnitParam } from './use-unit-param';
 import type { UserSearchHit } from '@/hooks/use-user-search';
 
 const ITEMS_PER_PAGE = 20;
@@ -725,6 +726,12 @@ export default function UnitsContent(): ReactNode {
     setActiveTab('members');
     setDetailDialogOpen(true);
   }
+
+  // The classic unit panel's "View/Edit Unit details" (UNIT-12).
+  useOpenUnitParam((unit) => {
+    openDetailDialog(unit);
+    setActiveTab('details');
+  });
 
   function handleEditUnit(e: FormEvent): void {
     e.preventDefault();
