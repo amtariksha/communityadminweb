@@ -5,10 +5,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { BandHeading, type BandProps } from './card-parts';
 import { DASHBOARD_ROUTES } from './routes';
 
+// `publishes`: hidden from the roles that only read the operational bands (D11).
 const BUTTONS = [
-  { label: 'Book Facilities', href: DASHBOARD_ROUTES.bookFacilities },
-  { label: 'Create Meeting', href: DASHBOARD_ROUTES.newMeeting },
-  { label: 'Create Announcement', href: DASHBOARD_ROUTES.newAnnouncement },
+  { label: 'Book Facilities', href: DASHBOARD_ROUTES.bookFacilities, publishes: false },
+  { label: 'Create Meeting', href: DASHBOARD_ROUTES.newMeeting, publishes: true },
+  { label: 'Create Announcement', href: DASHBOARD_ROUTES.newAnnouncement, publishes: true },
 ] as const;
 
 // Society Profile opens Settings until its own screen exists (PROF);
@@ -21,7 +22,9 @@ const TILES = [
 ] as const;
 
 export function ManagementBand({ access }: Pick<BandProps, 'access'>): ReactNode {
-  const buttons = BUTTONS.filter((button) => access.canOpen(button.href));
+  const buttons = BUTTONS.filter(
+    (button) => access.canOpen(button.href) && (access.publishes || !button.publishes),
+  );
   const tiles = TILES.filter((tile) => access.canOpen(tile.href));
   if (buttons.length === 0 && tiles.length === 0) return null;
   return (

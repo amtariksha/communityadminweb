@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DashboardSummary } from '@/hooks/use-analytics';
+import { ApiError } from '@/lib/api-error';
 import { ClassicDashboard } from './classic-dashboard';
 
 /**
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   summary: null as unknown,
   status: 'success' as 'pending' | 'error' | 'success',
   refetch: vi.fn(),
+  error: null as unknown,
   features: undefined as string[] | undefined,
   role: 'community_admin',
 }));
@@ -22,6 +24,7 @@ vi.mock('@/hooks', () => ({
     data: mocks.status === 'success' ? mocks.summary : undefined,
     isLoading: mocks.status === 'pending',
     isError: mocks.status === 'error',
+    error: mocks.status === 'error' ? mocks.error : null,
     refetch: mocks.refetch,
   }),
   useEnabledFeatures: () => ({ data: mocks.features }),
@@ -80,6 +83,7 @@ describe('ClassicDashboard', () => {
     mocks.status = 'success';
     mocks.features = undefined;
     mocks.role = 'community_admin';
+    mocks.error = new Error('Network down');
     mocks.refetch.mockClear();
   });
 
@@ -247,6 +251,59 @@ describe('ClassicDashboard', () => {
     expect(screen.getByRole('heading', { name: 'GATE & VISITORS' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Book Facilities' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Vendor Master' })).toBeNull();
+  });
+
+  describe.each(['moderator', 'security_supervisor', 'facility_supervisor'])('for a %s (D11)', (role) => {
+    beforeEach(() => {
+      mocks.role = role;
+      // What the API answers these roles: operational sections, finance left out.
+      mocks.summary = { ...SUMMARY, income: null, expense: null, bank: null, utility: null };
+    });
+
+    it('renders the operational bands with their figures, never "Could not load"', () => {
+      render(<ClassicDashboard />);
+
+      expect(card('Gate & Visitors').textContent).toContain('Visitors today: 17');
+      expect(within(card('HelpDesk Tracker')).getByText(/Open Requests: 4/)).toBeTruthy();
+      expect(screen.getByText('Water tank cleaning on Sunday')).toBeTruthy();
+      expect(screen.queryByText('Could not load')).toBeNull();
+    });
+
+    it('hides the finance band and anything to send or call', () => {
+      render(<ClassicDashboard />);
+
+      expect(screen.queryByRole('heading', { name: 'ACCOUNTING' })).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Income Tracker' })).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Send now' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Create Announcement' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Create Meeting' })).toBeNull();
+    });
+  });
+
+  it('lets a facility supervisor book facilities', () => {
+    mocks.role = 'facility_supervisor';
+    render(<ClassicDashboard />);
+
+    expect(link('Book Facilities').getAttribute('href')).toBe('/amenities?new=1');
+  });
+
+  it('says the dashboard is switched off when the society refused it to the role (403)', () => {
+    mocks.role = 'security_supervisor';
+    mocks.status = 'error';
+    mocks.error = new ApiError(403, {
+      statusCode: 403,
+      message: 'Insufficient permissions',
+      code: 'permission_denied',
+      error: 'Forbidden',
+      request_id: 'test',
+      timestamp: '2026-10-19T00:00:00.000Z',
+    });
+    render(<ClassicDashboard />);
+
+    expect(screen.getByRole('status').textContent).toContain('The dashboard is switched off for your role.');
+    expect(screen.queryByText('Could not load')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'GATE & VISITORS' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
   });
 
   it.each(['community_admin', 'committee_member', 'accountant', 'auditor'])('renders the accounting band for %s', (role) => {

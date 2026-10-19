@@ -15,8 +15,17 @@ const BOOKS_ROLES: ReadonlySet<string> = new Set([
   'auditor',
 ]);
 
+/** Roles that see the operational bands only: no money, and nothing to send or call (D11). */
+const OPERATIONAL_ONLY_ROLES: ReadonlySet<string> = new Set([
+  'moderator',
+  'security_supervisor',
+  'facility_supervisor',
+]);
+
 export interface DashboardAccess {
   readsBooks: boolean;
+  /** May send a notice or call a meeting from the dashboard (the Send-now tiles and create buttons). */
+  publishes: boolean;
   /** Whether a dashboard link may be shown: its feature is on and the role may open it. */
   canOpen: (href: string) => boolean;
 }
@@ -28,6 +37,7 @@ export function buildDashboardAccess(
   const access = { enabledFeatures, roleAllowlist: getSidebarAllowlist(role) };
   return {
     readsBooks: role !== undefined && BOOKS_ROLES.has(role),
+    publishes: role !== undefined && !OPERATIONAL_ONLY_ROLES.has(role),
     canOpen: (href) => canOpenRoute(href, access),
   };
 }

@@ -11,14 +11,6 @@ import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -49,6 +41,7 @@ import {
 import type { RbacPermission } from '@/hooks/use-staff';
 import type { FinancialYear } from '@communityos/shared';
 import { RoleDelegationCard } from './role-delegation-card';
+import { PermissionsGrid, type PermissionCell, type PermissionField } from './permissions-grid';
 import { GatesCard } from './gates-card';
 import { OverstayThresholdField } from './overstay-threshold-field';
 import { AutomatedReportsCard } from './automated-reports-card';
@@ -289,49 +282,14 @@ export default function SettingsContent(): ReactNode {
   // Permission handlers
   // ---------------------------------------------------------------------------
 
-  // Keep this list aligned with DEFAULT_MATRIX in apps/api/src/modules/rbac/rbac.service.ts.
-  // Expand as new modules ship so super/community admins can tune access.
-  const RBAC_RESOURCES = [
-    'finance',
-    'invoices',
-    'receipts',
-    'bank',
-    'purchases',
-    'vendors',
-    'gate',
-    'visitors',
-    'tickets',
-    'amenities',
-    'units',
-    'members',
-    'staff',
-    'announcements',
-    'documents',
-    'utilities',
-    'voting',
-    'compliance',
-    'reports',
-    'analytics',
-    'settings',
-  ];
-  const RBAC_ROLES = [
-    'community_admin',
-    'accountant',
-    'committee_member',
-    'auditor',
-    'security_guard',
-    'owner',
-    'tenant_resident',
-  ];
-
-  function getPermission(role: string, resource: string): { can_read: boolean; can_write: boolean; can_delete: boolean } {
+  function getPermission(role: string, resource: string): PermissionCell {
     const key = `${role}:${resource}`;
     if (permissionChanges[key]) return permissionChanges[key];
     const found = permissions.find((p) => p.role === role && p.resource === resource);
     return found ? { can_read: found.can_read, can_write: found.can_write, can_delete: found.can_delete } : { can_read: false, can_write: false, can_delete: false };
   }
 
-  function handlePermissionChange(role: string, resource: string, field: 'can_read' | 'can_write' | 'can_delete', value: boolean): void {
+  function handlePermissionChange(role: string, resource: string, field: PermissionField, value: boolean): void {
     const key = `${role}:${resource}`;
     const current = getPermission(role, resource);
     setPermissionChanges((prev) => ({
@@ -897,73 +855,7 @@ export default function SettingsContent(): ReactNode {
               ))}
             </div>
           ) : (
-            <>
-            <div className="mb-4 flex items-center gap-6 rounded-lg border bg-muted/50 px-4 py-3 text-sm">
-              <span className="font-medium">Legend:</span>
-              <span className="flex items-center gap-1"><span className="font-bold text-green-500">R</span> = Read (view data)</span>
-              <span className="flex items-center gap-1"><span className="font-bold text-blue-500">W</span> = Write (create &amp; edit)</span>
-              <span className="flex items-center gap-1"><span className="font-bold text-red-500">D</span> = Delete (remove data)</span>
-            </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="sticky left-0 bg-background">Role</TableHead>
-                    {RBAC_RESOURCES.map((resource) => (
-                      <TableHead key={resource} className="text-center capitalize min-w-[100px]">
-                        {resource}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {RBAC_ROLES.map((role) => (
-                    <TableRow key={role}>
-                      <TableCell className="sticky left-0 bg-background font-medium capitalize whitespace-nowrap">
-                        {role.replace(/_/g, ' ')}
-                      </TableCell>
-                      {RBAC_RESOURCES.map((resource) => {
-                        const perms = getPermission(role, resource);
-                        return (
-                          <TableCell key={resource} className="text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <label className="flex flex-col items-center gap-0.5 cursor-pointer" title="Read">
-                                <span className="text-[10px] text-green-500 font-bold">R</span>
-                                <input
-                                  type="checkbox"
-                                  className="rounded border-input"
-                                  checked={perms.can_read}
-                                  onChange={(e) => handlePermissionChange(role, resource, 'can_read', e.target.checked)}
-                                />
-                              </label>
-                              <label className="flex flex-col items-center gap-0.5 cursor-pointer" title="Write">
-                                <span className="text-[10px] text-blue-500 font-bold">W</span>
-                                <input
-                                  type="checkbox"
-                                  className="rounded border-input"
-                                  checked={perms.can_write}
-                                  onChange={(e) => handlePermissionChange(role, resource, 'can_write', e.target.checked)}
-                                />
-                              </label>
-                              <label className="flex flex-col items-center gap-0.5 cursor-pointer" title="Delete">
-                                <span className="text-[10px] text-red-500 font-bold">D</span>
-                                <input
-                                  type="checkbox"
-                                  className="rounded border-input"
-                                  checked={perms.can_delete}
-                                  onChange={(e) => handlePermissionChange(role, resource, 'can_delete', e.target.checked)}
-                                />
-                              </label>
-                            </div>
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            </>
+            <PermissionsGrid getPermission={getPermission} onChange={handlePermissionChange} />
           )}
         </CardContent>
       </Card>

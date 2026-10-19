@@ -26,10 +26,10 @@ const TILES: readonly Tile[] = [
 
 /**
  * Three "send to residents now" tiles. The SMS tile is not drawn until SMS is a
- * real channel (DASH-10).
+ * real channel (DASH-10); none is drawn for a role that sends nothing (D11).
  */
 export function SendNowBand({ access }: Pick<BandProps, 'access'>): ReactNode {
-  const tiles = TILES.filter((tile) => access.canOpen(tile.href));
+  const tiles = access.publishes ? TILES.filter((tile) => access.canOpen(tile.href)) : [];
   if (tiles.length === 0) return null;
   return (
     <section aria-label="Send now" className="space-y-2">

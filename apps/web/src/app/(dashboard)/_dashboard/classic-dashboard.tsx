@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { useDashboardSummary } from '@/hooks';
+import { ApiError } from '@/lib/api-error';
 import { AccountingBand } from './accounting-band';
 import { type SummaryStatus } from './card-parts';
 import { GateBand } from './gate-band';
@@ -16,6 +17,22 @@ function statusOf(query: { isLoading: boolean; isError: boolean }): SummaryStatu
   return query.isLoading ? 'loading' : 'ready';
 }
 
+/** 403: the society's grid switched the dashboard off for this role, or the role never had it. */
+function refusedForRole(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 403;
+}
+
+function DashboardOff(): ReactNode {
+  return (
+    <div role="status" className="space-y-1 rounded-md border p-4 text-sm">
+      <p className="font-medium">The dashboard is switched off for your role.</p>
+      <p className="text-muted-foreground">
+        A community admin can switch it on in Settings › Roles &amp; Permissions. Your screens are in the menu.
+      </p>
+    </div>
+  );
+}
+
 function scrollToTop(): void {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -24,10 +41,12 @@ function scrollToTop(): void {
  * The classic landing page: module cards in bands, with the counts on the
  * buttons. One request supplies every figure; a card is drawn only if its
  * feature is on for the society and the user's role may open its screen.
+ * A role whose dashboard the society switched off sees a notice instead.
  */
 export function ClassicDashboard(): ReactNode {
   const summaryQuery = useDashboardSummary(undefined);
   const access = useDashboardAccess();
+  if (refusedForRole(summaryQuery.error)) return <DashboardOff />;
   const band = { status: statusOf(summaryQuery), summary: summaryQuery.data, access };
 
   return (
