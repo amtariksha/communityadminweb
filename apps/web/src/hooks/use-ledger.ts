@@ -182,12 +182,22 @@ interface SetOpeningBalanceInput {
   balance_type: string;
 }
 
+// GL-05: a row names its account by id, or by code when the page could
+// not match it (the API reports an unknown code and saves nothing).
 interface BulkImportBalancesInput {
   balances: Array<{
-    account_id: string;
+    account_id?: string;
+    account_code?: string;
     amount: number;
     balance_type: string;
   }>;
+}
+
+export interface BulkImportBalancesResult {
+  updated: number;
+  /** Absent from an API older than GL-05. */
+  entries_posted?: number;
+  errors?: Array<{ row: number; code: string }>;
 }
 
 interface CreateFinancialYearInput {
@@ -449,7 +459,7 @@ export function useBulkImportBalances() {
 
   return useMutation({
     mutationFn: function bulkImportBalances(input: BulkImportBalancesInput) {
-      return api.post<{ message: string }>('/ledger/accounts/import-balances', input);
+      return api.post<{ data: BulkImportBalancesResult }>('/ledger/accounts/import-balances', input);
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: ledgerKeys.accounts() });
