@@ -62,6 +62,13 @@ vi.mock('@/hooks', () => ({
   useDeleteMomTask: () => mocks.other,
 }));
 
+// The meeting form previews the next Meet.ID (PROJ-20); Add Task reads the categories (PROJ-21).
+vi.mock('@/hooks/use-meetings', () => ({
+  useNextMeetingNumbers: () => ({ data: undefined }),
+  useCreateStandaloneTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+vi.mock('@/hooks/use-task-categories', () => ({ useTaskCategories: () => ({ data: [] }) }));
+
 vi.mock('@/hooks/use-user-search', () => ({
   useUserSearch: (q: string) => ({
     data:

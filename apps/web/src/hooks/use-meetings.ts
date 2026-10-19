@@ -20,12 +20,25 @@ export interface MeetingItem {
   created_by_name?: string | null;
   total_tasks?: number;
   completed_tasks?: number;
+  /** PROJ-20 — Meet.ID; absent from an API older than it. */
+  meeting_no?: number | null;
+  /** PROJ-23 */
+  duration_minutes?: number | null;
+  notes?: string | null;
+  agenda_items?: string[];
 }
 
 export interface MomTask {
   id: string;
   tenant_id: string;
-  meeting_id: string;
+  /** Null for a task that stands alone (PROJ-21). */
+  meeting_id: string | null;
+  /** PROJ-20 — Task ID. */
+  task_no?: number | null;
+  /** PROJ-21 */
+  category_id?: string | null;
+  category_name?: string | null;
+  closed_remark?: string | null;
   title: string;
   description: string | null;
   assignee_id: string | null;
@@ -47,6 +60,10 @@ export interface CreateMeetingInput {
   agenda?: string | null;
   minutes?: string | null;
   status?: 'scheduled' | 'completed' | 'cancelled';
+  /** PROJ-23 — 60 to 300 in whole hours; the API computes the end time from it. */
+  duration_minutes?: number | null;
+  notes?: string | null;
+  agenda_items?: string[];
 }
 
 export interface UpdateMeetingInput extends Partial<CreateMeetingInput> {}
@@ -57,9 +74,20 @@ export interface CreateMomTaskInput {
   assignee_id?: string | null;
   due_date?: string | null;
   status?: 'pending' | 'in_progress' | 'completed';
+  /** PROJ-21 — an active task category. */
+  category_id?: string | null;
 }
 
-export interface UpdateMomTaskInput extends Partial<CreateMomTaskInput> {}
+export interface UpdateMomTaskInput extends Partial<CreateMomTaskInput> {
+  meeting_id?: string | null;
+  /** PROJ-21 — kept when the task is closed. */
+  closed_remark?: string | null;
+}
+
+/** PROJ-21 — Add Task: the meeting is optional. */
+export interface CreateStandaloneTaskInput extends CreateMomTaskInput {
+  meeting_id?: string | null;
+}
 
 export const meetingKeys = {
   all: ['meetings'] as const,
@@ -211,5 +239,31 @@ export function useDeleteMomTask() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: meetingKeys.all });
     },
+  });
+}
+
+/** PROJ-21 — a task standing alone (or filed under a chosen meeting). */
+export function useCreateStandaloneTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: CreateStandaloneTaskInput) => {
+      const response = await api.post<{ data: MomTask }>('/meetings/tasks', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: meetingKeys.all });
+    },
+  });
+}
+
+/** PROJ-20 — the Meet.ID and Task ID the next meeting and task will get (a preview). */
+export function useNextMeetingNumbers() {
+  return useQuery({
+    queryKey: [...meetingKeys.all, 'next-number'] as const,
+    queryFn: async () => {
+      const response = await api.get<{ data: { meeting_no: number; task_no: number } }>('/meetings/next-number');
+      return response.data;
+    },
+    retry: false,
   });
 }

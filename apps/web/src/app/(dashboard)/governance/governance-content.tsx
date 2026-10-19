@@ -55,6 +55,7 @@ import type { UserSearchHit } from '@/hooks/use-user-search';
 import { formatDate } from '@/lib/utils';
 import { MeetingForm } from './meetings/meeting-form';
 import { MeetingMinutesForm } from './meetings/meeting-minutes-form';
+import { AddTaskDialog } from './tasks/add-task-dialog';
 
 export function GovernanceContent() {
   const { addToast: toast } = useToast();
@@ -81,6 +82,7 @@ export function GovernanceContent() {
   const [minutesMeeting, setMinutesMeeting] = useState<MeetingItem | null>(null);
 
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [taskTargetMeeting, setTaskTargetMeeting] = useState<MeetingItem | null>(null);
 
   const [taskForm, setTaskForm] = useState({
@@ -417,7 +419,12 @@ export function GovernanceContent() {
       {/* Tab 2: MoM Action Tasks */}
       {activeTab === 'tasks' && (
         <div className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* PROJ-21: a task of its own, without a meeting card. */}
+            <Button type="button" size="sm" className="gap-2" onClick={() => setIsAddTaskOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add Task
+            </Button>
             {(['all', 'pending', 'in_progress', 'completed'] as const).map((filter) => (
               <button
                 key={filter}
@@ -546,6 +553,8 @@ export function GovernanceContent() {
           onSaved={() => setMinutesMeeting(null)}
         />
       )}
+
+      {isAddTaskOpen && <AddTaskDialog open onClose={() => setIsAddTaskOpen(false)} />}
 
       {/* Assign MoM Action Task Dialog */}
       <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>

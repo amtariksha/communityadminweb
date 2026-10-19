@@ -16,6 +16,7 @@ vi.mock('@/hooks', () => ({
   useUpdateMeeting: () => ({ mutateAsync: mocks.update, isPending: false }),
 }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: mocks.addToast }) }));
+vi.mock('@/hooks/use-meetings', () => ({ useNextMeetingNumbers: () => ({ data: { meeting_no: 12, task_no: 40 } }) }));
 
 const MEETING: MeetingItem = {
   id: 'm-1',
@@ -46,6 +47,8 @@ describe.each(['dialog', 'page'] as const)('MeetingForm as a %s', (mode) => {
   it('refuses a meeting that ends before it starts', () => {
     render(<MeetingForm mode={mode} open onClose={vi.fn()} onSaved={vi.fn()} />);
     fireEvent.change(screen.getByLabelText('Meeting Title *'), { target: { value: 'Budget review' } });
+    fireEvent.change(screen.getByLabelText('Agenda 1 *'), { target: { value: 'Budget' } });
+    fireEvent.change(screen.getByLabelText('Duration *'), { target: { value: 'custom' } });
     fireEvent.change(screen.getByLabelText('End Time *'), { target: { value: '18:00' } });
     save();
 
@@ -58,6 +61,7 @@ describe.each(['dialog', 'page'] as const)('MeetingForm as a %s', (mode) => {
     render(<MeetingForm mode={mode} open onClose={vi.fn()} onSaved={onSaved} />);
     fireEvent.change(screen.getByLabelText('Meeting Title *'), { target: { value: ' Budget review ' } });
     fireEvent.change(screen.getByLabelText('Meeting Date *'), { target: { value: '2026-11-02' } });
+    fireEvent.change(screen.getByLabelText('Agenda 1 *'), { target: { value: 'Budget' } });
     save();
 
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
@@ -66,12 +70,64 @@ describe.each(['dialog', 'page'] as const)('MeetingForm as a %s', (mode) => {
     );
   });
 
+  it('sends the duration, its end time, the notes and the agenda lines in order (PROJ-23)', async () => {
+    render(<MeetingForm mode={mode} open onClose={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Meeting Title *'), { target: { value: 'Lift AMC' } });
+    fireEvent.change(screen.getByLabelText('Start Time *'), { target: { value: '10:00' } });
+    fireEvent.change(screen.getByLabelText('Duration *'), { target: { value: '120' } });
+    expect(screen.getByText('Ends at 12:00')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'Bring the quotes' } });
+    fireEvent.change(screen.getByLabelText('Agenda 1 *'), { target: { value: 'Quotes' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add More agenda' }));
+    fireEvent.change(screen.getByLabelText('Agenda 2'), { target: { value: 'Vendor' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add More agenda' }));
+    fireEvent.change(screen.getByLabelText('Agenda 3'), { target: { value: 'Decision' } });
+    save();
+
+    await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        start_time: '10:00',
+        end_time: '12:00',
+        duration_minutes: 120,
+        notes: 'Bring the quotes',
+        agenda_items: ['Quotes', 'Vendor', 'Decision'],
+        agenda: 'Quotes\nVendor\nDecision',
+      }),
+    );
+  });
+
+  it('asks for at least one agenda line', () => {
+    render(<MeetingForm mode={mode} open onClose={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Meeting Title *'), { target: { value: 'Budget review' } });
+    save();
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.addToast).toHaveBeenCalledWith(expect.objectContaining({ description: 'Write at least one agenda line.' }));
+  });
+
   it('opens an existing meeting with its times as HH:MM and saves changes', async () => {
     render(<MeetingForm mode={mode} open meeting={MEETING} onClose={vi.fn()} onSaved={vi.fn()} />);
     expect((screen.getByLabelText('Start Time *') as HTMLInputElement).value).toBe('19:00');
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
 
     await waitFor(() => expect(mocks.update).toHaveBeenCalledWith({ id: 'm-1', data: expect.objectContaining({ end_time: '20:30' }) }));
+  });
+});
+
+describe('MeetingForm headings (PROJ-20)', () => {
+  it('shows the next Meet.ID on the create page and the meeting\'s own on edit', () => {
+    const { unmount } = render(<MeetingForm mode="page" onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect(screen.getByText('Create a Meeting — Meet.ID 12')).toBeTruthy();
+    unmount();
+    render(<MeetingForm mode="page" meeting={{ ...MEETING, meeting_no: 7 }} onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect(screen.getByText('Edit Meeting — Meet.ID 7')).toBeTruthy();
+  });
+
+  it('reads an older meeting\'s agenda text as line 1 and its odd length as its own end time', () => {
+    render(<MeetingForm mode="page" meeting={MEETING} onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect((screen.getByLabelText('Agenda 1 *') as HTMLInputElement).value).toBe('Accounts');
+    expect((screen.getByLabelText('Duration *') as HTMLSelectElement).value).toBe('custom');
+    expect((screen.getByLabelText('End Time *') as HTMLInputElement).value).toBe('20:30');
   });
 });
 

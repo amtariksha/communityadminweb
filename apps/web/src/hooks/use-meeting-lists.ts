@@ -31,6 +31,8 @@ export interface TaskListFilters {
   state: MeetingState;
   q?: string;
   assignee_id?: string;
+  /** PROJ-21 */
+  category_id?: string;
   page: number;
   limit: number;
 }

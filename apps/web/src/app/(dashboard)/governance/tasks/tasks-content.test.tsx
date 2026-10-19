@@ -9,7 +9,9 @@ import { TasksContent } from './tasks-content';
  * closed one back.
  */
 
-const mocks = vi.hoisted(() => ({ list: vi.fn(), mutate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ list: vi.fn(), mutate: vi.fn(), categories: vi.fn() }));
+vi.mock('@/hooks/use-task-categories', () => ({ useTaskCategories: () => mocks.categories() }));
+vi.mock('./add-task-dialog', () => ({ AddTaskDialog: (): ReactNode => <div role="dialog">Add Task form</div> }));
 vi.mock('@/hooks', () => ({ useUpdateMomTask: () => ({ mutate: mocks.mutate, isPending: false }) }));
 vi.mock('@/hooks/use-meeting-lists', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/hooks/use-meeting-lists')>()),
@@ -33,11 +35,14 @@ const TASK = {
   assignee_name: 'Ravi Test',
   due_date: '2026-10-30',
   meeting_title: 'October meeting',
+  task_no: 7,
+  category_name: 'Repairs',
 };
 
 describe('TasksContent', () => {
   beforeEach(() => {
     mocks.mutate.mockClear();
+    mocks.categories.mockReturnValue({ data: [{ id: 'c-1', name: 'Repairs', is_active: true }, { id: 'c-2', name: 'Old', is_active: false }] });
     mocks.list.mockReset().mockReturnValue({ isLoading: false, data: { data: [TASK], total: 3, counts: { open: 3, closed: 2 } } });
   });
 
@@ -52,12 +57,38 @@ describe('TasksContent', () => {
     expect(mocks.list).toHaveBeenLastCalledWith(expect.objectContaining({ state: 'closed' }));
   });
 
-  it('Close Task sends status completed for that task', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('Close Task sends status completed for that task, with the remark when one is typed (PROJ-21)', () => {
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('');
     render(<TasksContent />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Close Task' }));
     expect(mocks.mutate).toHaveBeenCalledWith({ taskId: 't-1', data: { status: 'completed' } }, expect.anything());
+
+    prompt.mockReturnValue(' Done by the plumber ');
+    fireEvent.click(screen.getByRole('button', { name: 'Close Task' }));
+    expect(mocks.mutate).toHaveBeenLastCalledWith(
+      { taskId: 't-1', data: { status: 'completed', closed_remark: 'Done by the plumber' } },
+      expect.anything(),
+    );
+
+    prompt.mockReturnValue(null);
+    mocks.mutate.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Close Task' }));
+    expect(mocks.mutate).not.toHaveBeenCalled();
+  });
+
+  it('shows Task ID and Category, filters by category and opens Add Task (PROJ-20, PROJ-21)', () => {
+    render(<TasksContent />);
+
+    const headers = [...screen.getByRole('table').querySelectorAll('thead th')].map((th) => th.textContent);
+    expect(headers.slice(0, 6)).toEqual(['S.No', 'Close Task', 'Task ID', 'Date', 'Category', 'Created By']);
+    expect(screen.getByText('7')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'c-1' } });
+    expect(mocks.list).toHaveBeenLastCalledWith(expect.objectContaining({ category_id: 'c-1', page: 1 }));
+    expect(screen.getByRole('option', { name: 'Old (retired)' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Task' }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
   });
 
   it('Reopen brings a closed task back to open', () => {

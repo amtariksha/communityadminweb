@@ -7,9 +7,9 @@ import type { MomTaskRow } from '@/hooks/use-meeting-lists';
 import { formatDate } from '@/lib/utils';
 
 /**
- * Tasks columns (PROJ-S11 without Task ID, Category and Recurrence, which
- * PROJ-20 / 21 / 46 add): Close Task first, then Date, Created By,
- * Assigned To, Description and Due Date.
+ * Tasks columns (PROJ-S11; Recurrence waits for PROJ-46): Close Task first,
+ * then Task ID (PROJ-20), Date, Category (PROJ-21), Created By, Assigned To,
+ * Description and Due Date.
  */
 export function taskColumns(onClose: ((task: MomTaskRow) => void) | null, busyId: string | null): DataTableColumn<MomTaskRow>[] {
   const closeCell = (task: MomTaskRow): ReactNode => {
@@ -23,7 +23,9 @@ export function taskColumns(onClose: ((task: MomTaskRow) => void) | null, busyId
   };
   return [
     { key: 'close', header: 'Close Task', cell: closeCell, text: () => '' },
+    { key: 'no', header: 'Task ID', cell: (task) => task.task_no ?? '—' },
     { key: 'date', header: 'Date', cell: (task) => formatDate(task.created_at) },
+    { key: 'category', header: 'Category', cell: (task) => task.category_name ?? '—' },
     { key: 'by', header: 'Created By', cell: (task) => task.created_by_name ?? '—' },
     { key: 'assignee', header: 'Assigned To', cell: (task) => task.assignee_name ?? 'Unassigned' },
     {
@@ -35,6 +37,7 @@ export function taskColumns(onClose: ((task: MomTaskRow) => void) | null, busyId
           <p className="font-medium">{task.title}</p>
           {task.description && <p className="line-clamp-1 text-xs text-muted-foreground">{task.description}</p>}
           {task.meeting_title && <p className="text-xs text-muted-foreground">From: {task.meeting_title}</p>}
+          {task.closed_remark && <p className="text-xs text-muted-foreground">Closing remark: {task.closed_remark}</p>}
         </div>
       ),
     },

@@ -16,6 +16,8 @@ const SCOPES: ReadonlyArray<{ value: MeetingSearchScope; label: string }> = [
 ];
 
 const COLUMNS: DataTableColumn<MeetingItem>[] = [
+  // PROJ-20 — the society's running number; blank on an API older than it.
+  { key: 'no', header: 'Meet.ID', cell: (row) => row.meeting_no ?? '—' },
   { key: 'date', header: 'Date', cell: (row) => formatDate(row.meeting_date) },
   { key: 'time', header: 'Time', cell: (row) => `${row.start_time.slice(0, 5)} – ${row.end_time.slice(0, 5)}` },
   { key: 'by', header: 'Initiated by', cell: (row) => row.created_by_name ?? '—' },
