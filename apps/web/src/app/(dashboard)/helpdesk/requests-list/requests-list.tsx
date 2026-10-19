@@ -28,6 +28,7 @@ function listFilters(scope: HelpdeskScope, values: RequestFilterValues, q: strin
     unit_id: values.unit_id || undefined,
     type: values.type === 'personal' || values.type === 'community' ? values.type : undefined,
     subcategory_id: values.subcategory_id || undefined,
+    serviced_by: values.serviced_by || undefined,
   };
 }
 

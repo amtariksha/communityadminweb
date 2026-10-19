@@ -5,12 +5,13 @@ import { NotificationAlertsForm } from './notification-alerts-form';
 import { ALERT_ROWS, parseCommitteeEmails } from './alert-rows';
 
 /**
- * Setup > Notification Alerts: eight email switches, whether owners'
+ * Setup > Notification Alerts: ten email switches, whether owners'
  * emails carry the requester's unit and phone, and the committee list.
  * Pushes are always sent, so only email is switched here.
  */
 
-const ALL_OFF = {
+// What an API before HELP-18 sends: the first eight alerts.
+const FIRST_EIGHT = {
   new_request_owner: false,
   new_request_committee: false,
   escalated_owner: false,
@@ -20,6 +21,8 @@ const ALL_OFF = {
   admin_reply_requester: false,
   completed_requester: false,
 };
+
+const ALL_OFF = { ...FIRST_EIGHT, serviced_by_assigned: false, feedback_owner: false };
 
 function settings(overrides: Partial<HelpdeskSettings> = {}): HelpdeskSettings {
   return {
@@ -52,14 +55,24 @@ const committeeBox = () => screen.getByLabelText('Committee email list') as HTML
 const box = (label: RegExp) => screen.getByRole('checkbox', { name: label }) as HTMLInputElement;
 
 describe('NotificationAlertsForm', () => {
-  it('lists the eight alerts in order, each with an email switch', () => {
+  it('lists the ten alerts in order, each with an email switch', () => {
     renderForm();
 
     const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
-    expect(rows).toHaveLength(8);
+    expect(rows).toHaveLength(10);
+    expect(within(rows[8]).getAllByRole('cell')[1].textContent).toBe('Serviced By assigned → That staff member');
+    expect(within(rows[9]).getAllByRole('cell')[1].textContent).toBe('Feedback received → Driven By');
     expect(within(rows[0]).getAllByRole('cell')[0].textContent).toBe('1');
     expect(within(rows[0]).getAllByRole('cell')[1].textContent).toBe('New request → Category owner (Level 1)');
     expect(within(rows[7]).getAllByRole('cell')[1].textContent).toBe('Job completed or closed → Person who raised it');
+  });
+
+  it('offers an older API only the alerts it knows, and sends only those', () => {
+    const { onSave } = renderForm(settings({ notification_alerts: { ...FIRST_EIGHT } }));
+
+    expect(within(screen.getByRole('table')).getAllByRole('row').slice(1)).toHaveLength(8);
+    save();
+    expect(Object.keys(onSave.mock.calls[0][0].notification_alerts)).toEqual(Object.keys(FIRST_EIGHT));
   });
 
   it('shows the switches the society has saved', () => {

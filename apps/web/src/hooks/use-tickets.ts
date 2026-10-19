@@ -106,6 +106,9 @@ export interface Ticket {
 export interface TicketComment {
   id: string;
   ticket_id: string;
+  // HELP-19
+  attachment_urls?: string[];
+  attachment_names?: string[];
   // Null for system comments (escalation, automatic replies).
   author_id: string | null;
   message: string;
@@ -183,19 +186,27 @@ interface CreateTicketInput {
   attachment_name?: string;
 }
 
-interface UpdateTicketInput {
+export interface UpdateTicketInput {
   id: string;
   status?: string;
   priority?: string;
   assigned_to?: string;
   category_id?: string;
   category?: string;
+  // HELP-16 … HELP-19; null clears.
+  subcategory_id?: string | null;
+  preferred_service_date?: string | null;
+  serviced_by_staff_id?: string | null;
+  linked_asset_id?: string | null;
 }
 
 interface AddCommentInput {
   ticket_id: string;
   message: string;
   is_internal?: boolean;
+  // HELP-19: files on the comment.
+  attachment_urls?: string[];
+  attachment_names?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -415,6 +426,43 @@ export function useConvertToCommunity() {
     },
     onSuccess: function invalidate(_data, id) {
       queryClient.invalidateQueries({ queryKey: ticketKeys.detail(id) });
+      invalidateTicketLists(queryClient);
+    },
+  });
+}
+
+/** A staff member who can be put on a request (GET /helpdesk/staff, HELP-18). */
+export interface ServicedByOption {
+  id: string;
+  name: string;
+  staff_type: string;
+  designation: string | null;
+}
+
+/** The Serviced By picker; an API without HELP-18 answers 404 (no picker then). */
+export function useServicedByOptions(enabled = true) {
+  return useQuery({
+    queryKey: [...ticketKeys.all, 'serviced-by-options'] as const,
+    queryFn: async function fetchServicedByOptions() {
+      const res = await api.get<{ data: ServicedByOption[] }>('/helpdesk/staff');
+      return res.data;
+    },
+    enabled,
+    retry: false,
+    staleTime: 60_000,
+    meta: { suppressToast: true },
+  });
+}
+
+/** Bulk "Assign Serviced By" (HELP-18). */
+export function useBulkAssignServicedBy() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function bulkAssignServicedBy(input: { ticket_ids: string[]; serviced_by_staff_id: string }) {
+      return api.post<{ data: { assigned: number } }>('/tickets/bulk/assign-serviced-by', input);
+    },
+    onSuccess: function invalidate() {
       invalidateTicketLists(queryClient);
     },
   });

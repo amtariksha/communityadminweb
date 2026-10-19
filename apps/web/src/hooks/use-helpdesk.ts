@@ -106,7 +106,9 @@ export type NotificationAlerts = Record<
   | 'admin_reply_requester'
   | 'completed_requester',
   boolean
->;
+> &
+  // Rows 9 and 10 (HELP-18, HELP-20): sent only by a server that knows them.
+  Partial<Record<'serviced_by_assigned' | 'feedback_owner', boolean>>;
 
 /** The society's helpdesk settings (GET /helpdesk/setup, `settings`). */
 export interface HelpdeskSettings {
@@ -253,6 +255,7 @@ export function useSaveEscalationRow() {
   });
 }
 
+// The alerts of the first release (HELP-05), for a server that sends none.
 const NO_ALERTS: NotificationAlerts = {
   new_request_owner: false,
   new_request_committee: false,
@@ -264,11 +267,15 @@ const NO_ALERTS: NotificationAlerts = {
   completed_requester: false,
 };
 
-/** Fills in what a server that predates the alert settings leaves out. */
+/**
+ * Fills in what a server that predates the alert settings leaves out. The
+ * alerts are kept as the server sent them: rows 9 and 10 (HELP-18/20) are
+ * offered only by a server that knows them, which refuses keys it does not.
+ */
 function withAlertDefaults(settings: HelpdeskSettings): HelpdeskSettings {
   return {
     ...settings,
-    notification_alerts: { ...NO_ALERTS, ...settings.notification_alerts },
+    notification_alerts: settings.notification_alerts ? { ...settings.notification_alerts } : { ...NO_ALERTS },
     include_contact_in_alerts: settings.include_contact_in_alerts ?? false,
     committee_emails: settings.committee_emails ?? [],
     auto_reply_outside_hours: settings.auto_reply_outside_hours ?? false,

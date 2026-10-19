@@ -15,6 +15,8 @@ export const ALERT_ROWS: readonly AlertRow[] = [
   { key: 'resident_reply_owner', label: 'Resident replied → Driven By' },
   { key: 'admin_reply_requester', label: 'Admin replied to resident → Person who raised it' },
   { key: 'completed_requester', label: 'Job completed or closed → Person who raised it' },
+  { key: 'serviced_by_assigned', label: 'Serviced By assigned → That staff member' },
+  { key: 'feedback_owner', label: 'Feedback received → Driven By' },
 ];
 
 export const MAX_COMMITTEE_EMAILS = 20;

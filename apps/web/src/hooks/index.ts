@@ -401,6 +401,8 @@ export {
   useBulkCloseTickets,
   useBulkReassignTickets,
   useConvertToCommunity,
+  useServicedByOptions,
+  useBulkAssignServicedBy,
   useTicketFacets,
   useTicketScopeCounts,
   ticketListParams,
@@ -414,6 +416,8 @@ export type {
   TicketFacetOption,
   TicketScopeCounts,
   TicketScopeName,
+  ServicedByOption,
+  UpdateTicketInput,
 } from './use-tickets';
 
 // Tax & Compliance

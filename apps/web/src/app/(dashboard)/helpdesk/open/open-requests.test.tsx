@@ -94,6 +94,10 @@ const FACETS = {
     { value: 's-leak', label: 'Leak', count: 2 },
     { value: null, label: '(No sub-category)', count: 3 },
   ],
+  serviced_by: [
+    { value: null, label: 'Unassigned', count: 4 },
+    { value: 'staff-1', label: 'Test Plumber', count: 1 },
+  ],
 };
 
 function lastFilters(): Record<string, unknown> {
@@ -185,6 +189,19 @@ describe('Open Requests', () => {
     ]);
     fireEvent.change(status, { target: { value: 'in_progress' } });
     expect(lastFilters()).toEqual(expect.objectContaining({ status: 'in_progress' }));
+  });
+
+  it('filters by Serviced By, Unassigned (n) included (HELP-18)', () => {
+    const { container } = render(<RequestsList />);
+    const servicedBy = container.querySelector('select#request-serviced-by') as HTMLSelectElement;
+
+    expect(Array.from(servicedBy.options).map((option) => [option.value, option.textContent])).toEqual([
+      ['', 'All'],
+      ['unassigned', 'Unassigned (4)'],
+      ['staff-1', 'Test Plumber (1)'],
+    ]);
+    fireEvent.change(servicedBy, { target: { value: 'unassigned' } });
+    expect(lastFilters()).toEqual(expect.objectContaining({ serviced_by: 'unassigned' }));
   });
 
   it('filters by sub-category, with counts (HELP-17)', () => {

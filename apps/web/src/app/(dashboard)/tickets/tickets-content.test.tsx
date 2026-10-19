@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TicketsContent from './tickets-content';
@@ -25,6 +25,7 @@ function ticket(id: string, overrides: Record<string, unknown> = {}) {
 }
 
 const mocks = vi.hoisted(() => ({
+  bulkServicedBy: vi.fn().mockResolvedValue({ data: { assigned: 1 } }),
   addToast: vi.fn(),
   useTickets: vi.fn(),
   bulkReassign: vi.fn(),
@@ -51,6 +52,9 @@ vi.mock('@/hooks', () => ({
   useAddTicketComment: () => mocks.mutation(),
   useBulkCloseTickets: () => mocks.mutation(),
   useBulkReassignTickets: () => ({ mutate: mocks.bulkReassign, isPending: false }),
+  // HELP-18: the staff picker of an API that has it.
+  useServicedByOptions: () => ({ isSuccess: true, data: [{ id: 'staff-1', name: 'Test Plumber', staff_type: 'plumber', designation: null }] }),
+  useBulkAssignServicedBy: () => ({ mutateAsync: mocks.bulkServicedBy, isPending: false }),
   useUploadFileToS3: () => mocks.mutation(),
   fetchPresignedDownloadUrl: vi.fn(),
   useHelpdeskKpi: () => ({
@@ -209,6 +213,22 @@ describe('Tickets page — Bulk Reassign', () => {
 
     expect(mocks.bulkReassign).toHaveBeenCalledTimes(1);
     expect(mocks.bulkReassign.mock.calls[0][0]).toEqual({ ticket_ids: ['1'], assigned_to: 'admin-2' });
+  });
+});
+
+describe('Tickets page — Assign Serviced By (HELP-18)', () => {
+  it('puts a staff member on the selected requests', async () => {
+    render(<TicketsContent />);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select ticket TKT-1' }));
+    fireEvent.click(screen.getByRole('button', { name: /Assign Serviced By/ }));
+    const dialog = screen.getByRole('dialog');
+
+    fireEvent.change(within(dialog).getByLabelText('Serviced By'), { target: { value: 'staff-1' } });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Assign' }));
+    });
+
+    expect(mocks.bulkServicedBy).toHaveBeenCalledWith({ ticket_ids: ['1'], serviced_by_staff_id: 'staff-1' });
   });
 });
 

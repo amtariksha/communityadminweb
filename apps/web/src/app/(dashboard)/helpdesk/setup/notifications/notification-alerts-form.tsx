@@ -33,6 +33,8 @@ export function NotificationAlertsForm({
   const [includeContact, setIncludeContact] = useState(settings.include_contact_in_alerts);
   const [committeeText, setCommitteeText] = useState(settings.committee_emails.join('\n'));
   const [committeeError, setCommitteeError] = useState<string | null>(null);
+  // Only the alerts this server knows (rows 9 and 10 came with HELP-18 / HELP-20).
+  const rows = ALERT_ROWS.filter((row) => row.key in settings.notification_alerts);
 
   async function handleSave(): Promise<void> {
     const parsed = parseCommitteeEmails(committeeText);
@@ -62,7 +64,7 @@ export function NotificationAlertsForm({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {ALERT_ROWS.map((row, index) => (
+          {rows.map((row, index) => (
             <TableRow key={row.key}>
               <TableCell>{index + 1}</TableCell>
               <TableCell>{row.label}</TableCell>
@@ -72,7 +74,7 @@ export function NotificationAlertsForm({
                   aria-label={row.label}
                   className="h-4 w-4"
                   disabled={!canEdit}
-                  checked={alerts[row.key]}
+                  checked={alerts[row.key] === true}
                   onChange={(event) => setAlerts((current) => ({ ...current, [row.key]: event.target.checked }))}
                 />
               </TableCell>

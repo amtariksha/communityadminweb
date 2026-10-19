@@ -66,6 +66,7 @@ import { TicketDetailDialog } from './ticket-detail-dialog';
 import { useTicketStatusUpdate } from './use-ticket-status-update';
 import { categoryChoices } from './category-choices';
 import { BulkReassignDialog } from './bulk-reassign-dialog';
+import { BulkServicedBy } from './bulk-serviced-by';
 import { QueueTabs, type QueueTab } from './queue-tabs';
 
 const CREATE_REQUEST_PAGE = '/helpdesk/new';
@@ -462,8 +463,9 @@ export default function TicketsContent(): ReactNode {
                     onClick={() => setBulkReassignOpen(true)}
                   >
                     <UserCheck className="mr-1 h-4 w-4" />
-                    Bulk Reassign
+                    {layout === 'classic' ? 'Assign Driven By' : 'Bulk Reassign'}
                   </Button>
+                  <BulkServicedBy ticketIds={Array.from(selectedIds)} onDone={() => setSelectedIds(new Set())} />
                 </>
               )}
               <p className="text-sm text-muted-foreground">{total} total</p>
