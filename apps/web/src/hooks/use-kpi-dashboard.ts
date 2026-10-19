@@ -52,6 +52,9 @@ export interface KpiBackendData {
   kyc_pending: number | null;
   bookings_today: number | null;
   patrol_rounds_today: number | null;
+  // Checkpoints missed by today's completed rounds (absent from an API
+  // built before GATE-04).
+  patrol_missed_today?: number | null;
   /** Materials below their minimum stock. */
   low_stock_items: number | null;
   member_categories: number | null;

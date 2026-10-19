@@ -64,6 +64,11 @@ function orDash(value: number | string | null | undefined): number | string {
   return value ?? DASH;
 }
 
+/** "Rounds Today", plus the checkpoints today's rounds missed when there are any. */
+function patrolLabel(missed: number | null | undefined): string {
+  return missed ? `Rounds Today · ${missed} missed` : 'Rounds Today';
+}
+
 function moneyOrDash(value: number | null | undefined): string {
   return value == null ? DASH : formatCurrency(value);
 }
@@ -108,7 +113,7 @@ export function KpiDashboardContent(): ReactNode {
     { title: 'Invoices & Dues', finance: true, href: '/invoices', count: moneyOrDash(kpi?.totalOutstanding), label: 'Outstanding', icon: FileText, color: 'text-red-500' },
     { title: 'Collections', finance: true, href: '/receipts', count: moneyOrDash(kpi?.totalCollected), label: 'Collected', icon: Receipt, color: 'text-emerald-500' },
     { title: 'Gate & Visitors', href: '/gate', count: orDash(kpi?.gate?.today_visitors), label: "Today's Visitors", icon: ShieldAlert, color: 'text-cyan-500' },
-    { title: 'Guard Patrol', href: '/patrol', count: orDash(kpi?.patrol_rounds_today), label: 'Rounds Today', icon: Footprints, color: 'text-sky-500' },
+    { title: 'Guard Patrol', href: '/patrol', count: orDash(kpi?.patrol_rounds_today), label: patrolLabel(kpi?.patrol_missed_today), icon: Footprints, color: 'text-sky-500' },
     { title: 'Parking & EV', href: '/parking', count: kpi?.parking ? `${kpi.parking.vacant_slots} Vacant` : DASH, label: 'Parking Lots', icon: Car, color: 'text-emerald-600' },
     { title: 'Amenities', href: '/amenities', count: orDash(kpi?.bookings_today), label: 'Booked Today', icon: CalendarCheck, color: 'text-purple-500' },
     { title: 'KYC Approvals', href: '/setup/kyc', count: orDash(kpi?.kyc_pending), label: 'Pending', icon: UserCheck, color: 'text-amber-500' },
@@ -140,6 +145,7 @@ export function KpiDashboardContent(): ReactNode {
     { metric: 'KYC Awaiting Review', value: kpi?.kyc_pending ?? '' },
     { metric: 'Amenity Bookings Today', value: kpi?.bookings_today ?? '' },
     { metric: 'Patrol Rounds Today', value: kpi?.patrol_rounds_today ?? '' },
+    { metric: 'Patrol Checkpoints Missed Today', value: kpi?.patrol_missed_today ?? '' },
     { metric: 'Low Stock Items', value: kpi?.low_stock_items ?? '' },
     { metric: 'Member Categories', value: kpi?.member_categories ?? '' },
     { metric: 'Journal Entries This Month', value: kpi?.journal_entries_month ?? '' },

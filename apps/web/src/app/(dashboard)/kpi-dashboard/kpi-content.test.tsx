@@ -126,6 +126,24 @@ describe('KPI Command Center', () => {
     expect(hubOf('SOS Alarms').textContent).toContain('0 Live');
   });
 
+  // GATE-04 — the gate tiles read the API's counts, not literal text.
+  it('reads 2 Live with two live SOS alerts', () => {
+    mocks.kpi = { ...FULL_PAYLOAD, sos_live: 2 };
+    render(<KpiDashboardContent />);
+    expect(hubOf('SOS Alarms').textContent).toContain('2 Live');
+  });
+
+  it('shows the checkpoints today\'s patrol rounds missed', () => {
+    mocks.kpi = { ...FULL_PAYLOAD, patrol_rounds_today: 4, patrol_missed_today: 3 };
+    render(<KpiDashboardContent />);
+    expect(hubOf('Guard Patrol').textContent).toContain('4 Rounds Today · 3 missed');
+    cleanup();
+
+    mocks.kpi = { ...FULL_PAYLOAD, patrol_rounds_today: 4, patrol_missed_today: 0 };
+    render(<KpiDashboardContent />);
+    expect(hubOf('Guard Patrol').textContent).not.toContain('missed');
+  });
+
   it('shows a dash on a hub whose count could not be computed', () => {
     mocks.kpi = { ...FULL_PAYLOAD, sos_live: null, kyc_pending: null };
     render(<KpiDashboardContent />);
