@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRef, useState, type ReactNode } from 'react';
 import { Plus, Zap, Calculator, FileText, Upload, Trash2, Camera } from 'lucide-react';
 import { useOcrMeterReading } from '@/hooks/use-ocr';
@@ -311,6 +312,10 @@ function SlabsTab(): ReactNode {
         <div className="flex items-center justify-between">
           <CardTitle>Slab Rates</CardTitle>
           <div className="flex items-center gap-3">
+            {/* UTIL-06: utility invoices' own interest and due days. */}
+            <Link href="/utilities/setup/interest" className="text-sm text-primary hover:underline">
+              Late payment interest — utilities
+            </Link>
             <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
               <option value="">All Types</option>
               {METER_TYPES.map((t) => (

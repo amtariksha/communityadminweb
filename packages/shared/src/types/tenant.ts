@@ -107,6 +107,15 @@ export interface TenantSettings {
   };
   billing_defaulters?: { hide_phone: boolean; hide_email: boolean };
 
+  // UTIL-06 — utility invoices' own interest rate, due days, start and basis
+  // (unset = billing_interest). Written by PUT /utilities/settings/interest.
+  utility_interest?: {
+    rate_pa: number;
+    due_days: number;
+    basis: 'due_date' | 'invoice_date';
+    start_date?: string | null;
+  };
+
   // INC-23 — Setup › GST: whether Post Invoice offers GST on an ad-hoc
   // invoice (unset = on). Read by POST /invoices/adhoc and the form.
   billing_gst?: {
