@@ -53,6 +53,7 @@ import type { Amenity } from '@/hooks/use-amenities';
 import type { FinancialYear } from '@communityos/shared';
 import { RoleDelegationCard } from './role-delegation-card';
 import { GatesCard } from './gates-card';
+import { OverstayThresholdField } from './overstay-threshold-field';
 import { AutomatedReportsCard } from './automated-reports-card';
 import { DuesRemindersCard } from './dues-reminders-card';
 import { InterestCard } from './interest-card';
@@ -943,7 +944,9 @@ export default function SettingsContent(): ReactNode {
         </DialogContent>
       </Dialog>
 
-      <GatesCard />
+      <GatesCard>
+        <OverstayThresholdField />
+      </GatesCard>
 
       {/* ------------------------------------------------------------------- */}
       {/* Amenities Section                                                    */}

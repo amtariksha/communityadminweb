@@ -13,6 +13,11 @@ export interface TenantSettings {
   maintenance_requests?: boolean;
   parking_management?: boolean;
 
+  // GATE-03 — minutes inside before the overstay sweep raises an alert
+  // (unset = 240). Written by PATCH /tenant-settings/gate; keep in sync with
+  // communityos/packages/shared/src/types/tenant.ts.
+  overstay_threshold_minutes?: number;
+
   // Admin-web arrangement for this society: today's layout or the
   // classic menu, density and wording. Absent = standard.
   admin_layout?: 'standard' | 'classic';
