@@ -24,9 +24,12 @@ const TEXT_COLUMNS: TextColumn<ChartAccount>[] = [
   { header: 'Account Name', text: (account) => account.name },
 ];
 
-function tabGroups(groups: readonly AccountGroup[], tab: ChartTab): AccountGroup[] {
+/** The tab's active groups, plus any inactive one an account still sits in (it may stay there). */
+function tabGroups(groups: readonly AccountGroup[], tab: ChartTab, accounts: readonly ChartAccount[]): AccountGroup[] {
+  const used = new Set(accounts.map((account) => account.group_id));
   return groups
-    .filter((group) => group.is_active && tab.groupTypes.includes(group.type))
+    .filter((group) => tab.groupTypes.includes(group.type) && (group.is_active || used.has(group.id)))
+    .map((group) => (group.is_active ? group : { ...group, name: `${group.name} (inactive)` }))
     .sort((a, b) => String(a.code ?? '').localeCompare(String(b.code ?? '')));
 }
 
@@ -96,7 +99,7 @@ export function ChartTabPage({ slug }: { slug: ChartTab['slug'] }): ReactNode {
             // A fresh copy of the saved list resets the grid after Save Changes.
             key={accountsQuery.dataUpdatedAt}
             tab={tab}
-            groups={tabGroups(groupsQuery.data ?? [], tab)}
+            groups={tabGroups(groupsQuery.data ?? [], tab, accounts)}
             accounts={accounts}
             readOnly={!canSave}
             isSaving={saveMutation.isPending}
