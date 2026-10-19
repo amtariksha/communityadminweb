@@ -94,12 +94,12 @@ const HIDDEN_ROLE_SLUGS = new Set([
   'family_member',
 ]);
 
-const ROLE_LABELS: Record<string, string> = {
+// D10: there is no `manager` role, so none is labelled.
+export const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Super Admin',
   community_admin: 'Community Admin',
   committee_member: 'Committee',
   accountant: 'Accountant',
-  manager: 'Manager',
   guard: 'Guard',
   security_guard: 'Guard',
   watchman: 'Watchman',

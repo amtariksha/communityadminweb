@@ -148,7 +148,7 @@ export const SUPERVISOR_SIDEBAR_ALLOWLIST: Record<string, Set<string>> = {
     'Amenities',
     'Tickets',
     'Announcements',
-    'Assets',
+    // No 'Assets': no asset route admits a facility supervisor (ASSET-04).
     'Documents',
     'Gate',
     'Approvals',
