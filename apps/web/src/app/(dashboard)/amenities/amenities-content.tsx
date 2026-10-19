@@ -58,16 +58,21 @@ import { NewBookingDialog } from './new-booking-dialog';
 // Constants
 // ---------------------------------------------------------------------------
 
-const AMENITY_TYPES = [
+// Every type the table accepts (migration 026). Badminton Court and Other
+// were missing, so an amenity of either type opened in Edit with no type
+// selected.
+export const AMENITY_TYPES = [
   'clubhouse',
   'party_hall',
   'guest_room',
   'gym',
   'pool',
   'tennis_court',
+  'badminton_court',
   'community_hall',
   'terrace',
   'ev_charger',
+  'other',
 ] as const;
 
 const PRICING_TYPES = ['free', 'hourly', 'per_slot', 'per_day'] as const;

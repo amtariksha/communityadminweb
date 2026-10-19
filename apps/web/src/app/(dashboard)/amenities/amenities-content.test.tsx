@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import AmenitiesContent from './amenities-content';
+import AmenitiesContent, { AMENITY_TYPES } from './amenities-content';
 
 /**
  * DASH-07 — `/amenities?new=1` opens the New Booking form (Book Facilities) on load.
@@ -167,5 +167,14 @@ describe('AmenitiesContent — AMEN-03 controls', () => {
 
     expect(hooks.exportColumns.map((c) => c.key)).toContain('price_per_unit');
     expect(hooks.exportColumns.map((c) => c.key)).not.toContain('rate');
+  });
+});
+
+describe('AMENITY_TYPES', () => {
+  it('lists every type the table accepts, Badminton Court and Other included', () => {
+    expect([...AMENITY_TYPES].sort()).toEqual([
+      'badminton_court', 'clubhouse', 'community_hall', 'ev_charger', 'guest_room', 'gym',
+      'other', 'party_hall', 'pool', 'tennis_court', 'terrace',
+    ]);
   });
 });
