@@ -55,7 +55,6 @@ import {
   useTenant,
   useCreateTenant,
   useUpdateTenant,
-  useTenantSettings,
   useUpdateFeatures,
   useUploadFileToS3,
 } from '@/hooks';
@@ -65,7 +64,7 @@ import UserManagement from './user-management';
 import AddMemberDialog from './add-member-dialog';
 import TenantMembers from './tenant-members';
 import PlatformSettings from './platform-settings';
-import { ABSTRACT_FEATURES, MODULE_FEATURES } from '@/lib/feature-catalogue';
+import { MODULE_FEATURES } from '@/lib/feature-catalogue';
 
 // API response may include computed fields beyond the base Tenant type
 interface TenantRow {
@@ -95,11 +94,10 @@ const ITEMS_PER_PAGE = 20;
 //
 // Source of truth: lib/feature-catalogue.ts. Both arrays below map onto
 // `tenants.settings_json` boolean keys via PATCH /tenants/:id/features.
-// MODULE_FEATURES mirrors the sidebar nav (one entry per gated page);
-// ABSTRACT_FEATURES are legacy capability flags kept for compatibility
-// with tenants that already have those keys set.
+// MODULE_FEATURES mirrors the sidebar nav (one entry per gated page).
+// The legacy capability flags (ev_module, ai_accounting, …) were removed
+// from the tenant dialog: nothing read them (SB-15).
 
-const allFeatureKeys = ABSTRACT_FEATURES;
 const allModuleFeatures = MODULE_FEATURES;
 
 // ---------------------------------------------------------------------------
@@ -173,7 +171,6 @@ export default function SuperAdminContent(): ReactNode {
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [editPricePerUnit, setEditPricePerUnit] = useState('');
   const [editPlan, setEditPlan] = useState('');
-  const [editFeatures, setEditFeatures] = useState<Record<string, boolean>>({});
 
   // Society Information (super-admin-only edit — tenant admins see read-only
   // fields on /settings; this is the only place to change them)
@@ -206,7 +203,6 @@ export default function SuperAdminContent(): ReactNode {
   // Mutations
   const createTenant = useCreateTenant();
   const updateTenant = useUpdateTenant();
-  const updateSettings = useTenantSettings();
   const updateFeatures = useUpdateFeatures();
   const uploadLogo = useUploadFileToS3();
 
@@ -227,10 +223,6 @@ export default function SuperAdminContent(): ReactNode {
   if (tenantDetail && editDialogOpen && editPlan === '' && selectedTenantId === tenantDetail.id) {
     setEditPlan(tenantDetail.subscription_plan ?? '');
     setEditPricePerUnit(String(tenantDetail.price_per_unit ?? ''));
-    const settingsJson = tenantDetail.settings_json as Record<string, boolean> | undefined;
-    if (settingsJson) {
-      setEditFeatures(settingsJson);
-    }
     setEditSocietyName(tenantDetail.name ?? '');
     setEditSocietyAddress(
       (tenantDetail as unknown as { address?: string | null }).address ?? '',
@@ -421,26 +413,11 @@ export default function SuperAdminContent(): ReactNode {
     );
   }
 
-  function handleSaveFeatures(): void {
-    updateSettings.mutate(
-      { tenant_id: selectedTenantId, settings: editFeatures as Record<string, boolean> },
-      {
-        onSuccess() {
-          addToast({ title: 'Features updated', variant: 'success' });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to update features', description: error.message, variant: 'destructive' });
-        },
-      },
-    );
-  }
-
   function handleCloseEditDialog(): void {
     setEditDialogOpen(false);
     setSelectedTenantId('');
     setEditPlan('');
     setEditPricePerUnit('');
-    setEditFeatures({});
     setEditSocietyName('');
     setEditSocietyAddress('');
     setEditSocietyCity('');
@@ -1079,34 +1056,6 @@ export default function SuperAdminContent(): ReactNode {
                   </Button>
                 </div>
               </form>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Features</h3>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleSaveFeatures}
-                    disabled={updateSettings.isPending}
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    {updateSettings.isPending ? 'Saving...' : 'Save Features'}
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {allFeatureKeys.map((feature) => (
-                    <div key={feature.key} className="flex items-center justify-between rounded-md border px-3 py-2">
-                      <span className="text-sm">{feature.label}</span>
-                      <input
-                        type="checkbox"
-                        checked={editFeatures[feature.key] ?? false}
-                        onChange={(e) => setEditFeatures({ ...editFeatures, [feature.key]: e.target.checked })}
-                        className="rounded border-input"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
 
               <Separator />
 

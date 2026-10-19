@@ -55,8 +55,9 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
  *      Backend enforcement lives in
  *      NotificationService.sendCustomNotification (silent demote to
  *      'normal' + warn log).
- *   2. Default quiet hours for new residents — applied on user create;
- *      existing residents keep their personal override.
+ *   2. Default quiet hours — used for every resident who has not set
+ *      quiet hours of their own (NotificationService.quietHoursFor, read
+ *      at send time); a resident's own setting, even "none", wins.
  *
  * The save path uses the existing `useTenantSettings` mutation so the
  * optimistic-lock + jsonb deep-merge plumbing the rest of the
@@ -264,12 +265,12 @@ export function NotificationPolicyCard(): ReactNode {
                   checked={quietHoursEnabled}
                   onChange={(e) => setQuietHoursEnabled(e.target.checked)}
                 />
-                <span>Seed default quiet hours for new residents</span>
+                <span>Default quiet hours for residents</span>
               </Label>
               <p className="text-xs text-muted-foreground">
-                Applied to a resident's notification preferences when their
-                user account is first created. Existing residents keep
-                their personal settings.
+                Non-urgent notifications to a resident who has not set quiet
+                hours of their own wait until the end of this window. A
+                resident&apos;s own setting always wins.
               </p>
               {quietHoursEnabled && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

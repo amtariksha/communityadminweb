@@ -61,26 +61,28 @@ const FACILITY_GROUPS: ToggleGroup[] = [
   },
 ];
 
+// What each mode does today (auth.service getTenantRoles, SB-15). No mode
+// writes an audit entry when a role expires yet, so the pairs behave alike.
 const ENFORCEMENT_OPTIONS: { value: ExpiryEnforcement; label: string; desc: string }[] = [
   {
     value: 'hybrid',
     label: 'Hybrid (recommended)',
-    desc: 'Expired roles lose access and an audit-log entry is written on expiry.',
+    desc: 'Expired roles lose access.',
   },
   {
     value: 'filter_only',
     label: 'Filter only',
-    desc: 'Expired roles lose access. No audit entry on expiry (quiet).',
+    desc: 'Expired roles lose access (same as Hybrid).',
   },
   {
     value: 'log_only',
-    label: 'Log only (advisory)',
-    desc: 'Audit entry on expiry, but the role continues to work. Useful while transitioning policies.',
+    label: 'Log only',
+    desc: 'Expired roles keep working (same as Disabled).',
   },
   {
     value: 'disabled',
     label: 'Disabled',
-    desc: 'Ignore expires_at / lease_end_date entirely. Only records the date.',
+    desc: 'Expired roles keep working; the end date is only recorded.',
   },
 ];
 

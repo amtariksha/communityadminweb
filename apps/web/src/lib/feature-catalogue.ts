@@ -6,13 +6,9 @@
  * super-admin and community-admin toggle UIs cannot drift away from
  * the actual nav.
  *
- * Two groups:
- *   - MODULE_FEATURES — one entry per sidebar nav item. Toggling these
- *     hides / shows that page for the tenant.
- *   - ABSTRACT_FEATURES — legacy/beta capability flags that don't map
- *     to a single nav item (e.g. AI Accounting, Digital Voting). Kept
- *     for backward compatibility with tenants that already have these
- *     keys set in `tenants.settings_json`.
+ * MODULE_FEATURES — one entry per sidebar nav item. The platform
+ * administrator switches them per society (`tenants.enabled_features`);
+ * the menus hide what is off.
  *
  * Every UI surface that renders feature toggles imports from here.
  * Don't fork this list.
@@ -52,45 +48,10 @@ export const MODULE_FEATURES: FeatureToggle[] = [
   { key: 'documents', label: 'Documents', description: 'Document vault — bylaws, NOCs, ID proofs.' },
 ];
 
-export const ABSTRACT_FEATURES: FeatureToggle[] = [
-  {
-    key: 'ev_module',
-    label: 'EV Charging',
-    description: 'Electric vehicle charging slot allocation (legacy flag).',
-  },
-  {
-    key: 'digital_voting',
-    label: 'Digital Voting',
-    description: 'Online voting flag — overlaps the Voting module toggle.',
-  },
-  {
-    key: 'ai_accounting',
-    label: 'AI Accounting',
-    description: 'AI-powered accounting suggestions (preview).',
-  },
-  {
-    key: 'visitor_management',
-    label: 'Visitor Management',
-    description: 'Coarser legacy flag — overlaps the Gate module toggle.',
-  },
-  {
-    key: 'maintenance_requests',
-    label: 'Maintenance Requests',
-    description: 'Coarser legacy flag — overlaps the Tickets module toggle.',
-  },
-  {
-    key: 'parking_management',
-    label: 'Parking Management',
-    description: 'Coarser legacy flag — overlaps the Parking module toggle.',
-  },
-];
-
-export const ALL_FEATURES: FeatureToggle[] = [...MODULE_FEATURES, ...ABSTRACT_FEATURES];
-
 /**
- * Set of every recognised feature key — useful for validating
- * `tenants.settings_json` keys at API boundaries.
+ * Every recognised feature key: the modules of `tenants.enabled_features`.
+ * The legacy capability flags (ev_module, digital_voting, ai_accounting,
+ * visitor_management, maintenance_requests, parking_management) are gone:
+ * nothing read them, so their switches changed nothing (SB-15).
  */
-export const FEATURE_KEYS: ReadonlySet<string> = new Set(
-  ALL_FEATURES.map((f) => f.key),
-);
+export const FEATURE_KEYS: ReadonlySet<string> = new Set(MODULE_FEATURES.map((f) => f.key));

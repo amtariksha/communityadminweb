@@ -38,19 +38,9 @@ import { HelpContactCard } from './help-contact-card';
 import { AdminLayoutCard } from './admin-layout-card';
 import { OwnerDirectOnboardCard } from './owner-direct-onboard-card';
 import { FinancialYearsCard } from './financial-years-card';
-import { ALL_FEATURES } from '@/lib/feature-catalogue';
+import { ModulesCard } from './modules-card';
+import { useEnforcedPermissions } from '@/hooks/use-enforced-permissions';
 
-// ---------------------------------------------------------------------------
-// Feature toggle definitions
-// ---------------------------------------------------------------------------
-//
-// Source of truth: lib/feature-catalogue.ts. The community-admin toggle
-// list mirrors the super-admin one — every page the sidebar gates plus
-// the legacy abstract flags. Previously this file had only 6 abstract
-// toggles, so admins couldn't enable Tickets / Voting / Amenities / Gas
-// / CCTV / Assets / Documents from the per-society Settings page.
-
-const featureToggles = ALL_FEATURES;
 
 // ---------------------------------------------------------------------------
 // Main page
@@ -75,9 +65,6 @@ export default function SettingsContent(): ReactNode {
   const [societyCity, setSocietyCity] = useState('');
   const [societyState, setSocietyState] = useState('');
 
-  // Feature toggles
-  const [features, setFeatures] = useState<Record<string, boolean>>({});
-
   // Purchase Request approval config (stored inside tenant.settings_json)
   const [prApprovalLevels, setPrApprovalLevels] = useState<number>(1);
   const [prApprovalRoles, setPrApprovalRoles] = useState<string>('community_admin');
@@ -91,6 +78,7 @@ export default function SettingsContent(): ReactNode {
   const permissions: RbacPermission[] = permissionsQuery.data ?? [];
   const updatePermissionM = useUpdatePermission();
   const seedPermissions = useSeedPermissions();
+  const enforcedQuery = useEnforcedPermissions();
 
   const tenant = tenantQuery.data;
 
@@ -104,7 +92,6 @@ export default function SettingsContent(): ReactNode {
 
       const settingsJson = tenant.settings_json as Record<string, unknown> | undefined;
       if (settingsJson) {
-        setFeatures(settingsJson as Record<string, boolean>);
         if (typeof settingsJson.pr_approval_levels === 'number') {
           setPrApprovalLevels(settingsJson.pr_approval_levels);
         }
@@ -149,48 +136,6 @@ export default function SettingsContent(): ReactNode {
   // Billing rule handlers
   // ---------------------------------------------------------------------------
 
-  // ---------------------------------------------------------------------------
-  // Feature toggle handlers
-  // ---------------------------------------------------------------------------
-
-  function handleToggleFeature(key: string, enabled: boolean): void {
-    const updatedFeatures = { ...features, [key]: enabled };
-    setFeatures(updatedFeatures);
-  }
-
-  function handleSaveFeatures(): void {
-    // QA #28 — echo back the row_version we read with the tenant so the
-    // backend can 409 if another admin wrote between our read and write.
-    const expectedVersion = tenantQuery.data?.row_version;
-    updateSettings.mutate(
-      {
-        tenant_id: currentTenantId,
-        settings: features as Record<string, boolean>,
-        expected_row_version: expectedVersion,
-      },
-      {
-        onSuccess() {
-          addToast({ title: 'Feature settings saved', variant: 'success' });
-        },
-        onError(error) {
-          // Detect stale-row 409s so the user knows to refresh rather
-          // than wondering why their click failed.
-          const msg = error.message ?? '';
-          const isConflict =
-            msg.toLowerCase().includes('modified by another user') ||
-            msg.toLowerCase().includes('conflict');
-          addToast({
-            title: isConflict ? 'Settings were just changed by someone else' : 'Failed to save settings',
-            description: isConflict
-              ? 'Reload the page to see the latest values, then try again.'
-              : msg,
-            variant: 'destructive',
-          });
-        },
-      },
-    );
-  }
-
   function handleSavePrApproval(): void {
     const roles = prApprovalRoles
       .split(',')
@@ -199,9 +144,9 @@ export default function SettingsContent(): ReactNode {
     const threshold = Number(prApprovalThreshold) || 0;
     const levels = Math.max(0, Math.min(5, Math.floor(prApprovalLevels)));
 
-    // Merge into existing settings (don't clobber feature toggles)
+    // Only this card's keys: settings_json merges top-level keys, so the
+    // rest of the society's settings stay as they are.
     const merged = {
-      ...(features as Record<string, unknown>),
       pr_approval_levels: levels,
       pr_approval_roles: roles,
       pr_approval_threshold: threshold,
@@ -489,44 +434,9 @@ export default function SettingsContent(): ReactNode {
       <BillingRulesCard />
 
       {/* ------------------------------------------------------------------- */}
-      {/* Feature Toggles Section                                              */}
+      {/* Modules — read-only; the platform admin switches them (SB-15)       */}
       {/* ------------------------------------------------------------------- */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Feature Toggles</CardTitle>
-            <Button
-              size="sm"
-              onClick={handleSaveFeatures}
-              disabled={updateSettings.isPending}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {updateSettings.isPending ? 'Saving...' : 'Save Features'}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {featureToggles.map((toggle) => (
-              <div key={toggle.key} className="flex items-center justify-between rounded-md border p-4">
-                <div>
-                  <p className="text-sm font-medium">{toggle.label}</p>
-                  <p className="text-xs text-muted-foreground">{toggle.description}</p>
-                </div>
-                <label className="relative inline-flex cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    className="peer sr-only"
-                    checked={features[toggle.key] ?? false}
-                    onChange={(e) => handleToggleFeature(toggle.key, e.target.checked)}
-                  />
-                  <div className="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-ring after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:after:translate-x-full" />
-                </label>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <ModulesCard />
 
       <FinancialYearsCard />
 
@@ -597,7 +507,12 @@ export default function SettingsContent(): ReactNode {
               ))}
             </div>
           ) : (
-            <PermissionsGrid getPermission={getPermission} onChange={handlePermissionChange} />
+            <PermissionsGrid
+              getPermission={getPermission}
+              onChange={handlePermissionChange}
+              // Cells no API route checks are greyed out (SB-15).
+              enforced={enforcedQuery.data}
+            />
           )}
         </CardContent>
       </Card>

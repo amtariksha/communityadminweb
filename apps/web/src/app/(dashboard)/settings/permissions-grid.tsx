@@ -2,6 +2,8 @@
 
 import type { ReactNode } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import type { EnforcedResource } from '@/hooks/use-enforced-permissions';
+import { isEnforced, NOT_ENFORCED_TITLE } from './permission-cells';
 
 export interface PermissionCell {
   can_read: boolean;
@@ -77,9 +79,14 @@ const BOX: Record<PermissionField, { letter: string; title: string; tone: string
 interface PermissionsGridProps {
   getPermission: (role: string, resource: string) => PermissionCell;
   onChange: (role: string, resource: string, field: PermissionField, value: boolean) => void;
+  /**
+   * The cells some API route checks (SB-15); the rest are greyed out, since
+   * ticking them changes nothing. Unknown (older API) = every cell is live.
+   */
+  enforced?: readonly EnforcedResource[];
 }
 
-function GridCell({ role, resource, getPermission, onChange }: PermissionsGridProps & { role: string; resource: string }): ReactNode {
+function GridCell({ role, resource, getPermission, onChange, enforced }: PermissionsGridProps & { role: string; resource: string }): ReactNode {
   const fields = cellFields(role, resource);
   if (fields.length === 0) {
     return (
@@ -91,18 +98,28 @@ function GridCell({ role, resource, getPermission, onChange }: PermissionsGridPr
   const perms = getPermission(role, resource);
   return (
     <div className="flex items-center justify-center gap-2">
-      {fields.map((field) => (
-        <label key={field} className="flex cursor-pointer flex-col items-center gap-0.5" title={BOX[field].title}>
-          <span className={`text-[10px] font-bold ${BOX[field].tone}`}>{BOX[field].letter}</span>
-          <input
-            type="checkbox"
-            aria-label={`${role} ${resource} ${BOX[field].title}`}
-            className="rounded border-input"
-            checked={perms[field]}
-            onChange={(e) => onChange(role, resource, field, e.target.checked)}
-          />
-        </label>
-      ))}
+      {fields.map((field) => {
+        const live = isEnforced(enforced, resource, field);
+        return (
+          <label
+            key={field}
+            className="flex cursor-pointer flex-col items-center gap-0.5"
+            title={live ? BOX[field].title : NOT_ENFORCED_TITLE}
+          >
+            <span className={`text-[10px] font-bold ${live ? BOX[field].tone : 'text-muted-foreground'}`}>
+              {BOX[field].letter}
+            </span>
+            <input
+              type="checkbox"
+              aria-label={`${role} ${resource} ${BOX[field].title}`}
+              className="rounded border-input"
+              checked={perms[field]}
+              disabled={!live}
+              onChange={(e) => onChange(role, resource, field, e.target.checked)}
+            />
+          </label>
+        );
+      })}
     </div>
   );
 }
@@ -116,6 +133,9 @@ export function PermissionsGrid(props: PermissionsGridProps): ReactNode {
         <span className="flex items-center gap-1"><span className="font-bold text-green-500">R</span> = Read (view data)</span>
         <span className="flex items-center gap-1"><span className="font-bold text-blue-500">W</span> = Write (create &amp; edit)</span>
         <span className="flex items-center gap-1"><span className="font-bold text-red-500">D</span> = Delete (remove data)</span>
+        {props.enforced && (
+          <span className="text-muted-foreground">Greyed out: no screen checks it yet, so it changes nothing.</span>
+        )}
       </div>
       <div className="overflow-x-auto">
         <Table>

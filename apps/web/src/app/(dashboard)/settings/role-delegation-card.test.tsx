@@ -74,6 +74,19 @@ describe('RoleDelegationCard', () => {
     expect(screen.getByText('Role expiry enforcement')).toBeTruthy();
   });
 
+  it('describes each expiry choice by what it does, promising no audit entry (SB-15)', () => {
+    render(<RoleDelegationCard />);
+
+    const options = Array.from(document.querySelectorAll('option')).map((option) => option.textContent ?? '');
+    expect(options).toEqual([
+      'Hybrid (recommended) — Expired roles lose access.',
+      'Filter only — Expired roles lose access (same as Hybrid).',
+      'Log only — Expired roles keep working (same as Disabled).',
+      'Disabled — Expired roles keep working; the end date is only recorded.',
+    ]);
+    expect(options.join(' ')).not.toMatch(/audit/i);
+  });
+
   it('saves only the switch that was flipped', () => {
     render(<RoleDelegationCard />);
 
