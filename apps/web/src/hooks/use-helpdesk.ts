@@ -56,6 +56,10 @@ export interface EscalationRow {
   default_priority: string | null;
   /** The team whose supervisors work on this category's requests. */
   handled_by: 'security' | 'facility' | 'office';
+  /** HELP-10 — SMS to each level's owner; absent on older servers. */
+  owner_l1_sms?: boolean;
+  owner_l2_sms?: boolean;
+  owner_l3_sms?: boolean;
 }
 
 /** What the row editor saves; a blank window or owner is sent as null. */
@@ -68,6 +72,10 @@ export interface EscalationRowInput {
   sla_hours: number;
   default_priority: string;
   handled_by: 'security' | 'facility' | 'office';
+  // HELP-10 — sent only where the server has the columns.
+  owner_l1_sms?: boolean;
+  owner_l2_sms?: boolean;
+  owner_l3_sms?: boolean;
 }
 
 /** The email alerts of Setup > Notification Alerts; each is on or off. */

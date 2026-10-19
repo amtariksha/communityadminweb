@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { currentRole } from '@/lib/current-role';
-import { useEscalationMatrix, useHelpdeskAssignees, useSaveEscalationRow } from '@/hooks';
+import { useEscalationMatrix, useHelpdeskAssignees, useNotificationChannels, useSaveEscalationRow } from '@/hooks';
 import type { EscalationRow, EscalationRowInput } from '@/hooks';
 import { EXPORT_COLUMNS, EscalationMatrix, toExportRows } from './escalation-matrix';
 import { EscalationRowEditor } from './escalation-row-editor';
@@ -21,6 +21,7 @@ const SAVE_ROLES = new Set(['super_admin', 'community_admin']);
 export default function EscalationContent(): ReactNode {
   const { addToast } = useToast();
   const matrixQuery = useEscalationMatrix();
+  const channels = useNotificationChannels();
   const assigneesQuery = useHelpdeskAssignees();
   const saveMutation = useSaveEscalationRow();
   const [viewing, setViewing] = useState<EscalationRow | null>(null);
@@ -82,6 +83,7 @@ export default function EscalationContent(): ReactNode {
         </CardContent>
       </Card>
       <EscalationRowEditor
+        smsAvailable={channels.data?.sms ?? false}
         row={viewing}
         owners={assigneesQuery.data ?? []}
         canEdit={canEdit}

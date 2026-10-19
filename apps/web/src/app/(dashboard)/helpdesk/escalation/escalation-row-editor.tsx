@@ -32,6 +32,9 @@ export interface EscalationDraft {
   slaHours: string;
   defaultPriority: string;
   handledBy: string;
+  smsL1: boolean;
+  smsL2: boolean;
+  smsL3: boolean;
 }
 
 export type EscalationDraftErrors = Partial<Record<keyof EscalationDraft, string>>;
@@ -79,6 +82,9 @@ function draftFrom(row: EscalationRow): EscalationDraft {
     slaHours: (row.sla_hours ?? 24).toString(),
     defaultPriority: row.default_priority ?? 'medium',
     handledBy: row.handled_by ?? 'facility',
+    smsL1: row.owner_l1_sms ?? false,
+    smsL2: row.owner_l2_sms ?? false,
+    smsL3: row.owner_l3_sms ?? false,
   };
 }
 
@@ -93,6 +99,9 @@ function toInput(draft: EscalationDraft): EscalationRowInput {
     sla_hours: Number(draft.slaHours),
     default_priority: draft.defaultPriority,
     handled_by: draft.handledBy as EscalationRowInput['handled_by'],
+    owner_l1_sms: draft.smsL1,
+    owner_l2_sms: draft.smsL2,
+    owner_l3_sms: draft.smsL3,
   };
 }
 
@@ -102,8 +111,34 @@ interface EscalationRowEditorProps {
   owners: readonly HelpdeskAssignee[];
   canEdit: boolean;
   isSaving: boolean;
+  /** HELP-10 — SMS is set up on the server (GET /notifications/channels). */
+  smsAvailable?: boolean;
   onSave: (categoryId: string, body: EscalationRowInput) => Promise<void>;
   onClose: () => void;
+}
+
+/** HELP-10 — the three SMS ticks, one per level's owner. */
+function SmsTicks(props: { draft: EscalationDraft; disabled: boolean; smsAvailable: boolean; set: (patch: Partial<EscalationDraft>) => void }): ReactNode {
+  const ticks = [
+    { key: 'smsL1' as const, label: 'Owner L1 SMS' },
+    { key: 'smsL2' as const, label: 'Owner L2 SMS' },
+    { key: 'smsL3' as const, label: 'Owner L3 SMS' },
+  ];
+  return (
+    <fieldset className="space-y-1 sm:col-span-2">
+      <legend className="text-sm font-medium">SMS to the owner</legend>
+      <div className="flex flex-wrap gap-4">
+        {ticks.map((tick) => (
+          <label key={tick.key} className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={props.draft[tick.key]} disabled={props.disabled || !props.smsAvailable}
+              onChange={(event) => props.set({ [tick.key]: event.target.checked })} />
+            {tick.label}
+          </label>
+        ))}
+      </div>
+      {!props.smsAvailable && <p className="text-xs text-muted-foreground">SMS is not set up.</p>}
+    </fieldset>
+  );
 }
 
 export function EscalationRowEditor(props: EscalationRowEditorProps): ReactNode {
@@ -175,6 +210,7 @@ function EditorForm({
   owners,
   canEdit,
   isSaving,
+  smsAvailable = false,
   onSave,
   onClose,
 }: EscalationRowEditorProps & { row: EscalationRow }): ReactNode {
@@ -228,6 +264,7 @@ function EditorForm({
           </select>
           <p className="text-xs text-muted-foreground">Supervisors of this team can work on its requests.</p>
         </div>
+        <SmsTicks draft={draft} disabled={readOnly} smsAvailable={smsAvailable} set={set} />
         <div className="space-y-1">
           <Label htmlFor="Default priority">Default priority</Label>
           <select

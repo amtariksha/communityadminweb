@@ -16,10 +16,12 @@ const mocks = vi.hoisted(() => ({
   role: 'community_admin' as string | null,
   rows: [] as EscalationRow[],
   save: vi.fn(),
+  sms: false,
 }));
 
 vi.mock('@/hooks', () => ({
   useEscalationMatrix: () => ({ data: mocks.rows, isLoading: false, isError: false }),
+  useNotificationChannels: () => ({ data: { email: true, sms: mocks.sms, sms_essential: false, sms_message_max: 120 } }),
   useHelpdeskAssignees: () => ({
     data: [
       { user_id: 'u1', name: 'Test Admin One', roles: ['community_admin'] },
@@ -98,11 +100,11 @@ describe('Escalation matrix', () => {
     render(<EscalationContent />);
 
     expect(tableRows()).toHaveLength(3);
-    expect(cells(tableRows()[0]).slice(0, 7)).toEqual([
-      '1', 'Plumbing', 'Test Admin One', '4 hrs', 'Test Admin Two', '2 hrs', 'Test Admin Three',
+    expect(cells(tableRows()[0]).slice(0, 10)).toEqual([
+      '1', 'Plumbing', 'Test Admin One', 'No', '4 hrs', 'Test Admin Two', 'No', '2 hrs', 'Test Admin Three', 'No',
     ]);
-    expect(cells(tableRows()[1]).slice(0, 7)).toEqual([
-      '2', 'Electrical', 'Test Admin One', '—', '—', '—', '—',
+    expect(cells(tableRows()[1]).slice(0, 10)).toEqual([
+      '2', 'Electrical', 'Test Admin One', 'No', '—', '—', 'No', '—', '—', 'No',
     ]);
   });
 
@@ -143,7 +145,7 @@ describe('Escalation matrix', () => {
         handled_by: 'facility',
       },
     });
-    await waitFor(() => expect(cells(tableRows()[1])[3]).toBe('6 hrs'));
+    await waitFor(() => expect(cells(tableRows()[1])[4]).toBe('6 hrs'));
   });
 
   it('lets the team that handles the category be chosen, facility to start with', async () => {
@@ -197,6 +199,9 @@ describe('validateEscalationDraft', () => {
     slaHours: '24',
     defaultPriority: 'medium',
     handledBy: 'facility',
+    smsL1: false,
+    smsL2: false,
+    smsL3: false,
   };
 
   it('accepts a matrix that stops at Level 1', () => {
@@ -250,10 +255,13 @@ describe('export', () => {
       'Sl.No',
       'Category',
       'Owner L1',
+      'Owner L1 SMS',
       'Escalation Window L1 to L2',
       'Owner L2',
+      'Owner L2 SMS',
       'Escalation Window L2 to L3',
       'Owner L3',
+      'Owner L3 SMS',
     ]);
     expect(exported).toHaveLength(3);
     expect(exported[0]).toMatchObject({
@@ -266,5 +274,39 @@ describe('export', () => {
       owner_l3: 'Test Admin Three',
     });
     expect(exported[2]).toMatchObject({ serial: 3, window_l1_l2: '—', owner_l2: '—' });
+  });
+});
+
+// HELP-10 — the SMS ticks per level.
+describe('SMS ticks (HELP-10)', () => {
+  it('are disabled with "SMS is not set up" until SMS is configured', () => {
+    mocks.sms = false;
+    mocks.rows = THREE_CATEGORIES;
+    render(<EscalationContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'View Plumbing' }));
+    const editor = screen.getByRole('dialog');
+
+    expect((within(editor).getByLabelText('Owner L2 SMS') as HTMLInputElement).disabled).toBe(true);
+    expect(within(editor).getByText('SMS is not set up.')).toBeTruthy();
+  });
+
+  it('save the level ticked once SMS is set up', async () => {
+    mocks.sms = true;
+    mocks.rows = THREE_CATEGORIES;
+    render(<EscalationContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'View Plumbing' }));
+    const editor = screen.getByRole('dialog');
+    fireEvent.click(within(editor).getByLabelText('Owner L2 SMS'));
+    fireEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.save.mock.calls.at(-1)?.[0].body).toMatchObject({ owner_l1_sms: false, owner_l2_sms: true, owner_l3_sms: false });
+    mocks.sms = false;
+  });
+
+  it('show Yes / No in the matrix', () => {
+    expect(toExportRows([{ ...THREE_CATEGORIES[0], owner_l3_sms: true }])[0]).toMatchObject({ sms_l1: 'No', sms_l3: 'Yes' });
   });
 });

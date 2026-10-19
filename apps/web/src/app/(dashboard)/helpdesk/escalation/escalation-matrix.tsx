@@ -18,15 +18,20 @@ const BLANK = '—';
 const hours = (value: number | null): string => (value == null ? BLANK : `${value} hrs`);
 const person = (name: string | null): string => name ?? BLANK;
 
-/** The columns of the screen and of the export, in the same order. */
+const sms = (on: boolean | undefined): string => (on ? 'Yes' : 'No');
+
+/** The columns of the screen and of the export, in the same order (HELP-S6; SMS columns from HELP-10). */
 export const EXPORT_COLUMNS = [
   { key: 'serial', label: 'Sl.No' },
   { key: 'category', label: 'Category' },
   { key: 'owner_l1', label: 'Owner L1' },
+  { key: 'sms_l1', label: 'Owner L1 SMS' },
   { key: 'window_l1_l2', label: 'Escalation Window L1 to L2' },
   { key: 'owner_l2', label: 'Owner L2' },
+  { key: 'sms_l2', label: 'Owner L2 SMS' },
   { key: 'window_l2_l3', label: 'Escalation Window L2 to L3' },
   { key: 'owner_l3', label: 'Owner L3' },
+  { key: 'sms_l3', label: 'Owner L3 SMS' },
 ] as const;
 
 /** Every row of the matrix as the export columns show it. */
@@ -35,10 +40,13 @@ export function toExportRows(rows: readonly EscalationRow[]): Record<string, unk
     serial: index + 1,
     category: row.category_name,
     owner_l1: person(row.owner_l1_name),
+    sms_l1: sms(row.owner_l1_sms),
     window_l1_l2: hours(row.escalation_l1_l2_hours),
     owner_l2: person(row.owner_l2_name),
+    sms_l2: sms(row.owner_l2_sms),
     window_l2_l3: hours(row.escalation_l2_l3_hours),
     owner_l3: person(row.owner_l3_name),
+    sms_l3: sms(row.owner_l3_sms),
   }));
 }
 
