@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import {
   Users,
   UserCheck,
@@ -11,9 +11,6 @@ import {
   LogOut,
   X,
   CheckCircle,
-  Car,
-  Sparkles,
-  AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -60,9 +57,6 @@ import {
   useParcels,
   useCreateParcel,
   useCollectParcel,
-  useAnprLogs,
-  useAnprScan,
-  useUnrecognizedVehicles,
   useGates,
   useUnits,
 } from '@/hooks';
@@ -71,12 +65,9 @@ import type {
   StaffLog,
   Parcel,
   GateStats,
-  AnprLog,
-  UnrecognizedVehicle,
   VisitorFilters,
   StaffLogFilters,
   ParcelFilters,
-  AnprLogFilters,
 } from '@/hooks/use-gate';
 import {
   useRegularVisitors,
@@ -92,6 +83,7 @@ import {
   VISITOR_EXPORT_COLUMNS,
   canMarkCollected,
 } from './gate-lists';
+import { VehiclesTab } from './vehicles-tab';
 
 type TabKey = 'visitors' | 'staff' | 'regulars' | 'parcels' | 'vehicles';
 
@@ -256,12 +248,6 @@ export default function GateContent(): ReactNode {
   const [collectParcelId, setCollectParcelId] = useState('');
   const [collectedBy, setCollectedBy] = useState('');
 
-  // Vehicle / ANPR state
-  const [anprGateFilter, setAnprGateFilter] = useState('');
-  const [anprFromDate, setAnprFromDate] = useState('');
-  const [anprToDate, setAnprToDate] = useState('');
-  const [anprRecognizedFilter, setAnprRecognizedFilter] = useState('');
-
   // Hooks
   const gatesQuery = useGates();
   const gates = gatesQuery.data ?? [];
@@ -309,58 +295,6 @@ export default function GateContent(): ReactNode {
   };
   const parcelsQuery = useParcels(parcelFilters);
   const parcels: Parcel[] = parcelsQuery.data?.data ?? [];
-
-  const anprFilters: AnprLogFilters = {
-    gate_id: anprGateFilter || undefined,
-    from_date: anprFromDate || undefined,
-    to_date: anprToDate || undefined,
-    is_recognized: anprRecognizedFilter === '' ? undefined : anprRecognizedFilter === 'true',
-  };
-  const anprQuery = useAnprLogs(anprFilters);
-  const anprLogs: AnprLog[] = anprQuery.data?.data ?? [];
-
-  // Admin-panel manual ANPR scan (for test / demo; guards use Flutter in prod).
-  const anprScan = useAnprScan();
-  const anprFileInputRef = useRef<HTMLInputElement | null>(null);
-  const [anprScanDirection, setAnprScanDirection] = useState<'entry' | 'exit'>('entry');
-  const MAX_OCR_BYTES = 10 * 1024 * 1024;
-
-  async function handleAnprScan(
-    event: React.ChangeEvent<HTMLInputElement>,
-  ): Promise<void> {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    if (file.size > MAX_OCR_BYTES) {
-      addToast({
-        title: 'Photo too large',
-        description: `Max ${MAX_OCR_BYTES / (1024 * 1024)} MiB for AI scanning.`,
-        variant: 'destructive',
-      });
-      return;
-    }
-    try {
-      const result = await anprScan.mutateAsync({
-        file,
-        direction: anprScanDirection,
-      });
-      addToast({
-        title: result.plate_number === 'NOT_FOUND'
-          ? 'No plate found in image'
-          : `Plate: ${result.plate_number}`,
-        description: `${result.is_recognized ? '✓ Matched a registered vehicle' : 'Unrecognized'} · ${Math.round(result.confidence * 100)}% confidence · logged as ${anprScanDirection}`,
-        variant: result.plate_number === 'NOT_FOUND' ? 'destructive' : result.is_recognized ? 'success' : 'default',
-      });
-    } catch (err) {
-      addToast({
-        title: 'Scan failed',
-        description: (err as Error).message ?? 'Check your Gemini API key and try again.',
-        variant: 'destructive',
-      });
-    }
-  }
-  const unrecognizedQuery = useUnrecognizedVehicles();
-  const unrecognizedVehicles: UnrecognizedVehicle[] = unrecognizedQuery.data ?? [];
 
   // Mutations
   const createVisitor = useCreateVisitor();
@@ -1264,177 +1198,6 @@ export default function GateContent(): ReactNode {
   }
 
   // ---------------------------------------------------------------------------
-  // Vehicles / ANPR tab
-  // ---------------------------------------------------------------------------
-
-  function renderVehiclesTab(): ReactNode {
-    return (
-      <>
-        {/* Unrecognized vehicles alert */}
-        {unrecognizedVehicles.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                Unrecognized Vehicles ({unrecognizedVehicles.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {unrecognizedVehicles.map((vehicle) => (
-                  <div key={vehicle.id} className="rounded-md border p-3 space-y-1">
-                    <p className="font-mono font-bold text-sm">{vehicle.plate_number}</p>
-                    <p className="text-xs text-muted-foreground">{vehicle.gate_name}</p>
-                    <p className="text-xs text-muted-foreground">{formatDateTime(vehicle.timestamp)}</p>
-                    {vehicle.occurrence_count > 1 && (
-                      <Badge variant="warning" className="text-xs">
-                        Seen {vehicle.occurrence_count} times
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Admin-panel manual ANPR scan — guards use Flutter in prod; this
-            is the admin's way to test Gemini plate recognition quality. */}
-        <Card>
-          <CardContent className="flex flex-wrap items-center gap-3 py-4">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <div className="flex-1 min-w-[220px]">
-              <p className="text-sm font-medium">Test ANPR with AI</p>
-              <p className="text-xs text-muted-foreground">
-                Upload a photo of a vehicle plate. Will run Gemini, log the scan, and refresh the table below.
-              </p>
-            </div>
-            <Select
-              value={anprScanDirection}
-              onChange={(e) => setAnprScanDirection(e.target.value as 'entry' | 'exit')}
-              className="w-28"
-            >
-              <option value="entry">Entry</option>
-              <option value="exit">Exit</option>
-            </Select>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={anprScan.isPending}
-              onClick={() => anprFileInputRef.current?.click()}
-            >
-              {anprScan.isPending ? 'Scanning…' : 'Upload plate photo'}
-            </Button>
-            <input
-              ref={anprFileInputRef}
-              type="file"
-              className="hidden"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleAnprScan}
-            />
-          </CardContent>
-        </Card>
-
-        {/* ANPR log table */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Car className="h-5 w-5" />
-                Vehicle Entry/Exit Log
-              </CardTitle>
-              <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  type="date"
-                  value={anprFromDate}
-                  onChange={(e) => setAnprFromDate(e.target.value)}
-                  className="w-36"
-                  placeholder="From"
-                />
-                <Input
-                  type="date"
-                  value={anprToDate}
-                  onChange={(e) => setAnprToDate(e.target.value)}
-                  className="w-36"
-                  placeholder="To"
-                />
-                <Select
-                  value={anprRecognizedFilter}
-                  onChange={(e) => setAnprRecognizedFilter(e.target.value)}
-                  className="w-36"
-                >
-                  <option value="">All</option>
-                  <option value="true">Recognized</option>
-                  <option value="false">Unrecognized</option>
-                </Select>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Plate Number</TableHead>
-                  <TableHead>Gate</TableHead>
-                  <TableHead>Direction</TableHead>
-                  <TableHead>Recognized</TableHead>
-                  <TableHead>Owner / Unit</TableHead>
-                  <TableHead>Timestamp</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {anprQuery.isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array.from({ length: 6 }).map((__, j) => (
-                        <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : anprLogs.length > 0 ? (
-                  anprLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="font-mono font-medium">{log.plate_number}</TableCell>
-                      <TableCell>{log.gate_name ?? '-'}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={log.direction === 'in' ? 'success' : 'secondary'}
-                          className="capitalize"
-                        >
-                          {log.direction === 'in' ? 'Entry' : 'Exit'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {log.is_recognized ? (
-                          <Badge variant="success">Yes</Badge>
-                        ) : (
-                          <Badge variant="destructive">No</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {log.vehicle_owner ?? '-'}
-                        {log.unit_number ? ` (${log.unit_number})` : ''}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{formatDateTime(log.timestamp)}</TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                      No vehicle logs found for the selected filters.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
   // Main render
   // ---------------------------------------------------------------------------
 
@@ -1528,7 +1291,7 @@ export default function GateContent(): ReactNode {
       {activeTab === 'staff' && renderStaffTab()}
       {activeTab === 'regulars' && renderRegularsTab()}
       {activeTab === 'parcels' && renderParcelsTab()}
-      {activeTab === 'vehicles' && renderVehiclesTab()}
+      {activeTab === 'vehicles' && <VehiclesTab />}
 
       {/* Collect parcel dialog (shared) */}
       <Dialog open={collectParcelOpen} onOpenChange={setCollectParcelOpen}>

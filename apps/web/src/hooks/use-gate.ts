@@ -84,26 +84,27 @@ export interface GateStats {
   visitors_this_week: number;
 }
 
+/** A number-plate read at a gate, as GET /gate/anpr/logs sends it (`vehicle_logs`). */
 export interface AnprLog {
   id: string;
-  plate_number: string;
-  gate_id: string;
-  gate_name?: string;
-  direction: 'in' | 'out';
+  vehicle_number: string;
+  gate_id: string | null;
+  gate_name?: string | null;
+  direction: 'entry' | 'exit';
   is_recognized: boolean;
   image_url: string | null;
-  timestamp: string;
-  vehicle_owner?: string;
-  unit_number?: string;
+  logged_at: string;
+  unit_number?: string | null;
+  block?: string | null;
 }
 
+/** An unmatched plate of the last 24 hours (GET /gate/anpr/unrecognized). */
 export interface UnrecognizedVehicle {
   id: string;
-  plate_number: string;
-  gate_name: string;
+  vehicle_number: string;
+  gate_name: string | null;
   image_url: string | null;
-  timestamp: string;
-  occurrence_count: number;
+  logged_at: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -148,8 +149,8 @@ export interface ParcelFilters extends GateRegisterFilters {
 
 export interface AnprLogFilters {
   gate_id?: string;
-  from_date?: string;
-  to_date?: string;
+  /** One day, `YYYY-MM-DD` — the only date filter the API reads. */
+  date?: string;
   is_recognized?: boolean;
   page?: number;
   limit?: number;
@@ -357,15 +358,15 @@ export function useParcels(filters?: ParcelFilters) {
 // Queries — ANPR / Vehicles
 // ---------------------------------------------------------------------------
 
-function anprFiltersToParams(
+/** Query of GET /gate/anpr/logs: the API reads `date` (one day), not a range. */
+export function anprFiltersToParams(
   filters?: AnprLogFilters,
 ): Record<string, string> | undefined {
   if (!filters) return undefined;
 
   const params: Record<string, string> = {};
   if (filters.gate_id) params.gate_id = filters.gate_id;
-  if (filters.from_date) params.from_date = filters.from_date;
-  if (filters.to_date) params.to_date = filters.to_date;
+  if (filters.date) params.date = filters.date;
   if (filters.is_recognized !== undefined) params.is_recognized = String(filters.is_recognized);
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
