@@ -26,7 +26,7 @@ import { RoleDelegationCard } from './role-delegation-card';
 import { PermissionsGrid, type PermissionCell, type PermissionField } from './permissions-grid';
 import { GatesCard } from './gates-card';
 import { OverstayThresholdField } from './overstay-threshold-field';
-import { AutomatedReportsCard } from './automated-reports-card';
+import { ReportSchedulesCard } from './report-schedules-card';
 import { DuesRemindersCard } from './dues-reminders-card';
 import { InterestCard } from './interest-card';
 import { TaxRegistrationCard } from './tax-registration-card';
@@ -541,9 +541,9 @@ export default function SettingsContent(): ReactNode {
       <RoleDelegationCard />
 
       {/* ------------------------------------------------------------------- */}
-      {/* Automated Reports — monthly email digest (Batch 15)                  */}
+      {/* Automated Reports — the society's report schedules (REP-08)          */}
       {/* ------------------------------------------------------------------- */}
-      <AutomatedReportsCard />
+      <ReportSchedulesCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Automatic dues reminders — days of the month (INC-02)               */}

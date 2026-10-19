@@ -11,6 +11,7 @@ import { friendlyError } from '@/lib/api-error';
 import { todayIST } from '@/lib/date';
 import { CatalogueState } from '../catalogue-state';
 import { ADMIN_REPORTS_HREF, moduleReportsPage } from '../module-reports';
+import { ScheduleCell } from '../report-index-table';
 import { ReportOutput } from './report-output';
 import { ReportParamField } from './report-param-fields';
 import { initialValues, requestParams, type ParamValue } from './report-param-state';
@@ -141,9 +142,7 @@ function ReportRun({ row, from }: { row: CatalogueRow; from?: string }): ReactNo
         title={name}
         actions={
           <>
-            <Button type="button" variant="outline" disabled title="Scheduling comes with a later release">
-              Schedule
-            </Button>
+            {row.schedulable && <ScheduleCell row={row} />}
             <Button type="button" variant="outline" disabled title="Publishing comes with a later release">
               Publish
             </Button>

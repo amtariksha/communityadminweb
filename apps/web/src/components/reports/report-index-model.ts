@@ -19,6 +19,8 @@ export interface IndexSection {
   groups: IndexGroup[];
 }
 
+export const OTHER_REPORTS = 'Other reports';
+
 /** Rows split into sections, and each section into its runs of one group. */
 export function indexSections(rows: readonly CatalogueRow[]): IndexSection[] {
   const sections: IndexSection[] = [];
@@ -28,9 +30,11 @@ export function indexSections(rows: readonly CatalogueRow[]): IndexSection[] {
       section = { section: row.section, title: row.section_title, module: row.module, groups: [] };
       sections.push(section);
     }
+    // Rows listed elsewhere in their module (no number) come last, under their own heading.
+    const heading = row.number === null ? OTHER_REPORTS : row.group;
     const last = section.groups[section.groups.length - 1];
-    if (last && last.heading === row.group) last.rows.push(row);
-    else section.groups.push({ heading: row.group, rows: [row] });
+    if (last && last.heading === heading) last.rows.push(row);
+    else section.groups.push({ heading, rows: [row] });
   }
   return sections.sort((a, b) => a.section - b.section);
 }

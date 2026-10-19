@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { CatalogueRow } from '@/hooks/use-reports';
 import { runHref, type IndexSection } from './report-index-model';
+import { ScheduleDialog } from './schedule/schedule-dialog';
 
 interface ReportIndexTableProps {
   section: IndexSection;
@@ -33,14 +34,23 @@ function ReportName({ row, from }: { row: CatalogueRow; from?: string }): ReactN
   );
 }
 
-// Schedule (REP-08) and Publish (REP-09) are not built yet: shown, disabled.
-function ScheduleCell({ row }: { row: CatalogueRow }): ReactNode {
+const capitalised = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** "Schedule", or the active schedule's frequency ("Monthly ✓"); a Planned row's is disabled (R2). */
+export function ScheduleCell({ row }: { row: CatalogueRow }): ReactNode {
+  const [open, setOpen] = useState(false);
+  const active = row.active_schedules[0];
   return (
-    <Button type="button" variant="outline" size="sm" disabled title="Scheduling comes with a later release">
-      {row.active_schedules.length > 0 ? `${row.active_schedules[0].frequency} ✓` : 'Schedule'}
-    </Button>
+    <>
+      <Button type="button" variant="outline" size="sm" disabled={!row.available} onClick={() => setOpen(true)}>
+        {active ? `${capitalised(active.frequency)} ✓` : 'Schedule'}
+      </Button>
+      {open && <ScheduleDialog row={row} open={open} onOpenChange={setOpen} />}
+    </>
   );
 }
+
+// Publish (REP-09) is not built yet: shown, disabled.
 
 function PublishCell({ row }: { row: CatalogueRow }): ReactNode {
   return <input type="checkbox" disabled aria-label={`Publish ${row.name}`} className="h-4 w-4" />;

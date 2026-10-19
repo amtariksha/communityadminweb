@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
 /**
@@ -85,6 +85,7 @@ export interface ReportRunResponse {
 export const reportKeys = {
   all: ['report-catalogue'] as const,
   catalogue: (module?: string) => [...reportKeys.all, 'catalogue', module ?? 'all'] as const,
+  schedules: (reportKey?: string) => [...reportKeys.all, 'schedules', reportKey ?? 'all'] as const,
 };
 
 /** The catalogue, or one module's section of it. 404 until the API ships it. */
@@ -105,6 +106,68 @@ export function useRunReport(key: string) {
   return useMutation({
     mutationFn: function runReport(params: Record<string, unknown>) {
       return api.post<ReportRunResponse>(`/report-catalogue/${encodeURIComponent(key)}/run`, { params });
+    },
+  });
+}
+
+export type ScheduleFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly';
+
+/** A saved report schedule (REP-08). */
+export interface ReportSchedule {
+  id: string;
+  report_key: string;
+  params: Record<string, unknown>;
+  frequency: ScheduleFrequency;
+  day_of_week: number | null;
+  day_of_month: number | null;
+  month_of_quarter: number | null;
+  time_of_day: string;
+  format: 'pdf' | 'xlsx' | 'csv';
+  deliver_email: boolean;
+  recipient_roles: string[];
+  recipient_user_ids: string[];
+  recipient_emails: string[];
+  deliver_notice: boolean;
+  notice_audience: string | null;
+  is_active: boolean;
+  next_run_at: string;
+  last_run_at: string | null;
+}
+
+export type ScheduleInput = Omit<ReportSchedule, 'id' | 'next_run_at' | 'last_run_at'>;
+
+/** A report's schedules (or all of them). 404 until the API has schedules. */
+export function useReportSchedules(reportKey?: string, enabled = true) {
+  return useQuery({
+    queryKey: reportKeys.schedules(reportKey),
+    meta: { suppressToast: true },
+    retry: false,
+    enabled,
+    queryFn: function fetchSchedules() {
+      return api.get<{ data: ReportSchedule[] }>('/report-catalogue/schedules', reportKey ? { params: { report_key: reportKey } } : undefined);
+    },
+    select: (response) => response.data,
+  });
+}
+
+export function useSaveSchedule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: function saveSchedule(input: { id?: string; body: Partial<ScheduleInput> }) {
+      return input.id
+        ? api.patch<{ data: ReportSchedule }>(`/report-catalogue/schedules/${input.id}`, input.body)
+        : api.post<{ data: ReportSchedule }>('/report-catalogue/schedules', input.body);
+    },
+    onSuccess: function refresh() {
+      queryClient.invalidateQueries({ queryKey: reportKeys.all });
+    },
+  });
+}
+
+export function useRunSchedule() {
+  return useMutation({
+    mutationFn: function runSchedule(id: string) {
+      return api.post<{ data: { status: string; error_code?: string; emailed?: number } }>(`/report-catalogue/schedules/${id}/run`);
     },
   });
 }
