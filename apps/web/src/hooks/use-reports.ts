@@ -22,6 +22,8 @@ export type ReportParamType =
   | 'vendor'
   /** One of the society's helpdesk categories (HELP-21). */
   | 'ticket_category'
+  | 'user'
+  | 'poll'
   | 'select'
   | 'boolean'
   | 'number';

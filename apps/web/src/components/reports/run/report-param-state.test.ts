@@ -49,3 +49,12 @@ describe('report options left alone', () => {
     expect(requestParams([status], values)).toEqual({ params: { status: 'closed' } });
   });
 });
+
+describe('a user option (UNIT-27)', () => {
+  const user: CatalogueParam = { key: 'user', label: 'User', type: 'user', required: true };
+
+  it('asks for a required user, and sends the picked id', () => {
+    expect(requestParams([user], { user: '' })).toEqual({ error: 'Choose user.' });
+    expect(requestParams([user], { user: 'a1b2' })).toEqual({ params: { user: 'a1b2' } });
+  });
+});

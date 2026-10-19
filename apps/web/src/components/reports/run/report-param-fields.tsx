@@ -1,15 +1,18 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { AccountSearchSelect } from '@/components/ui/account-search-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
+import { UserSearchSelect } from '@/components/ui/user-search-select';
 import { useAccountGroups } from '@/hooks/use-ledger';
 import { useUnitBlocks } from '@/hooks/use-unit-blocks';
 import { UNIT_PICKER_LIMIT, useUnits } from '@/hooks/use-units';
 import { useVendors } from '@/hooks/use-vendors';
+import { usePolls } from '@/hooks/use-voting';
+import type { UserSearchHit } from '@/hooks/use-user-search';
 import type { CatalogueParam } from '@/hooks/use-reports';
 import { useHelpdeskCategories } from '@/hooks/use-helpdesk';
 import { ANY, CUSTOM_RANGE, financialYearOptions, type ParamValue, type RangeValue } from './report-param-state';
@@ -114,6 +117,33 @@ function VendorField({ param, value, onChange }: FieldProps): ReactNode {
   );
 }
 
+function UserField({ value, onChange }: FieldProps): ReactNode {
+  const [picked, setPicked] = useState<UserSearchHit | null>(null);
+  const shown = picked && picked.id === value ? picked : null;
+  return (
+    <UserSearchSelect
+      value={shown}
+      scope="tenant"
+      placeholder="Search by name or phone"
+      noMatchHint="No one in this society matches."
+      onChange={(user) => {
+        setPicked(user);
+        onChange(user?.id ?? '');
+      }}
+    />
+  );
+}
+
+function PollField({ param, value, onChange }: FieldProps): ReactNode {
+  const polls = usePolls();
+  const options = [{ value: '', label: 'Choose a poll' }, ...(polls.data?.data ?? []).map((poll) => ({ value: poll.id, label: poll.title }))];
+  return (
+    <Select id={fieldId(param)} aria-label={param.label} value={String(value)} onChange={(event) => onChange(event.target.value)}>
+      <Options options={options} />
+    </Select>
+  );
+}
+
 function ChoiceField({ param, value, onChange, options }: FieldProps & { options: ReadonlyArray<{ value: string; label: string }> }): ReactNode {
   // An optional choice can be left on All (no filter).
   const shown = param.required || param.type !== 'select' ? options : [{ value: ANY, label: 'All' }, ...options];
@@ -141,6 +171,10 @@ function Widget(props: FieldProps): ReactNode {
     case 'period_preset':
     case 'select':
       return <ChoiceField {...props} options={param.options ?? []} />;
+    case 'user':
+      return <UserField {...props} />;
+    case 'poll':
+      return <PollField {...props} />;
     case 'financial_year':
       return <ChoiceField {...props} options={financialYearOptions(today)} />;
     case 'block':
