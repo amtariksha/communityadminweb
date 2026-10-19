@@ -61,7 +61,6 @@ interface UploadDocumentInput {
   audience_unit_id?: string | null;
   unit_id?: string | null;
   folder_type?: 'common' | 'unit' | 'committee';
-  is_private?: boolean;
 }
 
 interface UpdateDocumentInput {
@@ -73,8 +72,15 @@ interface UpdateDocumentInput {
   audience_unit_id?: string | null;
   unit_id?: string | null;
   folder_type?: 'common' | 'unit' | 'committee';
-  is_private?: boolean;
+  /** YYYY-MM-DD; null clears it. */
+  expiry_date?: string | null;
 }
+
+/** A row of GET /documents/expiring: the document plus its days to expiry. */
+export type ExpiringDocument = SocietyDocument & {
+  expiry_date: string;
+  days_left: number;
+};
 
 // ---------------------------------------------------------------------------
 // Query keys
@@ -175,7 +181,7 @@ export function useExpiringDocuments(days: number) {
     queryKey: documentKeys.expiring(days),
     queryFn: function fetchExpiringDocuments() {
       return api
-        .get<{ data: SocietyDocument[] }>('/documents/expiring', {
+        .get<{ data: ExpiringDocument[] }>('/documents/expiring', {
           params: { days: String(days) },
         })
         .then(function unwrap(res) {

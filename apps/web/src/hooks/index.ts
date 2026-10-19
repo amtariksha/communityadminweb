@@ -231,6 +231,7 @@ export {
   useDeleteDocument,
   useExpiringDocuments,
   fetchPresignedDownloadUrl,
+  type ExpiringDocument,
 } from './use-documents';
 
 // Payments

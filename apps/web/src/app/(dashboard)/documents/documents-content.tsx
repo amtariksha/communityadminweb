@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent, type ReactNode } from 'react';
 import {
-  Upload,
   FileText,
   File,
   Image,
@@ -25,7 +24,6 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UploadProgress } from '@/components/ui/upload-progress';
 import {
   Table,
   TableBody,
@@ -46,25 +44,24 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { formatDate } from '@/lib/utils';
-import { checkUploadFile } from '@/lib/validation';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import {
   useDocumentCategories,
   useDocuments,
   useExpiringDocuments,
-  useUploadDocument,
-  useUploadFileToS3,
   useCreateCategory,
   useDeleteDocument,
   fetchPresignedDownloadUrl,
-  useUnits,
 } from '@/hooks';
-import type { DocumentCategory, Document as SocietyDocument } from '@communityos/shared';
+import type { Document as SocietyDocument } from '@communityos/shared';
+import { useUnitChoices } from '../helpdesk/new/use-unit-choices';
+import { UploadDocumentDialog } from './upload-document-dialog';
 
 type ViewMode = 'grid' | 'list';
 
 const ITEMS_PER_PAGE = 20;
+const EXPIRY_WINDOW_DAYS = 30;
 
 function getFileIcon(fileType: string): ReactNode {
   switch (fileType) {
@@ -104,8 +101,13 @@ function getFileType(doc: SocietyDocument): string {
   return 'file';
 }
 
-function isExpiringSoon(doc: SocietyDocument, expiringIds: Set<string>): boolean {
-  return expiringIds.has(doc.id);
+/** "Expires today / in N days" for a document inside the expiry window, else Active. */
+function ExpiryBadge({ daysLeft }: { daysLeft: number | undefined }): ReactNode {
+  if (daysLeft === undefined) {
+    return <Badge variant="success">Active</Badge>;
+  }
+  const label = daysLeft === 0 ? 'Expires today' : `Expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
+  return <Badge variant="warning">{label}</Badge>;
 }
 
 function formatFileSize(bytes: number): string {
@@ -138,36 +140,14 @@ export default function DocumentsContent(): ReactNode {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [page, setPage] = useState(1);
 
-  // Upload dialog — the file itself is picked via a File input, uploaded
-  // to S3 via presigned POST, and THEN a DB row is created referencing
-  // the returned fileUrl. No more "paste a URL" (which trusted any
-  // external host and produced broken https://drrs/… rows).
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadCategoryId, setUploadCategoryId] = useState('');
-  const [uploadDescription, setUploadDescription] = useState('');
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  // QA #261 — track upload progress so users see something happening
-  // during multi-MB document uploads.
-  const [uploadPercent, setUploadPercent] = useState<number | null>(null);
-  const [uploadFailed, setUploadFailed] = useState(false);
-  // QA #238 — audience targeting. 'all' = no restriction (legacy),
-  // 'owner' / 'tenant_resident' / 'committee_member' restrict by
-  // role, 'unit' restricts to a specific unit (and the unit dropdown
-  // appears below).
-  const [uploadAudience, setUploadAudience] = useState<
-    'all' | 'owner' | 'tenant_resident' | 'committee_member' | 'unit'
-  >('all');
-  const [uploadAudienceUnitId, setUploadAudienceUnitId] = useState<string>('');
-
   // Category dialog
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [categoryName, setCategoryName] = useState('');
 
   const categoriesQuery = useDocumentCategories();
-  // QA #238 — load units for the audience-targeting unit picker. Cheap
-  // since the list page already pages units; the dialog only shows
-  const unitsQuery = useUnits({ limit: 1000 });
+  // Every unit, read 100 at a time (GET /units refuses a larger page).
+  const unitsQuery = useUnitChoices();
+  const units = unitsQuery.data ?? [];
   const [filterFolderType, setFilterFolderType] = useState<string>('all');
   const [filterUnitId, setFilterUnitId] = useState<string>('all');
 
@@ -178,9 +158,7 @@ export default function DocumentsContent(): ReactNode {
     page,
     limit: ITEMS_PER_PAGE,
   });
-  const expiringQuery = useExpiringDocuments(30);
-  const uploadDocument = useUploadDocument();
-  const uploadFileToS3 = useUploadFileToS3();
+  const expiringQuery = useExpiringDocuments(EXPIRY_WINDOW_DAYS);
   const createCategory = useCreateCategory();
   const deleteDocument = useDeleteDocument();
 
@@ -190,116 +168,14 @@ export default function DocumentsContent(): ReactNode {
   // Previously these were declared after the filter, which threw a
   // ReferenceError (TDZ) on every render and crashed the page.
   const expiringDocs = expiringQuery.data ?? [];
-  const expiringIds = new Set(expiringDocs.map((d) => d.id));
-  const expiredCount = expiringDocs.filter(() => false).length; // API returns expiring, not expired
+  const daysLeftById = new Map(expiringDocs.map((d) => [d.id, d.days_left]));
   const expiringCount = expiringDocs.length;
-  const documents = showExpiringOnly
-    ? allDocuments.filter((doc) => expiringIds.has(doc.id))
-    : allDocuments;
+  // Expiring Soon lists what the API says expires within the window, not
+  // just the expiring rows of the page on screen.
+  const documents: SocietyDocument[] = showExpiringOnly ? expiringDocs : allDocuments;
+  const listLoading = showExpiringOnly ? expiringQuery.isLoading : documentsQuery.isLoading;
   const totalDocuments = showExpiringOnly ? documents.length : (documentsQuery.data?.total ?? 0);
   const totalPages = Math.max(1, Math.ceil(totalDocuments / ITEMS_PER_PAGE));
-
-  function resetUploadForm(): void {
-    setUploadTitle('');
-    setUploadCategoryId('');
-    setUploadDescription('');
-    setUploadFile(null);
-    setUploadPercent(null);
-    setUploadFailed(false);
-    setUploadAudience('all');
-    setUploadAudienceUnitId('');
-  }
-
-  async function handleUploadDocument(e: FormEvent): Promise<void> {
-    e.preventDefault();
-    if (!uploadFile) {
-      addToast({ title: 'Please choose a file', variant: 'destructive' });
-      return;
-    }
-
-    // QA #25 / #45 — catch oversized / wrong-type uploads before the S3
-    // round-trip so users see a clear inline error instead of a generic
-    // network failure minutes later.
-    const fileCheck = checkUploadFile(uploadFile);
-    if (!fileCheck.ok) {
-      addToast({
-        title: 'File rejected',
-        description: fileCheck.error,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // 1. Ask the API for a presigned S3 POST, then POST the file bytes
-    //    directly to S3. S3 enforces the content-length-range from the
-    //    policy condition — oversized files get a 400 from S3 itself.
-    let fileUrl: string;
-    setUploadPercent(0);
-    setUploadFailed(false);
-    try {
-      const res = await uploadFileToS3.mutateAsync({
-        file: uploadFile,
-        onProgress: setUploadPercent,
-      });
-      fileUrl = res.fileUrl;
-    } catch (err) {
-      setUploadFailed(true);
-      addToast({
-        title: 'Upload failed',
-        description: (err as Error).message ?? 'Could not upload file',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // 2. Create the document row pointing at the freshly uploaded file.
-    // QA #238 — derive audience fields from the picker state. 'all'
-    // ⇒ both NULL (no restriction); 'unit' ⇒ unit-id only; specific
-    // role values map directly.
-    const audienceRole =
-      uploadAudience === 'all' || uploadAudience === 'unit'
-        ? null
-        : uploadAudience;
-    const audienceUnitId =
-      uploadAudience === 'unit' ? uploadAudienceUnitId || null : null;
-    if (uploadAudience === 'unit' && !audienceUnitId) {
-      addToast({
-        title: 'Please select a unit',
-        description: 'Choose a unit for the audience filter or pick another option.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    uploadDocument.mutate(
-      {
-        category_id: uploadCategoryId,
-        title: uploadTitle || uploadFile.name,
-        description: uploadDescription || null,
-        file_url: fileUrl,
-        file_name: uploadFile.name,
-        mime_type: uploadFile.type || 'application/octet-stream',
-        file_size: uploadFile.size,
-        audience_role: audienceRole,
-        audience_unit_id: audienceUnitId,
-        unit_id: audienceUnitId,
-        folder_type: audienceUnitId ? 'unit' : 'common',
-      },
-      {
-        onSuccess() {
-          setUploadDialogOpen(false);
-          resetUploadForm();
-          addToast({ title: 'Document uploaded successfully', variant: 'success' });
-        },
-        onError(error) {
-          addToast({
-            title: 'Failed to save document',
-            description: friendlyError(error),
-            variant: 'destructive',
-          });
-        },
-      },
-    );
-  }
 
   function handleCreateCategory(e: FormEvent): void {
     e.preventDefault();
@@ -398,154 +274,7 @@ export default function DocumentsContent(): ReactNode {
               </DialogContent>
             </Dialog>
 
-            <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-              <DialogTrigger>
-                <Button>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Document
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <form onSubmit={handleUploadDocument}>
-                  <DialogHeader>
-                    <DialogTitle>Upload Document</DialogTitle>
-                    <DialogDescription>Add a new document to the repository</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="upload-title">Title</Label>
-                      <Input
-                        id="upload-title"
-                        placeholder="Document title"
-                        required
-                        value={uploadTitle}
-                        onChange={(e) => setUploadTitle(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="upload-category">Category</Label>
-                      <Select
-                        id="upload-category"
-                        required
-                        value={uploadCategoryId}
-                        onChange={(e) => setUploadCategoryId(e.target.value)}
-                      >
-                        <option value="">Select category</option>
-                        {categories.map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="upload-description">Description</Label>
-                      <Input
-                        id="upload-description"
-                        placeholder="Optional description"
-                        value={uploadDescription}
-                        onChange={(e) => setUploadDescription(e.target.value)}
-                      />
-                    </div>
-                    {/* QA #238 — Audience picker. Defaults to "All
-                        residents" so existing flows stay unchanged.
-                        When set to "Specific unit" a unit dropdown
-                        renders below. The server stores both NULL on
-                        "All residents" (legacy parity). */}
-                    <div className="space-y-2">
-                      <Label htmlFor="upload-audience">Audience</Label>
-                      <Select
-                        id="upload-audience"
-                        value={uploadAudience}
-                        onChange={(e) =>
-                          setUploadAudience(e.target.value as typeof uploadAudience)
-                        }
-                      >
-                        <option value="all">All residents</option>
-                        <option value="owner">Owners only</option>
-                        <option value="tenant_resident">Tenants only</option>
-                        <option value="committee_member">Committee members only</option>
-                        <option value="unit">Specific unit</option>
-                      </Select>
-                      {uploadAudience === 'unit' && (
-                        <Select
-                          aria-label="Audience unit"
-                          required
-                          value={uploadAudienceUnitId}
-                          onChange={(e) => setUploadAudienceUnitId(e.target.value)}
-                        >
-                          <option value="">Select a unit</option>
-                          {(unitsQuery.data?.data ?? []).map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.unit_number}
-                              {u.block ? ` · Block ${u.block}` : ''}
-                            </option>
-                          ))}
-                        </Select>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="upload-file">File</Label>
-                      <Input
-                        id="upload-file"
-                        type="file"
-                        required
-                        accept="application/pdf,image/jpeg,image/png,image/webp,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0] ?? null;
-                          setUploadFile(f);
-                          if (f && !uploadTitle) setUploadTitle(f.name);
-                        }}
-                      />
-                      {uploadFile && (
-                        <p className="text-xs text-muted-foreground">
-                          {uploadFile.name} — {(uploadFile.size / 1024).toFixed(1)} KB
-                          {uploadFile.size > 25 * 1024 * 1024 && (
-                            <span className="ml-2 font-medium text-destructive">
-                              exceeds 25 MB limit
-                            </span>
-                          )}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Accepted: PDF, JPG, PNG, CSV, XLS/XLSX. Max 25 MB.
-                      </p>
-                      <UploadProgress
-                        percent={uploadPercent}
-                        fileName={uploadFile?.name}
-                        state={
-                          uploadFailed
-                            ? 'error'
-                            : uploadPercent === 100
-                              ? 'done'
-                              : 'uploading'
-                        }
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose>
-                      <Button type="button" variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button
-                      type="submit"
-                      disabled={
-                        !uploadFile ||
-                        uploadFile.size > 25 * 1024 * 1024 ||
-                        uploadFileToS3.isPending ||
-                        uploadDocument.isPending
-                      }
-                    >
-                      {uploadFileToS3.isPending
-                        ? 'Uploading to storage...'
-                        : uploadDocument.isPending
-                          ? 'Saving...'
-                          : 'Upload'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <UploadDocumentDialog categories={categories} units={units} />
           </>
         }
       />
@@ -599,7 +328,7 @@ export default function DocumentsContent(): ReactNode {
                   className="w-44 text-xs"
                 >
                   <option value="all">All Units / Flats</option>
-                  {(unitsQuery.data?.data ?? []).map((u) => (
+                  {units.map((u) => (
                     <option key={u.id} value={u.id}>
                       Unit {u.unit_number}
                     </option>
@@ -711,7 +440,7 @@ export default function DocumentsContent(): ReactNode {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {documentsQuery.isLoading ? (
+                {listLoading ? (
                   <TableSkeleton />
                 ) : (
                   documents.map((doc) => {
@@ -739,11 +468,7 @@ export default function DocumentsContent(): ReactNode {
                         {formatDate(doc.created_at)}
                       </TableCell>
                       <TableCell>
-                        {isExpiringSoon(doc, expiringIds) ? (
-                          <Badge variant="warning">Expiring Soon</Badge>
-                        ) : (
-                          <Badge variant="success">Active</Badge>
-                        )}
+                        <ExpiryBadge daysLeft={daysLeftById.get(doc.id)} />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -796,7 +521,7 @@ export default function DocumentsContent(): ReactNode {
             </Table>
           ) : (
             <>
-              {documentsQuery.isLoading ? (
+              {listLoading ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <Card key={i}>
@@ -818,8 +543,8 @@ export default function DocumentsContent(): ReactNode {
                         <div className="mb-3 flex items-start justify-between">
                           {getFileIcon(fileType)}
                           <div className="flex gap-1">
-                            {isExpiringSoon(doc, expiringIds) && (
-                              <Badge variant="warning" className="text-xs">Expiring</Badge>
+                            {daysLeftById.has(doc.id) && (
+                              <ExpiryBadge daysLeft={daysLeftById.get(doc.id)} />
                             )}
                             <Badge variant="outline" className="text-xs">
                               {fileType.toUpperCase()}
@@ -839,7 +564,7 @@ export default function DocumentsContent(): ReactNode {
             </>
           )}
 
-          {!documentsQuery.isLoading && documents.length === 0 && (
+          {!listLoading && documents.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <FolderOpen className="mb-4 h-12 w-12 text-muted-foreground" />
               <p className="text-lg font-medium">No documents found</p>
