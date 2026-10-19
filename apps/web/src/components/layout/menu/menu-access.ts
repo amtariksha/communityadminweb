@@ -13,6 +13,8 @@ export interface MenuAccess {
 // HelpDesk screens live under /helpdesk but follow the Tickets entry.
 const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string]> = [
   ['/helpdesk', '/tickets'],
+  // Income Tracker › Setup is billing configuration: shown with Invoices.
+  ['/income/setup', '/invoices'],
 ];
 
 /**

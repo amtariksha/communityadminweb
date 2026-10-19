@@ -14,7 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatDate } from '@/lib/utils';
-import { friendlyError } from '@/lib/api-error';
+import { ApiError, friendlyError } from '@/lib/api-error';
 import { useBillingRuns, type BillingRun, type BillingRunStatus } from '@/hooks';
 
 type BadgeVariant = 'secondary' | 'success' | 'warning' | 'destructive';
@@ -119,6 +119,13 @@ export function BillingRunsPanel(): ReactNode {
       );
     }
     if (runsQuery.isError) {
+      if (runsQuery.error instanceof ApiError && runsQuery.error.status === 404) {
+        return (
+          <p className="p-6 text-sm text-muted-foreground">
+            Billing runs are not available yet on this server.
+          </p>
+        );
+      }
       return (
         <p className="p-6 text-sm text-destructive">
           Could not load billing runs: {friendlyError(runsQuery.error)}

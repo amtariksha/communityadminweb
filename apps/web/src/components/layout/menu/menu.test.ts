@@ -91,8 +91,16 @@ describe('classic modules', () => {
     ]);
   });
 
-  it('Income Tracker shows Receipts & Invoices with its registers as sub-tabs', () => {
-    expect(labels('income')).toEqual(['Receipts & Invoices']);
+  it('Income Tracker shows Setup and Receipts & Invoices with their sub-tabs', () => {
+    expect(labels('income')).toEqual(['Setup', 'Receipts & Invoices']);
+    expect(find(menu, 'income.setup')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
+      ['Auto Invoicing', '/income/setup/auto-invoicing'],
+      ['Payment Gateway', '/income/setup/payment-gateway'],
+      ['Customize Invoice', '/income/setup/customize-invoice'],
+      ['Defaulters', '/income/setup/defaulters'],
+    ]);
+    expect(entryHref(find(menu, 'income.setup') as MenuNode)).toBe('/income/setup/auto-invoicing');
+    expect(governingItem('/income/setup/defaulters')?.href).toBe('/invoices');
     expect(find(menu, 'income.registers')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Receipts', '/income/registers/receipts'],
       ['Invoices', '/income/registers/invoices'],

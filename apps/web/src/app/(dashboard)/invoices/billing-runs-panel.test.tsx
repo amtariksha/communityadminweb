@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BillingRunsPanel } from './billing-runs-panel';
 import { describeGenerateResult } from './generate-summary';
 import type { BillingRun } from '@/hooks';
+import { ApiError } from '@/lib/api-error';
 
 const mocks = vi.hoisted(() => ({
   query: { data: undefined, isLoading: false, isError: false, error: null } as {
@@ -95,6 +96,17 @@ describe('BillingRunsPanel', () => {
     mocks.query = { data: undefined, isLoading: false, isError: true, error: new Error('Forbidden') };
     render(<BillingRunsPanel />);
     expect(screen.getByText(/Could not load billing runs/)).toBeTruthy();
+  });
+
+  it('says the runs are not available yet when the server has no such route', () => {
+    mocks.query = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new ApiError(404, { message: 'Cannot GET /billing-runs', statusCode: 404 } as never),
+    };
+    render(<BillingRunsPanel />);
+    expect(screen.getByText('Billing runs are not available yet on this server.')).toBeTruthy();
   });
 });
 

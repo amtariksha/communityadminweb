@@ -239,6 +239,9 @@ export function useDefaulters() {
 export function useBillingRuns(limit = 24) {
   return useQuery({
     queryKey: invoiceKeys.billingRuns(limit),
+    // The panel shows its own message, incl. "not available yet" on an
+    // API without the route.
+    meta: { suppressToast: true },
     queryFn: function fetchBillingRuns() {
       return api
         .get<{ data: BillingRun[] }>('/billing-runs', { params: { limit: String(limit) } })

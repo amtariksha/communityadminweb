@@ -146,7 +146,23 @@ export const classicMenu: MenuNode[] = [
     label: 'Income Tracker',
     icon: icon(IndianRupee),
     children: [
-      planned('income.setup', 'Setup', 'INC-34'),
+      {
+        // INC-34: the Setup pages whose settings have shipped, each holding
+        // the same card as /settings. The rest stay hidden until built.
+        id: 'income.setup',
+        label: 'Setup',
+        tabs: [
+          { id: 'income.setup.auto-invoicing', label: 'Auto Invoicing', href: '/income/setup/auto-invoicing', logs: ['tenant_settings'] },
+          planned('income.setup.income-accounts', 'Income Accounts', 'INC-38'),
+          planned('income.setup.utility-invoicing', 'Utility Invoicing', 'INC-34'),
+          { id: 'income.setup.payment-gateway', label: 'Payment Gateway', href: '/income/setup/payment-gateway', logs: ['tenant_settings'] },
+          { id: 'income.setup.customize-invoice', label: 'Customize Invoice', href: '/income/setup/customize-invoice', logs: ['tenant_settings'] },
+          planned('income.setup.other', 'Other', 'INC-42'),
+          planned('income.setup.gst', 'GST', 'INC-23'),
+          planned('income.setup.notifications', 'Notifications', 'INC-30'),
+          { id: 'income.setup.defaulters', label: 'Defaulters', href: '/income/setup/defaulters', logs: ['tenant_settings'] },
+        ],
+      },
       planned('income.track-units', 'Track Units', 'INC-37'),
       planned('income.member-income', 'Member Income', 'INC-35'),
       {
