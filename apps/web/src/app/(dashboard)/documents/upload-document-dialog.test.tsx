@@ -96,6 +96,15 @@ describe('audienceFields', () => {
     });
   });
 
+  it('files a committee-only upload in the admin-only folder (FILE-03)', () => {
+    expect(audienceFields('committee_member', 'unit-1')).toEqual({
+      audience_role: 'committee_member',
+      audience_unit_id: null,
+      unit_id: null,
+      folder_type: 'committee',
+    });
+  });
+
   it('narrows a role upload to that role', () => {
     expect(audienceFields('owner', '')).toEqual(
       expect.objectContaining({ audience_role: 'owner', folder_type: 'common' }),
