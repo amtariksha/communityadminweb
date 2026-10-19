@@ -115,6 +115,11 @@ export interface TenantSettings {
     basis: 'due_date' | 'invoice_date';
     start_date?: string | null;
   };
+  // UTIL-07 — post a batch of utility invoices on creation (unless the
+  // request says). Written by PUT /utilities/settings/billing.
+  utility_billing?: {
+    auto_post?: boolean;
+  };
 
   // INC-23 — Setup › GST: whether Post Invoice offers GST on an ad-hoc
   // invoice (unset = on). Read by POST /invoices/adhoc and the form.

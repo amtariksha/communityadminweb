@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { Calculator, FileText } from 'lucide-react';
+import { Calculator, FileText, Files } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,18 +10,35 @@ import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useUtilityBills } from '@/hooks';
+import { useFinanceAccess } from '@/hooks/use-finance-access';
 import type { UtilityBill } from '@/hooks/use-utilities';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { BillInvoiceDialog } from './bill-invoice-dialog';
 import { CalculateBillsDialog } from './calculate-bills-dialog';
+import { InvoiceBatchDialog } from './invoice-batch-dialog';
 import { billStatusVariant, METER_TYPES, meterTypeIcon, meterTypeLabel } from './utility-ui';
 
 const PAGE_SIZE = 20;
-const COLUMN_COUNT = 8;
+const COLUMN_COUNT = 9;
 
-function BillRow({ bill, onInvoice }: { bill: UtilityBill; onInvoice: (billId: string) => void }): ReactNode {
+interface RowSelection {
+  selected: ReadonlySet<string>;
+  toggle: (billId: string) => void;
+}
+
+function BillRow({ bill, onInvoice, selection }: { bill: UtilityBill; onInvoice: (billId: string) => void; selection: RowSelection }): ReactNode {
   return (
     <TableRow>
+      <TableCell>
+        {bill.status === 'pending' && (
+          <input
+            type="checkbox"
+            aria-label={`Select bill ${bill.meter_number ?? ''} ${bill.unit_number ?? ''}`}
+            checked={selection.selected.has(bill.id)}
+            onChange={() => selection.toggle(bill.id)}
+          />
+        )}
+      </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           {meterTypeIcon(bill.meter_type ?? '')}
@@ -49,7 +66,7 @@ function BillRow({ bill, onInvoice }: { bill: UtilityBill; onInvoice: (billId: s
   );
 }
 
-function BillRows({ loading, bills, onInvoice }: { loading: boolean; bills: UtilityBill[]; onInvoice: (billId: string) => void }): ReactNode {
+function BillRows({ loading, bills, onInvoice, selection }: { loading: boolean; bills: UtilityBill[]; onInvoice: (billId: string) => void; selection: RowSelection }): ReactNode {
   if (loading) {
     return Array.from({ length: 5 }).map((_, i) => (
       <TableRow key={i}>
@@ -68,7 +85,7 @@ function BillRows({ loading, bills, onInvoice }: { loading: boolean; bills: Util
       </TableRow>
     );
   }
-  return bills.map((bill) => <BillRow key={bill.id} bill={bill} onInvoice={onInvoice} />);
+  return bills.map((bill) => <BillRow key={bill.id} bill={bill} onInvoice={onInvoice} selection={selection} />);
 }
 
 function Pager({ page, totalPages, onPage }: { page: number; totalPages: number; onPage: (page: number) => void }): ReactNode {
@@ -84,12 +101,62 @@ function Pager({ page, totalPages, onPage }: { page: number; totalPages: number;
   );
 }
 
+interface BillFiltersProps {
+  type: string;
+  status: string;
+  onType: (value: string) => void;
+  onStatus: (value: string) => void;
+}
+
+function BillFilters({ type, status, onType, onStatus }: BillFiltersProps): ReactNode {
+  return (
+    <div className="mb-4 flex flex-wrap items-end gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="bills-type">Type</Label>
+        <Select id="bills-type" value={type} onChange={(e) => onType(e.target.value)}>
+          <option value="">All</option>
+          {METER_TYPES.map((t) => (
+            <option key={t} value={t}>{meterTypeLabel(t)}</option>
+          ))}
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="bills-status">Status</Label>
+        <Select id="bills-status" value={status} onChange={(e) => onStatus(e.target.value)}>
+          <option value="">All</option>
+          <option value="pending">Pending</option>
+          <option value="invoiced">Invoiced</option>
+          <option value="paid">Paid</option>
+        </Select>
+      </div>
+    </div>
+  );
+}
+
+/** The ticked pending bills (UTIL-07); cleared when the list changes. */
+function useBillSelection(bills: readonly UtilityBill[]) {
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const pending = bills.filter((bill) => bill.status === 'pending');
+  const allTicked = pending.length > 0 && pending.every((bill) => selected.has(bill.id));
+  const toggle = (billId: string): void =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(billId)) next.delete(billId);
+      else next.add(billId);
+      return next;
+    });
+  const toggleAll = (): void => setSelected(allTicked ? new Set() : new Set(pending.map((bill) => bill.id)));
+  return { selected, toggle, toggleAll, allTicked, hasPending: pending.length > 0, clear: () => setSelected(new Set()) };
+}
+
 export function BillsTab(): ReactNode {
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [calcOpen, setCalcOpen] = useState(false);
   const [invoiceBillId, setInvoiceBillId] = useState<string | null>(null);
+  const [batchIds, setBatchIds] = useState<string[]>([]);
+  const access = useFinanceAccess();
   const billsQuery = useUtilityBills({
     status: statusFilter || undefined,
     meter_type: typeFilter || undefined,
@@ -98,42 +165,49 @@ export function BillsTab(): ReactNode {
   });
   const bills = billsQuery.data?.data ?? [];
   const totalPages = Math.max(1, Math.ceil((billsQuery.data?.total ?? 0) / PAGE_SIZE));
+  const selection = useBillSelection(bills);
+  const describeBill = (billId: string): string => {
+    const bill = bills.find((row) => row.id === billId);
+    return bill ? `${bill.meter_number ?? ''} (${bill.unit_number ?? ''})` : billId;
+  };
+  const changeList = (apply: () => void): void => {
+    apply();
+    selection.clear();
+  };
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle>Utility Bills</CardTitle>
-            <Button onClick={() => setCalcOpen(true)}>
-              <Calculator className="mr-2 h-4 w-4" /> Calculate Bills
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {access.canWrite && (
+                <Button variant="outline" disabled={selection.selected.size === 0} onClick={() => setBatchIds([...selection.selected])}>
+                  <Files className="mr-2 h-4 w-4" /> Invoice selected ({selection.selected.size})
+                </Button>
+              )}
+              <Button onClick={() => setCalcOpen(true)}>
+                <Calculator className="mr-2 h-4 w-4" /> Calculate Bills
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 flex flex-wrap items-end gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="bills-type">Type</Label>
-              <Select id="bills-type" value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}>
-                <option value="">All</option>
-                {METER_TYPES.map((t) => (
-                  <option key={t} value={t}>{meterTypeLabel(t)}</option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bills-status">Status</Label>
-              <Select id="bills-status" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}>
-                <option value="">All</option>
-                <option value="pending">Pending</option>
-                <option value="invoiced">Invoiced</option>
-                <option value="paid">Paid</option>
-              </Select>
-            </div>
-          </div>
+          <BillFilters
+            type={typeFilter}
+            status={statusFilter}
+            onType={(value) => changeList(() => { setTypeFilter(value); setCurrentPage(1); })}
+            onStatus={(value) => changeList(() => { setStatusFilter(value); setCurrentPage(1); })}
+          />
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8">
+                  {selection.hasPending && (
+                    <input type="checkbox" aria-label="Select all pending bills" checked={selection.allTicked} onChange={selection.toggleAll} />
+                  )}
+                </TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Meter</TableHead>
                 <TableHead>Unit</TableHead>
@@ -145,14 +219,15 @@ export function BillsTab(): ReactNode {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <BillRows loading={billsQuery.isLoading} bills={bills} onInvoice={setInvoiceBillId} />
+              <BillRows loading={billsQuery.isLoading} bills={bills} onInvoice={setInvoiceBillId} selection={selection} />
             </TableBody>
           </Table>
-          <Pager page={currentPage} totalPages={totalPages} onPage={setCurrentPage} />
+          <Pager page={currentPage} totalPages={totalPages} onPage={(page) => changeList(() => setCurrentPage(page))} />
         </CardContent>
       </Card>
       <CalculateBillsDialog open={calcOpen} onOpenChange={setCalcOpen} />
       <BillInvoiceDialog billId={invoiceBillId} onClose={() => setInvoiceBillId(null)} />
+      <InvoiceBatchDialog billIds={batchIds} describeBill={describeBill} onClose={() => setBatchIds([])} onDone={selection.clear} />
     </div>
   );
 }

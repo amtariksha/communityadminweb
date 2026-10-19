@@ -20,6 +20,8 @@ export interface UtilitySettingsView {
   /** True while the society has saved no utility rule of its own. */
   utility_interest_inherited: boolean;
   maintenance_interest: UtilityInterest;
+  /** UTIL-07 — post a batch of utility invoices on creation; absent on an older API. */
+  utility_billing?: { auto_post: boolean };
 }
 
 export const utilitySettingsKeys = {
