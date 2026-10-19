@@ -26,9 +26,27 @@ const mocks = vi.hoisted(() => {
     logService: mutation(),
     createSchedule: mutation(),
     other: mutation(),
+    updateAMC: mutation(),
+    useAssets: vi.fn(),
     query,
   };
 });
+
+const DG_SET = vi.hoisted(() => ({
+  id: 'asset-1',
+  name: 'DG Set',
+  asset_type: 'generator',
+  location: 'Basement',
+  manufacturer: 'Kirloskar',
+  model: '',
+  serial_number: '',
+  purchase_date: '',
+  purchase_cost: 0,
+  warranty_expiry: '',
+  condition: 'good',
+  status: 'active',
+  created_at: '2026-01-01T00:00:00.000Z',
+}));
 
 vi.mock('@/hooks/use-assets', () => ({
   useAssetDashboard: mocks.query({
@@ -40,26 +58,7 @@ vi.mock('@/hooks/use-assets', () => ({
     expiring_amcs_30d: 1,
     overdue_services: 3,
   }),
-  useAssets: mocks.query({
-    data: [
-      {
-        id: 'asset-1',
-        name: 'DG Set',
-        asset_type: 'generator',
-        location: 'Basement',
-        manufacturer: 'Kirloskar',
-        model: '',
-        serial_number: '',
-        purchase_date: '',
-        purchase_cost: 0,
-        warranty_expiry: '',
-        condition: 'good',
-        status: 'active',
-        created_at: '2026-01-01T00:00:00.000Z',
-      },
-    ],
-    total: 1,
-  }),
+  useAssets: (filters?: Record<string, unknown>) => mocks.useAssets(filters),
   useAMCs: mocks.query({
     data: [
       {
@@ -73,6 +72,7 @@ vi.mock('@/hooks/use-assets', () => ({
         // pg returns NUMERIC as a string
         cost: '12000.00',
         status: 'active',
+        reminder_days: 30,
       },
     ],
     total: 1,
@@ -92,6 +92,7 @@ vi.mock('@/hooks/use-assets', () => ({
   ]),
   useAssetChecklists: mocks.query([
     { id: 'cl-1', name: 'Fire Safety', area: 'Tower A', items: 5, frequency: 'Monthly', last_run: null },
+    { id: 'cl-2', name: 'Lift Inspection', area: 'Lifts', items: 8, frequency: 'monthly', last_run: '2026-10-01', next_due: '2026-11-01' },
   ]),
   useAuditSchedules: mocks.query([]),
   useConductedAudits: mocks.query([]),
@@ -101,7 +102,7 @@ vi.mock('@/hooks/use-assets', () => ({
   useLogService: () => mocks.logService,
   useCreateAuditSchedule: () => mocks.createSchedule,
   useUpdateAsset: () => mocks.other,
-  useUpdateAMC: () => mocks.other,
+  useUpdateAMC: () => mocks.updateAMC,
   useCreateChecklist: () => mocks.other,
   useRecordConductedAudit: () => mocks.other,
   useCreateVendorAudit: () => mocks.other,
@@ -148,9 +149,44 @@ function dialogTitled(title: string): HTMLElement {
   return screen.getByRole('heading', { name: title }).closest('dialog') as HTMLElement;
 }
 
+/** 30 assets on the server, 25 a page; "pump" matches two. */
+function serverAssets(filters?: Record<string, unknown>) {
+  const all = Array.from({ length: 30 }, (_, i) => ({
+    ...DG_SET,
+    id: `asset-${i + 1}`,
+    name: i === 0 ? 'DG Set' : i < 3 ? `Pump ${i}` : `Asset ${i + 1}`,
+  }));
+  const search = String(filters?.search ?? '').toLowerCase();
+  const hits = search ? all.filter((a) => a.name.toLowerCase().includes(search)) : all;
+  const page = Number(filters?.page ?? 1);
+  const limit = Number(filters?.limit ?? 25);
+  return { data: { data: hits.slice((page - 1) * limit, page * limit), total: hits.length }, isLoading: false };
+}
+
 describe('AssetsContent', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.useAssets.mockImplementation(serverAssets);
+  });
+
+  describe('asset list (ASSET-02)', () => {
+    it('shows 25 of 30 and the other 5 on page 2', () => {
+      render(<AssetsContent />);
+      expect(screen.getByText('Showing 1 to 25 of 30 entries')).toBeTruthy();
+
+      fireEvent.click(screen.getByRole('button', { name: '2' }));
+
+      expect(screen.getByText('Showing 26 to 30 of 30 entries')).toBeTruthy();
+      expect(mocks.useAssets).toHaveBeenCalledWith(expect.objectContaining({ page: 2, limit: 25 }));
+    });
+
+    it('searches on the server', () => {
+      render(<AssetsContent />);
+      fireEvent.change(screen.getByLabelText('Search assets'), { target: { value: 'pump' } });
+
+      expect(mocks.useAssets).toHaveBeenCalledWith(expect.objectContaining({ search: 'pump', page: 1 }));
+      expect(screen.getByText('Showing 1 to 2 of 2 entries')).toBeTruthy();
+    });
   });
 
   it('shows AMCs expiring in 30 days on the "Expiring Soon" tile', () => {
@@ -204,6 +240,22 @@ describe('AssetsContent', () => {
         end_date: '2027-10-31',
         cost: 18000,
       });
+    });
+
+    it('edits the end date and reminder days of a contract (VEND-04)', () => {
+      render(<AssetsContent />);
+      openTab('AMC Contracts');
+      const row = screen.getByText('AMC-1').closest('tr') as HTMLElement;
+      expect(within(row).getByText('30 days before')).toBeTruthy();
+      fireEvent.click(within(row).getByTitle('Edit contract'));
+      const dialog = dialogTitled('Edit AMC Contract');
+
+      setField(/end date/i, '2099-03-31');
+      setField(/reminder days/i, '45');
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+      expect(mocks.updateAMC.mutate).toHaveBeenCalledTimes(1);
+      expect(mocks.updateAMC.mutate.mock.calls[0][0]).toEqual({ id: 'amc-1', end_date: '2099-03-31', reminder_days: 45 });
     });
 
     it('has no Frequency field, because nothing stores it', () => {
@@ -294,6 +346,29 @@ describe('AssetsContent', () => {
         ),
       );
       expect(mocks.createSchedule.mutateAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('master checklists (ASSET-06)', () => {
+    it('shows the frequency, Last Run and Next Due', () => {
+      render(<AssetsContent />);
+      openTab('Master Checklists');
+
+      const row = screen.getByText('Lift Inspection').closest('tr') as HTMLElement;
+      expect(within(row).getByText('Monthly')).toBeTruthy();
+      expect(within(row).getByText('01 Oct 2026')).toBeTruthy();
+      expect(within(row).getByText('01 Nov 2026')).toBeTruthy();
+      const never = screen.getByText('Fire Safety').closest('tr') as HTMLElement;
+      expect(within(never).getByText('Never')).toBeTruthy();
+    });
+
+    it('offers only the frequencies the API accepts', () => {
+      render(<AssetsContent />);
+      openTab('Master Checklists');
+      fireEvent.click(screen.getByRole('button', { name: /add checklist/i }));
+
+      const select = screen.getByLabelText('Frequency') as HTMLSelectElement;
+      expect(Array.from(select.options).map((o) => o.value)).toEqual(['weekly', 'monthly', 'quarterly', 'half_yearly', 'yearly']);
     });
   });
 });

@@ -53,7 +53,6 @@ import {
   useCreateAsset,
   useUpdateAsset,
   useCreateAMC,
-  useUpdateAMC,
   useLogService,
   useAssetChecklists,
   useCreateChecklist,
@@ -76,6 +75,10 @@ import type {
 import { useVendors } from '@/hooks';
 import { UserSearchSelect } from '@/components/ui/user-search-select';
 import type { UserSearchHit } from '@/hooks/use-user-search';
+import { AmcEditDialog } from './amc-edit-dialog';
+import { AssetListTab } from './asset-list-tab';
+import { CHECKLIST_FREQUENCY_OPTIONS, formatDate } from './asset-ui';
+import { ChecklistsTable } from './checklists-table';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -110,21 +113,6 @@ const ASSET_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-const ASSET_TYPE_ICONS: Record<string, string> = {
-  equipment: '\uD83D\uDD27',
-  furniture: '\uD83D\uDECB',
-  vehicle: '\uD83D\uDE97',
-  infrastructure: '\uD83C\uDFD7',
-  electrical: '\u26A1',
-  plumbing: '\uD83D\uDD27',
-  fire_safety: '\uD83D\uDD25',
-  security: '\uD83D\uDD12',
-  hvac: '\u2744\uFE0F',
-  elevator: '\uD83D\uDED7',
-  generator: '\u26A1',
-  cctv: '\uD83D\uDCF9',
-};
-
 // Values must match the backend enum + DB CHECK (migration 036); there
 // is no 'critical' — the worst state is 'non_functional'.
 const CONDITIONS = [
@@ -155,45 +143,10 @@ const SERVICE_TYPES = [
 // Helpers
 // ---------------------------------------------------------------------------
 
-function conditionBadgeVariant(condition: string): 'success' | 'default' | 'warning' | 'destructive' {
-  switch (condition) {
-    case 'excellent':
-    case 'good':
-      return 'success';
-    case 'fair':
-      return 'warning';
-    case 'poor':
-    case 'non_functional':
-      return 'destructive';
-    default:
-      return 'default';
-  }
-}
-
-function warrantyStatus(expiryDate: string): { label: string; variant: 'success' | 'warning' | 'destructive' | 'secondary' } {
-  if (!expiryDate) return { label: 'N/A', variant: 'secondary' };
-  const now = new Date();
-  const expiry = new Date(expiryDate);
-  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (daysLeft < 0) return { label: 'Expired', variant: 'destructive' };
-  if (daysLeft <= 30) return { label: `${daysLeft}d left`, variant: 'warning' };
-  return { label: 'Active', variant: 'success' };
-}
-
 function daysRemaining(endDate: string): number {
   const now = new Date();
   const end = new Date(endDate);
   return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '-';
-  return new Date(dateStr).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -308,7 +261,10 @@ export default function AssetsContent(): ReactNode {
 
   // Queries
   const { data: dashboard, isLoading: dashLoading } = useAssetDashboard();
-  const { data: assetsData, isLoading: assetsLoading } = useAssets();
+  // Pickers (AMC, service log) list up to the API's page cap; the Assets
+  // tab pages through every asset itself (ASSET-02).
+  const { data: assetsData } = useAssets({ page: 1, limit: 100 });
+  const [editingAmc, setEditingAmc] = useState<AMCContract | null>(null);
   const { data: amcsData, isLoading: amcsLoading } = useAMCs();
   const { data: vendorsResponse } = useVendors();
   const vendors = (vendorsResponse as unknown as { data: Array<{ id: string; name: string }> })?.data ?? [];
@@ -551,154 +507,84 @@ export default function AssetsContent(): ReactNode {
 
       {/* Assets tab */}
       {activeTab === 'assets' && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Assets</CardTitle>
-            <Dialog open={assetDialogOpen} onOpenChange={(open) => { setAssetDialogOpen(open); if (!open) resetAssetForm(); }}>
-              <DialogTrigger>
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Asset
+        <AssetListTab
+          onEdit={openEditAsset}
+          onQr={setQrModalAsset}
+          addAsset={
+        <Dialog open={assetDialogOpen} onOpenChange={(open) => { setAssetDialogOpen(open); if (!open) resetAssetForm(); }}>
+          <DialogTrigger>
+            <Button size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Asset
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <form onSubmit={handleAssetSubmit}>
+              <DialogHeader>
+                <DialogTitle>{editingAsset ? 'Edit Asset' : 'Create Asset'}</DialogTitle>
+                <DialogDescription>
+                  {editingAsset ? 'Update asset details' : 'Add a new asset to track'}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-4 py-4">
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="asset-name">Name *</Label>
+                  <Input id="asset-name" value={assetName} onChange={(e) => setAssetName(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="asset-type">Type *</Label>
+                  <Select id="asset-type" value={assetType} onChange={(e) => setAssetType(e.target.value)}>
+                    {ASSET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="asset-location">Location *</Label>
+                  <Input id="asset-location" value={assetLocation} onChange={(e) => setAssetLocation(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="asset-manufacturer">Manufacturer</Label>
+                  <Input id="asset-manufacturer" value={assetManufacturer} onChange={(e) => setAssetManufacturer(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="asset-model">Model</Label>
+                  <Input id="asset-model" value={assetModel} onChange={(e) => setAssetModel(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="asset-serial">Serial Number</Label>
+                  <Input id="asset-serial" value={assetSerial} onChange={(e) => setAssetSerial(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="asset-purchase-date">Purchase Date</Label>
+                  <Input id="asset-purchase-date" type="date" value={assetPurchaseDate} onChange={(e) => setAssetPurchaseDate(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="asset-cost">Purchase Cost</Label>
+                  <Input id="asset-cost" type="number" value={assetPurchaseCost} onChange={(e) => setAssetPurchaseCost(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="asset-warranty">Warranty Expiry</Label>
+                  <Input id="asset-warranty" type="date" value={assetWarrantyExpiry} onChange={(e) => setAssetWarrantyExpiry(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="asset-condition">Condition</Label>
+                  <Select id="asset-condition" value={assetCondition} onChange={(e) => setAssetCondition(e.target.value)}>
+                    {CONDITIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose>
+                  <Button type="button" variant="outline">Cancel</Button>
+                </DialogClose>
+                <Button type="submit" disabled={createAsset.isPending || updateAsset.isPending}>
+                  {editingAsset ? 'Update' : 'Create'}
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <form onSubmit={handleAssetSubmit}>
-                  <DialogHeader>
-                    <DialogTitle>{editingAsset ? 'Edit Asset' : 'Create Asset'}</DialogTitle>
-                    <DialogDescription>
-                      {editingAsset ? 'Update asset details' : 'Add a new asset to track'}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid grid-cols-2 gap-4 py-4">
-                    <div className="col-span-2 space-y-2">
-                      <Label htmlFor="asset-name">Name *</Label>
-                      <Input id="asset-name" value={assetName} onChange={(e) => setAssetName(e.target.value)} required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="asset-type">Type *</Label>
-                      <Select id="asset-type" value={assetType} onChange={(e) => setAssetType(e.target.value)}>
-                        {ASSET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="asset-location">Location *</Label>
-                      <Input id="asset-location" value={assetLocation} onChange={(e) => setAssetLocation(e.target.value)} required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="asset-manufacturer">Manufacturer</Label>
-                      <Input id="asset-manufacturer" value={assetManufacturer} onChange={(e) => setAssetManufacturer(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="asset-model">Model</Label>
-                      <Input id="asset-model" value={assetModel} onChange={(e) => setAssetModel(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="asset-serial">Serial Number</Label>
-                      <Input id="asset-serial" value={assetSerial} onChange={(e) => setAssetSerial(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="asset-purchase-date">Purchase Date</Label>
-                      <Input id="asset-purchase-date" type="date" value={assetPurchaseDate} onChange={(e) => setAssetPurchaseDate(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="asset-cost">Purchase Cost</Label>
-                      <Input id="asset-cost" type="number" value={assetPurchaseCost} onChange={(e) => setAssetPurchaseCost(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="asset-warranty">Warranty Expiry</Label>
-                      <Input id="asset-warranty" type="date" value={assetWarrantyExpiry} onChange={(e) => setAssetWarrantyExpiry(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="asset-condition">Condition</Label>
-                      <Select id="asset-condition" value={assetCondition} onChange={(e) => setAssetCondition(e.target.value)}>
-                        {CONDITIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                      </Select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose>
-                      <Button type="button" variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button type="submit" disabled={createAsset.isPending || updateAsset.isPending}>
-                      {editingAsset ? 'Update' : 'Create'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent className="p-0">
-            {assetsLoading ? (
-              <div className="space-y-2 p-6">
-                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-              </div>
-            ) : assets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <Package className="mb-2 h-10 w-10" />
-                <p className="text-lg font-medium">No assets found</p>
-                <p className="text-sm">Add your first asset to start tracking</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Condition</TableHead>
-                    <TableHead>Warranty</TableHead>
-                    <TableHead>Manufacturer</TableHead>
-                    <TableHead className="w-10" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {assets.map((asset) => {
-                    const warranty = warrantyStatus(asset.warranty_expiry);
-                    return (
-                      <TableRow key={asset.id}>
-                        <TableCell className="font-medium">{asset.name}</TableCell>
-                        <TableCell>
-                          <span className="mr-1">{ASSET_TYPE_ICONS[asset.asset_type] ?? ''}</span>
-                          <span className="capitalize">{asset.asset_type.replace(/_/g, ' ')}</span>
-                        </TableCell>
-                        <TableCell>{asset.location}</TableCell>
-                        <TableCell>
-                          <Badge variant={conditionBadgeVariant(asset.condition)}>
-                            {asset.condition}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={warranty.variant}>{warranty.label}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">{asset.manufacturer}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              className="rounded p-1 hover:bg-muted"
-                              onClick={() => setQrModalAsset(asset)}
-                              title="View & Print QR Code"
-                            >
-                              <QrCode className="h-4 w-4 text-primary" />
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded p-1 hover:bg-muted"
-                              onClick={() => openEditAsset(asset)}
-                              title="Edit asset"
-                            >
-                              <Pencil className="h-4 w-4 text-muted-foreground" />
-                            </button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+          }
+        />
       )}
 
       {/* AMC tab */}
@@ -784,7 +670,9 @@ export default function AssetsContent(): ReactNode {
                     <TableHead>Period</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Days Remaining</TableHead>
+                    <TableHead>Reminder</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -804,10 +692,21 @@ export default function AssetsContent(): ReactNode {
                             {days > 0 ? `${days} days` : 'Expired'}
                           </span>
                         </TableCell>
+                        <TableCell className="text-sm">{amc.reminder_days ?? 30} days before</TableCell>
                         <TableCell>
                           <Badge variant={amc.status === 'active' ? 'success' : 'secondary'}>
                             {amc.status}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <button
+                            type="button"
+                            className="rounded p-1 hover:bg-muted"
+                            onClick={() => setEditingAmc(amc)}
+                            title="Edit contract"
+                          >
+                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          </button>
                         </TableCell>
                       </TableRow>
                     );
@@ -974,30 +873,7 @@ export default function AssetsContent(): ReactNode {
                 <p className="text-sm">Create standard inspection checklists for DG sets, elevators, pumps, etc.</p>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Checklist Name</TableHead>
-                    <TableHead>Area / Wing</TableHead>
-                    <TableHead>Item Count</TableHead>
-                    <TableHead>Frequency</TableHead>
-                    <TableHead>Last Run</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {checklists.map((cl) => (
-                    <TableRow key={cl.id}>
-                      <TableCell className="font-medium">{cl.name}</TableCell>
-                      <TableCell>{cl.area}</TableCell>
-                      <TableCell>{cl.items} checkpoints</TableCell>
-                      <TableCell className="capitalize">
-                        <Badge variant="outline">{cl.frequency}</Badge>
-                      </TableCell>
-                      <TableCell>{cl.last_run ? formatDate(cl.last_run) : 'Never'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <ChecklistsTable checklists={checklists} />
             )}
           </CardContent>
         </Card>
@@ -1337,11 +1213,9 @@ export default function AssetsContent(): ReactNode {
               <div className="space-y-2">
                 <Label htmlFor="cl-freq">Frequency</Label>
                 <Select id="cl-freq" value={clFreq} onChange={(e) => setClFreq(e.target.value)}>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="annual">Annual</option>
+                  {CHECKLIST_FREQUENCY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </Select>
               </div>
             </div>
@@ -1604,6 +1478,7 @@ export default function AssetsContent(): ReactNode {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AmcEditDialog amc={editingAmc} onClose={() => setEditingAmc(null)} />
     </div>
   );
 }

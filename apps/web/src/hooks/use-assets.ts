@@ -41,6 +41,8 @@ export interface AMCContract {
   // NUMERIC column: arrives as a string.
   cost: number | string | null;
   status: string;
+  /** Days before end_date that admins are reminded (VEND-04). */
+  reminder_days?: number | null;
 }
 
 export interface ServiceLog {
@@ -69,6 +71,8 @@ export interface AssetFilters {
   asset_type?: string;
   status?: string;
   condition?: string;
+  /** ASSET-02: name, serial number, location or asset code. */
+  search?: string;
   page?: number;
   limit?: number;
 }
@@ -114,6 +118,7 @@ function assetFiltersToParams(
   if (filters.asset_type) params.asset_type = filters.asset_type;
   if (filters.status) params.status = filters.status;
   if (filters.condition) params.condition = filters.condition;
+  if (filters.search) params.search = filters.search;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   return params;
@@ -273,6 +278,7 @@ interface UpdateAMCInput {
   end_date?: string;
   cost?: number;
   status?: string;
+  reminder_days?: number;
 }
 
 interface LogServiceInput {
@@ -367,8 +373,11 @@ export interface AssetChecklist {
   name: string;
   area: string;
   items: number;
-  frequency: string;
+  /** weekly · monthly · quarterly · half_yearly · yearly; older rows may hold free text or nothing. */
+  frequency: string | null;
   last_run: string | null;
+  /** Last run + one period (ASSET-06); absent from an older API. */
+  next_due?: string | null;
   created_at: string;
 }
 
