@@ -15,6 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 import { cn } from '@/lib/utils';
+import { Button } from './button';
 
 interface DropdownContextValue {
   open: boolean;
@@ -60,6 +61,18 @@ interface ChildClickProps {
   'aria-expanded'?: boolean;
 }
 
+function soleElement(children: ReactNode): React.ReactElement<ChildClickProps> | undefined {
+  return Children.toArray(children).find(isValidElement) as
+    | React.ReactElement<ChildClickProps>
+    | undefined;
+}
+
+// A trigger whose only content is a button must not wrap it in another
+// <button> (invalid HTML, and React reports a hydration error).
+function isButtonElement(element: React.ReactElement | undefined): boolean {
+  return element !== undefined && (element.type === 'button' || element.type === Button);
+}
+
 function DropdownMenuTrigger({
   children,
   asChild,
@@ -67,16 +80,14 @@ function DropdownMenuTrigger({
 }: DropdownMenuTriggerProps): ReactNode {
   const { open, setOpen } = useContext(DropdownContext);
 
-  if (asChild) {
+  if (asChild || (Children.count(children) === 1 && isButtonElement(soleElement(children)))) {
     // Find the only valid React element among children and merge our
     // click + aria-expanded onto it. We deliberately call the child's
     // existing onClick first — callers like tickets-content.tsx use
     // `(e) => e.stopPropagation()` to keep the row click handler from
     // firing. Then we toggle the menu, regardless of whether the child
     // stops propagation.
-    const child = Children.toArray(children).find(isValidElement) as
-      | React.ReactElement<ChildClickProps>
-      | undefined;
+    const child = soleElement(children);
     if (!child) {
       return null;
     }

@@ -62,8 +62,8 @@ export function ExportButton({ data, filename, columns, label = 'Export' }: Expo
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Button variant="outline" size="sm">
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="outline" size="sm">
           <Download className="mr-2 h-4 w-4" />
           {label}
         </Button>
