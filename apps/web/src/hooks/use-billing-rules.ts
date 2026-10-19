@@ -130,3 +130,81 @@ export function useEndRuleLine() {
     api.post<{ data: RuleLine }>(`/billing-rules/lines/${id}/end`, { effective_to }),
   );
 }
+
+// ---------------------------------------------------------------------------
+// INC-18 — Preview Invoice and Clone Rules
+// ---------------------------------------------------------------------------
+
+export interface PreviewLine {
+  rule_line_id: string | null;
+  account_name: string;
+  description: string;
+  amount: string;
+  gst_rate: string;
+  gst_amount: string;
+  total: string;
+  round_off: boolean;
+}
+
+export interface RuleLinePreview {
+  unit: { id: string; unit_number: string; category_id: string | null };
+  invoice_date: string;
+  due_date: string;
+  period: { from: string; to: string; months: number; label: string };
+  lines: PreviewLine[];
+  subtotal: string;
+  gst_total: string;
+  round_off: string;
+  total: string;
+  warnings: string[];
+}
+
+export interface PreviewParams {
+  unit_id: string;
+  invoice_date: string;
+  grace_days: number;
+}
+
+const previewQuery = (params: PreviewParams): Record<string, string> => ({
+  unit_id: params.unit_id,
+  invoice_date: params.invoice_date,
+  grace_days: String(params.grace_days),
+});
+
+/** Runs when `params` is set (after Preview is pressed); writes nothing. */
+export function useRulePreview(params: PreviewParams | null) {
+  return useQuery({
+    queryKey: [...billingRuleKeys.all, 'preview', params] as const,
+    enabled: params !== null,
+    meta: { suppressToast: true },
+    retry: false,
+    queryFn: function fetchPreview() {
+      return api
+        .get<{ data: RuleLinePreview }>('/billing-rules/preview', { params: previewQuery(params as PreviewParams) })
+        .then((res) => res.data);
+    },
+  });
+}
+
+export function downloadPreviewPdf(params: PreviewParams): Promise<Blob> {
+  return api.download('/billing-rules/preview.pdf', { params: previewQuery(params) });
+}
+
+export interface CloneRulesInput {
+  from_category_id: string;
+  to_category_id: string;
+  effective_from: string;
+  replace: boolean;
+}
+
+export function useCloneRules() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: function cloneRules(input: CloneRulesInput) {
+      return api.post<{ data: { copied: number; ended: number } }>('/billing-rules/clone', input).then((res) => res.data);
+    },
+    onSuccess: function refresh() {
+      queryClient.invalidateQueries({ queryKey: billingRuleKeys.all });
+    },
+  });
+}
