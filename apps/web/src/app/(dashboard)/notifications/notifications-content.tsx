@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Send,
   Bell,
@@ -50,7 +50,21 @@ import {
   useSendTemplate,
   useTestSendTemplate,
   useSentNotifications,
+  useAudienceCount,
+  useBlocks,
+  useNotificationChannels,
+  useUnitBlocks,
 } from '@/hooks';
+import { useAdminLayout } from '@/lib/layout-context';
+import {
+  BroadcastChannel,
+  BroadcastConfirm,
+  BroadcastRecipients,
+  recipientAudience,
+  SMS_CHANNELS,
+  SmsPreview,
+  smsTooLong,
+} from './broadcast-fields';
 import type { NotificationTemplate, SentNotification } from '@/hooks/use-notifications';
 import {
   NOTIFICATION_CATEGORIES,
@@ -60,26 +74,6 @@ import {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const CHANNELS = [
-  { value: 'in_app', label: 'In-app only' },
-  { value: 'push', label: 'In-app + Push' },
-  { value: 'email', label: 'In-app + Email' },
-  { value: 'both', label: 'In-app + Push + Email' },
-] as const;
-
-// NotifPlan §1 — extended audience set. 'staff' added per migration
-// 075 (stand-alone audience for staff-targeted broadcasts).
-// 'guards' is intentionally NOT here — it's a sub-audience of 'staff'
-// resolved by `staff_type='security_guard'` server-side, not a
-// first-class CHECK value.
-const TARGET_AUDIENCES = [
-  { value: 'all', label: 'All Members' },
-  { value: 'owners', label: 'Owners Only' },
-  { value: 'tenants', label: 'Tenants Only' },
-  { value: 'committee', label: 'Committee Only' },
-  { value: 'staff', label: 'Staff Only' },
-] as const;
 
 // Roles allowed to flip the "Urgent" toggle. Mirrors the role-gated
 // visibility from the plan (NotifPlan §1).
@@ -176,7 +170,28 @@ export default function NotificationsContent(): ReactNode {
   const [composeTitle, setComposeTitle] = useState('');
   const [composeBody, setComposeBody] = useState('');
   const [composeChannel, setComposeChannel] = useState('push');
-  const [composeAudience, setComposeAudience] = useState('all');
+  // ANN-08 — their recipients (and Staff in standard), one block for "… of Block".
+  const [composeRecipient, setComposeRecipient] = useState('all');
+  const [composeBlocks, setComposeBlocks] = useState<string[]>([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const classic = useAdminLayout() === 'classic';
+  const channelsQuery = useNotificationChannels();
+  const smsAvailable = channelsQuery.data?.sms ?? false;
+  const smsMax = channelsQuery.data?.sms_message_max ?? 120;
+  const blockMaster = useUnitBlocks();
+  const legacyBlocks = useBlocks();
+  const allBlocks = blockMaster.data?.data?.map((block) => block.name) ?? legacyBlocks.data ?? [];
+  const { audience: composeAudience, byBlock } = recipientAudience(composeRecipient);
+  const isSms = SMS_CHANNELS.has(composeChannel);
+  const audienceCount = useAudienceCount(composeAudience, composeBlocks, confirmOpen);
+
+  // The dashboard's send-now tiles open the composer with a channel chosen
+  // (`?compose=1&channel=sms_general|push`, ANN-09).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const wanted = params.get('channel');
+    if (params.get('compose') === '1' && wanted) setComposeChannel(wanted);
+  }, []);
   const [composeCategory, setComposeCategory] = useState<NotificationCategory | ''>('');
   const [composeUrgent, setComposeUrgent] = useState(false);
   // QA — staged template id (for the Test-send button to operate on
@@ -210,14 +225,23 @@ export default function NotificationsContent(): ReactNode {
     setComposeTitle('');
     setComposeBody('');
     setComposeChannel('push');
-    setComposeAudience('all');
+    setComposeRecipient('all');
+    setComposeBlocks([]);
     setComposeCategory('');
     setComposeUrgent(false);
     setStagedTemplateId(null);
   }
 
   function validate(): boolean {
-    if (!composeTitle.trim()) {
+    if (byBlock && composeBlocks.length === 0) {
+      addToast({ title: 'Choose a block', variant: 'destructive' });
+      return false;
+    }
+    if (isSms && smsTooLong(composeBody, smsMax)) {
+      addToast({ title: `An SMS can be at most ${smsMax} characters`, variant: 'destructive' });
+      return false;
+    }
+    if (!composeTitle.trim() && !(classic && composeChannel !== 'email')) {
       addToast({ title: 'Title is required', variant: 'destructive' });
       return false;
     }
@@ -236,10 +260,12 @@ export default function NotificationsContent(): ReactNode {
     if (!validate()) return null;
     try {
       const res = await createTemplateMutation.mutateAsync({
-        title: composeTitle.trim(),
+        // Classic asks for a Subject only for Email; the inbox row needs a title.
+        title: composeTitle.trim() || composeBody.trim().slice(0, 60),
         body: composeBody.trim(),
         channel: composeChannel,
         target_audience: composeAudience,
+        ...(byBlock ? { target_blocks: composeBlocks } : {}),
         category: composeCategory || null,
         urgency: composeUrgent ? 'urgent' : 'normal',
       });
@@ -256,7 +282,12 @@ export default function NotificationsContent(): ReactNode {
     }
   }
 
-  async function handleSendNotification(): Promise<void> {
+  function handleSendNotification(): void {
+    if (validate()) setConfirmOpen(true);
+  }
+
+  async function confirmSend(): Promise<void> {
+    setConfirmOpen(false);
     const id = await stageTemplate();
     if (!id) return;
     sendTemplateMutation.mutate(id, {
@@ -392,19 +423,44 @@ export default function NotificationsContent(): ReactNode {
           {/* Compose notification card */}
           <Card>
             <CardHeader>
-              <CardTitle>Compose Notification</CardTitle>
+              <CardTitle>{classic ? 'Broadcast message' : 'Compose Notification'}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="notify-title">Title</Label>
-                  <Input
-                    id="notify-title"
-                    value={composeTitle}
-                    onChange={(e) => setComposeTitle(e.target.value)}
-                    placeholder="e.g. Water Supply Disruption Notice"
-                  />
-                </div>
+                {/* ANN-S7: recipients first, channel second, message last. */}
+                <BroadcastRecipients
+                  recipient={composeRecipient}
+                  blocks={composeBlocks}
+                  allBlocks={allBlocks}
+                  classic={classic}
+                  onChange={(patch) => {
+                    if (patch.recipient !== undefined) setComposeRecipient(patch.recipient);
+                    if (patch.blocks !== undefined) setComposeBlocks(patch.blocks);
+                    setStagedTemplateId(null);
+                  }}
+                />
+                <BroadcastChannel
+                  channel={composeChannel}
+                  classic={classic}
+                  smsAvailable={smsAvailable}
+                  mayEssential={role === 'super_admin' || role === 'community_admin'}
+                  onChange={(channel) => {
+                    setComposeChannel(channel);
+                    setStagedTemplateId(null);
+                  }}
+                />
+                {(!classic || composeChannel === 'email') && (
+                  <div className="space-y-2">
+                    <Label htmlFor="notify-title">{composeChannel === 'email' ? 'Subject' : 'Title'}</Label>
+                    <Input
+                      id="notify-title"
+                      value={composeTitle}
+                      maxLength={200}
+                      onChange={(e) => setComposeTitle(e.target.value)}
+                      placeholder="e.g. Water Supply Disruption Notice"
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="notify-body">Message</Label>
                   <Textarea
@@ -414,44 +470,7 @@ export default function NotificationsContent(): ReactNode {
                     placeholder="Write your notification message here..."
                     rows={4}
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="notify-channel">Channel</Label>
-                    <Select
-                      id="notify-channel"
-                      value={composeChannel}
-                      onChange={(e) => {
-                        setComposeChannel(e.target.value);
-                        setStagedTemplateId(null);
-                      }}
-                    >
-                      {CHANNELS.map((ch) => (
-                        <option key={ch.value} value={ch.value}>{ch.label}</option>
-                      ))}
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      In-app row is created regardless of channel — the
-                      channel choice only adds Push and/or Email
-                      alongside.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="notify-audience">Target Audience</Label>
-                    <Select
-                      id="notify-audience"
-                      value={composeAudience}
-                      onChange={(e) => {
-                        setComposeAudience(e.target.value);
-                        setStagedTemplateId(null);
-                      }}
-                    >
-                      {TARGET_AUDIENCES.map((a) => (
-                        <option key={a.value} value={a.value}>{a.label}</option>
-                      ))}
-                    </Select>
-                  </div>
+                  {isSms && <SmsPreview body={composeBody} max={smsMax} />}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -569,7 +588,8 @@ export default function NotificationsContent(): ReactNode {
                     onClick={handleSendNotification}
                     disabled={
                       createTemplateMutation.isPending ||
-                      sendTemplateMutation.isPending
+                      sendTemplateMutation.isPending ||
+                      (isSms && smsTooLong(composeBody, smsMax))
                     }
                   >
                     <Send className="mr-2 h-4 w-4" />
@@ -767,6 +787,15 @@ export default function NotificationsContent(): ReactNode {
           </CardContent>
         </Card>
       )}
+
+      <BroadcastConfirm
+        open={confirmOpen}
+        count={audienceCount.data}
+        loading={audienceCount.isLoading}
+        sending={createTemplateMutation.isPending || sendTemplateMutation.isPending}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => void confirmSend()}
+      />
 
       {/* Urgent confirmation dialog — explicit consent before
           bypassing recipient mute + quiet hours. */}

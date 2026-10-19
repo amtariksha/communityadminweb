@@ -502,6 +502,7 @@ export {
 } from './use-announcement-setup';
 export type { AnnouncementChannel, AnnouncementRightsRow } from './use-announcement-setup';
 export { useNotificationChannels } from './use-notification-channels';
+export { useAudienceCount } from './use-broadcast';
 export type { NotificationChannels } from './use-notification-channels';
 
 // OCR

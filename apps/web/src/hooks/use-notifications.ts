@@ -74,6 +74,8 @@ interface CreateTemplateInput {
   body: string;
   channel: string;
   target_audience: string;
+  // ANN-08 — "… of Block" recipients.
+  target_blocks?: string[];
   // Migration 076 — optional; admin can save a template without a
   // category (sends as a generic announcement-style payload).
   category?: string | null;
