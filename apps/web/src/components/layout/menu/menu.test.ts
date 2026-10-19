@@ -95,7 +95,7 @@ describe('classic modules', () => {
   });
 
   it('Income Tracker shows Setup and Receipts & Invoices with their sub-tabs', () => {
-    expect(labels('income')).toEqual(['Setup', 'Member Income', 'Receipts & Invoices', 'Reports']);
+    expect(labels('income')).toEqual(['Setup', 'Member Income', 'Receipts & Invoices', 'Defaulters', 'Reports']);
     expect(find(menu, 'income.member-income')?.href).toBe('/income/members');
     expect(find(menu, 'income.setup')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Auto Invoicing', '/income/setup/auto-invoicing'],

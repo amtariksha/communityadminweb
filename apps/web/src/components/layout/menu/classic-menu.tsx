@@ -222,7 +222,8 @@ export const classicMenu: MenuNode[] = [
           planned('income.registers.email-status', 'Email Status Monitor', 'INC-31'),
         ],
       },
-      planned('income.defaulters', 'Defaulters', 'INC-29'),
+      // INC-29 — filter, pick and remind units with dues past due.
+      { id: 'income.defaulters', label: 'Defaulters', href: '/income/defaulters', logs: ['invoice'] },
       planned('income.non-member', 'Non Member Income', 'INC-46'),
       reportsMenuNode('income', 'REP-04'),
     ],

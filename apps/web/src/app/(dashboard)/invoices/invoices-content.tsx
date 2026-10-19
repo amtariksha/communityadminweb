@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FileText, Plus, Send, Ban, Eye, MoreHorizontal, Download, Calculator } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,7 +64,6 @@ import {
   useDownloadInvoicePdf,
   useCalculateLPI,
   usePostLPI,
-  useDefaulters,
   useUnits,
   useBulkUpdateDueDates,
   useOtherBills,
@@ -187,7 +186,6 @@ export default function InvoicesContent(): ReactNode {
   const [cancelReason, setCancelReason] = useState('');
   const [lpiDialogOpen, setLpiDialogOpen] = useState(false);
   const [lpiPostDate, setLpiPostDate] = useState('');
-  const [defaultersDialogOpen, setDefaultersDialogOpen] = useState(false);
   const [unitFilter, setUnitFilter] = useState('');
   const [partyFilter, setPartyFilter] = useState<InvoiceParty>('');
   const [ledgerFilter, setLedgerFilter] = useState<InvoiceLedger>('');
@@ -219,11 +217,13 @@ export default function InvoicesContent(): ReactNode {
   // automatically so the operator lands on the drilldown without an
   // extra click.
   const searchParams = useSearchParams();
+  const router = useRouter();
   useEffect(() => {
+    // INC-29 — the Defaulters dialog is now its own page.
     if (searchParams?.get('filter') === 'defaulters') {
-      setDefaultersDialogOpen(true);
+      router.replace('/income/defaulters');
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
   // QA #46 — persist page + sort in the URL so pagination survives refresh
   // and shared links reopen the same view.
   const listState = useListUrlState({
@@ -311,7 +311,6 @@ export default function InvoicesContent(): ReactNode {
   const downloadPdf = useDownloadInvoicePdf();
   const lpiQuery = useCalculateLPI();
   const postLPI = usePostLPI();
-  const defaultersQuery = useDefaulters();
   const unitsQuery = useUnits({ limit: 500 });
   // QA #92 — bulk-update-due-date toolbar action
   const bulkUpdateDueDates = useBulkUpdateDueDates();
@@ -324,7 +323,6 @@ export default function InvoicesContent(): ReactNode {
   // `totalInterest` as a sanity check.
   const lpiResponse = lpiQuery.data ?? { details: [], totalInterest: 0, rate_pa: undefined };
   const lpiData = lpiResponse.details;
-  const defaulters = defaultersQuery.data ?? [];
   const units = unitsQuery.data?.data ?? [];
 
   const invoices = invoicesResponse?.data ?? [];
@@ -561,13 +559,14 @@ export default function InvoicesContent(): ReactNode {
         description="Generate and manage member invoices — billing rules, bulk generation, posting to GL"
         actions={
           <>
-            <Button
-              variant="outline"
-              onClick={() => setDefaultersDialogOpen(true)}
+            {/* INC-29 — the Defaulters page (filters, contacts, reminders). */}
+            <Link
+              href="/income/defaulters"
+              className="inline-flex h-10 items-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent"
             >
               <Ban className="mr-2 h-4 w-4" />
               Defaulters
-            </Button>
+            </Link>
             <Button
               variant="outline"
               onClick={() => setLpiDialogOpen(true)}
@@ -1665,69 +1664,6 @@ export default function InvoicesContent(): ReactNode {
                   {postLPI.isPending ? 'Posting...' : 'Post LPI'}
                 </Button>
               </div>
-            )}
-          </div>
-          <DialogFooter>
-            <DialogClose>
-              <Button variant="outline">Close</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 2026-05-09 (QA #91) — Defaulters Dialog. State + button were
-          already wired but the actual <Dialog> was never rendered, so
-          clicking "Defaulters" or hitting /invoices?filter=defaulters
-          did nothing visible despite the API returning rows. Mirrors
-          the LPI dialog above. */}
-      <Dialog open={defaultersDialogOpen} onOpenChange={setDefaultersDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Defaulters</DialogTitle>
-            <DialogDescription>
-              Units with overdue balances. Click a row to drill into the unit.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {defaultersQuery.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-3/4" />
-              </div>
-            ) : defaulters.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Block</TableHead>
-                    <TableHead className="text-right">Invoices</TableHead>
-                    <TableHead className="text-right">Total Due</TableHead>
-                    <TableHead>Oldest Due</TableHead>
-                    <TableHead className="text-right">Days Overdue</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {defaulters.map((d) => (
-                    <TableRow key={d.unit_id}>
-                      <TableCell className="font-medium">{d.unit_number}</TableCell>
-                      <TableCell>{d.block ?? '-'}</TableCell>
-                      <TableCell className="text-right">{d.invoice_count}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(d.total_due)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatDate(d.oldest_due_date)}
-                      </TableCell>
-                      <TableCell className="text-right">{d.days_overdue ?? '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="py-8 text-center text-muted-foreground">
-                No defaulters — every unit is current on its dues.
-              </p>
             )}
           </div>
           <DialogFooter>
