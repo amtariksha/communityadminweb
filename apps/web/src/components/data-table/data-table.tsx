@@ -59,6 +59,8 @@ export interface DataTableProps<Row> {
   error?: unknown;
   onRetry?: () => void;
   emptyText: string;
+  /** Header of the serial column; "S.No" unless the screen says otherwise (e.g. "Sr No"). */
+  serialHeader?: string;
   /** Extra classes for a row, e.g. a visitor past their stay in red (GATE-10). */
   rowClassName?: (row: Row) => string | undefined;
   /**
@@ -217,7 +219,7 @@ export function DataTable<Row>(props: DataTableProps<Row>): ReactNode {
       <Table aria-label={title}>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-14">S.No</TableHead>
+            <TableHead className="w-14">{props.serialHeader ?? 'S.No'}</TableHead>
             {columns.map((column) => (
               <TableHead key={column.key}>{column.header}</TableHead>
             ))}

@@ -373,11 +373,28 @@ export const classicMenu: MenuNode[] = [
     id: 'parking',
     label: 'Parking Manager',
     icon: icon(Car),
+    // PARK-06: Setup · Slots · Vehicles, our Sublets and the approval
+    // queue as sub-tabs (PARK-D5). Today's /parking stays inside the module.
+    aliases: ['/parking'],
     children: [
-      planned('parking.setup', 'Setup', 'PARK-06'),
-      // Slots and vehicles are two tabs of one page until PARK-06.
-      { id: 'parking.slots-vehicles', label: 'Slots & Vehicles', href: '/parking' },
-      { id: 'parking.vehicle-approvals', label: 'Vehicle Approvals', href: '/approvals/vehicles' },
+      planned('parking.setup', 'Setup', 'PARK-10'),
+      {
+        id: 'parking.slots',
+        label: 'Slots',
+        tabs: [
+          { id: 'parking.slots.list', label: 'Slots', href: '/parking/slots' },
+          { id: 'parking.slots.sublets', label: 'Sublets', href: '/parking/slots/sublets' },
+        ],
+      },
+      {
+        id: 'parking.vehicles',
+        label: 'Vehicles',
+        tabs: [
+          { id: 'parking.vehicles.all', label: 'All Vehicles', href: '/parking/vehicles' },
+          { id: 'parking.vehicles.awaiting', label: 'Awaiting Approval', href: '/approvals/vehicles' },
+          planned('parking.vehicles.bulk', 'Bulk Upload', 'PARK-11'),
+        ],
+      },
     ],
   },
   {

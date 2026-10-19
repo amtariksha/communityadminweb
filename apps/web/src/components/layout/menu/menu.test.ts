@@ -148,6 +148,20 @@ describe('classic modules', () => {
     expect(governingItem('/staff/retired')?.href).toBe('/staff');
   });
 
+  it('Parking Manager shows Slots and Vehicles with our sub-tabs', () => {
+    expect(labels('parking')).toEqual(['Slots', 'Vehicles']);
+    expect(find(menu, 'parking.slots')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
+      ['Slots', '/parking/slots'],
+      ['Sublets', '/parking/slots/sublets'],
+    ]);
+    expect(find(menu, 'parking.vehicles')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
+      ['All Vehicles', '/parking/vehicles'],
+      ['Awaiting Approval', '/approvals/vehicles'],
+    ]);
+    const withoutParking = visibleMenu(classicMenu, { roleAllowlist: null, enabledFeatures: ['invoices'] });
+    expect(find(withoutParking, 'parking.slots')).toBeUndefined();
+  });
+
   it('HelpDesk screens follow the Tickets feature and supervisor visibility', () => {
     const withoutTickets = visibleMenu(classicMenu, { roleAllowlist: null, enabledFeatures: ['invoices'] });
     expect(find(withoutTickets, 'helpdesk')).toBeUndefined();
@@ -243,6 +257,10 @@ describe('locate', () => {
     // Today's gate page stays inside the module, as Visitors.
     ['/gate', 'gate', 'gate.investigator', 'gate.investigator.visitors'],
     ['/staff/salaries', 'more', 'more.salaries', undefined],
+    ['/parking/slots', 'parking', 'parking.slots', 'parking.slots.list'],
+    ['/parking/slots/sublets', 'parking', 'parking.slots', 'parking.slots.sublets'],
+    ['/approvals/vehicles', 'parking', 'parking.vehicles', 'parking.vehicles.awaiting'],
+    ['/parking', 'parking', undefined, undefined],
     ['/staff', 'staff', undefined, undefined],
     ['/staff/active', 'staff', 'staff.active', undefined],
     ['/staff/retired', 'staff', 'staff.retired', undefined],
