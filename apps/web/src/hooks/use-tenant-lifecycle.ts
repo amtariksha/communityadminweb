@@ -19,10 +19,8 @@ export interface CreateOnboardingInput {
   security_deposit?: number | null;
   agreement_document_url?: string | null;
   agreement_document_key?: string | null;
-  parking_slots?: unknown[];
-  ev_charging?: boolean;
-  water_meter_id?: string | null;
-  electricity_meter_id?: string | null;
+  // MOVE-04 — parking slots, EV charging and meters are not taken by the
+  // onboarding API any more (Parking Manager / Utility Tracker own them).
   // FeatPlan #OW-1 — onboarding-v2 fields. Backend (controller line
   // 61-63) defaults all three server-side to {long_term, full,
   // owner} when omitted, but the admin dialog now exposes them as
@@ -180,9 +178,9 @@ export function useRenewAgreement() {
 // ---------------------------------------------------------------------------
 //
 // Returned rows are sorted `created_at DESC` server-side. The unit's
-// CURRENT tenant onboarding is the first row with `status='approved'`
-// — used by the "Extend lease" button to know which onboarding row
-// to PATCH.
+// CURRENT lease is the first row whose status is `approved` or `active`
+// (MOVE-01: rows renewed before that fix say `active`) — see
+// `currentLease`. Used by "Extend lease" and police verification.
 
 export interface OnboardingSummary {
   id: string;
@@ -201,8 +199,17 @@ export interface OnboardingSummary {
   tenancy_type?: 'short_term' | 'long_term';
   occupancy_type?: 'full' | 'shared';
   maintenance_payer?: 'owner' | 'tenant';
+  police_verification_status?: PoliceVerificationStatus;
+  police_verification_ref?: string | null;
   unit_number?: string;
   owner_name?: string;
+}
+
+/** MOVE-01 — `approved` and `active` both mean the unit's current lease. */
+export const CURRENT_LEASE_STATUSES = ['approved', 'active'] as const;
+
+export function currentLease(rows: OnboardingSummary[] | undefined): OnboardingSummary | null {
+  return rows?.find((row) => (CURRENT_LEASE_STATUSES as readonly string[]).includes(row.status)) ?? null;
 }
 
 export function useUnitOnboardings(
@@ -272,6 +279,38 @@ export function useExtendLease() {
       // to refresh so the new end date renders without a manual
       // page reload.
       queryClient.invalidateQueries({ queryKey: ['unit-members'] });
+      queryClient.invalidateQueries({ queryKey: ['tenant-onboardings'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /tenant-lifecycle/onboardings/:id/verification — MOVE-04
+// ---------------------------------------------------------------------------
+
+export const POLICE_VERIFICATION_STATUSES = ['not_started', 'submitted', 'verified', 'rejected'] as const;
+export type PoliceVerificationStatus = (typeof POLICE_VERIFICATION_STATUSES)[number];
+
+export interface PoliceVerificationInput {
+  onboarding_id: string;
+  police_verification_status: PoliceVerificationStatus;
+  police_verification_ref: string | null;
+}
+
+export function useUpdatePoliceVerification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: PoliceVerificationInput) => {
+      const res = await api.patch<{ data: { id: string; police_verification_status: string; police_verification_ref: string | null } }>(
+        `/tenant-lifecycle/onboardings/${input.onboarding_id}/verification`,
+        {
+          police_verification_status: input.police_verification_status,
+          police_verification_ref: input.police_verification_ref,
+        },
+      );
+      return res.data;
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-onboardings'] });
     },
   });

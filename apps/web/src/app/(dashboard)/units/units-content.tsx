@@ -71,11 +71,13 @@ import {
   useCreateOnboarding,
   useExtendLease,
   useUnitOnboardings,
+  currentLease,
   isDuplicateOnboardError,
   useUploadFileToS3,
 } from '@/hooks';
 import type { MemberImportResult, UnitDetailMember } from '@/hooks';
 import { UnitCategorySelect } from './components/unit-category-select';
+import { PoliceVerification } from './components/police-verification';
 import {
   ImportMembersResult,
   rowErrorsFromApiError,
@@ -436,12 +438,12 @@ export default function UnitsContent(): ReactNode {
   // when both (a) we're rendering a unit detail panel and (b) a
   // tenant member exists — otherwise we'd burn a request on units
   // with no tenant to extend.
+  // MOVE-01 — `approved` and `active` (renewed before that fix) are both
+  // the current lease, so the list is read unfiltered.
   const onboardingsQuery = useUnitOnboardings(detailUnitId, {
     enabled: detailUnitId !== '' && tenant !== null,
-    status: 'approved',
   });
-  const activeOnboarding =
-    onboardingsQuery.data?.find((o) => o.status === 'approved') ?? null;
+  const activeOnboarding = currentLease(onboardingsQuery.data);
   // Lease window: active (end_date >= today) or expired ≤30 days
   // (today - end_date <= 30). Mirror of the backend window check.
   const canExtendLease = (() => {
@@ -2062,6 +2064,7 @@ export default function UnitsContent(): ReactNode {
                             Lease ends: {formatDate(tenant.lease_end_date)}
                           </p>
                         )}
+                        {activeOnboarding && <PoliceVerification lease={activeOnboarding} />}
                         {tenantFamily.length > 0 && (
                           <div className="ml-4 space-y-2">
                             <p className="text-xs font-medium text-muted-foreground">Family Members</p>

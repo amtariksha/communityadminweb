@@ -309,7 +309,10 @@ export {
   useRenewAgreement,
   useExtendLease,
   useUnitOnboardings,
+  useUpdatePoliceVerification,
+  currentLease,
   isDuplicateOnboardError,
+  POLICE_VERIFICATION_STATUSES,
 } from './use-tenant-lifecycle';
 export type {
   CreateOnboardingInput,
@@ -319,6 +322,7 @@ export type {
   ExtendLeaseInput,
   ExtendLeaseResult,
   OnboardingSummary,
+  PoliceVerificationStatus,
 } from './use-tenant-lifecycle';
 
 // Tenant Members (Super Admin)
