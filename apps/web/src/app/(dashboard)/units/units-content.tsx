@@ -652,7 +652,7 @@ export default function UnitsContent(): ReactNode {
     setFormBlock('');
     setFormFloor('');
     setFormArea('');
-    setFormUnitType('flat');
+    setFormUnitType('residential');
   }
 
   function handleAddUnit(e: FormEvent): void {

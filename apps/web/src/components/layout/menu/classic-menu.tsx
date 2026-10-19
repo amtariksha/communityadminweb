@@ -194,7 +194,15 @@ export const classicMenu: MenuNode[] = [
           { id: 'income.setup.defaulters', label: 'Defaulters', href: '/income/setup/defaulters', logs: ['tenant_settings'] },
         ],
       },
-      planned('income.track-units', 'Track Units', 'INC-37'),
+      {
+        // INC-37 / INC-49 — billing inputs of every unit, and its unit types.
+        id: 'income.track-units',
+        label: 'Track Units',
+        tabs: [
+          { id: 'income.track-units.unit', label: 'Unit', href: '/income/units', logs: ['unit'] },
+          { id: 'income.track-units.types', label: 'Unit Types', href: '/income/units/types', logs: ['unit_billing_category'] },
+        ],
+      },
       // INC-20 — the unit dues workbench; INC-35 gives it the classic
       // arrangement (opens empty until a block or a search is chosen).
       { id: 'income.member-income', label: 'Member Income', href: '/income/members', logs: ['invoice', 'receipt'] },

@@ -96,7 +96,13 @@ describe('classic modules', () => {
   });
 
   it('Income Tracker shows Setup and Receipts & Invoices with their sub-tabs', () => {
-    expect(labels('income')).toEqual(['Setup', 'Member Income', 'Receipts & Invoices', 'Defaulters', 'Reports']);
+    expect(labels('income')).toEqual(['Setup', 'Track Units', 'Member Income', 'Receipts & Invoices', 'Defaulters', 'Reports']);
+    // INC-37: Track Units has the grid and the unit types, gated with Invoices.
+    expect(find(menu, 'income.track-units')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
+      ['Unit', '/income/units'],
+      ['Unit Types', '/income/units/types'],
+    ]);
+    expect(governingItem('/income/units/types')?.href).toBe('/invoices');
     expect(find(menu, 'income.member-income')?.href).toBe('/income/members');
     expect(find(menu, 'income.setup')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Auto Invoicing', '/income/setup/auto-invoicing'],
