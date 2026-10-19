@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { PermissionsGrid, type PermissionCell } from './permissions-grid';
 import type { EnforcedResource } from '@/hooks/use-enforced-permissions';
 
+// Each case renders a large screen (well under a second alone); under the full
+// parallel run the default 5 s ran out, so this file allows 30 s a case.
+vi.setConfig({ testTimeout: 30_000 });
+
 /**
  * SB-15 — a Roles & Permissions cell no API route checks changes nothing, so
  * it is greyed out. The list comes from GET /rbac/permissions/enforced.

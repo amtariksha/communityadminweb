@@ -2,6 +2,10 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AssetsContent from './assets-content';
 
+// Each case renders a large screen (well under a second alone); under the full
+// parallel run the default 5 s ran out, so this file allows 30 s a case.
+vi.setConfig({ testTimeout: 30_000 });
+
 /**
  * The Assets page and `/assets` API had drifted apart field by field.
  * Each test below pins one name the API really uses — see
