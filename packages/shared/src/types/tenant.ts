@@ -3,6 +3,8 @@ export interface TenantSettings {
   // (unset = 240). Written by PATCH /tenant-settings/gate; keep in sync with
   // communityos/packages/shared/src/types/tenant.ts.
   overstay_threshold_minutes?: number;
+  // EXP-06 — GST rates offered on purchase request lines (unset = 0/5/18/40).
+  gst_rate_options?: number[];
 
   // Admin-web arrangement for this society: today's layout or the
   // classic menu, density and wording. Absent = standard.

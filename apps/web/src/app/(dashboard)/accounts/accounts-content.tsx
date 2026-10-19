@@ -67,6 +67,7 @@ import { useUnits } from '@/hooks';
 import { useTallyExportPreview, useTallyExport } from '@/hooks/use-tally-export';
 import type { TallyExportOptions } from '@/hooks/use-tally-export';
 import type { AccountGroup, LedgerAccount } from '@communityos/shared';
+import { HsnSacField } from './hsn-sac-field';
 
 // ---------------------------------------------------------------------------
 // Tree building utilities
@@ -308,6 +309,8 @@ export default function AccountsContent(): ReactNode {
   // -- form state for create account --
   const [accountName, setAccountName] = useState('');
   const [accountCode, setAccountCode] = useState('');
+  // EXP-19 — HSN/SAC of an expense head ('' = none).
+  const [accountHsn, setAccountHsn] = useState('');
   const [accountGroupId, setAccountGroupId] = useState('');
   const [openingBalance, setOpeningBalanceValue] = useState('0');
   const [balanceType, setBalanceType] = useState('debit');
@@ -320,6 +323,7 @@ export default function AccountsContent(): ReactNode {
   const [editAccountId, setEditAccountId] = useState('');
   const [editAccountName, setEditAccountName] = useState('');
   const [editAccountCode, setEditAccountCode] = useState('');
+  const [editAccountHsn, setEditAccountHsn] = useState('');
   const [editAccountGroupId, setEditAccountGroupId] = useState('');
   const [editAccountOpeningBalance, setEditAccountOpeningBalance] = useState('0');
   const [editAccountBalanceType, setEditAccountBalanceType] = useState('debit');
@@ -852,6 +856,7 @@ export default function AccountsContent(): ReactNode {
   function resetAccountForm(): void {
     setAccountName('');
     setAccountCode('');
+    setAccountHsn('');
     setAccountGroupId('');
     setOpeningBalanceValue('0');
     setBalanceType('debit');
@@ -861,6 +866,7 @@ export default function AccountsContent(): ReactNode {
     setEditAccountId(account.id);
     setEditAccountName(account.name);
     setEditAccountCode(account.code);
+    setEditAccountHsn(account.hsn_sac ?? '');
     setEditAccountGroupId(account.group_id);
     setEditAccountOpeningBalance(String(account.opening_balance ?? 0));
     setEditAccountBalanceType(account.balance_type ?? 'debit');
@@ -877,6 +883,7 @@ export default function AccountsContent(): ReactNode {
         data: {
           name: editAccountName,
           code: editAccountCode,
+          hsn_sac: editAccountHsn.trim() || null,
           group_id: editAccountGroupId,
           opening_balance: Number(editAccountOpeningBalance),
           balance_type: editAccountBalanceType,
@@ -907,6 +914,7 @@ export default function AccountsContent(): ReactNode {
       {
         name: accountName,
         code: accountCode,
+        ...(accountHsn.trim() ? { hsn_sac: accountHsn.trim() } : {}),
         group_id: accountGroupId,
         opening_balance: balance,
         balance_type: balanceType,
@@ -1087,6 +1095,7 @@ export default function AccountsContent(): ReactNode {
                         required
                       />
                     </div>
+                    <HsnSacField id="account-hsn" value={accountHsn} onChange={setAccountHsn} />
                     <div className="space-y-2">
                       <Label htmlFor="account-group">Group</Label>
                       <div className="flex gap-2">
@@ -1221,6 +1230,7 @@ export default function AccountsContent(): ReactNode {
                   required
                 />
               </div>
+              <HsnSacField id="edit-account-hsn" value={editAccountHsn} onChange={setEditAccountHsn} />
               <div className="space-y-2">
                 <Label htmlFor="edit-account-group">Group</Label>
                 <Select

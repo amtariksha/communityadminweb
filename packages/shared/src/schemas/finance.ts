@@ -1,4 +1,11 @@
 import { z } from 'zod';
+import { HSN_SAC_MESSAGE, HSN_SAC_PATTERN } from './gst';
+
+/** EXP-19 — HSN/SAC, blank or null clears it. */
+export const optionalHsnSacSchema = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? null : value),
+  z.string().trim().regex(HSN_SAC_PATTERN, HSN_SAC_MESSAGE).nullable().optional(),
+);
 
 export const createAccountGroupSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
@@ -18,6 +25,8 @@ export const createLedgerAccountSchema = z.object({
   balance_type: z.enum(['debit', 'credit']).default('debit'),
   is_bank_account: z.boolean().default(false),
   bank_details: z.record(z.unknown()).nullable().default(null),
+  // EXP-19 — the head's HSN/SAC (4, 6 or 8 digits). Blank = none.
+  hsn_sac: optionalHsnSacSchema,
 });
 
 export type CreateLedgerAccountInput = z.infer<typeof createLedgerAccountSchema>;

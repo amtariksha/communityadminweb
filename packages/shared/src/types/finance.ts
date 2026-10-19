@@ -23,6 +23,8 @@ export interface LedgerAccount {
   balance_type: BalanceType;
   is_bank_account: boolean;
   bank_details: Record<string, unknown> | null;
+  // EXP-19 — HSN/SAC default for lines on this head.
+  hsn_sac?: string | null;
   is_system: boolean;
   is_active: boolean;
   created_at: string | Date;

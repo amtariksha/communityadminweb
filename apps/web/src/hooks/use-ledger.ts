@@ -170,6 +170,8 @@ interface CreateLedgerAccountInput {
   balance_type?: string;
   is_bank_account?: boolean;
   bank_details?: Record<string, unknown> | null;
+  // EXP-19 — HSN/SAC of an expense head; null clears it.
+  hsn_sac?: string | null;
 }
 
 interface UpdateLedgerAccountInput extends Partial<CreateLedgerAccountInput> {
