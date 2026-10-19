@@ -17,8 +17,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -39,13 +37,11 @@ import {
 import { useToast } from '@/components/ui/toast';
 import {
   useEvents,
-  useCreateEvent,
-  useUpdateEvent,
   useDeleteEvent,
   useEventRsvps,
   type EventItem,
-  type CreateEventInput,
 } from '@/hooks';
+import { EventForm } from './components/event-form';
 import { formatDate } from '@/lib/utils';
 
 type EventStatusTab = 'all' | 'published' | 'draft' | 'completed' | 'cancelled';
@@ -59,89 +55,21 @@ export function EventsContent() {
   const [selectedEventForRsvps, setSelectedEventForRsvps] = useState<EventItem | null>(null);
 
   const { data: events = [], isLoading } = useEvents(activeTab, search);
-  const createEventMutation = useCreateEvent();
-  const updateEventMutation = useUpdateEvent();
   const deleteEventMutation = useDeleteEvent();
 
   const { data: rsvps = [], isLoading: isRsvpsLoading } = useEventRsvps(
     selectedEventForRsvps?.id ?? '',
   );
 
-  // Form State
-  const [formData, setFormData] = useState<CreateEventInput>({
-    title: '',
-    description: '',
-    event_date: new Date().toISOString().split('T')[0],
-    start_time: '18:00',
-    end_time: '20:00',
-    location: 'Community Clubhouse',
-    max_attendees: null,
-    target_audience: 'all',
-    status: 'published',
-  });
-
+  // AMEN-12 — the form is EventForm (a dialog here, a page in classic).
   const handleOpenCreate = () => {
     setEditingEvent(null);
-    setFormData({
-      title: '',
-      description: '',
-      event_date: new Date().toISOString().split('T')[0],
-      start_time: '18:00',
-      end_time: '20:00',
-      location: 'Community Clubhouse',
-      max_attendees: null,
-      target_audience: 'all',
-      status: 'published',
-    });
     setIsCreateOpen(true);
   };
 
   const handleOpenEdit = (event: EventItem) => {
     setEditingEvent(event);
-    setFormData({
-      title: event.title,
-      description: event.description ?? '',
-      event_date: event.event_date,
-      start_time: event.start_time,
-      end_time: event.end_time,
-      location: event.location ?? '',
-      max_attendees: event.max_attendees,
-      target_audience: event.target_audience,
-      status: event.status,
-    });
     setIsCreateOpen(true);
-  };
-
-  const handleSaveEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.title.trim() || !formData.event_date) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please provide event title and valid date.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      if (editingEvent) {
-        await updateEventMutation.mutateAsync({
-          id: editingEvent.id,
-          data: formData,
-        });
-        toast({ title: 'Event Updated', description: 'Changes saved successfully.' });
-      } else {
-        await createEventMutation.mutateAsync(formData);
-        toast({ title: 'Event Created', description: 'New community event published.' });
-      }
-      setIsCreateOpen(false);
-    } catch {
-      toast({
-        title: 'Operation Failed',
-        description: 'Could not save event details.',
-        variant: 'destructive',
-      });
-    }
   };
 
   const handleDeleteEvent = async (id: string) => {
@@ -314,155 +242,17 @@ export function EventsContent() {
         </div>
       )}
 
-      {/* Create / Edit Event Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <form onSubmit={handleSaveEvent}>
-            <DialogHeader>
-              <DialogTitle>{editingEvent ? 'Edit Event' : 'Create Community Event'}</DialogTitle>
-              <DialogDescription>
-                Publish festival celebrations, sports events, or society general meetings.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-4 py-4 text-sm">
-              <div className="space-y-1.5">
-                <Label htmlFor="event-title">Event Title *</Label>
-                <Input
-                  id="event-title"
-                  placeholder="e.g. Diwali Mela & Cultural Evening"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="event-date">Date (YYYY-MM-DD) *</Label>
-                  <Input
-                    id="event-date"
-                    type="date"
-                    value={formData.event_date}
-                    onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="event-location">Venue / Location</Label>
-                  <Input
-                    id="event-location"
-                    placeholder="Clubhouse Main Lawn"
-                    value={formData.location ?? ''}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="start-time">Start Time *</Label>
-                  <Input
-                    id="start-time"
-                    type="time"
-                    value={formData.start_time}
-                    onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="end-time">End Time *</Label>
-                  <Input
-                    id="end-time"
-                    type="time"
-                    value={formData.end_time}
-                    onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="max-attendees">Max Capacity (Optional)</Label>
-                  <Input
-                    id="max-attendees"
-                    type="number"
-                    min="1"
-                    placeholder="Unlimited"
-                    value={formData.max_attendees ?? ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        max_attendees: e.target.value ? parseInt(e.target.value, 10) : null,
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="target-audience">Target Audience</Label>
-                  <select
-                    id="target-audience"
-                    value={formData.target_audience}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        target_audience: e.target.value as CreateEventInput['target_audience'],
-                      })
-                    }
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm"
-                  >
-                    <option value="all">All Society Residents</option>
-                    <option value="tower">Tower Specific</option>
-                    <option value="floor">Floor Specific</option>
-                    <option value="members_only">Owners Only</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="event-status">Publication Status</Label>
-                <select
-                  id="event-status"
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      status: e.target.value as CreateEventInput['status'],
-                    })
-                  }
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm"
-                >
-                  <option value="published">Published (Visible in Resident App)</option>
-                  <option value="draft">Draft (Admin Only)</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="event-desc">Event Description & Instructions</Label>
-                <Textarea
-                  id="event-desc"
-                  rows={3}
-                  placeholder="Detail dress code, chief guests, refreshment coupons, etc."
-                  value={formData.description ?? ''}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createEventMutation.isPending || updateEventMutation.isPending}>
-                {editingEvent ? 'Save Changes' : 'Publish Event'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Create / Edit Event */}
+      {isCreateOpen && (
+        <EventForm
+          key={editingEvent?.id ?? 'new'}
+          mode="dialog"
+          open
+          event={editingEvent}
+          onClose={() => setIsCreateOpen(false)}
+          onSaved={() => setIsCreateOpen(false)}
+        />
+      )}
 
       {/* RSVP Attendees Drawer / Modal */}
       <Dialog

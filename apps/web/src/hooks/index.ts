@@ -1011,6 +1011,7 @@ export {
   useDeleteEvent,
   useRsvpEvent,
   useEventRsvps,
+  useInviteEvent,
 } from './use-events';
 export type {
   EventItem,

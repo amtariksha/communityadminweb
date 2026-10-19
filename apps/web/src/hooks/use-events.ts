@@ -161,3 +161,13 @@ export function useEventRsvps(id: string) {
     enabled: !!id,
   });
 }
+
+/** AMEN-12 — Invite: the event's audience gets one notification each. */
+export function useInviteEvent() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.post<{ data: { sent: number } }>(`/events/${id}/invite`, {});
+      return response.data;
+    },
+  });
+}

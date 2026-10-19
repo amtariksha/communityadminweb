@@ -454,6 +454,9 @@ export const classicMenu: MenuNode[] = [
     forms: [
       { label: 'Add Amenity', path: '/amenities/new' },
       { label: 'Edit Amenity', path: '/amenities/:amenityId/edit' },
+      // AMEN-12: the event form as a page.
+      { label: 'Add Event', path: '/amenities/events/new' },
+      { label: 'Edit Event', path: '/amenities/events/:eventId/edit' },
     ],
     children: [
       {
@@ -461,7 +464,7 @@ export const classicMenu: MenuNode[] = [
         label: 'Setup',
         tabs: [
           { id: 'amenity.setup.amenity', label: 'Amenity', href: '/amenities/setup', logs: ['amenity'] },
-          planned('amenity.setup.event', 'Event', 'AMEN-12'),
+          { id: 'amenity.setup.event', label: 'Event', href: '/amenities/setup/events', logs: ['event'] },
           planned('amenity.setup.restrictions', 'Restrictions', 'AMEN-41'),
         ],
       },
