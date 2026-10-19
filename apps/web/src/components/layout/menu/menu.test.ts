@@ -165,6 +165,16 @@ describe('classic modules', () => {
     expect(find(withoutParking, 'parking.slots')).toBeUndefined();
   });
 
+  it('Move In/Out Tracker shows its built children, each a route (MOVE-05)', () => {
+    expect(find(menu, 'move')?.children?.map((child) => [child.label, child.href])).toEqual([
+      ['Verify Move Ins', '/move-in-out/verify'],
+      ['Approved Move Ins', '/move-in-out/approved-move-ins'],
+    ]);
+    expect(governingItem('/move-in-out/verify')?.href).toBe('/approvals');
+    // Every approval request stays reachable under More.
+    expect(find(menu, 'more.approvals')?.href).toBe('/approvals');
+  });
+
   it('HelpDesk screens follow the Tickets feature and supervisor visibility', () => {
     const withoutTickets = visibleMenu(classicMenu, { roleAllowlist: null, enabledFeatures: ['invoices'] });
     expect(find(withoutTickets, 'helpdesk')).toBeUndefined();
@@ -266,6 +276,9 @@ describe('locate', () => {
     ['/parking/slots/new', 'parking', 'parking.slots', 'parking.slots.list'],
     ['/approvals/vehicles', 'parking', 'parking.vehicles', 'parking.vehicles.awaiting'],
     ['/parking', 'parking', undefined, undefined],
+    ['/move-in-out/verify', 'move', 'move.verify', undefined],
+    ['/move-in-out/approved-move-ins', 'move', 'move.approved', undefined],
+    ['/approvals', 'more', 'more.approvals', undefined],
     ['/staff', 'staff', undefined, undefined],
     ['/staff/active', 'staff', 'staff.active', undefined],
     ['/staff/retired', 'staff', 'staff.retired', undefined],

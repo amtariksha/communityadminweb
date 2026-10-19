@@ -366,15 +366,36 @@ export const classicMenu: MenuNode[] = [
     id: 'move',
     label: 'Move In/Out Tracker',
     icon: icon(ArrowLeftRight),
+    // MOVE-05: the module's routes under /move-in-out; each child shows
+    // once its ticket ships. Close goes to Verify Move Ins.
+    close: '/move-in-out/verify',
     children: [
-      planned('move.setup', 'Setup', 'MOVE-05'),
-      // Today's approval queue, which also holds exit requests.
-      { id: 'move.verify', label: 'Verify Move Ins', href: '/approvals' },
-      planned('move.approved', 'Approved Move Ins', 'MOVE-06'),
-      planned('move.owners', 'Approved Owners', 'MOVE-05'),
-      planned('move.tenants', 'Approved Tenants', 'MOVE-05'),
-      planned('move.noc', 'NOC Initiated', 'MOVE-05'),
-      planned('move.deactivated', 'Deactivated', 'MOVE-05'),
+      {
+        id: 'move.setup',
+        label: 'Setup',
+        tabs: [
+          planned('move.setup.verifiers', 'Verifiers', 'MOVE-12'),
+          planned('move.setup.move-in-checklist', 'Move In CheckList', 'MOVE-13'),
+          planned('move.setup.move-out-checklist', 'Move Out CheckList', 'MOVE-13'),
+          planned('move.setup.move-in-fields', 'Custom Fields For Move-in', 'MOVE-14'),
+          planned('move.setup.move-out-fields', 'Custom Fields For Move-out', 'MOVE-14'),
+        ],
+      },
+      { id: 'move.verify', label: 'Verify Move Ins', href: '/move-in-out/verify' },
+      { id: 'move.approved', label: 'Approved Move Ins', href: '/move-in-out/approved-move-ins' },
+      planned('move.owners', 'Approved Owners', 'MOVE-08'),
+      {
+        id: 'move.tenants',
+        label: 'Approved Tenants',
+        tabs: [
+          planned('move.tenants.all', 'Approved Tenants', 'MOVE-08'),
+          planned('move.tenants.ending', 'Agreement Ending This Month', 'MOVE-09'),
+          planned('move.tenants.ended', 'Agreement Ended', 'MOVE-09'),
+          planned('move.tenants.none', 'No Agreement Filled', 'MOVE-09'),
+        ],
+      },
+      planned('move.noc', 'NOC Initiated', 'MOVE-18'),
+      planned('move.deactivated', 'Deactivated', 'MOVE-10'),
     ],
   },
   {
@@ -638,6 +659,8 @@ export const classicMenu: MenuNode[] = [
       { id: 'more.gas', label: 'Gas', href: '/gas' },
       { id: 'more.marketplace', label: 'Marketplace', href: '/marketplace' },
       { id: 'more.salaries', label: 'Salaries', href: '/staff/salaries' },
+      // Every approval request (purchases, exits, move-ins …); Move In/Out has its own queues.
+      { id: 'more.approvals', label: 'Approvals', href: '/approvals' },
       { id: 'more.audit', label: 'Audit Trail', href: '/audit' },
       { id: 'more.settings', label: 'Settings', href: '/settings', logs: ['tenant_settings'] },
     ],
