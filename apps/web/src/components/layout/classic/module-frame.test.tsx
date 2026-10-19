@@ -59,10 +59,10 @@ describe('ModuleFrame', () => {
   });
 
   it('offers Close back to the module’s first screen', () => {
-    renderAt('/vendors');
+    renderAt('/vendor-master/expense');
     expect(screen.queryByRole('link', { name: 'Close' })).toBeNull();
     renderAt('/customers');
-    expect(screen.getAllByRole('link', { name: 'Close' }).at(-1)?.getAttribute('href')).toBe('/vendors');
+    expect(screen.getAllByRole('link', { name: 'Close' }).at(-1)?.getAttribute('href')).toBe('/vendor-master/expense');
   });
 
   it('offers no Close inside the More group', () => {

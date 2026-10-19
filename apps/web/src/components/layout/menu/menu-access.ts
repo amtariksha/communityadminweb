@@ -31,6 +31,10 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   // rest Assets (both the assets feature).
   ['/asset-inventory/inventory', '/inventory'],
   ['/asset-inventory', '/assets'],
+  // Vendor Master (VEND-06 / VEND-07): the income parties follow Customers,
+  // the rest Vendors (both the vendors feature).
+  ['/vendor-master/non-member-income', '/customers'],
+  ['/vendor-master', '/vendors'],
 ];
 
 /**

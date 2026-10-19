@@ -145,3 +145,26 @@ describe('Asset & Inventory (ASSET-07)', () => {
     expect(locate('/assets', menu)?.child?.id).toBe('more.asset-maintenance');
   });
 });
+
+describe('Vendor Master (VEND-06, VEND-07)', () => {
+  it('shows both lists with Active and In-Active sub-tabs', () => {
+    expect(children('vendors')?.map(([label]) => label)).toEqual(['Vendors For Expense', 'Vendors for Non Member Income']);
+    expect(tabs('vendors.expense')).toEqual([
+      ['Active', '/vendor-master/expense'],
+      ['In-Active', '/vendor-master/expense/inactive'],
+    ]);
+    expect(tabs('vendors.non-member')).toEqual([
+      ['Active', '/vendor-master/non-member-income'],
+      ['In-Active', '/vendor-master/non-member-income/inactive'],
+    ]);
+  });
+
+  it('opens the vendor form as a page and keeps today’s pages in the module', () => {
+    expect(locate('/vendor-master/vendors/new', menu)?.child?.label).toBe('Add Vendor');
+    expect(locate('/vendor-master/vendors/v-1/edit', menu)?.form).toBe(true);
+    expect(locate('/vendor-master/expense/inactive', menu)?.tab?.id).toBe('vendors.expense.inactive');
+    expect(locate('/customers', menu)?.child?.id).toBe('vendors.non-member');
+    expect(governingItem('/vendor-master/non-member-income')?.href).toBe('/customers');
+    expect(governingItem('/vendor-master/expense')?.href).toBe('/vendors');
+  });
+});

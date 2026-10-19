@@ -531,16 +531,40 @@ export const classicMenu: MenuNode[] = [
     id: 'vendors',
     label: 'Vendor Master',
     icon: icon(Store),
+    // VEND-06 / VEND-07. Both lists Active / In-Active; the vendor form is
+    // a page (the income list's saves to customers, decision D5).
+    forms: [
+      { label: 'Add Vendor', path: '/vendor-master/vendors/new' },
+      { label: 'Edit Vendor', path: '/vendor-master/vendors/:id/edit' },
+    ],
     children: [
-      { id: 'vendors.expense', label: 'Vendors For Expense', href: '/vendors', logs: ['vendor'] },
+      {
+        id: 'vendors.expense',
+        label: 'Vendors For Expense',
+        aliases: ['/vendors'],
+        logs: ['vendor'],
+        tabs: [
+          { id: 'vendors.expense.active', label: 'Active', href: '/vendor-master/expense', logs: ['vendor'] },
+          { id: 'vendors.expense.inactive', label: 'In-Active', href: '/vendor-master/expense/inactive', logs: ['vendor'] },
+        ],
+      },
       {
         id: 'vendors.non-member',
         label: 'Vendors for Non Member Income',
-        href: '/customers',
+        aliases: ['/customers'],
         logs: ['customer'],
+        tabs: [
+          { id: 'vendors.non-member.active', label: 'Active', href: '/vendor-master/non-member-income', logs: ['customer'] },
+          {
+            id: 'vendors.non-member.inactive',
+            label: 'In-Active',
+            href: '/vendor-master/non-member-income/inactive',
+            logs: ['customer'],
+          },
+        ],
       },
       planned('vendors.bulk', 'Bulk Posting', 'VEND-09'),
-      planned('vendors.amcs', 'AMCs', 'VEND-06'),
+      planned('vendors.amcs', 'AMCs', 'VEND-11'),
     ],
   },
   {

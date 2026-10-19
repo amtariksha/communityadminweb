@@ -37,6 +37,10 @@ interface CreateCustomerInput {
   bank_account_number?: string | null;
   bank_ifsc?: string | null;
   notes?: string | null;
+  // VEND-07 — the party's Id and the TDS it deducts (migration 195).
+  party_code?: string | null;
+  tds_rate?: number | null;
+  tds_section?: string | null;
 }
 
 interface UpdateCustomerInput extends Partial<CreateCustomerInput> {
