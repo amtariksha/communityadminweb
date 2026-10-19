@@ -25,6 +25,7 @@ vi.mock('../../settings/interest-card', () => ({ InterestCard: () => <section>In
 vi.mock('../../invoices/billing-runs-panel', () => ({ BillingRunsPanel: () => <section>Billing runs panel</section> }));
 vi.mock('./auto-invoicing/components/auto-invoice-form', () => ({ AutoInvoiceForm: () => <section>Auto invoicing form</section> }));
 vi.mock('./auto-invoicing/components/rule-book', () => ({ RuleBook: () => <section>Rules per unit type</section> }));
+vi.mock('./auto-invoicing/components/run-now-control', () => ({ RunNowControl: () => <section>Run now</section> }));
 vi.mock('@/hooks/use-billing-rules', () => ({
   useAutoInvoiceSettings: () => ({ data: { billing_auto_invoice: { enabled: mocks.ruleLinesOn } } }),
 }));
@@ -74,6 +75,7 @@ describe('Income Tracker › Setup › Auto Invoicing', () => {
 
     expect(screen.queryByText('Billing rules card')).toBeNull();
     expect(screen.getByText('Rules per unit type')).toBeTruthy();
+    expect(screen.getByText('Run now')).toBeTruthy();
   });
 
   it('leaves the title to the classic frame, and draws its own header in standard', () => {

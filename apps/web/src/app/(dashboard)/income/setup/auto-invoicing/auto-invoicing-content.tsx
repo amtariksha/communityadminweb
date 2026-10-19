@@ -9,6 +9,7 @@ import { canWriteFinance } from '@/lib/finance-roles';
 import { currentRole } from '@/lib/current-role';
 import { AutoInvoiceForm } from './components/auto-invoice-form';
 import { RuleBook } from './components/rule-book';
+import { RunNowControl } from './components/run-now-control';
 
 /**
  * Setup › Auto Invoicing (INC-S1, INC-17): the form, the rule lines per unit
@@ -25,6 +26,7 @@ export function AutoInvoicingContent(): ReactNode {
       <AutoInvoiceForm canWrite={canWrite} />
       <RuleBook canWrite={canWrite} />
       <InterestCard />
+      {ruleLinesOn && canWrite && <RunNowControl />}
       <BillingRunsPanel />
       {!ruleLinesOn && (
         <section aria-label="Billing rules in use" className="space-y-2">
