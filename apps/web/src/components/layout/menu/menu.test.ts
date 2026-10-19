@@ -120,6 +120,7 @@ describe('classic modules', () => {
     expect(find(menu, 'helpdesk.escalation')?.href).toBe('/helpdesk/escalation');
     expect(find(menu, 'helpdesk.setup')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Setup Helpdesk Categories', '/helpdesk/setup/categories'],
+      ['Setup Preferred Service Date', '/helpdesk/setup/service-date'],
       ['Notification Alerts', '/helpdesk/setup/notifications'],
       ['Automated Responses', '/helpdesk/setup/auto-responses'],
     ]);

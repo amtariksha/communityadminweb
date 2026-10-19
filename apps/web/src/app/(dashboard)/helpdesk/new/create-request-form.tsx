@@ -3,12 +3,14 @@
 import { useState, type ReactNode } from 'react';
 import { FormFrame, type FormMode } from '@/components/form-page';
 import { FormFieldError } from '@/components/ui/form-field-error';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
 import { useCreateTicket, useHelpdeskCategories, useTicketCategories, type Ticket } from '@/hooks';
 import { friendlyError } from '@/lib/api-error';
+import { serviceDateRange } from '@/lib/service-date';
 import { useWord } from '@/lib/vocabulary';
 import { categoryChoices } from '../../tickets/category-choices';
 import { hasRequestErrors, MAX_TEXT, validateRequest, type RequestErrors } from './request-fields';
@@ -47,6 +49,24 @@ function PriorityField({ mode, values, set }: { mode: FormMode; values: RequestV
         <option value="high">High</option>
         <option value="urgent">Urgent</option>
       </Select>
+    </div>
+  );
+}
+
+function ServiceDateField({ values, set, error }: { values: RequestValues; set: SetValues; error?: string }): ReactNode {
+  const range = serviceDateRange();
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="request-service-date">Preferred service date (optional)</Label>
+      <Input
+        id="request-service-date"
+        type="date"
+        min={range.min}
+        max={range.max}
+        value={values.serviceDate}
+        onChange={(event) => set({ serviceDate: event.target.value })}
+      />
+      {error && <FormFieldError message={error} />}
     </div>
   );
 }
@@ -93,7 +113,7 @@ function CategoryField({ values, set, choices, error }: {
 /**
  * Create Request (HELP-13, HELP-S5): the same fields and checks as a
  * classic page and as the standard dialog (SB-07). Request Type came with
- * HELP-15; Sub-category and Preferred Service Date join with HELP-17/16.
+ * HELP-15, Preferred Service Date with HELP-16; Sub-category joins with HELP-17.
  */
 export function CreateRequestForm({ mode, open, onClose, onSaved }: CreateRequestFormProps): ReactNode {
   const { addToast } = useToast();
@@ -150,6 +170,7 @@ export function CreateRequestForm({ mode, open, onClose, onSaved }: CreateReques
       <TextField values={values} set={set} error={errors.text} />
       <FilesField files={files} />
       <CategoryField values={values} set={set} choices={choices} error={errors.category} />
+      <ServiceDateField values={values} set={set} error={errors.serviceDate} />
       <PriorityField mode={mode} values={values} set={set} />
     </FormFrame>
   );

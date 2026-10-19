@@ -1,3 +1,5 @@
+import { serviceDateError } from '@/lib/service-date';
+
 /**
  * Rules of the Create Request form (HELP-S5), kept apart from the screen
  * so the dialog and the page validate the same way.
@@ -47,6 +49,7 @@ export interface RequestErrors {
   text?: string;
   category?: string;
   unit?: string;
+  serviceDate?: string;
 }
 
 export interface RequestChecked {
@@ -55,14 +58,17 @@ export interface RequestChecked {
   /** Personal requests are for a unit (HELP-15). */
   requestType?: 'personal' | 'community';
   unitId?: string;
+  serviceDate?: string;
 }
 
-export function validateRequest({ text, category, requestType, unitId }: RequestChecked): RequestErrors {
+export function validateRequest({ text, category, requestType, unitId, serviceDate }: RequestChecked): RequestErrors {
   const errors: RequestErrors = {};
   if (requestSubject(text) === '') errors.text = 'Write your request.';
   else if (text.length > MAX_TEXT) errors.text = `Keep the request under ${MAX_TEXT} characters.`;
   if (!category) errors.category = 'Choose a category.';
   if (requestType === 'personal' && !unitId) errors.unit = 'Choose the unit this request is for.';
+  const dateError = serviceDateError(serviceDate ?? '');
+  if (dateError) errors.serviceDate = dateError;
   return errors;
 }
 

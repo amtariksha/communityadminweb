@@ -62,6 +62,7 @@ function request(id: string, overrides: Record<string, unknown> = {}) {
     status: 'open',
     priority: 'medium',
     last_comment_text: 'Plumber visited',
+    preferred_service_date: '2026-11-02',
     age_days: 3,
     ...overrides,
   };
@@ -127,6 +128,7 @@ describe('Open Requests', () => {
       'Request',
       'Opened On',
       'By',
+      'Preferred Service Date',
       'Unit',
       'Status',
       'Last update',
@@ -138,6 +140,7 @@ describe('Open Requests', () => {
     expect(within(row).getByText('New')).toBeTruthy();
     expect(within(row).getByText('Plumber visited')).toBeTruthy();
     expect(within(row).getByText('3')).toBeTruthy();
+    expect(within(row).getByText('02/11/2026')).toBeTruthy();
   });
 
   it('labels each filter option with its count and filters on the chosen one', () => {

@@ -20,6 +20,7 @@ import { fetchPresignedDownloadUrl, useAddTicketComment, useHelpdeskTemplates, u
 import type { Ticket } from '@/hooks';
 import { friendlyError } from '@/lib/api-error';
 import { useAdminLayout } from '@/lib/layout-context';
+import { formatServiceDate } from '@/lib/service-date';
 import { ticketStatusLabel } from '@/lib/ticket-status';
 import { formatDate } from '@/lib/utils';
 import { priorityTone, statusTone } from './ticket-badges';
@@ -90,6 +91,12 @@ function Facts({ detail }: { detail: Ticket }): ReactNode {
         <>
           <span className="text-muted-foreground">Unit</span>
           <span>{detail.unit_number}</span>
+        </>
+      )}
+      {detail.preferred_service_date && (
+        <>
+          <span className="text-muted-foreground">Preferred service date</span>
+          <span>{formatServiceDate(detail.preferred_service_date)}</span>
         </>
       )}
       {detail.request_type && (

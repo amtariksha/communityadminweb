@@ -28,6 +28,7 @@ describe('classic menu — HelpDesk Tracker', () => {
 
     expect(setup?.tabs?.map((tab) => tab.href)).toEqual([
       '/helpdesk/setup/categories',
+      '/helpdesk/setup/service-date',
       '/helpdesk/setup/notifications',
       '/helpdesk/setup/auto-responses',
     ]);

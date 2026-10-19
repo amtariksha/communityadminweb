@@ -80,6 +80,8 @@ export interface Ticket {
   // HELP-15; older servers send neither.
   request_type?: 'personal' | 'community';
   raised_on_behalf?: boolean;
+  /** YYYY-MM-DD (HELP-16). */
+  preferred_service_date?: string | null;
   // GET /tickets/:id returns the whole thread; the list does not.
   comments?: TicketComment[];
 }
@@ -150,6 +152,7 @@ interface CreateTicketInput {
   priority?: string;
   unit_id?: string;
   request_type?: 'personal' | 'community';
+  preferred_service_date?: string;
   attachment_urls?: string[];
   attachment_names?: string[];
   // QA #231 — populated by useUploadFileToS3 in the consumer page.

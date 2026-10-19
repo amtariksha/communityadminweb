@@ -15,6 +15,8 @@ export interface RequestValues {
   // Classic: "This is urgent!"; standard: the Priority select ('' = category default).
   urgent: boolean;
   priority: string;
+  /** YYYY-MM-DD, or '' (HELP-16). */
+  serviceDate: string;
 }
 
 export const EMPTY_REQUEST: RequestValues = {
@@ -24,6 +26,7 @@ export const EMPTY_REQUEST: RequestValues = {
   category: '',
   urgent: false,
   priority: '',
+  serviceDate: '',
 };
 
 /** What to send for the chosen category: its id, and its name for an older server. */
@@ -43,6 +46,7 @@ export function requestBody(values: RequestValues, mode: FormMode, choices: read
     ...categoryFields(choices, values.category),
     ...(priority ? { priority } : {}),
     ...(personal && values.unitId ? { unit_id: values.unitId } : {}),
+    ...(values.serviceDate ? { preferred_service_date: values.serviceDate } : {}),
     ...(files.urls.length > 0 ? { attachment_urls: files.urls, attachment_names: files.names } : {}),
   };
 }

@@ -96,6 +96,9 @@ export interface HelpdeskSettings {
   auto_reply_outside_hours: boolean;
   auto_reply_outside_hours_text: string | null;
   auto_reply_by_category: boolean;
+  /** Setup > Preferred Service Date (HELP-16); an older server sends neither. */
+  allow_resident_add_psd?: boolean;
+  allow_resident_edit_psd?: boolean;
 }
 
 /** What PUT /helpdesk/setup takes: only the fields that change. */
@@ -109,6 +112,8 @@ export type HelpdeskSettingsUpdate = Partial<
     | 'operational_hours_end'
     | 'auto_reply_by_category'
     | 'auto_reply_outside_hours'
+    | 'allow_resident_add_psd'
+    | 'allow_resident_edit_psd'
   >
 > & {
   notification_alerts?: Partial<NotificationAlerts>;

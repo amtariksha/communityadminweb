@@ -183,6 +183,22 @@ describe('Create Request — classic page', () => {
     expect(mocks.create.mock.calls[0][0]).toMatchObject({ request_type: 'personal', unit_id: 'unit-102' });
   });
 
+  it('sends the preferred service date when one is chosen, and refuses yesterday (HELP-16)', async () => {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    const yesterday = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
+    renderForm();
+    fillRequired();
+    fireEvent.change(screen.getByLabelText('Preferred service date (optional)'), { target: { value: yesterday } });
+
+    await submit();
+    expect(screen.getByText('Choose a date from today up to a year ahead.')).toBeTruthy();
+    expect(mocks.create).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Preferred service date (optional)'), { target: { value: today } });
+    await submit();
+    expect(mocks.create.mock.calls[0][0].preferred_service_date).toBe(today);
+  });
+
   it('hides the unit for a Community request and sends none', async () => {
     renderForm();
     fillRequired();

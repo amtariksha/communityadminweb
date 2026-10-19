@@ -4,13 +4,13 @@ import type { DataTableColumn } from '@/components/data-table';
 import type { Ticket } from '@/hooks';
 import type { AdminLayout } from '@/lib/admin-layout';
 import { ticketStatusLabel } from '@/lib/ticket-status';
+import { formatServiceDate } from '@/lib/service-date';
 import { formatDate } from '@/lib/utils';
 import { requestAgeDays } from '../../tickets/ticket-badges';
 
 /**
  * The columns of Open Requests and Closed Requests (HELP-S7, S8), in the
- * screen's order. "Request" is the subject (the first line); Preferred
- * Service Date joins with HELP-16.
+ * screen's order. "Request" is the subject (the first line).
  */
 export function requestColumns(layout: AdminLayout, word: (standard: string) => string): DataTableColumn<Ticket>[] {
   return [
@@ -19,6 +19,12 @@ export function requestColumns(layout: AdminLayout, word: (standard: string) => 
     { key: 'request', header: 'Request', cell: (row) => row.subject, className: 'max-w-[240px]' },
     { key: 'opened', header: 'Opened On', cell: (row) => formatDate(row.created_at), className: 'whitespace-nowrap' },
     { key: 'by', header: 'By', cell: (row) => row.created_by_name ?? '—' },
+    {
+      key: 'service-date',
+      header: 'Preferred Service Date',
+      cell: (row) => formatServiceDate(row.preferred_service_date),
+      className: 'whitespace-nowrap',
+    },
     { key: 'unit', header: 'Unit', cell: (row) => row.unit_number ?? '—', className: 'whitespace-nowrap' },
     { key: 'status', header: 'Status', cell: (row) => ticketStatusLabel(row.status, layout) },
     {
