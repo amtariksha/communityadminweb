@@ -118,7 +118,8 @@ export interface Gate {
   tenant_id: string;
   name: string;
   location: string | null;
-  gate_type: 'main' | 'service' | 'parking' | 'emergency';
+  // As stored (the API maps the form's `main` to vehicle_and_pedestrian).
+  gate_type: 'vehicle_and_pedestrian' | 'vehicle_only' | 'pedestrian_only' | 'service';
   is_active: boolean;
   staff_count?: number;
   created_at: string;
@@ -259,6 +260,7 @@ export const staffKeys = {
 export const gateConfigKeys = {
   all: ['gate-config'] as const,
   gates: () => [...gateConfigKeys.all, 'gates'] as const,
+  gateList: (includeInactive: boolean) => [...gateConfigKeys.gates(), { includeInactive }] as const,
 };
 
 export const rbacKeys = {
@@ -415,13 +417,22 @@ export function useStaffLeaves(filters?: LeaveFilters) {
 // Queries — Gates Config
 // ---------------------------------------------------------------------------
 
-export function useGates() {
+/**
+ * The society's gates. Active ones only (as the guard app sees them) unless
+ * `includeInactive`, which the API honours for the society's admins.
+ */
+export function useGates(options: { includeInactive?: boolean } = {}) {
+  const includeInactive = options.includeInactive === true;
   return useQuery({
-    queryKey: gateConfigKeys.gates(),
+    queryKey: gateConfigKeys.gateList(includeInactive),
     queryFn: function fetchGates() {
-      return api.get<{ data: Gate[] }>('/gate/gates').then(function unwrap(res) {
-        return res.data;
-      });
+      return api
+        .get<{ data: Gate[] }>('/gate/gates', {
+          params: includeInactive ? { include_inactive: 'true' } : undefined,
+        })
+        .then(function unwrap(res) {
+          return res.data;
+        });
     },
   });
 }

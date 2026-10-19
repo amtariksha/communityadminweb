@@ -59,7 +59,7 @@ export interface Parcel {
   received_at: string;
   collected_at: string | null;
   collected_by: string | null;
-  status: 'received' | 'notified' | 'collected';
+  status: 'received' | 'notified' | 'held' | 'collected';
   received_by: string | null;
   received_by_name?: string;
   created_at: string;

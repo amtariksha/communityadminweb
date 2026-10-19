@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
+import { DataTablePager } from '@/components/data-table/data-table-pager';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { FormFieldError } from '@/components/ui/form-field-error';
@@ -84,6 +85,13 @@ import {
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
 import { formatDate } from '@/lib/utils';
 import { normalizePhone } from '@/lib/validation';
+import {
+  GATE_LIST_PAGE_SIZE,
+  PARCEL_STATUS_BADGE,
+  PARCEL_STATUS_OPTIONS,
+  VISITOR_EXPORT_COLUMNS,
+  canMarkCollected,
+} from './gate-lists';
 
 type TabKey = 'visitors' | 'staff' | 'regulars' | 'parcels' | 'vehicles';
 
@@ -94,12 +102,6 @@ const VISITOR_STATUS_BADGE: Record<string, { label: string; variant: string; cla
   checked_out: { label: 'Checked Out', variant: 'secondary' },
   rejected: { label: 'Rejected', variant: 'destructive' },
   expired: { label: 'Expired', variant: 'warning', className: 'bg-orange-500/15 text-orange-600 border-transparent' },
-};
-
-const PARCEL_STATUS_BADGE: Record<string, { label: string; variant: string }> = {
-  received: { label: 'Received', variant: 'warning' },
-  collected: { label: 'Collected', variant: 'success' },
-  returned: { label: 'Returned', variant: 'secondary' },
 };
 
 // QA #75 — pin gate logs to Asia/Kolkata. Backend returns UTC timestamps;
@@ -221,6 +223,7 @@ export default function GateContent(): ReactNode {
 
   // Visitor state
   const [visitorStatusFilter, setVisitorStatusFilter] = useState('');
+  const [visitorPage, setVisitorPage] = useState(1);
   const [addVisitorOpen, setAddVisitorOpen] = useState(false);
   const [visitorName, setVisitorName] = useState('');
   const [visitorPhone, setVisitorPhone] = useState('');
@@ -230,6 +233,7 @@ export default function GateContent(): ReactNode {
   const [selectedGateId, setSelectedGateId] = useState('');
 
   // Staff state
+  const [staffPage, setStaffPage] = useState(1);
   const [staffCheckInOpen, setStaffCheckInOpen] = useState(false);
   const [staffName, setStaffName] = useState('');
   const [staffType, setStaffType] = useState('');
@@ -240,6 +244,7 @@ export default function GateContent(): ReactNode {
 
   // Parcel state
   const [parcelStatusFilter, setParcelStatusFilter] = useState('');
+  const [parcelPage, setParcelPage] = useState(1);
   const [logParcelOpen, setLogParcelOpen] = useState(false);
   const [parcelUnit, setParcelUnit] = useState('');
   const [parcelCourier, setParcelCourier] = useState('');
@@ -267,11 +272,13 @@ export default function GateContent(): ReactNode {
 
   const visitorFilters: VisitorFilters = {
     status: visitorStatusFilter || undefined,
+    page: visitorPage,
+    limit: GATE_LIST_PAGE_SIZE,
   };
   const visitorsQuery = useVisitors(visitorFilters);
   const visitors: Visitor[] = visitorsQuery.data?.data ?? [];
 
-  const staffFilters: StaffLogFilters = {};
+  const staffFilters: StaffLogFilters = { page: staffPage, limit: GATE_LIST_PAGE_SIZE };
   const staffQuery = useStaffLogs(staffFilters);
   const staffLogs: StaffLog[] = staffQuery.data?.data ?? [];
 
@@ -297,6 +304,8 @@ export default function GateContent(): ReactNode {
 
   const parcelFilters: ParcelFilters = {
     status: parcelStatusFilter || undefined,
+    page: parcelPage,
+    limit: GATE_LIST_PAGE_SIZE,
   };
   const parcelsQuery = useParcels(parcelFilters);
   const parcels: Parcel[] = parcelsQuery.data?.data ?? [];
@@ -626,11 +635,27 @@ export default function GateContent(): ReactNode {
   }
 
   function renderParcelStatusBadge(status: string): ReactNode {
-    const config = PARCEL_STATUS_BADGE[status] ?? { label: status, variant: 'outline' };
+    const config = PARCEL_STATUS_BADGE[status] ?? { label: status, variant: 'outline' as const };
     return (
-      <Badge variant={config.variant as 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'}>
+      <Badge variant={config.variant}>
         {config.label}
       </Badge>
+    );
+  }
+
+  // "Showing x to y of z" with Previous / Next (interim, until SB-04).
+  function renderPager(page: number, total: number | undefined, onPageChange: (page: number) => void): ReactNode {
+    if (!total) return null;
+    return (
+      <div className="mt-4">
+        <DataTablePager
+          page={page}
+          pageSize={GATE_LIST_PAGE_SIZE}
+          total={total}
+          pageSizeOptions={[GATE_LIST_PAGE_SIZE]}
+          onPageChange={onPageChange}
+        />
+      </div>
     );
   }
 
@@ -689,8 +714,9 @@ export default function GateContent(): ReactNode {
             <div className="flex gap-2">
               <Select
                 className="w-36"
+                aria-label="Visitor status"
                 value={visitorStatusFilter}
-                onChange={(e) => setVisitorStatusFilter(e.target.value)}
+                onChange={(e) => { setVisitorStatusFilter(e.target.value); setVisitorPage(1); }}
               >
                 <option value="">All Statuses</option>
                 <option value="pending">Pending</option>
@@ -861,6 +887,7 @@ export default function GateContent(): ReactNode {
               </p>
             </div>
           )}
+          {renderPager(visitorPage, visitorsQuery.data?.total, setVisitorPage)}
         </CardContent>
       </Card>
     );
@@ -1073,6 +1100,7 @@ export default function GateContent(): ReactNode {
               <p className="text-sm text-muted-foreground">No staff check-ins recorded today</p>
             </div>
           )}
+          {renderPager(staffPage, staffQuery.data?.total, setStaffPage)}
         </CardContent>
       </Card>
     );
@@ -1091,13 +1119,16 @@ export default function GateContent(): ReactNode {
             <div className="flex gap-2">
               <Select
                 className="w-36"
+                aria-label="Parcel status"
                 value={parcelStatusFilter}
-                onChange={(e) => setParcelStatusFilter(e.target.value)}
+                onChange={(e) => { setParcelStatusFilter(e.target.value); setParcelPage(1); }}
               >
                 <option value="">All Statuses</option>
-                <option value="received">Received</option>
-                <option value="collected">Collected</option>
-                <option value="returned">Returned</option>
+                {PARCEL_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </Select>
 
               <Dialog open={logParcelOpen} onOpenChange={setLogParcelOpen}>
@@ -1198,7 +1229,7 @@ export default function GateContent(): ReactNode {
                     <TableCell className="text-muted-foreground">{formatDateTime(parcel.received_at)}</TableCell>
                     <TableCell>{renderParcelStatusBadge(parcel.status)}</TableCell>
                     <TableCell>
-                      {parcel.status === 'received' && (
+                      {canMarkCollected(parcel.status) && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -1226,6 +1257,7 @@ export default function GateContent(): ReactNode {
               </p>
             </div>
           )}
+          {renderPager(parcelPage, parcelsQuery.data?.total, setParcelPage)}
         </CardContent>
       </Card>
     );
@@ -1424,15 +1456,7 @@ export default function GateContent(): ReactNode {
           <ExportButton
             data={visitors as unknown as Record<string, unknown>[]}
             filename={`gate-visitors-${new Date().toISOString().split('T')[0]}`}
-            columns={[
-              { key: 'name', label: 'Visitor Name' },
-              { key: 'phone', label: 'Phone' },
-              { key: 'purpose', label: 'Purpose' },
-              { key: 'unit_number', label: 'Unit' },
-              { key: 'status', label: 'Status' },
-              { key: 'check_in_time', label: 'Check In' },
-              { key: 'check_out_time', label: 'Check Out' },
-            ]}
+            columns={[...VISITOR_EXPORT_COLUMNS]}
           />
         }
       />

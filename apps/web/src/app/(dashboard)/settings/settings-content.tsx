@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { Save, Plus, Power, CalendarRange, MoreVertical, Lock, Unlock, Star, MapPin, Shield, CalendarClock } from 'lucide-react';
+import { Save, Plus, CalendarRange, MoreVertical, Lock, Unlock, Star, Shield, CalendarClock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,9 +41,6 @@ import {
   useSetCurrentYear,
   useFreezeYear,
   useUnfreezeYear,
-  useGates,
-  useCreateGate,
-  useUpdateGate,
   useRbacPermissions,
   useUpdatePermission,
   useSeedPermissions,
@@ -51,10 +48,11 @@ import {
   useCreateAmenity,
   useUpdateAmenity,
 } from '@/hooks';
-import type { Gate, RbacPermission } from '@/hooks/use-staff';
+import type { RbacPermission } from '@/hooks/use-staff';
 import type { Amenity } from '@/hooks/use-amenities';
 import type { FinancialYear } from '@communityos/shared';
 import { RoleDelegationCard } from './role-delegation-card';
+import { GatesCard } from './gates-card';
 import { AutomatedReportsCard } from './automated-reports-card';
 import { DuesRemindersCard } from './dues-reminders-card';
 import { InterestCard } from './interest-card';
@@ -131,13 +129,6 @@ export default function SettingsContent(): ReactNode {
   const [prApprovalRoles, setPrApprovalRoles] = useState<string>('community_admin');
   const [prApprovalThreshold, setPrApprovalThreshold] = useState<string>('0');
 
-  // Gate dialog state
-  const [gateDialogOpen, setGateDialogOpen] = useState(false);
-  const [editingGateId, setEditingGateId] = useState('');
-  const [gateName, setGateName] = useState('');
-  const [gateLocation, setGateLocation] = useState('');
-  const [gateType, setGateType] = useState('main');
-
   // Permissions state
   const [permissionChanges, setPermissionChanges] = useState<Record<string, { can_read: boolean; can_write: boolean; can_delete: boolean }>>({});
 
@@ -154,12 +145,7 @@ export default function SettingsContent(): ReactNode {
   const [amenityRules, setAmenityRules] = useState('');
   const [amenityTimeSlots, setAmenityTimeSlots] = useState('');
 
-  // Gate & RBAC queries/mutations
-  const gatesQuery = useGates();
-  const gatesList: Gate[] = gatesQuery.data ?? [];
-  const createGate = useCreateGate();
-  const updateGateM = useUpdateGate();
-
+  // RBAC queries/mutations
   const permissionsQuery = useRbacPermissions();
   const permissions: RbacPermission[] = permissionsQuery.data ?? [];
   const updatePermissionM = useUpdatePermission();
@@ -315,72 +301,6 @@ export default function SettingsContent(): ReactNode {
               : msg,
             variant: 'destructive',
           });
-        },
-      },
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Gate handlers
-  // ---------------------------------------------------------------------------
-
-  function resetGateForm(): void {
-    setEditingGateId('');
-    setGateName('');
-    setGateLocation('');
-    setGateType('main');
-  }
-
-  function handleOpenEditGate(gate: Gate): void {
-    setEditingGateId(gate.id);
-    setGateName(gate.name);
-    setGateLocation(gate.location ?? '');
-    setGateType(gate.gate_type);
-    setGateDialogOpen(true);
-  }
-
-  function handleSaveGate(e: FormEvent): void {
-    e.preventDefault();
-    if (editingGateId) {
-      updateGateM.mutate(
-        { id: editingGateId, data: { name: gateName, location: gateLocation || undefined, gate_type: gateType } },
-        {
-          onSuccess() {
-            setGateDialogOpen(false);
-            resetGateForm();
-            addToast({ title: 'Gate updated', variant: 'success' });
-          },
-          onError(error) {
-            addToast({ title: 'Failed to update gate', description: friendlyError(error), variant: 'destructive' });
-          },
-        },
-      );
-    } else {
-      createGate.mutate(
-        { name: gateName, location: gateLocation || undefined, gate_type: gateType },
-        {
-          onSuccess() {
-            setGateDialogOpen(false);
-            resetGateForm();
-            addToast({ title: 'Gate created', variant: 'success' });
-          },
-          onError(error) {
-            addToast({ title: 'Failed to create gate', description: friendlyError(error), variant: 'destructive' });
-          },
-        },
-      );
-    }
-  }
-
-  function handleDeactivateGate(gateId: string): void {
-    updateGateM.mutate(
-      { id: gateId, data: { is_active: false } },
-      {
-        onSuccess() {
-          addToast({ title: 'Gate deactivated', variant: 'success' });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to deactivate gate', description: friendlyError(error), variant: 'destructive' });
         },
       },
     );
@@ -1023,155 +943,7 @@ export default function SettingsContent(): ReactNode {
         </DialogContent>
       </Dialog>
 
-      {/* ------------------------------------------------------------------- */}
-      {/* Gates Configuration Section                                          */}
-      {/* ------------------------------------------------------------------- */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Gates Configuration</CardTitle>
-            <Dialog open={gateDialogOpen} onOpenChange={(open) => { setGateDialogOpen(open); if (!open) resetGateForm(); }}>
-              <DialogTrigger>
-                <Button size="sm" onClick={() => resetGateForm()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Gate
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <form onSubmit={handleSaveGate}>
-                  <DialogHeader>
-                    <DialogTitle>{editingGateId ? 'Edit Gate' : 'Add Gate'}</DialogTitle>
-                    <DialogDescription>
-                      {editingGateId ? 'Update gate configuration' : 'Add a new gate entry point'}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="gate-name">Gate Name</Label>
-                      <Input
-                        id="gate-name"
-                        required
-                        placeholder="e.g., Main Gate"
-                        value={gateName}
-                        onChange={(e) => setGateName(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="gate-location">Location</Label>
-                      <Input
-                        id="gate-location"
-                        placeholder="e.g., North entrance"
-                        value={gateLocation}
-                        onChange={(e) => setGateLocation(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="gate-type">Type</Label>
-                      {/* 2026-05-09 (QA #461) — backend Zod enum
-                          (apps/api/src/modules/gate/gate.controller.ts)
-                          accepts only:
-                            vehicle_and_pedestrian | vehicle_only |
-                            pedestrian_only | service | main
-                          The previous list (parking, emergency) was
-                          rejected with a 400 enum-validation error.
-                          Per the triage decision log we tighten the
-                          UI rather than extending the backend. */}
-                      <Select
-                        id="gate-type"
-                        value={gateType}
-                        onChange={(e) => setGateType(e.target.value)}
-                      >
-                        <option value="main">Main</option>
-                        <option value="service">Service</option>
-                        <option value="vehicle_and_pedestrian">Vehicle &amp; Pedestrian</option>
-                        <option value="vehicle_only">Vehicle Only</option>
-                        <option value="pedestrian_only">Pedestrian Only</option>
-                      </Select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose>
-                      <Button type="button" variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button type="submit" disabled={createGate.isPending || updateGateM.isPending}>
-                      {(createGate.isPending || updateGateM.isPending) ? 'Saving...' : 'Save Gate'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {gatesQuery.isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 2 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : gatesList.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Staff Count</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {gatesList.map((gate) => (
-                  <TableRow key={gate.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        {gate.name}
-                      </div>
-                    </TableCell>
-                    <TableCell>{gate.location ?? '-'}</TableCell>
-                    <TableCell className="capitalize">{gate.gate_type}</TableCell>
-                    <TableCell>{gate.staff_count ?? 0}</TableCell>
-                    <TableCell>
-                      <Badge variant={gate.is_active ? 'success' : 'secondary'}>
-                        {gate.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleOpenEditGate(gate)}>
-                            Edit
-                          </DropdownMenuItem>
-                          {gate.is_active && (
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDeactivateGate(gate.id)}
-                            >
-                              <Power className="mr-2 h-4 w-4" />
-                              Deactivate
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="py-8 text-center text-muted-foreground">
-              No gates configured. Add gates to manage entry points.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <GatesCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Amenities Section                                                    */}
