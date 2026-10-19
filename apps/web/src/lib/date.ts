@@ -81,3 +81,23 @@ export function currentFinancialYear(today: string = todayIST()): FinancialYearR
   const startYear = month >= 4 ? year : year - 1;
   return { start_date: `${startYear}-04-01`, end_date: `${startYear + 1}-03-31` };
 }
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * The India calendar day of a date the API sent: a plain `YYYY-MM-DD`, or a
+ * DATE column serialised as a timestamp (midnight of the server's zone,
+ * which reads as the day before in UTC when the server runs in IST).
+ */
+export function calendarDateIST(value: string | Date): string {
+  if (typeof value === 'string' && ISO_DATE.test(value)) return value;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(value));
+}
+
+/** The year among `years` whose start and end dates hold `date` (`YYYY-MM-DD`). */
+export function yearContaining<Year extends { start_date: string | Date; end_date: string | Date }>(
+  years: readonly Year[],
+  date: string,
+): Year | undefined {
+  return years.find((year) => calendarDateIST(year.start_date) <= date && date <= calendarDateIST(year.end_date));
+}

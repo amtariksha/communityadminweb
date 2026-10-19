@@ -26,7 +26,8 @@ export function GeneralLedgerView({
   // ledger created pre-migration 023 backfill), the next line
   // tried `undefined.replace(...)` and threw a runtime TypeError
   // that broke the entire page. Render-safe fallbacks below.
-  const accountName = data.account_name ?? 'account';
+  // The API sends `account: { name }`; `account_name` is an older shape.
+  const accountName = data.account?.name ?? data.account_name ?? 'account';
   const filenameSafeAccount = accountName.replace(/\s+/g, '-');
 
   return (
@@ -35,7 +36,7 @@ export function GeneralLedgerView({
         <div>
           <h3 className="text-lg font-semibold">{accountName}</h3>
           <p className="text-sm text-muted-foreground">
-            {formatDate(data.start_date)} to {formatDate(data.end_date)}
+            {formatDate(startDate)} to {formatDate(endDate)}
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -45,9 +46,9 @@ export function GeneralLedgerView({
           </div>
           <ExportButton
             data={data.transactions as unknown as Record<string, unknown>[]}
-            filename={`general-ledger-${filenameSafeAccount}-${data.start_date}-to-${data.end_date}`}
+            filename={`general-ledger-${filenameSafeAccount}-${startDate}-to-${endDate}`}
             columns={[
-              { key: 'date', label: 'Date' },
+              { key: 'entry_date', label: 'Date' },
               { key: 'entry_number', label: 'Entry #' },
               { key: 'narration', label: 'Narration' },
               { key: 'debit', label: 'Debit' },
@@ -71,7 +72,7 @@ export function GeneralLedgerView({
         <TableBody>
           {data.transactions.map((txn, idx) => (
             <TableRow key={idx}>
-              <TableCell className="text-muted-foreground">{formatDate(txn.date)}</TableCell>
+              <TableCell className="text-muted-foreground">{formatDate(txn.entry_date ?? txn.date)}</TableCell>
               <TableCell className="font-mono text-xs">{txn.entry_number}</TableCell>
               <TableCell>{txn.narration}</TableCell>
               <TableCell className="text-right">

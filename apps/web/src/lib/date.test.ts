@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { currentFinancialYear, lastMonthRanges } from './date';
+import { calendarDateIST, currentFinancialYear, lastMonthRanges, yearContaining } from './date';
 
 describe('lastMonthRanges', () => {
   it('lists whole calendar months, oldest first, ending with the month of today', () => {
@@ -30,5 +30,25 @@ describe('currentFinancialYear (REP-02)', () => {
     expect(currentFinancialYear('2027-03-31')).toEqual({ start_date: '2026-04-01', end_date: '2027-03-31' });
     expect(currentFinancialYear('2027-04-01')).toEqual({ start_date: '2027-04-01', end_date: '2028-03-31' });
     expect(currentFinancialYear('2027-01-05')).toEqual({ start_date: '2026-04-01', end_date: '2027-03-31' });
+  });
+});
+
+describe('calendarDateIST and yearContaining (GL-09)', () => {
+  it('keeps a plain date and reads a timestamped DATE as its India day', () => {
+    expect(calendarDateIST('2026-04-01')).toBe('2026-04-01');
+    // DATE 2026-04-01 from a server running in IST.
+    expect(calendarDateIST('2026-03-31T18:30:00.000Z')).toBe('2026-04-01');
+    // The same DATE from a server running in UTC.
+    expect(calendarDateIST('2026-04-01T00:00:00.000Z')).toBe('2026-04-01');
+  });
+
+  it('finds the year holding a date, ends included', () => {
+    const years = [
+      { id: 'a', start_date: '2025-03-31T18:30:00.000Z', end_date: '2026-03-30T18:30:00.000Z' },
+      { id: 'b', start_date: '2026-04-01', end_date: '2027-03-31' },
+    ];
+    expect(yearContaining(years, '2026-03-31')?.id).toBe('a');
+    expect(yearContaining(years, '2026-04-01')?.id).toBe('b');
+    expect(yearContaining(years, '2027-04-01')).toBeUndefined();
   });
 });

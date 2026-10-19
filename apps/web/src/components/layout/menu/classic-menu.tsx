@@ -342,12 +342,47 @@ export const classicMenu: MenuNode[] = [
     id: 'ledger',
     label: 'General Ledger',
     icon: icon(BookOpen),
+    // GL-09: the six children as classic routes. Today's /accounts (tree,
+    // dialogs, Tally import) stays inside Chart of Accounts.
     children: [
-      { id: 'ledger.chart', label: 'Chart of Accounts', href: '/accounts' },
-      planned('ledger.journal', 'Journal Entries', 'GL-10'),
-      planned('ledger.query', 'Query', 'GL-09'),
-      planned('ledger.trial-balance', 'Trial Balance', 'GL-09'),
-      planned('ledger.statements', 'Financial Statements', 'GL-09'),
+      {
+        id: 'ledger.chart',
+        label: 'Chart of Accounts',
+        aliases: ['/accounts'],
+        tabs: [
+          { id: 'ledger.chart.assets', label: 'Assets', href: '/general-ledger/chart-of-accounts/assets', logs: ['ledger_account'] },
+          { id: 'ledger.chart.liabilities', label: 'Liabilities', href: '/general-ledger/chart-of-accounts/liabilities', logs: ['ledger_account'] },
+          { id: 'ledger.chart.income', label: 'Income', href: '/general-ledger/chart-of-accounts/income', logs: ['ledger_account'] },
+          { id: 'ledger.chart.expense', label: 'Expense', href: '/general-ledger/chart-of-accounts/expense', logs: ['ledger_account'] },
+          planned('ledger.chart.groups', 'Groups', 'GL-13'),
+        ],
+      },
+      {
+        id: 'ledger.journal',
+        label: 'Journal Entries',
+        tabs: [
+          planned('ledger.journal.create', 'Create Journal Entry', 'GL-11'),
+          planned('ledger.journal.old', 'Old Journal Entries', 'GL-10'),
+          {
+            id: 'ledger.journal.bulk-posting',
+            label: 'Bulk Posting',
+            href: '/general-ledger/journal-entries/bulk-posting',
+            logs: ['ledger_account', 'journal_entry', 'financial_year'],
+          },
+          planned('ledger.journal.bulk-corrections', 'Bulk Corrections', 'GL-25'),
+        ],
+      },
+      {
+        id: 'ledger.query',
+        label: 'Query',
+        tabs: [
+          { id: 'ledger.query.by-group', label: 'By Account Group', href: '/general-ledger/query/by-group' },
+          planned('ledger.query.by-user', 'By User', 'GL-17'),
+        ],
+      },
+      { id: 'ledger.trial-balance', label: 'Trial Balance', href: '/general-ledger/trial-balance', logs: ['financial_year'] },
+      { id: 'ledger.statements', label: 'Financial Statements', href: '/general-ledger/financial-statements' },
+      // REP-04's module Reports page (/accounts/reports).
       reportsMenuNode('ledger', 'REP-04'),
     ],
   },

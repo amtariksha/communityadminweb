@@ -115,13 +115,15 @@ interface GeneralLedgerTransaction {
 }
 
 interface GeneralLedgerReport {
-  account_id: string;
-  account_name: string;
+  /** What the API sends; the flat keys below are an older shape. */
+  account?: { id: string; name: string; code: string };
+  account_id?: string;
+  account_name?: string;
   opening_balance: number;
   transactions: GeneralLedgerTransaction[];
   closing_balance: number;
-  start_date: string;
-  end_date: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 // ---------------------------------------------------------------------------

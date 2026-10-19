@@ -102,7 +102,9 @@ describe('screen finder', () => {
   const entries = screenEntries(menu);
 
   it('finds a screen by any words of its menu path', () => {
-    expect(matchScreens(entries, 'chart accounts').map((e) => e.href)).toEqual(['/accounts']);
+    expect(matchScreens(entries, 'chart accounts liabilities').map((e) => e.href)).toEqual([
+      '/general-ledger/chart-of-accounts/liabilities',
+    ]);
     expect(matchScreens(entries, 'income invoices').map((e) => e.href)).toEqual([
       '/income/registers/receipts',
       '/income/registers/credit-notes',

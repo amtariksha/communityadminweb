@@ -50,6 +50,10 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   // the rest Vendors (both the vendors feature).
   ['/vendor-master/non-member-income', '/customers'],
   ['/vendor-master', '/vendors'],
+  // General Ledger: its statements follow Reports, the rest Accounts.
+  ['/general-ledger/trial-balance', '/reports'],
+  ['/general-ledger/financial-statements', '/reports'],
+  ['/general-ledger', '/accounts'],
 ];
 
 /**
