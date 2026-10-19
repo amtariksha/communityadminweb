@@ -78,6 +78,7 @@ describe('classic modules', () => {
       'Add Users',
       'Approved Users',
       'Broadcast',
+      'De-Activated Users',
       'Reports',
       'Member Directory',
       'Member Categories',
@@ -183,11 +184,20 @@ describe('classic modules', () => {
   });
 
   it('Move In/Out Tracker shows its built children, each a route (MOVE-05)', () => {
-    expect(find(menu, 'move')?.children?.map((child) => [child.label, child.href])).toEqual([
+    expect(find(menu, 'move')?.children?.map((child) => [child.label, child.href ?? child.tabs?.[0]?.href])).toEqual([
       ['Verify Move Ins', '/move-in-out/verify'],
       ['Approved Move Ins', '/move-in-out/approved-move-ins'],
+      ['Approved Owners', '/move-in-out/owners'],
+      ['Approved Tenants', '/move-in-out/tenants'],
+      ['Deactivated', '/move-in-out/deactivated'],
+    ]);
+    expect(find(menu, 'move.tenants')?.tabs?.map((tab) => tab.label)).toEqual([
+      'Approved Tenants', 'Agreement Ending This Month', 'Agreement Ended', 'No Agreement Filled',
     ]);
     expect(governingItem('/move-in-out/verify')?.href).toBe('/approvals');
+    // MOVE-08..11: the registers and the resident record follow the member directory.
+    expect(governingItem('/move-in-out/owners')?.href).toBe('/units/directory');
+    expect(governingItem('/move-in-out/residents/m-1')?.href).toBe('/units/directory');
     // Every approval request stays reachable under More.
     expect(find(menu, 'more.approvals')?.href).toBe('/approvals');
   });

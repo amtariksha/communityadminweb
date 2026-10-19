@@ -44,6 +44,7 @@ import { friendlyError } from '@/lib/api-error';
 import { FormFieldError } from '@/components/ui/form-field-error';
 import {
   useMemberDirectory,
+  useReactivateMember,
   useBlocks,
   useUpdateMemberDetail,
   useAddTenantAdmin,
@@ -155,6 +156,8 @@ export default function DirectoryContent(): ReactNode {
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [memberTypeFilter, setMemberTypeFilter] = useState('');
+  // UNIT-18 — Current (default) or Past (moved out) members.
+  const [statusFilter, setStatusFilter] = useState<'current' | 'past'>('current');
   const [blockFilter, setBlockFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -194,6 +197,7 @@ export default function DirectoryContent(): ReactNode {
   const addAdmin = useAddTenantAdmin();
   const replaceAdminRoles = useReplaceTenantAdminRoles();
   const removeAdminRole = useRemoveTenantAdminRole();
+  const reactivate = useReactivateMember();
 
   const blocksQuery = useBlocks();
   const blocks = blocksQuery.data ?? [];
@@ -202,6 +206,7 @@ export default function DirectoryContent(): ReactNode {
     search: searchQuery || undefined,
     member_type: memberTypeFilter || undefined,
     block: blockFilter || undefined,
+    status: statusFilter,
     page: currentPage,
     limit: PAGE_SIZE,
   });
@@ -220,7 +225,20 @@ export default function DirectoryContent(): ReactNode {
     setSearchQuery('');
     setMemberTypeFilter('');
     setBlockFilter('');
+    setStatusFilter('current');
     setCurrentPage(1);
+  }
+
+  // UNIT-18 — a moved-out member comes back with the roles Add Member grants.
+  function handleReactivate(member: DirectoryMember): void {
+    if (!member.unit_id || !window.confirm(`Re-activate ${member.name ?? 'this member'} on unit ${member.unit_number ?? ''}?`)) return;
+    reactivate.mutate(
+      { unitId: member.unit_id, memberId: member.id },
+      {
+        onSuccess: () => addToast({ title: 'Member re-activated', variant: 'success' }),
+        onError: (error) => addToast({ title: 'Could not re-activate', description: friendlyError(error), variant: 'destructive' }),
+      },
+    );
   }
 
   function openEditDialog(member: DirectoryMember): void {
@@ -504,6 +522,20 @@ export default function DirectoryContent(): ReactNode {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="dir-status">Members</Label>
+              <Select
+                id="dir-status"
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value === 'past' ? 'past' : 'current');
+                  setCurrentPage(1);
+                }}
+              >
+                <option value="current">Current</option>
+                <option value="past">Past (moved out)</option>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="dir-block">Block</Label>
               <Select
                 id="dir-block"
@@ -614,7 +646,17 @@ export default function DirectoryContent(): ReactNode {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          {!isAdminOnly && (
+                          {statusFilter === 'past' && member.unit_id && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={reactivate.isPending}
+                              onClick={() => handleReactivate(member)}
+                            >
+                              Re-activate
+                            </Button>
+                          )}
+                          {!isAdminOnly && statusFilter !== 'past' && (
                             <Button
                               variant="ghost"
                               size="sm"

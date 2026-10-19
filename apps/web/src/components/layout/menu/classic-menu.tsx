@@ -127,7 +127,8 @@ export const classicMenu: MenuNode[] = [
       planned('units.access', 'Access Control', 'UNIT-22'),
       { id: 'units.broadcast', label: 'Broadcast', href: '/units/broadcast', aliases: ['/notifications'] },
       planned('units.statistics', 'Statistics', 'UNIT-31'),
-      planned('units.deactivated', 'De-Activated Users', 'UNIT-18'),
+      // UNIT-18: past members; Edit opens the resident record (Re-activate).
+      { id: 'units.deactivated', label: 'De-Activated Users', href: '/units/deactivated', logs: ['member'] },
       planned('units.survey', 'Survey', 'P9'),
       planned('units.pets', 'Pet Setup', 'UNIT-35'),
       planned('units.consent', 'Consent Activity', 'P9'),
@@ -409,19 +410,26 @@ export const classicMenu: MenuNode[] = [
       },
       { id: 'move.verify', label: 'Verify Move Ins', href: '/move-in-out/verify' },
       { id: 'move.approved', label: 'Approved Move Ins', href: '/move-in-out/approved-move-ins' },
-      planned('move.owners', 'Approved Owners', 'MOVE-08'),
+      // MOVE-08 / MOVE-11: the registers; a row's Edit is the resident record.
+      {
+        id: 'move.owners',
+        label: 'Approved Owners',
+        href: '/move-in-out/owners',
+        logs: ['member'],
+        forms: [{ label: 'Resident Record', path: '/move-in-out/residents/:memberId' }],
+      },
       {
         id: 'move.tenants',
         label: 'Approved Tenants',
         tabs: [
-          planned('move.tenants.all', 'Approved Tenants', 'MOVE-08'),
-          planned('move.tenants.ending', 'Agreement Ending This Month', 'MOVE-09'),
-          planned('move.tenants.ended', 'Agreement Ended', 'MOVE-09'),
-          planned('move.tenants.none', 'No Agreement Filled', 'MOVE-09'),
+          { id: 'move.tenants.all', label: 'Approved Tenants', href: '/move-in-out/tenants' },
+          { id: 'move.tenants.ending', label: 'Agreement Ending This Month', href: '/move-in-out/tenants/ending-this-month' },
+          { id: 'move.tenants.ended', label: 'Agreement Ended', href: '/move-in-out/tenants/ended' },
+          { id: 'move.tenants.none', label: 'No Agreement Filled', href: '/move-in-out/tenants/no-agreement' },
         ],
       },
       planned('move.noc', 'NOC Initiated', 'MOVE-18'),
-      planned('move.deactivated', 'Deactivated', 'MOVE-10'),
+      { id: 'move.deactivated', label: 'Deactivated', href: '/move-in-out/deactivated', logs: ['member'] },
     ],
   },
   {

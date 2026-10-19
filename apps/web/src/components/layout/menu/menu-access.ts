@@ -29,6 +29,11 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   ['/income/units', '/invoices'],
   // Panic Alerts reads the SOS list, so it is shown with SOS & Safety (GATE-11).
   ['/gate/investigator/panic-alerts', '/sos'],
+  // The registers and the resident record are the member directory (MOVE-08..11).
+  ['/move-in-out/owners', '/units/directory'],
+  ['/move-in-out/tenants', '/units/directory'],
+  ['/move-in-out/deactivated', '/units/directory'],
+  ['/move-in-out/residents', '/units/directory'],
   // Move In/Out Tracker works the move-in approvals: shown with Approvals (MOVE-05).
   ['/move-in-out', '/approvals'],
   // Society Profile (PROF-10): its files are documents; the rest follows

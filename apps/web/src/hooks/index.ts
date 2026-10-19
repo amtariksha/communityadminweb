@@ -756,6 +756,7 @@ export {
   useUpdateMemberDetail,
   useTransferOwnership,
   useDisconnectTenant,
+  useReactivateMember,
 } from './use-unit-members';
 export type {
   UnitDetailMember,
