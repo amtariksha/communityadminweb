@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { ClickableEmail, ClickablePhone } from '@/components/ui/clickable-contact';
 import type { UnitPanelMember } from '@/hooks/use-unit-panel';
 import { formatDate } from '@/lib/utils';
+import { memberTags } from '../components/member-form-values';
 import { PanelSection } from './panel-section';
 import { memberTypeLabel } from './unit-labels';
 
@@ -12,7 +13,11 @@ function MemberCard({ member }: { member: UnitPanelMember }): ReactNode {
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">{member.name ?? 'Unknown'}</span>
         <Badge variant="secondary">{memberTypeLabel(member.member_type)}</Badge>
-        {member.is_primary_contact && <Badge variant="outline">Primary Contact</Badge>}
+        {memberTags(member).map((tag) => (
+          <Badge key={tag} variant="outline">
+            {tag}
+          </Badge>
+        ))}
       </div>
       {member.phone && (
         <p className="text-xs">

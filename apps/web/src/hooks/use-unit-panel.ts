@@ -56,6 +56,11 @@ export interface UnitPanelMember {
   member_type: string;
   is_primary_contact: boolean;
   move_in_date: string | null;
+  /** UNIT-15 — absent from an API that predates them. */
+  lives_here?: boolean;
+  is_association_member?: boolean;
+  alternate_address?: string | null;
+  lease_end_date?: string | null;
 }
 
 export interface UnitPanelFamilyMember extends UnitPanelMember {

@@ -76,6 +76,9 @@ import {
   useUploadFileToS3,
 } from '@/hooks';
 import type { MemberImportResult, UnitDetailMember } from '@/hooks';
+import type { UpdateMemberInput } from '@/hooks/use-unit-members';
+import { MemberExtraFields, MemberForm, type MemberExtraValues } from './components/member-form';
+import { memberFormValues, memberTags } from './components/member-form-values';
 import { UnitCategorySelect } from './components/unit-category-select';
 import { area2Error, billingFieldsPayload, UnitBillingFields } from './components/unit-billing-fields';
 import { useUnitBillingCategories } from '@/hooks/use-unit-billing-categories';
@@ -97,6 +100,15 @@ import { useOpenUnitParam } from './use-unit-param';
 import type { UserSearchHit } from '@/hooks/use-user-search';
 
 const ITEMS_PER_PAGE = 20;
+
+// UNIT-15 — a new member: not primary, lives here (the API applies its own
+// default only when the field is left out).
+const NEW_MEMBER_EXTRA: MemberExtraValues = {
+  is_primary_contact: false,
+  lives_here: true,
+  is_association_member: false,
+  alternate_address: '',
+};
 
 function getUnitTypeLabel(type: string | null | undefined): string {
   // 2026-05 — DTO + UI now share the canonical 3-value enum
@@ -201,6 +213,15 @@ function MemberCard({
     <div className="flex items-center justify-between rounded-md border p-3">
       <div className="space-y-1">
         <p className="text-sm font-medium">{member.name ?? 'Unknown'}</p>
+        {memberTags(member).length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {memberTags(member).map((tag) => (
+              <Badge key={tag} variant="outline" className="text-[10px]">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
         {member.phone && (
           <p className="flex items-center gap-1 text-xs">
             <Phone className="h-3 w-3 text-muted-foreground" />
@@ -281,11 +302,8 @@ export default function UnitsContent(): ReactNode {
   const billingTypes = billingTypesQuery.isSuccess ? billingTypesQuery.data.data : null;
 
   // Edit member dialog state
-  const [editMemberOpen, setEditMemberOpen] = useState(false);
-  const [editMemberId, setEditMemberId] = useState('');
-  const [editMemberName, setEditMemberName] = useState('');
-  const [editMemberPhone, setEditMemberPhone] = useState('');
-  const [editMemberEmail, setEditMemberEmail] = useState('');
+  // UNIT-15 — the member being edited (MemberForm holds the field values).
+  const [editMember, setEditMember] = useState<UnitDetailMember | null>(null);
 
   // Transfer ownership dialog
   const [transferOpen, setTransferOpen] = useState(false);
@@ -382,6 +400,8 @@ export default function UnitsContent(): ReactNode {
   // before submit (Aadhaar masked numbers, low-confidence reads,
   // etc.).
   const [addMemberBirthdate, setAddMemberBirthdate] = useState('');
+  // UNIT-15 — Primary Contact, Lives Here, Association Member, Alternate Address.
+  const [addMemberExtra, setAddMemberExtra] = useState<MemberExtraValues>(NEW_MEMBER_EXTRA);
   const [addMemberIdProofType, setAddMemberIdProofType] = useState('');
   const [addMemberIdProofNumber, setAddMemberIdProofNumber] = useState('');
   // ID scan (Aadhaar / PAN / Passport / Voter / DL). Auto-fills Name;
@@ -787,35 +807,20 @@ export default function UnitsContent(): ReactNode {
   }
 
   function openEditMember(member: UnitDetailMember): void {
-    setEditMemberId(member.id);
-    setEditMemberName(member.name ?? '');
-    setEditMemberPhone(member.phone ?? '');
-    setEditMemberEmail(member.email ?? '');
-    setEditMemberOpen(true);
+    setEditMember(member);
   }
 
-  function handleEditMember(e: FormEvent): void {
-    e.preventDefault();
-    const phone = normalizePhone(editMemberPhone);
-    if (!phone.ok) {
-      addToast({
-        title: 'Invalid phone number',
-        description: phone.error,
-        variant: 'destructive',
-      });
+  function handleEditMember(changes: Omit<UpdateMemberInput, 'unitId' | 'memberId'>): void {
+    if (!editMember) return;
+    if (Object.keys(changes).length === 0) {
+      setEditMember(null);
       return;
     }
     updateMemberDetail.mutate(
-      {
-        unitId: detailUnitId,
-        memberId: editMemberId,
-        name: editMemberName || undefined,
-        phone: phone.value || undefined,
-        email: editMemberEmail || null,
-      },
+      { unitId: detailUnitId, memberId: editMember.id, ...changes },
       {
         onSuccess() {
-          setEditMemberOpen(false);
+          setEditMember(null);
           addToast({ title: 'Member updated', variant: 'success' });
         },
         onError(error) {
@@ -929,6 +934,8 @@ export default function UnitsContent(): ReactNode {
     setAddMemberIdProofType('');
     setAddMemberIdProofNumber('');
     setIdScanSummary(null);
+    // Owner family of a rented unit do not live there by default (UNIT-15).
+    setAddMemberExtra({ ...NEW_MEMBER_EXTRA, lives_here: memberType === 'tenant_family' || !tenant });
     setAddMemberOpen(true);
   }
 
@@ -945,6 +952,7 @@ export default function UnitsContent(): ReactNode {
     setAddMemberIdProofType('');
     setAddMemberIdProofNumber('');
     setIdScanSummary(null);
+    setAddMemberExtra(NEW_MEMBER_EXTRA);
     setAddMemberOpen(true);
   }
 
@@ -1327,6 +1335,10 @@ export default function UnitsContent(): ReactNode {
         birthdate: addMemberBirthdate || null,
         id_proof_type: addMemberIdProofType || null,
         id_proof_number: addMemberIdProofNumber || null,
+        is_primary_contact: addMemberExtra.is_primary_contact,
+        lives_here: addMemberExtra.lives_here,
+        is_association_member: addMemberExtra.is_association_member,
+        alternate_address: addMemberExtra.alternate_address.trim() || null,
       } as Parameters<typeof addMember.mutate>[0],
       {
         onSuccess() {
@@ -2223,53 +2235,17 @@ export default function UnitsContent(): ReactNode {
       {/* ----------------------------------------------------------------- */}
       {/* Edit Member Dialog                                                 */}
       {/* ----------------------------------------------------------------- */}
-      <Dialog open={editMemberOpen} onOpenChange={setEditMemberOpen}>
-        <DialogContent>
-          <form onSubmit={handleEditMember}>
-            <DialogHeader>
-              <DialogTitle>Edit Member</DialogTitle>
-              <DialogDescription>Update member details</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-m-name">Name</Label>
-                <Input
-                  id="edit-m-name"
-                  value={editMemberName}
-                  onChange={(e) => setEditMemberName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-m-phone">Phone</Label>
-                <Input
-                  id="edit-m-phone"
-                  value={editMemberPhone}
-                  onChange={(e) => setEditMemberPhone(e.target.value)}
-                  placeholder="10-digit mobile (optional +91 prefix)"
-                  maxLength={13}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-m-email">Email</Label>
-                <Input
-                  id="edit-m-email"
-                  type="email"
-                  value={editMemberEmail}
-                  onChange={(e) => setEditMemberEmail(e.target.value)}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose>
-                <Button type="button" variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit" disabled={updateMemberDetail.isPending}>
-                {updateMemberDetail.isPending ? 'Saving...' : 'Save'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {editMember && (
+        <MemberForm
+          mode="dialog"
+          open
+          initial={memberFormValues(editMember)}
+          otherPrimaryName={detail?.current_members.find((m) => m.is_primary_contact && m.id !== editMember.id)?.name ?? null}
+          saving={updateMemberDetail.isPending}
+          onClose={() => setEditMember(null)}
+          onSave={handleEditMember}
+        />
+      )}
 
       {/* ----------------------------------------------------------------- */}
       {/* Transfer Ownership Dialog                                          */}
@@ -2561,6 +2537,12 @@ export default function UnitsContent(): ReactNode {
                   />
                 </div>
               </div>
+              <MemberExtraFields
+                idPrefix="add-m"
+                values={addMemberExtra}
+                otherPrimaryName={detail?.current_members.find((m) => m.is_primary_contact)?.name ?? null}
+                onChange={setAddMemberExtra}
+              />
             </div>
             <DialogFooter>
               <DialogClose>

@@ -119,6 +119,10 @@ interface AddMemberInput {
   birthdate?: string | null;
   id_proof_type?: string | null;
   id_proof_number?: string | null;
+  // UNIT-15 — Lives Here, Association Member, Alternate Address.
+  lives_here?: boolean | null;
+  is_association_member?: boolean;
+  alternate_address?: string | null;
 }
 
 // ---------------------------------------------------------------------------

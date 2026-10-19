@@ -22,6 +22,11 @@ export interface UnitDetailMember {
   is_primary_contact: boolean;
   is_active: boolean;
   created_at: string;
+  /** UNIT-15 — absent from an API that predates them. */
+  lives_here?: boolean | null;
+  is_association_member?: boolean;
+  alternate_address?: string | null;
+  birthdate?: string | null;
 }
 
 export interface OccupancyTimelineEntry {
@@ -83,6 +88,18 @@ export interface DirectoryMember {
    * admin / accountant / committee member at a glance.
    */
   roles: string[];
+  /** UNIT-15 / UNIT-19 / MOVE-07 register columns; absent from an older API. */
+  move_out_date?: string | null;
+  is_current?: boolean;
+  intercom?: string | null;
+  lives_here?: boolean | null;
+  is_association_member?: boolean;
+  alternate_address?: string | null;
+  last_login_at?: string | null;
+  app_status?: 'active' | 'never' | 'no_account';
+  agreement_start?: string | null;
+  agreement_end?: string | null;
+  has_agreement_copy?: boolean;
 }
 
 interface PaginatedResponse<T> {
@@ -112,10 +129,17 @@ export interface OccupancyReport {
 // Filter types
 // ---------------------------------------------------------------------------
 
+export type DirectoryStatus = 'current' | 'past';
+export type DirectoryAgreement = 'ending_this_month' | 'ended' | 'none';
+
 export interface DirectoryFilters {
   search?: string;
   member_type?: string;
   block?: string;
+  /** UNIT-18 — past = moved out (MOVE-07 API). */
+  status?: DirectoryStatus;
+  /** MOVE-07 — tenant agreement state. */
+  agreement?: DirectoryAgreement;
   page?: number;
   limit?: number;
 }
@@ -133,6 +157,11 @@ export interface UpdateMemberInput {
   member_type?: string;
   is_primary_contact?: boolean;
   lease_end_date?: string | null;
+  /** UNIT-15 — null Lives Here goes back to the default rule. */
+  lives_here?: boolean | null;
+  is_association_member?: boolean;
+  alternate_address?: string | null;
+  birthdate?: string | null;
 }
 
 export interface TransferOwnershipInput {
@@ -165,7 +194,7 @@ export const unitMemberKeys = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function directoryFiltersToParams(
+export function directoryFiltersToParams(
   filters?: DirectoryFilters,
 ): Record<string, string> | undefined {
   if (!filters) return undefined;
@@ -173,6 +202,8 @@ function directoryFiltersToParams(
   if (filters.search) params.search = filters.search;
   if (filters.member_type) params.member_type = filters.member_type;
   if (filters.block) params.block = filters.block;
+  if (filters.status && filters.status !== 'current') params.status = filters.status;
+  if (filters.agreement) params.agreement = filters.agreement;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   return params;
@@ -290,6 +321,27 @@ export function useDisconnectTenant() {
       queryClient.invalidateQueries({
         queryKey: unitMemberKeys.directory(),
       });
+    },
+  });
+}
+
+export interface ReactivateMemberInput {
+  unitId: string;
+  memberId: string;
+}
+
+/** UNIT-18 — bring a moved-out member back (their roles return with them). */
+export function useReactivateMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function reactivateMember({ unitId, memberId }: ReactivateMemberInput) {
+      return api.post(`/units/${unitId}/members/${memberId}/reactivate`);
+    },
+    onSuccess: function invalidate(_data, variables) {
+      queryClient.invalidateQueries({ queryKey: unitMemberKeys.detail(variables.unitId) });
+      queryClient.invalidateQueries({ queryKey: unitMemberKeys.directory() });
+      queryClient.invalidateQueries({ queryKey: unitKeys.all });
     },
   });
 }
