@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AccountType, LedgerAccount } from '@communityos/shared';
 import { api } from '@/lib/api';
 import { ledgerKeys } from './use-ledger';
@@ -34,5 +34,34 @@ export function useAllLedgerAccounts(types: readonly AccountType[] = []) {
   return useQuery({
     queryKey: [...ledgerKeys.accounts(), 'all', [...types].sort().join(',')],
     queryFn: () => fetchAllAccounts(types),
+  });
+}
+
+/** One row of PUT /ledger/accounts/bulk (GL-12). */
+export interface AccountBulkRow {
+  id?: string;
+  group_id: string;
+  code: string;
+  name: string;
+  opening_balance?: number;
+}
+
+export interface AccountBulkResult {
+  created: number;
+  updated: number;
+  entries_posted: number;
+}
+
+/** Save one type's added and changed accounts from the editable grid. */
+export function useSaveAccountsBulk() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { type: 'asset' | 'liability' | 'income' | 'expense'; rows: AccountBulkRow[] }) =>
+      api.put<{ data: AccountBulkResult }>('/ledger/accounts/bulk', input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.accounts() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+    },
   });
 }
