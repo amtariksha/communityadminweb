@@ -110,9 +110,12 @@ describe('classic modules', () => {
     expect(governingItem('/income/setup/defaulters')?.href).toBe('/invoices');
     expect(find(menu, 'income.registers')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Receipts', '/income/registers/receipts'],
+      ['Credit Notes', '/income/registers/credit-notes'],
       ['Invoices', '/income/registers/invoices'],
       ['Email Status Monitor', '/income/registers/email-status'],
     ]);
+    // INC-36: the Credit Notes register follows the receipts entry.
+    expect(governingItem('/income/registers/credit-notes')?.href).toBe('/receipts');
   });
 
   it('HelpDesk Tracker shows Setup with its built screens as sub-tabs, then the status lists', () => {

@@ -199,8 +199,8 @@ export const classicMenu: MenuNode[] = [
       // arrangement (opens empty until a block or a search is chosen).
       { id: 'income.member-income', label: 'Member Income', href: '/income/members', logs: ['invoice', 'receipt'] },
       {
-        // Classic routes (INC-33) over today's two registers until INC-36
-        // turns them into fetch boxes.
+        // INC-36 — fetch boxes in classic (SB-09); the routes keep today's
+        // /receipts and /invoices screens in the standard layout.
         id: 'income.registers',
         label: 'Receipts & Invoices',
         tabs: [
@@ -211,7 +211,7 @@ export const classicMenu: MenuNode[] = [
             aliases: ['/receipts'],
             logs: ['receipt'],
           },
-          planned('income.registers.credit-notes', 'Credit Notes', 'INC-25'),
+          { id: 'income.registers.credit-notes', label: 'Credit Notes', href: '/income/registers/credit-notes', logs: ['receipt'] },
           {
             id: 'income.registers.invoices',
             label: 'Invoices',

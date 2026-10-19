@@ -23,6 +23,8 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   ['/income/defaulters', '/invoices'],
   // Billing e-mails of invoices, receipts and credit notes (INC-31).
   ['/income/registers/email-status', '/invoices'],
+  // The Credit Notes register lists the receipts module's notes (INC-36).
+  ['/income/registers/credit-notes', '/receipts'],
   // Panic Alerts reads the SOS list, so it is shown with SOS & Safety (GATE-11).
   ['/gate/investigator/panic-alerts', '/sos'],
   // Move In/Out Tracker works the move-in approvals: shown with Approvals (MOVE-05).

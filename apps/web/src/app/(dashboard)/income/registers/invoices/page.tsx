@@ -1,13 +1,13 @@
 import { Suspense, type ReactNode } from 'react';
-import InvoicesContent from '../../../invoices/invoices-content';
+import { InvoicesRegisterPage } from './invoices-register-page';
 
-// Income Tracker › Receipts & Invoices › Invoices (classic route,
-// INC-33). Today's invoices screen until INC-36. InvoicesContent reads
-// search params, which need a Suspense boundary.
-export default function InvoicesRegisterPage(): ReactNode {
+// Income Tracker › Receipts & Invoices › Invoices (INC-33, INC-36): fetch
+// boxes in the classic layout, today's invoices screen in standard.
+// InvoicesContent reads search params, which need a Suspense boundary.
+export default function InvoicesRegisterRoute(): ReactNode {
   return (
     <Suspense fallback={null}>
-      <InvoicesContent />
+      <InvoicesRegisterPage />
     </Suspense>
   );
 }

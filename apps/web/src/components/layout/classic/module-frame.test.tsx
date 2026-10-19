@@ -52,6 +52,7 @@ describe('ModuleFrame', () => {
     const links = Array.from(tabs.querySelectorAll('a'));
     expect(links.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
       ['Receipts', '/income/registers/receipts'],
+      ['Credit Notes', '/income/registers/credit-notes'],
       ['Invoices', '/income/registers/invoices'],
       ['Email Status Monitor', '/income/registers/email-status'],
     ]);
@@ -104,6 +105,7 @@ describe('screen finder', () => {
     expect(matchScreens(entries, 'chart accounts').map((e) => e.href)).toEqual(['/accounts']);
     expect(matchScreens(entries, 'income invoices').map((e) => e.href)).toEqual([
       '/income/registers/receipts',
+      '/income/registers/credit-notes',
       '/income/registers/invoices',
       '/income/registers/email-status',
     ]);

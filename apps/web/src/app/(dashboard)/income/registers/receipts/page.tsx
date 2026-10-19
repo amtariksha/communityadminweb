@@ -1,12 +1,12 @@
 import { Suspense, type ReactNode } from 'react';
-import ReceiptsContent from '../../../receipts/receipts-content';
+import { ReceiptsRegisterPage } from './receipts-register-page';
 
-// Income Tracker › Receipts & Invoices › Receipts (classic route,
-// INC-33). Today's receipts screen until INC-36.
-export default function ReceiptsRegisterPage(): ReactNode {
+// Income Tracker › Receipts & Invoices › Receipts (INC-33, INC-36): fetch
+// boxes in the classic layout, today's receipts screen in standard.
+export default function ReceiptsRegisterRoute(): ReactNode {
   return (
     <Suspense fallback={null}>
-      <ReceiptsContent />
+      <ReceiptsRegisterPage />
     </Suspense>
   );
 }

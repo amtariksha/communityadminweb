@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,13 +38,15 @@ function RangeInputs({ props, criteria, set }: {
   const label = props.rangeLabel ?? (props.range === 'date' ? 'Date' : 'Number');
   const type = props.range === 'date' ? 'date' : 'text';
   const inputMode = props.range === 'number' ? 'numeric' : undefined;
+  // Several panels can share a page (INC-36's registers): ids must be unique.
+  const idBase = useId();
   return (
     <>
       {(['from', 'to'] as const).map((end) => (
         <div key={end} className="space-y-1">
-          <Label htmlFor={`fetch-${end}`}>{`${label} ${end}`}</Label>
+          <Label htmlFor={`${idBase}-${end}`}>{`${label} ${end}`}</Label>
           <Input
-            id={`fetch-${end}`}
+            id={`${idBase}-${end}`}
             type={type}
             inputMode={inputMode}
             className="w-40"
