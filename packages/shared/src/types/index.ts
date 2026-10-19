@@ -12,6 +12,7 @@ export type {
   InvoiceFrequency,
   InvoiceRule,
   InvoiceStatus,
+  InvoiceIncomeScope,
   Invoice,
   InvoiceLine,
   ReceiptMode,

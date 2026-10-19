@@ -89,6 +89,9 @@ export interface InvoiceRule {
 
 export type InvoiceStatus = 'draft' | 'sent' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled';
 
+/** The ledger an invoice belongs to (INC-14): member, utility or non-member income. */
+export type InvoiceIncomeScope = 'member' | 'utility' | 'non_member';
+
 export interface Invoice {
   id: string;
   tenant_id: string;
@@ -112,6 +115,8 @@ export interface Invoice {
   paid_amount?: number;
   balance_due: number;
   lpi_amount: number;
+  /** Absent on an API older than INC-14. */
+  income_scope?: InvoiceIncomeScope;
   created_at: string | Date;
   // Joined fields returned by the list query.
   unit_number?: string | null;

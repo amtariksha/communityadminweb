@@ -94,6 +94,8 @@ interface InvoiceFilters {
   unit_id?: string;
   /** Whose invoices: a unit's, a non-member payer's, or both (the default). */
   party?: 'unit' | 'customer';
+  /** Which ledger: member (maintenance), utility or non-member income; absent = all. */
+  scope?: 'member' | 'utility' | 'non_member';
   start_date?: string;
   end_date?: string;
   /** Free-text search across invoice_number, billing_period, unit_number and the payer's name. */
@@ -171,6 +173,7 @@ function filtersToParams(filters?: InvoiceFilters): Record<string, string> | und
   if (filters.status) params.status = filters.status;
   if (filters.unit_id) params.unit_id = filters.unit_id;
   if (filters.party) params.party = filters.party;
+  if (filters.scope) params.scope = filters.scope;
   if (filters.start_date) params.start_date = filters.start_date;
   if (filters.end_date) params.end_date = filters.end_date;
   if (filters.q && filters.q.trim()) params.q = filters.q.trim();

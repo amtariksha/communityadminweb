@@ -37,6 +37,7 @@ import { BillingRunsPanel } from './billing-runs-panel';
 import { WaiveInterestButton } from './waive-interest-button';
 import { activeRules } from '@/lib/invoice-rule';
 import { describeInvoicePayer, INVOICE_PARTY_OPTIONS, type InvoiceParty } from './invoice-payer';
+import { INVOICE_LEDGER_OPTIONS, ledgerFilterIgnored, type InvoiceLedger } from './invoice-ledger';
 import { describeGenerateResult } from './generate-summary';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
@@ -189,6 +190,7 @@ export default function InvoicesContent(): ReactNode {
   const [defaultersDialogOpen, setDefaultersDialogOpen] = useState(false);
   const [unitFilter, setUnitFilter] = useState('');
   const [partyFilter, setPartyFilter] = useState<InvoiceParty>('');
+  const [ledgerFilter, setLedgerFilter] = useState<InvoiceLedger>('');
   // Free-text search + invoice-date range. Wired to `q`,
   // `start_date`, `end_date` query params on the backend.
   // `searchInput` is the unthrottled text; `searchQ` is what's
@@ -289,6 +291,7 @@ export default function InvoicesContent(): ReactNode {
     status: statusFilter,
     unit_id: unitFilter || undefined,
     party: partyFilter || undefined,
+    scope: ledgerFilter || undefined,
     start_date: filterStartDate || undefined,
     end_date: filterEndDate || undefined,
     q: searchQ || undefined,
@@ -766,6 +769,11 @@ export default function InvoicesContent(): ReactNode {
           </Button>
         </div>
       )}
+      {ledgerFilterIgnored(ledgerFilter, invoices) && (
+        <div className="rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground">
+          The ledger filter is not available yet: this list shows every ledger.
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-4">
         {isLoading ? (
@@ -867,6 +875,21 @@ export default function InvoicesContent(): ReactNode {
                 ))}
               </Select>
               <Select
+                value={ledgerFilter}
+                onChange={(e) => {
+                  setLedgerFilter(e.target.value as InvoiceLedger);
+                  setPage(1);
+                }}
+                className="w-40"
+                aria-label="Ledger"
+              >
+                {INVOICE_LEDGER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+              <Select
                 value={unitFilter}
                 onChange={(e) => {
                   setUnitFilter(e.target.value);
@@ -905,7 +928,7 @@ export default function InvoicesContent(): ReactNode {
                 className="w-40"
                 aria-label="To date"
               />
-              {(searchInput || filterStartDate || filterEndDate || unitFilter || partyFilter) && (
+              {(searchInput || filterStartDate || filterEndDate || unitFilter || partyFilter || ledgerFilter) && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -916,6 +939,7 @@ export default function InvoicesContent(): ReactNode {
                     setFilterEndDate('');
                     setUnitFilter('');
                     setPartyFilter('');
+                    setLedgerFilter('');
                     setPage(1);
                   }}
                 >
