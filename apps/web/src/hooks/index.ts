@@ -84,6 +84,7 @@ export {
   useSetCurrentYear,
   useFreezeYear,
   useUnfreezeYear,
+  useCloseFinancialYear,
   useJournalEntries,
   useJournalEntry,
   useCreateJournalEntry,

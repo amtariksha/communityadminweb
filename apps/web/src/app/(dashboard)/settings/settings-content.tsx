@@ -2,26 +2,14 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
-import { Save, Plus, CalendarRange, MoreVertical, Lock, Unlock, Star, Shield, CalendarClock } from 'lucide-react';
+import { Save, Shield, CalendarClock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-} from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
-import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { getCurrentTenant, getUser } from '@/lib/auth';
@@ -29,17 +17,11 @@ import {
   useTenant,
   useUpdateTenant,
   useTenantSettings,
-  useFinancialYears,
-  useCreateFinancialYear,
-  useSetCurrentYear,
-  useFreezeYear,
-  useUnfreezeYear,
   useRbacPermissions,
   useUpdatePermission,
   useSeedPermissions,
 } from '@/hooks';
 import type { RbacPermission } from '@/hooks/use-staff';
-import type { FinancialYear } from '@communityos/shared';
 import { RoleDelegationCard } from './role-delegation-card';
 import { PermissionsGrid, type PermissionCell, type PermissionField } from './permissions-grid';
 import { GatesCard } from './gates-card';
@@ -55,12 +37,7 @@ import { NotificationPolicyCard } from './notification-policy-card';
 import { HelpContactCard } from './help-contact-card';
 import { AdminLayoutCard } from './admin-layout-card';
 import { OwnerDirectOnboardCard } from './owner-direct-onboard-card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { FinancialYearsCard } from './financial-years-card';
 import { ALL_FEATURES } from '@/lib/feature-catalogue';
 
 // ---------------------------------------------------------------------------
@@ -87,30 +64,16 @@ export default function SettingsContent(): ReactNode {
 
   // Data queries
   const tenantQuery = useTenant(currentTenantId);
-  const fyQuery = useFinancialYears();
 
   // Mutations
   const updateTenant = useUpdateTenant();
   const updateSettings = useTenantSettings();
-  const createFY = useCreateFinancialYear();
-  const setCurrentYear = useSetCurrentYear();
-  const freezeYear = useFreezeYear();
-  const unfreezeYear = useUnfreezeYear();
 
   // Society info form state
   const [societyName, setSocietyName] = useState('');
   const [societyAddress, setSocietyAddress] = useState('');
   const [societyCity, setSocietyCity] = useState('');
   const [societyState, setSocietyState] = useState('');
-
-  // Financial year dialog state
-  const [fyDialogOpen, setFyDialogOpen] = useState(false);
-  const [fyLabel, setFyLabel] = useState('');
-  const [fyStartDate, setFyStartDate] = useState('');
-  const [fyEndDate, setFyEndDate] = useState('');
-
-  // QA #230: styled freeze confirmation dialog (replaces native confirm)
-  const [freezeFyTarget, setFreezeFyTarget] = useState<FinancialYear | null>(null);
 
   // Feature toggles
   const [features, setFeatures] = useState<Record<string, boolean>>({});
@@ -130,7 +93,6 @@ export default function SettingsContent(): ReactNode {
   const seedPermissions = useSeedPermissions();
 
   const tenant = tenantQuery.data;
-  const financialYears = fyQuery.data ?? [];
 
   // Populate form when tenant data loads
   useEffect(() => {
@@ -342,25 +304,6 @@ export default function SettingsContent(): ReactNode {
   // ---------------------------------------------------------------------------
   // Financial year handlers
   // ---------------------------------------------------------------------------
-
-  function handleCreateFY(e: FormEvent): void {
-    e.preventDefault();
-    createFY.mutate(
-      { label: fyLabel, start_date: fyStartDate, end_date: fyEndDate },
-      {
-        onSuccess() {
-          setFyDialogOpen(false);
-          setFyLabel('');
-          setFyStartDate('');
-          setFyEndDate('');
-          addToast({ title: 'Financial year created', variant: 'success' });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to create financial year', description: friendlyError(error), variant: 'destructive' });
-        },
-      },
-    );
-  }
 
   // ---------------------------------------------------------------------------
   // Render
@@ -585,208 +528,7 @@ export default function SettingsContent(): ReactNode {
         </CardContent>
       </Card>
 
-      {/* ------------------------------------------------------------------- */}
-      {/* Financial Year Section                                               */}
-      {/* ------------------------------------------------------------------- */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Financial Years</CardTitle>
-            <Dialog open={fyDialogOpen} onOpenChange={setFyDialogOpen}>
-              <DialogTrigger>
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Financial Year
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <form onSubmit={handleCreateFY}>
-                  <DialogHeader>
-                    <DialogTitle>Create Financial Year</DialogTitle>
-                    <DialogDescription>Define a new financial year period</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fy-label">Label</Label>
-                      <Input
-                        id="fy-label"
-                        required
-                        placeholder="e.g., FY 2025-26"
-                        value={fyLabel}
-                        onChange={(e) => setFyLabel(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="fy-start">Start Date</Label>
-                        <Input
-                          id="fy-start"
-                          type="date"
-                          required
-                          value={fyStartDate}
-                          onChange={(e) => setFyStartDate(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="fy-end">End Date</Label>
-                        <Input
-                          id="fy-end"
-                          type="date"
-                          required
-                          value={fyEndDate}
-                          onChange={(e) => setFyEndDate(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose>
-                      <Button type="button" variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button type="submit" disabled={createFY.isPending}>
-                      {createFY.isPending ? 'Creating...' : 'Create'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {fyQuery.isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 2 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : financialYears.length > 0 ? (
-            <div className="space-y-3">
-              {financialYears.map((fy) => (
-                <div key={fy.id} className="flex items-center justify-between rounded-md border p-4">
-                  <div className="flex items-center gap-3">
-                    <CalendarRange className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{fy.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(String(fy.start_date))} - {formatDate(String(fy.end_date))}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {fy.is_current && <Badge variant="success">Current</Badge>}
-                    {fy.is_frozen && <Badge variant="secondary">Frozen</Badge>}
-                    {!fy.is_current && !fy.is_frozen && <Badge variant="default">Open</Badge>}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {!fy.is_current && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setCurrentYear.mutate(fy.id, {
-                                onSuccess() {
-                                  addToast({ title: `${fy.label} set as current year`, variant: 'success' });
-                                },
-                                onError(error: Error) {
-                                  addToast({ title: 'Failed to set current year', description: friendlyError(error), variant: 'destructive' });
-                                },
-                              });
-                            }}
-                          >
-                            <Star className="mr-2 h-4 w-4" />
-                            Set as Current
-                          </DropdownMenuItem>
-                        )}
-                        {!fy.is_frozen && !fy.is_current && (
-                          <DropdownMenuItem
-                            onClick={() => setFreezeFyTarget(fy)}
-                          >
-                            <Lock className="mr-2 h-4 w-4" />
-                            Freeze Year
-                          </DropdownMenuItem>
-                        )}
-                        {fy.is_frozen && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              unfreezeYear.mutate(fy.id, {
-                                onSuccess() {
-                                  addToast({ title: `${fy.label} unfrozen`, variant: 'success' });
-                                },
-                                onError(error: Error) {
-                                  addToast({ title: 'Failed to unfreeze year', description: friendlyError(error), variant: 'destructive' });
-                                },
-                              });
-                            }}
-                          >
-                            <Unlock className="mr-2 h-4 w-4" />
-                            Unfreeze Year
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="py-8 text-center text-muted-foreground">
-              No financial years defined. Create one to start recording transactions.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* QA #230 — Freeze financial year confirmation dialog. Replaces a
-          native confirm() so users see the FY end date and the explicit
-          journal-entry consequence before locking. */}
-      <Dialog
-        open={!!freezeFyTarget}
-        onOpenChange={(open) => { if (!open) setFreezeFyTarget(null); }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Freeze {freezeFyTarget?.label}?</DialogTitle>
-            <DialogDescription>
-              Once frozen, no journal entries can be posted before{' '}
-              <span className="font-medium">
-                {freezeFyTarget ? formatDate(freezeFyTarget.end_date) : ''}
-              </span>
-              . Continue?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setFreezeFyTarget(null)}
-              disabled={freezeYear.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={freezeYear.isPending}
-              onClick={() => {
-                if (!freezeFyTarget) return;
-                const target = freezeFyTarget;
-                freezeYear.mutate(target.id, {
-                  onSuccess() {
-                    addToast({ title: `${target.label} frozen`, variant: 'success' });
-                    setFreezeFyTarget(null);
-                  },
-                  onError(error: Error) {
-                    addToast({ title: 'Failed to freeze year', description: friendlyError(error), variant: 'destructive' });
-                  },
-                });
-              }}
-            >
-              {freezeYear.isPending ? 'Freezing…' : 'Freeze Year'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <FinancialYearsCard />
 
       <GatesCard>
         <OverstayThresholdField />

@@ -547,6 +547,37 @@ export function useUnfreezeYear() {
   });
 }
 
+/** What POST /ledger/financial-years/:id/close answers (GL-06). */
+export interface CloseFinancialYearResult {
+  financial_year: FinancialYear;
+  /** Null when nothing was left to move. */
+  closing_entry_id: string | null;
+  /** Absent from an API older than GL-06. */
+  entry_number?: number | null;
+  /** Income less expense moved to Retained Earnings (Current); negative = deficit. */
+  surplus: number;
+}
+
+/**
+ * Perform Year End (`freeze` true, the default) or Pass Retained Earnings
+ * (`freeze: false`, the year stays open).
+ */
+export function useCloseFinancialYear() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function closeFinancialYear(input: { id: string; freeze?: boolean }) {
+      return api.post<{ data: CloseFinancialYearResult }>(
+        `/ledger/financial-years/${input.id}/close`,
+        { freeze: input.freeze ?? true },
+      );
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.all });
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Journal Entry queries
 // ---------------------------------------------------------------------------
