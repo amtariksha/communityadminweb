@@ -48,11 +48,13 @@ function problem(state: UploadState, root: FileRoot, file: File | null, folders:
 export function UploadFileForm(props: UploadFileFormProps): ReactNode {
   const { root } = props;
   const { addToast } = useToast();
-  const folders = useDocumentCategories().data ?? [];
+  // FILE-20: the active folders of this root (unit files may use any).
+  const folderRoot = root === 'unit' ? undefined : root;
+  const folders = useDocumentCategories({ root: folderRoot }).data ?? [];
   const units = useUnitChoices(root === 'unit').data ?? [];
   const storeFile = useUploadFileToS3();
   const saveDocument = useUploadDocument();
-  const resolveFolder = useResolveFolder();
+  const resolveFolder = useResolveFolder(folderRoot);
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [state, setState] = useState<UploadState>({

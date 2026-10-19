@@ -60,12 +60,16 @@ export function folderError(folders: readonly FolderChoice[], value: string, new
   return null;
 }
 
-/** The folder id to file under, creating the new folder first when asked. */
-export function useResolveFolder(): (value: string, newName: string) => Promise<string> {
+/**
+ * The folder id to file under, creating the new folder first when asked.
+ * A folder made from Admin or Resident Documents belongs to that root
+ * (FILE-20); one made elsewhere shows in both.
+ */
+export function useResolveFolder(root?: 'admin' | 'residents'): (value: string, newName: string) => Promise<string> {
   const createFolder = useCreateCategory();
   return async (value, newName) => {
     if (value !== NEW_FOLDER) return value;
-    const created = await createFolder.mutateAsync({ name: newName.trim() });
+    const created = await createFolder.mutateAsync(root ? { name: newName.trim(), root } : { name: newName.trim() });
     return created.data.id;
   };
 }

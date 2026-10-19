@@ -9,6 +9,7 @@ import { useDocuments } from '@/hooks/use-documents';
 import { useDocumentFolders, type DocumentFile, type DocumentRoot } from '@/hooks/use-document-files';
 import { canWriteDocuments } from '../files/file-actions';
 import { FileTable } from '../files/file-table';
+import { FolderActions } from './folder-actions';
 import { FolderList } from './folder-list';
 
 const ROOTS: Readonly<Record<DocumentRoot, { title: string; note: string; folderType: 'committee' | 'common' }>> = {
@@ -48,6 +49,7 @@ export function CommonFiles({ root }: { root: DocumentRoot }): ReactNode {
   const foldersQuery = useDocumentFolders(root);
   const folders = foldersQuery.data ?? [];
   const folderId = shownFolder(folders, params.get('folder'));
+  const selectedFolder = folders.find((folder) => folder.id === folderId);
   const files = useDocuments({
     folder_type: config.folderType,
     category_id: folderId ?? undefined,
@@ -78,6 +80,11 @@ export function CommonFiles({ root }: { root: DocumentRoot }): ReactNode {
         <Card>
           <CardContent className="pt-4">
             <FolderList folders={folders} loading={foldersQuery.isLoading} selectedId={folderId} onSelect={selectFolder} />
+            {selectedFolder && canWriteDocuments() && (
+              <div className="mt-3">
+                <FolderActions key={`${selectedFolder.id}-${selectedFolder.name}`} folder={selectedFolder} root={root} />
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>

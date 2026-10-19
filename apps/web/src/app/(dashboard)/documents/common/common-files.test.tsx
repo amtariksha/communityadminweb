@@ -20,18 +20,20 @@ vi.mock('next/link', () => ({
 }));
 vi.mock('@/lib/current-role', () => ({ currentRole: () => 'community_admin' }));
 
-const mocks = vi.hoisted(() => ({ useDocuments: vi.fn(), folders: vi.fn() }));
+const mocks = vi.hoisted(() => ({ useDocuments: vi.fn(), folders: vi.fn(), updateFolder: vi.fn() }));
 vi.mock('@/hooks/use-documents', () => ({
   useDocuments: (filters: unknown) => mocks.useDocuments(filters),
   useDeleteDocument: () => ({ mutate: vi.fn() }),
+  useUpdateFolder: () => ({ mutate: mocks.updateFolder, isPending: false }),
   fetchPresignedDownloadUrl: vi.fn(),
 }));
 vi.mock('@/hooks/use-document-files', () => ({ useDocumentFolders: (root: string) => mocks.folders(root) }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 
 const FOLDERS = [
-  { id: 'f-empty', name: 'Bylaws', is_system: true, file_count: 0 },
-  { id: 'f-min', name: 'Minutes', is_system: false, file_count: 2 },
+  { id: 'f-empty', name: 'Bylaws', is_system: true, tenant_id: null, root: null, is_active: true, file_count: 0 },
+  { id: 'f-min', name: 'Minutes', is_system: false, tenant_id: 't-1', root: 'admin', is_active: true, file_count: 2 },
+  { id: 'f-old', name: 'Old Circulars', is_system: false, tenant_id: 't-1', root: null, is_active: false, file_count: 1 },
 ];
 const FILE = {
   id: 'd-1',
@@ -90,5 +92,33 @@ describe('CommonFiles', () => {
     expect(mocks.useDocuments).toHaveBeenLastCalledWith(expect.objectContaining({ folder_type: 'common' }));
     expect(screen.getByText('All residents')).toBeTruthy();
     expect(screen.getByText('Upload File').closest('a')?.getAttribute('href')).toBe('/documents/upload?root=residents&folder=f-min');
+  });
+
+  it('renames, moves and retires the chosen folder of the society (FILE-20)', () => {
+    render(<CommonFiles root="admin" />);
+
+    fireEvent.change(screen.getByLabelText('Folder name'), { target: { value: 'Committee Minutes' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
+    expect(mocks.updateFolder).toHaveBeenLastCalledWith({ id: 'f-min', name: 'Committee Minutes' }, expect.anything());
+
+    fireEvent.change(screen.getByLabelText('Shown in'), { target: { value: 'both' } });
+    expect(mocks.updateFolder).toHaveBeenLastCalledWith({ id: 'f-min', root: null }, expect.anything());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retire folder' }));
+    expect(mocks.updateFolder).toHaveBeenLastCalledWith({ id: 'f-min', is_active: false }, expect.anything());
+  });
+
+  it('marks a retired folder and offers to re-activate it; a shared folder cannot be changed', () => {
+    nav.search = 'folder=f-old';
+    const { unmount } = render(<CommonFiles root="admin" />);
+    expect(screen.getByRole('button', { name: /Old Circulars Files \(retired\)/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Re-activate folder' }));
+    expect(mocks.updateFolder).toHaveBeenLastCalledWith({ id: 'f-old', is_active: true }, expect.anything());
+    unmount();
+
+    nav.search = 'folder=f-empty';
+    render(<CommonFiles root="admin" />);
+    expect(screen.getByText('A shared folder; it cannot be renamed or retired.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Rename' })).toBeNull();
   });
 });

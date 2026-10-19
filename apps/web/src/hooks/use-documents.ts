@@ -32,8 +32,20 @@ interface DocumentFilters {
 
 interface CreateCategoryInput {
   name: string;
-  parent_id?: string | null;
-  sort_order?: number;
+  /** FILE-20 — the root the folder belongs to; null or absent = both. */
+  root?: 'admin' | 'residents' | null;
+}
+
+/** FILE-20 — a society folder's rename, root (null = both) and retire / re-activate. */
+export interface UpdateFolderInput {
+  name?: string;
+  root?: 'admin' | 'residents' | null;
+  is_active?: boolean;
+}
+
+/** Which folders a picker lists: those of a root (or both); active only. */
+export interface FolderListFilters {
+  root?: 'admin' | 'residents';
 }
 
 // QA #238 — audience targeting. NULL on either axis means
@@ -123,12 +135,12 @@ function filtersToParams(filters?: DocumentFilters): Record<string, string> | un
 // Category queries
 // ---------------------------------------------------------------------------
 
-export function useDocumentCategories() {
+export function useDocumentCategories(filters: FolderListFilters = {}) {
   return useQuery({
-    queryKey: documentKeys.categories(),
+    queryKey: [...documentKeys.categories(), 'list', filters.root ?? 'all'] as const,
     queryFn: function fetchDocumentCategories() {
       return api
-        .get<{ data: DocumentCategory[] }>('/documents/categories')
+        .get<{ data: DocumentCategory[] }>('/documents/categories', filters.root ? { params: { root: filters.root } } : undefined)
         .then(function unwrap(res) {
           return res.data;
         });
@@ -149,6 +161,21 @@ export function useCreateCategory() {
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: documentKeys.categories() });
+    },
+  });
+}
+
+/** FILE-20 — rename, move to a root or retire / re-activate a society folder. */
+export function useUpdateFolder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function updateFolder({ id, ...input }: UpdateFolderInput & { id: string }) {
+      return api.patch<{ data: DocumentCategory }>(`/documents/categories/${id}`, input);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: documentKeys.categories() });
+      queryClient.invalidateQueries({ queryKey: documentKeys.lists() });
     },
   });
 }

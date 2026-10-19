@@ -47,7 +47,9 @@ export function FolderList({ folders, loading, selectedId, onSelect }: FolderLis
                 folder.id === selectedId ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
               )}
             >
-              <span>{folder.name} Files</span>
+              <span className={folder.is_active === false ? 'italic opacity-70' : undefined}>
+                {folder.name} Files{folder.is_active === false ? ' (retired)' : ''}
+              </span>
               <span className="font-semibold">{folder.file_count}</span>
             </button>
           </li>

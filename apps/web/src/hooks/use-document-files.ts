@@ -47,6 +47,12 @@ export interface DocumentFolder {
   name: string;
   is_system: boolean;
   file_count: number;
+  /** FILE-20: null for a shared system folder (cannot be changed). */
+  tenant_id?: string | null;
+  /** FILE-20: the root it belongs to; null = both. */
+  root?: DocumentRoot | null;
+  /** FILE-20: false once retired (hidden from upload; its files stay). */
+  is_active?: boolean;
 }
 
 /** A row of the Unit Specific Files roster (FILE-12). */
@@ -76,13 +82,15 @@ export const documentFileKeys = {
   unitSummary: (filters: UnitFileSummaryFilters) => [...documentKeys.all, 'unit-summary', filters] as const,
 };
 
-/** The folders of a root with their file counts (FILE-10). */
+/** The folders of a root with their file counts (FILE-10), retired ones too (FILE-20). */
 export function useDocumentFolders(root: DocumentRoot) {
   return useQuery({
     queryKey: documentFileKeys.folders(root),
     queryFn: () =>
       api
-        .get<{ data: DocumentFolder[] }>('/documents/categories', { params: { root, with_counts: 'true' } })
+        .get<{ data: DocumentFolder[] }>('/documents/categories', {
+          params: { root, with_counts: 'true', include_inactive: 'true' },
+        })
         .then((res) => res.data),
   });
 }
