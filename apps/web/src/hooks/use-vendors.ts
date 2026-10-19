@@ -37,11 +37,15 @@ interface CreateVendorInput {
   gstin?: string | null;
   pan?: string | null;
   bank_name?: string | null;
+  bank_branch?: string | null;
   bank_account_number?: string | null;
   bank_ifsc?: string | null;
+  tds_section?: string | null;
+  tds_rate?: number | null;
 }
 
 interface UpdateVendorInput extends Partial<CreateVendorInput> {
+  /** VEND-02: true re-activates a deactivated vendor. */
   is_active?: boolean;
 }
 
