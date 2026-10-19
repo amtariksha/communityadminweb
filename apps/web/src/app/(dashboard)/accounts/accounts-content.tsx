@@ -31,8 +31,8 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { JournalEntryDialog } from './journal-entry-dialog';
+import { AddAccountGroupDialog, EditAccountGroupDialog, InlineAccountGroupDialog } from './account-group-dialogs';
 import { ExportButton } from '@/components/ui/export-button';
-import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { formatCurrency, formatTallyBalance, financialDateBounds } from '@/lib/utils';
 // QA #284 — hierarchical XLS export that mirrors the on-screen tree.
 import { downloadHierarchicalCoa } from '@/lib/coa-export';
@@ -43,8 +43,6 @@ import {
   useLedgerAccounts,
   useFinancialYears,
   useSetCurrentYear,
-  useCreateAccountGroup,
-  useUpdateAccountGroup,
   useCreateLedgerAccount,
   useUpdateLedgerAccount,
   useSetOpeningBalance,
@@ -76,7 +74,7 @@ import {
 import { useUnits } from '@/hooks';
 import { useTallyExportPreview, useTallyExport } from '@/hooks/use-tally-export';
 import type { TallyExportOptions } from '@/hooks/use-tally-export';
-import type { AccountGroup, LedgerAccount, AccountType } from '@communityos/shared';
+import type { AccountGroup, LedgerAccount } from '@communityos/shared';
 
 // ---------------------------------------------------------------------------
 // Tree building utilities
@@ -276,7 +274,6 @@ export default function AccountsContent(): ReactNode {
   const { addToast } = useToast();
   // Clamp date inputs to prev FY start → next month end.
   const dateBounds = useMemo(() => financialDateBounds(), []);
-  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   // Free-form Journal Entry dialog. Backend was always there
   // (POST /ledger/journal-entries); this is the missing UI.
   const [journalDialogOpen, setJournalDialogOpen] = useState(false);
@@ -287,8 +284,6 @@ export default function AccountsContent(): ReactNode {
   const { data: financialYears } = useFinancialYears();
   const setCurrentYear = useSetCurrentYear();
 
-  const createGroup = useCreateAccountGroup();
-  const updateGroup = useUpdateAccountGroup();
   const createAccount = useCreateLedgerAccount();
   const updateAccount = useUpdateLedgerAccount();
   const setOpeningBalance = useSetOpeningBalance();
@@ -316,18 +311,8 @@ export default function AccountsContent(): ReactNode {
   const tree = groups && accounts.length >= 0 ? buildTree(groups, accounts) : [];
   const currentFY = financialYears?.find((fy) => fy.is_current);
 
-  // -- form state for create group --
-  const [groupName, setGroupName] = useState('');
-  const [groupCode, setGroupCode] = useState('');
-  const [groupParentId, setGroupParentId] = useState('');
-  const [groupType, setGroupType] = useState<AccountType>('asset');
-
   // -- inline create group dialog (inside create account) --
   const [inlineGroupDialogOpen, setInlineGroupDialogOpen] = useState(false);
-  const [inlineGroupName, setInlineGroupName] = useState('');
-  const [inlineGroupCode, setInlineGroupCode] = useState('');
-  const [inlineGroupParentId, setInlineGroupParentId] = useState('');
-  const [inlineGroupType, setInlineGroupType] = useState<AccountType>('asset');
 
   // -- form state for create account --
   const [accountName, setAccountName] = useState('');
@@ -337,11 +322,7 @@ export default function AccountsContent(): ReactNode {
   const [balanceType, setBalanceType] = useState('debit');
 
   // -- edit group dialog state --
-  const [editGroupDialogOpen, setEditGroupDialogOpen] = useState(false);
-  const [editGroupId, setEditGroupId] = useState('');
-  const [editGroupName, setEditGroupName] = useState('');
-  const [editGroupCode, setEditGroupCode] = useState('');
-  const [editGroupType, setEditGroupType] = useState<AccountType>('asset');
+  const [editingGroup, setEditingGroup] = useState<AccountGroup | null>(null);
 
   // -- edit account dialog state --
   const [editAccountDialogOpen, setEditAccountDialogOpen] = useState(false);
@@ -877,56 +858,12 @@ export default function AccountsContent(): ReactNode {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tallyJobQuery.data?.status]);
 
-  function resetGroupForm(): void {
-    setGroupName('');
-    setGroupCode('');
-    setGroupParentId('');
-    setGroupType('asset');
-  }
-
   function resetAccountForm(): void {
     setAccountName('');
     setAccountCode('');
     setAccountGroupId('');
     setOpeningBalanceValue('0');
     setBalanceType('debit');
-  }
-
-  function handleOpenEditGroup(group: AccountGroup): void {
-    setEditGroupId(group.id);
-    setEditGroupName(group.name);
-    setEditGroupCode(group.code);
-    setEditGroupType(group.type as AccountType);
-    setEditGroupDialogOpen(true);
-  }
-
-  function handleEditGroup(e: FormEvent): void {
-    e.preventDefault();
-    if (!editGroupId) return;
-
-    updateGroup.mutate(
-      {
-        id: editGroupId,
-        data: {
-          name: editGroupName,
-          code: editGroupCode,
-          type: editGroupType,
-        },
-      },
-      {
-        onSuccess() {
-          setEditGroupDialogOpen(false);
-          addToast({ title: 'Account group updated', variant: 'success' });
-        },
-        onError(error) {
-          addToast({
-            title: 'Failed to update group',
-            description: friendlyError(error),
-            variant: 'destructive',
-          });
-        },
-      },
-    );
   }
 
   function handleOpenEditAccount(account: LedgerAccount): void {
@@ -962,68 +899,6 @@ export default function AccountsContent(): ReactNode {
         onError(error) {
           addToast({
             title: 'Failed to update account',
-            description: friendlyError(error),
-            variant: 'destructive',
-          });
-        },
-      },
-    );
-  }
-
-  function resetInlineGroupForm(): void {
-    setInlineGroupName('');
-    setInlineGroupCode('');
-    setInlineGroupParentId('');
-    setInlineGroupType('asset');
-  }
-
-  function handleInlineCreateGroup(e: FormEvent): void {
-    e.preventDefault();
-
-    createGroup.mutate(
-      {
-        name: inlineGroupName,
-        code: inlineGroupCode,
-        parent_id: inlineGroupParentId || null,
-        type: inlineGroupType,
-      },
-      {
-        onSuccess(response) {
-          setInlineGroupDialogOpen(false);
-          resetInlineGroupForm();
-          setAccountGroupId(response.data.id);
-          addToast({ title: 'Account group created', variant: 'success' });
-        },
-        onError(error) {
-          addToast({
-            title: 'Failed to create group',
-            description: friendlyError(error),
-            variant: 'destructive',
-          });
-        },
-      },
-    );
-  }
-
-  function handleCreateGroup(e: FormEvent): void {
-    e.preventDefault();
-
-    createGroup.mutate(
-      {
-        name: groupName,
-        code: groupCode,
-        parent_id: groupParentId || null,
-        type: groupType,
-      },
-      {
-        onSuccess() {
-          setGroupDialogOpen(false);
-          resetGroupForm();
-          addToast({ title: 'Account group created', variant: 'success' });
-        },
-        onError(error) {
-          addToast({
-            title: 'Failed to create group',
             description: friendlyError(error),
             variant: 'destructive',
           });
@@ -1284,84 +1159,7 @@ export default function AccountsContent(): ReactNode {
               <FileDown className="mr-2 h-4 w-4" />
               Export Tree (XLS)
             </Button>
-            <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
-              <DialogTrigger>
-                <Button variant="outline">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Group
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <form onSubmit={handleCreateGroup}>
-                  <DialogHeader>
-                    <DialogTitle>Create Account Group</DialogTitle>
-                    <DialogDescription>Add a new group to organize your accounts</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="group-name">Group Name</Label>
-                      <Input
-                        id="group-name"
-                        placeholder="e.g., Fixed Assets"
-                        value={groupName}
-                        onChange={(e) => setGroupName(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="group-code">Group Code</Label>
-                      <Input
-                        id="group-code"
-                        placeholder="e.g., 1300"
-                        value={groupCode}
-                        onChange={(e) => setGroupCode(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="group-parent" className="flex items-center gap-1">
-                        Parent Group
-                        <HelpTooltip text="Root groups (no parent) are top-level categories like Income, Expense, Assets, Liabilities. Sub-groups nest under a parent to create a multi-level hierarchy." />
-                      </Label>
-                      <Select
-                        id="group-parent"
-                        value={groupParentId}
-                        onChange={(e) => setGroupParentId(e.target.value)}
-                      >
-                        <option value="">No parent (root group)</option>
-                        {flatGroups.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {g.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="group-type">Type</Label>
-                      <Select
-                        id="group-type"
-                        value={groupType}
-                        onChange={(e) => setGroupType(e.target.value as AccountType)}
-                        required
-                      >
-                        <option value="asset">Asset</option>
-                        <option value="liability">Liability</option>
-                        <option value="income">Income</option>
-                        <option value="expense">Expense</option>
-                      </Select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose>
-                      <Button type="button" variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button type="submit" disabled={createGroup.isPending}>
-                      {createGroup.isPending ? 'Creating...' : 'Create Group'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <AddAccountGroupDialog groups={flatGroups} />
 
             <Dialog open={importDialogOpen} onOpenChange={(open) => { setImportDialogOpen(open); if (!open) { setImportRows([]); if (fileInputRef.current) fileInputRef.current.value = ''; } }}>
               <DialogTrigger>
@@ -1512,76 +1310,12 @@ export default function AccountsContent(): ReactNode {
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
-                        <Dialog open={inlineGroupDialogOpen} onOpenChange={setInlineGroupDialogOpen}>
-                          <DialogContent>
-                            <form onSubmit={handleInlineCreateGroup}>
-                              <DialogHeader>
-                                <DialogTitle>Create Account Group</DialogTitle>
-                                <DialogDescription>Quickly add a new group for this account</DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="inline-group-name">Group Name</Label>
-                                  <Input
-                                    id="inline-group-name"
-                                    placeholder="e.g., Fixed Assets"
-                                    value={inlineGroupName}
-                                    onChange={(e) => setInlineGroupName(e.target.value)}
-                                    required
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="inline-group-code">Group Code</Label>
-                                  <Input
-                                    id="inline-group-code"
-                                    placeholder="e.g., 1300"
-                                    value={inlineGroupCode}
-                                    onChange={(e) => setInlineGroupCode(e.target.value)}
-                                    required
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="inline-group-type">Type</Label>
-                                  <Select
-                                    id="inline-group-type"
-                                    value={inlineGroupType}
-                                    onChange={(e) => setInlineGroupType(e.target.value as AccountType)}
-                                    required
-                                  >
-                                    <option value="asset">Asset</option>
-                                    <option value="liability">Liability</option>
-                                    <option value="income">Income</option>
-                                    <option value="expense">Expense</option>
-                                    <option value="equity">Equity</option>
-                                  </Select>
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="inline-group-parent">Parent Group</Label>
-                                  <Select
-                                    id="inline-group-parent"
-                                    value={inlineGroupParentId}
-                                    onChange={(e) => setInlineGroupParentId(e.target.value)}
-                                  >
-                                    <option value="">No parent (root group)</option>
-                                    {flatGroups.map((g) => (
-                                      <option key={g.id} value={g.id}>
-                                        {g.name}
-                                      </option>
-                                    ))}
-                                  </Select>
-                                </div>
-                              </div>
-                              <DialogFooter>
-                                <DialogClose>
-                                  <Button type="button" variant="outline">Cancel</Button>
-                                </DialogClose>
-                                <Button type="submit" disabled={createGroup.isPending}>
-                                  {createGroup.isPending ? 'Creating...' : 'Create Group'}
-                                </Button>
-                              </DialogFooter>
-                            </form>
-                          </DialogContent>
-                        </Dialog>
+                        <InlineAccountGroupDialog
+                          open={inlineGroupDialogOpen}
+                          onOpenChange={setInlineGroupDialogOpen}
+                          groups={flatGroups}
+                          onCreated={(group) => setAccountGroupId(group.id)}
+                        />
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -1636,7 +1370,7 @@ export default function AccountsContent(): ReactNode {
                   key={node.group.id}
                   node={node}
                   depth={0}
-                  onEditGroup={handleOpenEditGroup}
+                  onEditGroup={setEditingGroup}
                   onEditAccount={handleOpenEditAccount}
                 />
               ))}
@@ -1653,61 +1387,7 @@ export default function AccountsContent(): ReactNode {
         </CardContent>
       </Card>
 
-      {/* Edit Account Group Dialog */}
-      <Dialog open={editGroupDialogOpen} onOpenChange={setEditGroupDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleEditGroup}>
-            <DialogHeader>
-              <DialogTitle>Edit Account Group</DialogTitle>
-              <DialogDescription>Update group details</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-group-name">Group Name</Label>
-                <Input
-                  id="edit-group-name"
-                  placeholder="e.g., Fixed Assets"
-                  value={editGroupName}
-                  onChange={(e) => setEditGroupName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-group-code">Group Code</Label>
-                <Input
-                  id="edit-group-code"
-                  placeholder="e.g., 1300"
-                  value={editGroupCode}
-                  onChange={(e) => setEditGroupCode(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-group-type">Type</Label>
-                <Select
-                  id="edit-group-type"
-                  value={editGroupType}
-                  onChange={(e) => setEditGroupType(e.target.value as AccountType)}
-                  required
-                >
-                  <option value="asset">Asset</option>
-                  <option value="liability">Liability</option>
-                  <option value="income">Income</option>
-                  <option value="expense">Expense</option>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose>
-                <Button type="button" variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit" disabled={updateGroup.isPending}>
-                {updateGroup.isPending ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <EditAccountGroupDialog group={editingGroup} onClose={() => setEditingGroup(null)} />
 
       {/* Edit Ledger Account Dialog */}
       <Dialog open={editAccountDialogOpen} onOpenChange={setEditAccountDialogOpen}>

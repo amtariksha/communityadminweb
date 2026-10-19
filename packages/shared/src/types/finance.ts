@@ -1,4 +1,4 @@
-export type AccountType = 'asset' | 'liability' | 'income' | 'expense';
+export type AccountType = 'asset' | 'liability' | 'income' | 'expense' | 'equity';
 export type BalanceType = 'debit' | 'credit';
 
 export interface AccountGroup {

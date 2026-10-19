@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createAccountGroupSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
-  type: z.enum(['asset', 'liability', 'income', 'expense']),
+  type: z.enum(['asset', 'liability', 'income', 'expense', 'equity']),
   parent_id: z.string().uuid().nullable(),
   code: z.string().min(1, 'Code is required').max(20),
   sort_order: z.number().int().nonnegative().default(0),
