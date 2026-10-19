@@ -74,8 +74,9 @@ describe('Admin Files (FILE-10)', () => {
 });
 
 describe('Projects & Meetings (PROJ-10 to PROJ-12)', () => {
-  it('shows Meetings with Open and Closed as sub-tabs, then Tasks', () => {
+  it('shows SetUp (PROJ-22), Meetings with Open and Closed as sub-tabs, then Tasks', () => {
     expect(children('projects')).toEqual([
+      ['SetUp', '/governance/setup'],
       ['Meetings', undefined],
       ['Tasks', '/governance/tasks'],
       ['Reports', '/governance/reports'],

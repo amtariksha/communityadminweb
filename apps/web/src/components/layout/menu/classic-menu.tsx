@@ -514,7 +514,8 @@ export const classicMenu: MenuNode[] = [
       { label: 'Meeting Minutes', path: '/governance/meetings/:id/minutes' },
     ],
     children: [
-      planned('projects.setup', 'SetUp', 'PROJ-22'),
+      // PROJ-22: Setup Task Categories; Access Control comes with PROJ-47.
+      { id: 'projects.setup', label: 'SetUp', href: '/governance/setup', logs: ['meeting'] },
       planned('projects.projects', 'Projects', 'PROJ-41'),
       {
         id: 'projects.meetings',
