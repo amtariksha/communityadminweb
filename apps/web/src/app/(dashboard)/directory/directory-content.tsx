@@ -48,8 +48,6 @@ import {
   useUpdateBusinessListing,
   useDeleteBusinessListing,
   useEmergencyContacts,
-  useCreateEmergencyContact,
-  useUpdateEmergencyContact,
   useDeleteEmergencyContact,
   useOffers,
   useCreateOffer,
@@ -62,6 +60,7 @@ import {
   type ClubMember,
 } from '@/hooks';
 import { formatDate } from '@/lib/utils';
+import { EmergencyContactDialog } from './emergency-contact-dialog';
 
 type DirectoryTab = 'businesses' | 'emergency' | 'offers' | 'club';
 
@@ -88,8 +87,9 @@ export function DirectoryContent() {
   const { data: emergencyContacts = [], isLoading: isEmergencyLoading } = useEmergencyContacts(
     emergencyCategory,
   );
-  const createEmergencyMutation = useCreateEmergencyContact();
   const deleteEmergencyMutation = useDeleteEmergencyContact();
+  // The number being edited; null with the dialog open means adding one.
+  const [editingEmergency, setEditingEmergency] = useState<EmergencyContact | null>(null);
 
   // Offers state
   const { data: offers = [], isLoading: isOffersLoading } = useOffers();
@@ -120,14 +120,6 @@ export function DirectoryContent() {
   const [categoryForm, setCategoryForm] = useState({
     name: '',
     icon: 'Store',
-  });
-
-  const [emergencyForm, setEmergencyForm] = useState({
-    name: '',
-    phone: '',
-    category: 'hospital' as EmergencyContact['category'],
-    address: '',
-    available_24_7: true,
   });
 
   const [offerForm, setOfferForm] = useState({
@@ -188,36 +180,6 @@ export function DirectoryContent() {
       toast({
         title: 'Operation Failed',
         description: 'Could not create category.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleSaveEmergency = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emergencyForm.name.trim() || !emergencyForm.phone.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please provide contact name and phone number.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      await createEmergencyMutation.mutateAsync({
-        name: emergencyForm.name,
-        phone: emergencyForm.phone,
-        category: emergencyForm.category,
-        address: emergencyForm.address || null,
-        available_24_7: emergencyForm.available_24_7,
-      });
-      toast({ title: 'Emergency Contact Saved', description: 'Added to emergency directory.' });
-      setIsAddEmergencyOpen(false);
-    } catch {
-      toast({
-        title: 'Operation Failed',
-        description: 'Could not create emergency contact.',
         variant: 'destructive',
       });
     }
@@ -300,7 +262,14 @@ export function DirectoryContent() {
         )}
 
         {activeTab === 'emergency' && (
-          <Button size="sm" onClick={() => setIsAddEmergencyOpen(true)} className="gap-1.5">
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditingEmergency(null);
+              setIsAddEmergencyOpen(true);
+            }}
+            className="gap-1.5"
+          >
             <Plus className="h-4 w-4" />
             Add Emergency Contact
           </Button>
@@ -563,11 +532,24 @@ export function DirectoryContent() {
                       {contact.phone}
                     </a>
                   </CardContent>
-                  <CardFooter className="flex justify-end border-t bg-muted/20 px-3 py-1.5">
+                  <CardFooter className="flex justify-end gap-1 border-t bg-muted/20 px-3 py-1.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      aria-label={`Edit ${contact.name}`}
+                      onClick={() => {
+                        setEditingEmergency(contact);
+                        setIsAddEmergencyOpen(true);
+                      }}
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6 text-destructive"
+                      aria-label={`Delete ${contact.name}`}
                       onClick={() => deleteEmergencyMutation.mutate(contact.id)}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -879,84 +861,15 @@ export function DirectoryContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Emergency Contact Modal */}
-      <Dialog open={isAddEmergencyOpen} onOpenChange={setIsAddEmergencyOpen}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleSaveEmergency}>
-            <DialogHeader>
-              <DialogTitle>Add Emergency Contact</DialogTitle>
-              <DialogDescription>
-                Emergency desk numbers for ambulance, police, fire, or gate security.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-3 py-4 text-sm">
-              <div className="space-y-1.5">
-                <Label htmlFor="em-name">Contact / Authority Name *</Label>
-                <Input
-                  id="em-name"
-                  placeholder="e.g. Max Hospital Emergency"
-                  value={emergencyForm.name}
-                  onChange={(e) => setEmergencyForm({ ...emergencyForm, name: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="em-phone">Phone Number *</Label>
-                  <Input
-                    id="em-phone"
-                    placeholder="102 or +91 11 2345 6789"
-                    value={emergencyForm.phone}
-                    onChange={(e) => setEmergencyForm({ ...emergencyForm, phone: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="em-cat">Emergency Type</Label>
-                  <select
-                    id="em-cat"
-                    value={emergencyForm.category}
-                    onChange={(e) =>
-                      setEmergencyForm({
-                        ...emergencyForm,
-                        category: e.target.value as EmergencyContact['category'],
-                      })
-                    }
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm"
-                  >
-                    <option value="hospital">Hospital</option>
-                    <option value="ambulance">Ambulance</option>
-                    <option value="police">Police</option>
-                    <option value="fire">Fire Brigade</option>
-                    <option value="internal">Society Security Gate</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="em-addr">Hospital / Station Address</Label>
-                <Input
-                  id="em-addr"
-                  placeholder="Sector 12, Main Road (1.5 km away)"
-                  value={emergencyForm.address}
-                  onChange={(e) => setEmergencyForm({ ...emergencyForm, address: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsAddEmergencyOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createEmergencyMutation.isPending}>
-                Save Contact
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Add / Edit Emergency Contact */}
+      {isAddEmergencyOpen && (
+        <EmergencyContactDialog
+          key={editingEmergency?.id ?? 'new'}
+          open
+          contact={editingEmergency}
+          onClose={() => setIsAddEmergencyOpen(false)}
+        />
+      )}
 
       {/* Add Offer Modal */}
       <Dialog open={isAddOfferOpen} onOpenChange={setIsAddOfferOpen}>
