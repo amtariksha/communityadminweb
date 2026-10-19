@@ -151,6 +151,9 @@ function filtersToParams(filters?: UnitFilters): Record<string, string> | undefi
   return params;
 }
 
+/** Pickers load the whole unit list; GET /units allows up to 1,000 rows and refuses more with a 400. */
+export const UNIT_PICKER_LIMIT = 1000;
+
 // ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------

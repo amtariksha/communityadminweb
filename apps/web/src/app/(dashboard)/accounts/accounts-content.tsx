@@ -63,7 +63,7 @@ import {
   validateDecision,
   type DebtorDecisionMap,
 } from '@/components/tally/debtor-review-table';
-import { useUnits } from '@/hooks';
+import { UNIT_PICKER_LIMIT, useUnits } from '@/hooks';
 import { useTallyExportPreview, useTallyExport } from '@/hooks/use-tally-export';
 import type { TallyExportOptions } from '@/hooks/use-tally-export';
 import type { AccountGroup, LedgerAccount } from '@communityos/shared';
@@ -295,8 +295,8 @@ export default function AccountsContent(): ReactNode {
   // the BullMQ job row's selection_json doesn't carry debtor_links.
   const parseImportDebtors = useParseImportDebtors();
   // Driver list for the "Pick existing unit" autocomplete on the
-  // review table. limit=2000 is generous for any single tenant.
-  const unitsQuery = useUnits({ limit: 2000 });
+  // review table (the whole list, up to the API's 1,000-row lookup cap).
+  const unitsQuery = useUnits({ limit: UNIT_PICKER_LIMIT });
 
   const isLoading = groupsLoading || accountsLoading;
   const accounts = accountsResponse?.data ?? [];

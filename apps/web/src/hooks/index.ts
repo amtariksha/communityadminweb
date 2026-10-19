@@ -41,6 +41,7 @@ export type {
 // Units
 export {
   unitKeys,
+  UNIT_PICKER_LIMIT,
   useUnits,
   useUnit,
   useUnitStats,

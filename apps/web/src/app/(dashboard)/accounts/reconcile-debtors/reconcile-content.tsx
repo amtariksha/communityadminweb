@@ -22,7 +22,7 @@ import {
   type TallyDebtorParseResult,
   type TallyDebtorLinkByIdInput,
 } from '@/hooks/use-tally-import';
-import { useUnits } from '@/hooks';
+import { UNIT_PICKER_LIMIT, useUnits } from '@/hooks';
 import {
   DebtorReviewTable,
   buildInitialDecisions,
@@ -52,7 +52,7 @@ export default function ReconcileDebtorsContent(): ReactNode {
   const unlinkedQuery = useUnlinkedDebtors(true);
   const parseExisting = useParseExistingDebtors();
   const linkExisting = useLinkExistingDebtors();
-  const unitsQuery = useUnits({ limit: 2000 });
+  const unitsQuery = useUnits({ limit: UNIT_PICKER_LIMIT });
 
   // Parsed rows + decisions live entirely in component state. The
   // server caches nothing for the backfill path (unlike the
