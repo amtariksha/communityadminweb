@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils';
 export interface BlockLinksProps {
   blocks: readonly UnitBlock[];
   totalUnits: number;
-  /** The block shown now; null = All Blocks. */
-  value: string | null;
+  /** The block shown now; null = All Blocks; undefined = none chosen yet (INC-35). */
+  value: string | null | undefined;
   /** A link per block (route-based lists) … */
   hrefFor?: (block: string | null) => string;
   /** … or a callback (lists filtered in place). */

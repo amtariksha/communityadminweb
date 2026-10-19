@@ -16,7 +16,8 @@ import { todayIST } from '@/lib/date';
 import { saveBlob } from '@/lib/download';
 import { useAdminLayout } from '@/lib/layout-context';
 import { isNotDeployed } from '@/lib/not-deployed';
-import { collectionHref, invoiceHref, invoiceMoreActions, memberRowActions, printReceipt } from './member-row-actions';
+import { collectionHref, invoiceHref, invoiceMoreActions, MEMBER_INCOME_BASE, memberRowActions, printReceipt } from './member-row-actions';
+import { MemberIncomeLinks } from './member-income-links';
 
 /**
  * The treasurer's daily screen: every unit with what it owes and the
@@ -57,11 +58,13 @@ export function MemberIncomeContent(): ReactNode {
       {!classic && (
         <PageHeader title="Member Dues" description="What each unit owes, and its account and postings from its row." />
       )}
+      {classic && <MemberIncomeLinks current={MEMBER_INCOME_BASE} />}
       <MemberIncomeTable
         scope="member"
         title="Member Dues"
         rowActions={memberRowActions(access, { print: (row) => void print(row), invoice, collection })}
         exportFilename="member-dues"
+        opensEmpty={classic}
       />
       {invoiceFor && (
         <PostInvoiceForm

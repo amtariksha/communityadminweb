@@ -42,7 +42,14 @@ interface MemberIncomeTableProps {
   /** Row buttons as labelled columns (SB-04): View, Invoice, Collection, Print. */
   rowActions: readonly DataTableAction<UnitDuesRow>[];
   exportFilename: string;
+  /**
+   * Classic arrangement (INC-35): no rows load until a block link or a
+   * search is used. The defaulter count is the society's until then.
+   */
+  opensEmpty?: boolean;
 }
+
+const CHOOSE_PROMPT = 'Choose a block above, or search, to list the units.';
 
 function emptyText(filters: UnitDuesFilters): string {
   if (filters.q) return `No units match '${filters.q}'.`;
@@ -54,7 +61,7 @@ function emptyText(filters: UnitDuesFilters): string {
  * field, then every unit with its primary contact, billing name, status
  * and what it owes, with the row buttons the page passes in.
  */
-export function MemberIncomeTable({ scope, title, rowActions, exportFilename }: MemberIncomeTableProps): ReactNode {
+export function MemberIncomeTable({ scope, title, rowActions, exportFilename, opensEmpty = false }: MemberIncomeTableProps): ReactNode {
   const [filters, setFilters] = useState<UnitDuesFilters>({
     block: null,
     q: '',
@@ -63,18 +70,25 @@ export function MemberIncomeTable({ scope, title, rowActions, exportFilename }: 
     page: 1,
     limit: 25,
   });
-  const query = useUnitDues(filters);
-  const update = (patch: Partial<UnitDuesFilters>): void => setFilters((current) => ({ ...current, page: 1, ...patch }));
+  const [chosen, setChosen] = useState(!opensEmpty);
+  // Before the first choice, one row of the whole society gives its defaulter count.
+  const overview = useUnitDues({ ...filters, block: null, q: '', page: 1, limit: 1 }, { enabled: !chosen });
+  const query = useUnitDues(filters, { enabled: chosen });
+  const update = (patch: Partial<UnitDuesFilters>): void => {
+    setChosen(true);
+    setFilters((current) => ({ ...current, page: 1, ...patch }));
+  };
+  const defaulters = (chosen ? query.data : overview.data)?.defaulter_count ?? 0;
 
-  if (isNotDeployed(query.error)) {
+  if (isNotDeployed(query.error) || isNotDeployed(overview.error)) {
     return <p className="text-sm text-muted-foreground">{title} is not available yet on this server.</p>;
   }
   return (
     <div className="space-y-3">
-      <UnitBlockLinks value={filters.block} onChange={(block) => update({ block })} />
+      <UnitBlockLinks value={chosen ? filters.block : undefined} onChange={(block) => update({ block })} />
       <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-        <p className="font-medium">Residents under {filters.block ?? 'All Blocks'}</p>
-        <p className="font-medium">Total Number of Defaulters : {query.data?.defaulter_count ?? 0}</p>
+        <p className="font-medium">{chosen ? `Residents under ${filters.block ?? 'All Blocks'}` : ''}</p>
+        <p className="font-medium">Total Number of Defaulters : {defaulters}</p>
       </div>
       <DuesSearch
         value={filters.q}
@@ -97,6 +111,7 @@ export function MemberIncomeTable({ scope, title, rowActions, exportFilename }: 
         error={query.error}
         onRetry={() => void query.refetch()}
         emptyText={emptyText(filters)}
+        fetchMode={opensEmpty ? { panel: null, fetched: chosen, prompt: CHOOSE_PROMPT } : undefined}
       />
     </div>
   );

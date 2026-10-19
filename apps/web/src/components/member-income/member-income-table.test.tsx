@@ -9,8 +9,10 @@ import { MemberIncomeTable } from './member-income-table';
  * defaulters, and a server without the route says so.
  */
 
+type Call = UnitDuesFilters & { enabled: boolean };
+
 const mocks = vi.hoisted(() => ({
-  calls: [] as UnitDuesFilters[],
+  calls: [] as Call[],
   result: { data: [], total: 0, defaulter_count: 0 } as UnitDuesResult,
   error: null as unknown,
 }));
@@ -19,8 +21,8 @@ vi.mock('@/hooks/use-unit-ledger', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-unit-ledger')>();
   return {
     ...actual,
-    useUnitDues: (filters: UnitDuesFilters) => {
-      mocks.calls.push(filters);
+    useUnitDues: (filters: UnitDuesFilters, options: { enabled?: boolean } = {}) => {
+      mocks.calls.push({ ...filters, enabled: options.enabled ?? true });
       return { data: mocks.error ? undefined : mocks.result, isLoading: false, error: mocks.error, refetch: vi.fn() };
     },
   };
@@ -52,7 +54,7 @@ const ROW = {
   advance: '0.00',
 };
 
-function lastCall(): UnitDuesFilters {
+function lastCall(): Call {
   return mocks.calls[mocks.calls.length - 1];
 }
 
@@ -121,5 +123,42 @@ describe('MemberIncomeTable', () => {
     render(<MemberIncomeTable scope="member" title="Member Dues" rowActions={[]} exportFilename="member-dues" />);
 
     expect(screen.getByText('Member Dues is not available yet on this server.')).toBeTruthy();
+  });
+
+  describe('classic arrangement (INC-35)', () => {
+    const ACTIONS = ['Account History', 'Post Invoice', 'Post Collection', 'Print'].map((header) => ({
+      key: header,
+      header,
+      label: header,
+      onClick: vi.fn(),
+    }));
+    const renderClassic = () =>
+      render(<MemberIncomeTable scope="member" title="Member Dues" rowActions={ACTIONS} exportFilename="member-dues" opensEmpty />);
+
+    it('loads no rows until a block or a search is chosen, and counts the society’s defaulters meanwhile', () => {
+      renderClassic();
+      expect(mocks.calls.filter((call) => call.enabled && call.limit !== 1)).toEqual([]);
+      expect(screen.getByText('Choose a block above, or search, to list the units.')).toBeTruthy();
+      expect(screen.queryByText('A-101')).toBeNull();
+      expect(screen.getByText('Total Number of Defaulters : 1')).toBeTruthy();
+      expect(screen.queryByText(/Residents under/)).toBeNull();
+    });
+
+    it('lists the block chosen and names it in the heading', () => {
+      renderClassic();
+      fireEvent.click(screen.getByRole('button', { name: 'Block A' }));
+      expect(lastCall()).toMatchObject({ block: 'A', enabled: true });
+      expect(screen.getByText('Residents under A')).toBeTruthy();
+      expect(screen.getByText('A-101')).toBeTruthy();
+    });
+
+    it('shows the eleven columns in order, S.No first and the buttons in their own columns', () => {
+      renderClassic();
+      fireEvent.click(screen.getByRole('button', { name: 'All Blocks' }));
+      expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
+        'S.No', 'Primary Contact', 'Billing Name', 'Block', 'Unit', 'Status', 'Due',
+        'Account History', 'Post Invoice', 'Post Collection', 'Print',
+      ]);
+    });
   });
 });
