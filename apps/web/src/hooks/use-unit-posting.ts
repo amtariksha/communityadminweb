@@ -52,6 +52,28 @@ export interface MultiLineInvoiceInput {
   lines: Array<{ ledger_account_id: string; quantity: number; amount: number; gst_rate?: number; comment?: string | null }>;
 }
 
+/** INC-25 — a credit note from the unit (POST /receipts/credit-notes with a kind). */
+export type UnitCreditNoteInput = {
+  unit_id: string;
+  reason: string;
+  credit_note_date?: string;
+  payer_member_id?: string;
+} & (
+  | { kind: 'specific'; bills: Array<{ invoice_id: string; amount: number }> }
+  | { kind: 'general'; amount: number }
+  | { kind: 'account_specific'; ledger_account_id: string; amount: number }
+);
+
+export interface PostedUnitCreditNote {
+  id: string;
+  credit_note_number: string;
+  kind: string;
+  amount: string;
+  credit_note_date: string;
+  allocations: Array<{ invoice_id: string; amount: number }>;
+  advance: number;
+}
+
 const quiet = { meta: { suppressToast: true }, retry: false } as const;
 
 export const postingKeys = {
@@ -106,6 +128,15 @@ export function usePostMultiLineInvoice() {
   const invalidate = useInvalidatePosting();
   return useMutation({
     mutationFn: (input: MultiLineInvoiceInput) => api.post<{ data: PostedUnitInvoice }>('/invoices/adhoc/multi-line', input),
+    onSuccess: invalidate,
+  });
+}
+
+/** INC-25 — post a general, account-specific or specific credit note for a unit. */
+export function usePostUnitCreditNote() {
+  const invalidate = useInvalidatePosting();
+  return useMutation({
+    mutationFn: (input: UnitCreditNoteInput) => api.post<{ data: PostedUnitCreditNote }>('/receipts/credit-notes', input),
     onSuccess: invalidate,
   });
 }

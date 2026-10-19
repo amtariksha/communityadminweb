@@ -9,7 +9,11 @@ export const invoiceHref = (unitId: string): string => `${MEMBER_INCOME_BASE}/${
 
 /** Other postings from the Post Invoice form (INC-S18's button column), as they ship. */
 export function invoiceMoreActions(unitId: string): Array<{ label: string; href: string }> {
+  const creditNote = `${MEMBER_INCOME_BASE}/${unitId}/credit-note`;
   return [
+    { label: 'Post a General Credit Note', href: `${creditNote}?kind=general` },
+    { label: 'Post an Account Specific Credit Note', href: `${creditNote}?kind=account` },
+    { label: 'Post Specific Credit Note', href: `${creditNote}?kind=specific` },
     { label: 'Post Multi-Line Invoice', href: `${invoiceHref(unitId)}/multi-line` },
     { label: 'Post Multi-Line GST Invoice', href: `${invoiceHref(unitId)}/multi-line-gst` },
   ];
