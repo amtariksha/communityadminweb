@@ -12,6 +12,8 @@ export interface RequestValues {
   unitId: string;
   text: string;
   category: string;
+  /** One of the category's sub-categories, or '' (HELP-17). */
+  subcategoryId: string;
   // Classic: "This is urgent!"; standard: the Priority select ('' = category default).
   urgent: boolean;
   priority: string;
@@ -24,6 +26,7 @@ export const EMPTY_REQUEST: RequestValues = {
   unitId: '',
   text: '',
   category: '',
+  subcategoryId: '',
   urgent: false,
   priority: '',
   serviceDate: '',
@@ -44,6 +47,7 @@ export function requestBody(values: RequestValues, mode: FormMode, choices: read
     subject: requestSubject(values.text),
     description: values.text.trim(),
     ...categoryFields(choices, values.category),
+    ...(values.subcategoryId ? { subcategory_id: values.subcategoryId } : {}),
     ...(priority ? { priority } : {}),
     ...(personal && values.unitId ? { unit_id: values.unitId } : {}),
     ...(values.serviceDate ? { preferred_service_date: values.serviceDate } : {}),

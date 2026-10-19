@@ -7,6 +7,7 @@ import {
   type GridColumn,
   type GridRowState,
 } from '@/components/editable-grid';
+import { Button } from '@/components/ui/button';
 import type { HelpdeskAssignee, HelpdeskCategory, HelpdeskCategoryRow } from '@/hooks';
 
 const ORDER_STEP = 10;
@@ -24,6 +25,11 @@ interface CategoriesGridProps {
   /** Roles that may read the list but not change it. */
   readOnly: boolean;
   onSave: (rows: HelpdeskCategoryRow[]) => Promise<void> | void;
+  /**
+   * Opens a saved category's sub-categories (HELP-17). Left out — an API
+   * that does not send sub-categories — hides the column.
+   */
+  onEditSubcategories?: (category: HelpdeskCategory) => void;
 }
 
 const MESSAGES = {
@@ -74,7 +80,28 @@ function ownerLabel(owner: HelpdeskAssignee): string {
 }
 
 /** Setup › Helpdesk Categories on the shared editable grid (SB-08). */
-export function CategoriesGrid({ categories, owners, isSaving, readOnly, onSave }: CategoriesGridProps): ReactNode {
+function subcategoriesColumn(
+  categories: readonly HelpdeskCategory[],
+  onEdit: (category: HelpdeskCategory) => void,
+): GridColumn<CategoryValues> {
+  return {
+    key: 'subcategories',
+    header: 'SubCategories',
+    kind: 'custom',
+    render: ({ row, position }) => {
+      const category = row.id ? categories.find((entry) => entry.id === row.id) : undefined;
+      if (!category) return null;
+      const count = category.subcategories?.length ?? 0;
+      return (
+        <Button type="button" size="sm" variant="outline" aria-label={`Sub-categories, row ${position}`} onClick={() => onEdit(category)}>
+          Add/Edit{count > 0 ? ` (${count})` : ''}
+        </Button>
+      );
+    },
+  };
+}
+
+export function CategoriesGrid({ categories, owners, isSaving, readOnly, onSave, onEditSubcategories }: CategoriesGridProps): ReactNode {
   const columns: GridColumn<CategoryValues>[] = [
     {
       key: 'name',
@@ -93,6 +120,7 @@ export function CategoriesGrid({ categories, owners, isSaving, readOnly, onSave 
       options: owners.map((owner) => ({ value: owner.user_id, label: ownerLabel(owner) })),
       label: (position) => `Owner, row ${position}`,
     },
+    ...(onEditSubcategories ? [subcategoriesColumn(categories, onEditSubcategories)] : []),
   ];
 
   return (

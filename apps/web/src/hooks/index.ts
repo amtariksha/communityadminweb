@@ -1010,6 +1010,7 @@ export {
   useHelpdeskCategories,
   useHelpdeskAssignees,
   useSaveHelpdeskCategories,
+  useSaveHelpdeskSubcategories,
   useEscalationMatrix,
   useSaveEscalationRow,
   useHelpdeskSettings,
@@ -1019,6 +1020,8 @@ export {
 export type {
   HelpdeskCategory,
   HelpdeskCategoryRow,
+  HelpdeskSubcategory,
+  HelpdeskSubcategoryRow,
   HelpdeskAssignee,
   EscalationRow,
   EscalationRowInput,

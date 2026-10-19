@@ -19,8 +19,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/hooks', () => ({
   useHelpdeskCategories: () => ({
     data: [
-      { id: 'c-plumbing', name: 'Plumbing' },
-      { id: 'c-electrical', name: 'Electrical' },
+      { id: 'c-plumbing', name: 'Plumbing', subcategories: [{ id: 's-leak', name: 'Leak', display_order: 10 }] },
+      { id: 'c-electrical', name: 'Electrical', subcategories: [] },
     ],
   }),
   useTicketCategories: () => ({ data: [] }),
@@ -197,6 +197,21 @@ describe('Create Request — classic page', () => {
     fireEvent.change(screen.getByLabelText('Preferred service date (optional)'), { target: { value: today } });
     await submit();
     expect(mocks.create.mock.calls[0][0].preferred_service_date).toBe(today);
+  });
+
+  it('offers the category’s sub-categories, sends the one chosen, and clears it with a new category (HELP-17)', async () => {
+    renderForm();
+    fillRequired();
+    fireEvent.change(screen.getByLabelText('Sub-category (optional)'), { target: { value: 's-leak' } });
+
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'c-electrical' } });
+    expect(screen.queryByLabelText('Sub-category (optional)')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'c-plumbing' } });
+    expect((screen.getByLabelText('Sub-category (optional)') as HTMLSelectElement).value).toBe('');
+
+    fireEvent.change(screen.getByLabelText('Sub-category (optional)'), { target: { value: 's-leak' } });
+    await submit();
+    expect(mocks.create.mock.calls[0][0]).toMatchObject({ category_id: 'c-plumbing', subcategory_id: 's-leak' });
   });
 
   it('hides the unit for a Community request and sends none', async () => {

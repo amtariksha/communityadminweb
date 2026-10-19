@@ -3,14 +3,14 @@ import { categoryChoices } from './category-choices';
 
 describe('categoryChoices', () => {
   const categories = [
-    { id: 'cat-1', name: 'Plumbing', display_order: 10 },
+    { id: 'cat-1', name: 'Plumbing', display_order: 10, subcategories: [{ id: 'sub-1', name: 'Leak', display_order: 10 }] },
     { id: 'cat-2', name: 'Electrical', display_order: 20 },
   ];
 
   it("offers the society's own categories by id, in the order given", () => {
     expect(categoryChoices(categories, ['plumbing'])).toEqual([
-      { value: 'cat-1', label: 'Plumbing', categoryId: 'cat-1' },
-      { value: 'cat-2', label: 'Electrical', categoryId: 'cat-2' },
+      { value: 'cat-1', label: 'Plumbing', categoryId: 'cat-1', subcategories: [{ id: 'sub-1', name: 'Leak', display_order: 10 }] },
+      { value: 'cat-2', label: 'Electrical', categoryId: 'cat-2', subcategories: [] },
     ]);
   });
 

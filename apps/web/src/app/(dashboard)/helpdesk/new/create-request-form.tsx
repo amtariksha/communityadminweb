@@ -97,7 +97,8 @@ function CategoryField({ values, set, choices, error }: {
   return (
     <div className="space-y-2">
       <Label htmlFor="request-category">Category</Label>
-      <Select id="request-category" value={values.category} onChange={(event) => set({ category: event.target.value })}>
+      {/* A new category's sub-categories differ: the choice is cleared. */}
+      <Select id="request-category" value={values.category} onChange={(event) => set({ category: event.target.value, subcategoryId: '' })}>
         <option value="">Select category</option>
         {choices.map((choice) => (
           <option key={choice.value} value={choice.value}>
@@ -110,10 +111,33 @@ function CategoryField({ values, set, choices, error }: {
   );
 }
 
+/** Shown only when the chosen category has sub-categories (HELP-17); optional. */
+function SubcategoryField({ values, set, choices }: {
+  values: RequestValues;
+  set: SetValues;
+  choices: ReturnType<typeof categoryChoices>;
+}): ReactNode {
+  const subcategories = choices.find((choice) => choice.value === values.category)?.subcategories ?? [];
+  if (subcategories.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="request-subcategory">Sub-category (optional)</Label>
+      <Select id="request-subcategory" value={values.subcategoryId} onChange={(event) => set({ subcategoryId: event.target.value })}>
+        <option value="">None</option>
+        {subcategories.map((sub) => (
+          <option key={sub.id} value={sub.id}>
+            {sub.name}
+          </option>
+        ))}
+      </Select>
+    </div>
+  );
+}
+
 /**
  * Create Request (HELP-13, HELP-S5): the same fields and checks as a
  * classic page and as the standard dialog (SB-07). Request Type came with
- * HELP-15, Preferred Service Date with HELP-16; Sub-category joins with HELP-17.
+ * HELP-15, Preferred Service Date with HELP-16, Sub-category with HELP-17.
  */
 export function CreateRequestForm({ mode, open, onClose, onSaved }: CreateRequestFormProps): ReactNode {
   const { addToast } = useToast();
@@ -170,6 +194,7 @@ export function CreateRequestForm({ mode, open, onClose, onSaved }: CreateReques
       <TextField values={values} set={set} error={errors.text} />
       <FilesField files={files} />
       <CategoryField values={values} set={set} choices={choices} error={errors.category} />
+      <SubcategoryField values={values} set={set} choices={choices} />
       <ServiceDateField values={values} set={set} error={errors.serviceDate} />
       <PriorityField mode={mode} values={values} set={set} />
     </FormFrame>

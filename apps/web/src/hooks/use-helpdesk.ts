@@ -19,6 +19,23 @@ export interface HelpdeskCategory {
   owner_l1_name?: string | null;
   /** The category's own automatic reply; staff only. */
   auto_reply_text?: string | null;
+  /** Active sub-categories in grid order (HELP-17); an older server sends none. */
+  subcategories?: HelpdeskSubcategory[];
+}
+
+/** A sub-category of a helpdesk category (HELP-17). */
+export interface HelpdeskSubcategory {
+  id: string;
+  name: string;
+  display_order: number;
+}
+
+/** One row sent when a category's sub-category grid is saved. */
+export interface HelpdeskSubcategoryRow {
+  id?: string;
+  name: string;
+  display_order: number;
+  delete?: boolean;
 }
 
 /** One row sent when the Setup grid is saved. */
@@ -180,6 +197,24 @@ export function useSaveHelpdeskCategories() {
       queryClient.setQueryData(helpdeskKeys.categories(), saved);
       queryClient.invalidateQueries({ queryKey: ['tickets', 'categories'] });
       queryClient.invalidateQueries({ queryKey: ['helpdesk', 'setup'] });
+    },
+  });
+}
+
+/** Saves one category's sub-category grid (PUT /helpdesk/categories/:id/subcategories). */
+export function useSaveHelpdeskSubcategories() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async function saveSubcategories(input: { categoryId: string; rows: HelpdeskSubcategoryRow[] }) {
+      const res = await api.put<{ data: HelpdeskSubcategory[] }>(
+        `/helpdesk/categories/${input.categoryId}/subcategories`,
+        { rows: input.rows },
+      );
+      return res.data;
+    },
+    onSuccess: function refresh() {
+      queryClient.invalidateQueries({ queryKey: helpdeskKeys.categories() });
     },
   });
 }

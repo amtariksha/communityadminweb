@@ -1,4 +1,4 @@
-import type { HelpdeskCategory } from '@/hooks';
+import type { HelpdeskCategory, HelpdeskSubcategory } from '@/hooks';
 
 /** One entry of the Category filter and of the New Ticket category select. */
 export interface CategoryChoice {
@@ -7,6 +7,8 @@ export interface CategoryChoice {
   label: string;
   /** Present when the choice is one of the society's own categories. */
   categoryId?: string;
+  /** Its active sub-categories (HELP-17). */
+  subcategories?: HelpdeskSubcategory[];
 }
 
 /**
@@ -24,6 +26,7 @@ export function categoryChoices(
       value: category.id,
       label: category.name,
       categoryId: category.id,
+      subcategories: category.subcategories ?? [],
     }));
   }
   return (legacyNames ?? []).map((name) => ({ value: name, label: name }));

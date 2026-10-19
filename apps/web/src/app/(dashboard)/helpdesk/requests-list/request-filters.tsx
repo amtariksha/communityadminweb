@@ -14,6 +14,7 @@ export interface RequestFilterValues {
   block: string;
   unit_id: string;
   type: string;
+  subcategory_id: string;
 }
 
 export const NO_REQUEST_FILTERS: RequestFilterValues = {
@@ -23,6 +24,7 @@ export const NO_REQUEST_FILTERS: RequestFilterValues = {
   block: '',
   unit_id: '',
   type: '',
+  subcategory_id: '',
 };
 
 interface RequestFiltersProps {
@@ -78,6 +80,16 @@ export function RequestFilters({ scope, layout, facets, values, onChange }: Requ
         onChange={set('category_id')}
         options={optionsOf(facets?.category)}
       />
+      {(facets?.subcategory?.length ?? 0) > 0 && (
+        <CountedSelect
+          id="request-subcategory"
+          label="Sub-category"
+          allLabel="All"
+          value={values.subcategory_id}
+          onChange={set('subcategory_id')}
+          options={optionsOf(facets?.subcategory)}
+        />
+      )}
       <CountedSelect
         id="request-driven-by"
         label="Driven By"

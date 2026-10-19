@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,9 +12,11 @@ import {
   useHelpdeskAssignees,
   useHelpdeskCategories,
   useSaveHelpdeskCategories,
+  useSaveHelpdeskSubcategories,
 } from '@/hooks';
-import type { HelpdeskCategoryRow } from '@/hooks';
+import type { HelpdeskCategory, HelpdeskCategoryRow, HelpdeskSubcategoryRow } from '@/hooks';
 import { CategoriesGrid } from './categories-grid';
+import { SubcategoriesDialog } from './subcategories-dialog';
 import { SetupLinks } from '../setup-links';
 
 // Roles the API lets save the grid; everyone else sees it read-only.
@@ -25,6 +27,10 @@ export default function CategoriesContent(): ReactNode {
   const categoriesQuery = useHelpdeskCategories();
   const assigneesQuery = useHelpdeskAssignees();
   const saveMutation = useSaveHelpdeskCategories();
+  const saveSubcategories = useSaveHelpdeskSubcategories();
+  const [subcategoriesOf, setSubcategoriesOf] = useState<HelpdeskCategory | null>(null);
+  // An API without HELP-17 sends no sub-categories: no column then.
+  const hasSubcategories = (categoriesQuery.data ?? []).some((category) => Array.isArray(category.subcategories));
 
   const role = useMemo(() => currentRole(), []);
   const canSave = role !== null && SAVE_ROLES.has(role);
@@ -39,6 +45,17 @@ export default function CategoriesContent(): ReactNode {
         description: friendlyError(error),
         variant: 'destructive',
       });
+    }
+  }
+
+  async function handleSaveSubcategories(categoryId: string, rows: HelpdeskSubcategoryRow[]): Promise<void> {
+    try {
+      await saveSubcategories.mutateAsync({ categoryId, rows });
+      addToast({ title: 'Sub-categories saved', variant: 'success' });
+      setSubcategoriesOf(null);
+    } catch (error) {
+      addToast({ title: 'Could not save the sub-categories', description: friendlyError(error), variant: 'destructive' });
+      throw error;
     }
   }
 
@@ -78,10 +95,18 @@ export default function CategoriesContent(): ReactNode {
               isSaving={saveMutation.isPending}
               readOnly={!canSave}
               onSave={handleSave}
+              onEditSubcategories={hasSubcategories ? setSubcategoriesOf : undefined}
             />
           )}
         </CardContent>
       </Card>
+      <SubcategoriesDialog
+        category={subcategoriesOf}
+        readOnly={!canSave}
+        isSaving={saveSubcategories.isPending}
+        onClose={() => setSubcategoriesOf(null)}
+        onSave={handleSaveSubcategories}
+      />
     </div>
   );
 }

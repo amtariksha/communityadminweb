@@ -90,6 +90,10 @@ const FACETS = {
     { value: 'personal', label: 'Resident', count: 3 },
     { value: 'community', label: 'Community', count: 2 },
   ],
+  subcategory: [
+    { value: 's-leak', label: 'Leak', count: 2 },
+    { value: null, label: '(No sub-category)', count: 3 },
+  ],
 };
 
 function lastFilters(): Record<string, unknown> {
@@ -181,6 +185,15 @@ describe('Open Requests', () => {
     ]);
     fireEvent.change(status, { target: { value: 'in_progress' } });
     expect(lastFilters()).toEqual(expect.objectContaining({ status: 'in_progress' }));
+  });
+
+  it('filters by sub-category, with counts (HELP-17)', () => {
+    const { container } = render(<RequestsList />);
+    const sub = container.querySelector('select#request-subcategory') as HTMLSelectElement;
+
+    expect(Array.from(sub.options).map((option) => option.textContent)).toEqual(['All', 'Leak (2)']);
+    fireEvent.change(sub, { target: { value: 's-leak' } });
+    expect(lastFilters()).toEqual(expect.objectContaining({ subcategory_id: 's-leak' }));
   });
 
   it('filters Resident and Community requests, with their counts (HELP-15)', () => {

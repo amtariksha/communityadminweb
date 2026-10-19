@@ -40,6 +40,10 @@ export interface TicketFacets {
   unit: TicketFacetOption[];
   /** Resident (personal) and Community (HELP-15); older servers send none. */
   type?: TicketFacetOption[];
+  /** HELP-17 */
+  subcategory?: TicketFacetOption[];
+  /** HELP-18, with Unassigned */
+  serviced_by?: TicketFacetOption[];
 }
 
 export interface Ticket {
@@ -82,6 +86,19 @@ export interface Ticket {
   raised_on_behalf?: boolean;
   /** YYYY-MM-DD (HELP-16). */
   preferred_service_date?: string | null;
+  // HELP-17, HELP-18
+  subcategory_id?: string | null;
+  subcategory_name?: string | null;
+  serviced_by_staff_id?: string | null;
+  serviced_by_name?: string | null;
+  // HELP-19: the asset the request is about.
+  related_to_type?: string | null;
+  related_to_id?: string | null;
+  related_to_name?: string | null;
+  // HELP-20: the raiser's rating, once given (detail only).
+  survey?: { rating: number; feedback: string | null; submitted_at: string } | null;
+  /** The columns the last edit changed (PATCH only). */
+  changed_fields?: string[];
   // GET /tickets/:id returns the whole thread; the list does not.
   comments?: TicketComment[];
 }
@@ -129,6 +146,10 @@ export interface TicketFilters {
   priority?: string;
   category?: string;
   category_id?: string;
+  /** One sub-category (HELP-17). */
+  subcategory_id?: string;
+  /** A society_staff id, or 'unassigned' (HELP-18). */
+  serviced_by?: string;
   /** A Driven By user id, or 'unassigned'. */
   assigned_to?: string;
   /** Only requests past their due time and not completed. */
@@ -153,6 +174,7 @@ interface CreateTicketInput {
   unit_id?: string;
   request_type?: 'personal' | 'community';
   preferred_service_date?: string;
+  subcategory_id?: string;
   attachment_urls?: string[];
   attachment_names?: string[];
   // QA #231 — populated by useUploadFileToS3 in the consumer page.
@@ -210,6 +232,8 @@ function filtersToParams(filters?: TicketFilters): Record<string, string> | unde
   if (filters.priority) params.priority = filters.priority;
   if (filters.category) params.category = filters.category;
   if (filters.category_id) params.category_id = filters.category_id;
+  if (filters.subcategory_id) params.subcategory_id = filters.subcategory_id;
+  if (filters.serviced_by) params.serviced_by = filters.serviced_by;
   if (filters.assigned_to) params.assigned_to = filters.assigned_to;
   if (filters.overdue) params.overdue = 'true';
   if (filters.page !== undefined) params.page = String(filters.page);
