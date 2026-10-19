@@ -1,5 +1,5 @@
 import type { Staff, StaffGender } from '@/hooks/use-staff';
-import { dateIST } from '@/lib/date';
+import { dateIST, todayIST } from '@/lib/date';
 
 /**
  * The badge and profile part of Add / Edit Staff (STAFF-20, screen
@@ -90,7 +90,12 @@ export function recordDraftError(draft: StaffRecordDraft): string | null {
 /** What Badge Valid Till will read after a save ('' = no expiry or unknown). */
 export function validTillPreview(draft: StaffRecordDraft, saved?: Staff | null): string {
   if (draft.validity === '') return dayOf(saved?.badge_valid_until);
-  return badgeValidUntil(draft.issuedOn, Number(draft.validity)) ?? '';
+  return badgeValidUntil(issuedOrToday(draft), Number(draft.validity)) ?? '';
+}
+
+/** An expiring badge is issued today unless a date is typed (as the API does). */
+function issuedOrToday(draft: StaffRecordDraft): string {
+  return draft.issuedOn || (Number(draft.validity) > 0 ? todayIST() : '');
 }
 
 const orNull = (text: string): string | null => text.trim() || null;
@@ -103,7 +108,7 @@ export function recordPayload(draft: StaffRecordDraft, editing: boolean): Record
   const badge = draft.badgeNo.trim();
   return {
     ...(badge || editing ? { badge_no: badge || null } : {}),
-    badge_issued_on: draft.issuedOn || null,
+    badge_issued_on: issuedOrToday(draft) || null,
     ...(draft.validity === '' ? {} : { badge_validity_months: Number(draft.validity) }),
     gender: draft.gender || null,
     qualification: orNull(draft.qualification),

@@ -152,4 +152,5 @@ describe('badgeValidUntil (web)', () => {
     expect(badgeValidUntil('2026-08-31', 6)).toBe('2027-02-28');
     expect(badgeValidUntil('2026-01-01', 0)).toBeNull();
   });
+
 });

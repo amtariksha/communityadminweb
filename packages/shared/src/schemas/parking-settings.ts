@@ -41,14 +41,21 @@ export const updateParkingSettingsSchema = parkingSettingsSchema
 export type ParkingSettings = z.infer<typeof parkingSettingsSchema>;
 export type UpdateParkingSettingsInput = z.infer<typeof updateParkingSettingsSchema>;
 
-/** Stored settings over the defaults; an unreadable value keeps its default. */
+/**
+ * Stored settings over the defaults. Each key is read on its own, so one
+ * unreadable value keeps only its own default (a bad label does not turn a
+ * switched-off right back on).
+ */
 export function parkingSettingsFrom(stored: unknown): ParkingSettings {
-  const saved = parkingSettingsSchema.partial().safeParse(stored ?? {});
-  const known = saved.success ? saved.data : {};
+  const saved = (stored && typeof stored === 'object' ? stored : {}) as Record<string, unknown>;
+  const shape = parkingSettingsSchema.shape;
+  const read = <K extends keyof ParkingSettings>(key: K): ParkingSettings[K] => {
+    const parsed = shape[key].safeParse(saved[key]);
+    return (parsed.success ? parsed.data : PARKING_SETTINGS_DEFAULTS[key]) as ParkingSettings[K];
+  };
   return {
-    residents_can_add_vehicle: known.residents_can_add_vehicle ?? PARKING_SETTINGS_DEFAULTS.residents_can_add_vehicle,
-    residents_can_edit_vehicle: known.residents_can_edit_vehicle ?? PARKING_SETTINGS_DEFAULTS.residents_can_edit_vehicle,
-    vehicle_additional_field_label:
-      known.vehicle_additional_field_label ?? PARKING_SETTINGS_DEFAULTS.vehicle_additional_field_label,
+    residents_can_add_vehicle: read('residents_can_add_vehicle'),
+    residents_can_edit_vehicle: read('residents_can_edit_vehicle'),
+    vehicle_additional_field_label: read('vehicle_additional_field_label'),
   };
 }
