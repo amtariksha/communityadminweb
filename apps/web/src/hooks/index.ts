@@ -399,6 +399,7 @@ export {
   useAddTicketComment,
   useBulkCloseTickets,
   useBulkReassignTickets,
+  useConvertToCommunity,
   useTicketFacets,
   useTicketScopeCounts,
   ticketListParams,

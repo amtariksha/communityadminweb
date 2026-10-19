@@ -23,6 +23,7 @@ import { useAdminLayout } from '@/lib/layout-context';
 import { ticketStatusLabel } from '@/lib/ticket-status';
 import { formatDate } from '@/lib/utils';
 import { priorityTone, statusTone } from './ticket-badges';
+import { ConvertToCommunityButton } from './convert-to-community';
 import { StatusPicker } from './status-picker';
 import { TicketDetailThreads } from './ticket-detail-threads';
 import { useTicketStatusUpdate } from './use-ticket-status-update';
@@ -52,6 +53,12 @@ const NEXT_STEP: Readonly<Record<string, { status: string; label: string; icon: 
   in_progress: { status: 'resolved', label: 'Resolve', icon: <CheckCircle2 className="mr-2 h-4 w-4" /> },
   resolved: { status: 'closed', label: 'Close', icon: <XCircle className="mr-2 h-4 w-4" /> },
 };
+
+/** Personal, Personal (on behalf) or Community (HELP-15). */
+function requestTypeLabel(ticket: Pick<Ticket, 'request_type' | 'raised_on_behalf'>): string {
+  if (ticket.request_type === 'community') return 'Community';
+  return ticket.raised_on_behalf ? 'Personal (on behalf)' : 'Personal';
+}
 
 function Facts({ detail }: { detail: Ticket }): ReactNode {
   const { addToast } = useToast();
@@ -83,6 +90,12 @@ function Facts({ detail }: { detail: Ticket }): ReactNode {
         <>
           <span className="text-muted-foreground">Unit</span>
           <span>{detail.unit_number}</span>
+        </>
+      )}
+      {detail.request_type && (
+        <>
+          <span className="text-muted-foreground">Type</span>
+          <span>{requestTypeLabel(detail)}</span>
         </>
       )}
       {detail.description && (
@@ -182,6 +195,7 @@ export function TicketDetailDialog({ ticketId, onClose }: TicketDetailDialogProp
                 disabled={statusUpdate.isPending}
                 onChange={(status) => statusUpdate.update(detail.id, status)}
               />
+              <ConvertToCommunityButton ticket={detail} />
             </div>
             <Separator />
             <TicketDetailThreads

@@ -70,6 +70,8 @@ function pick(...files: File[]): void {
 function fillRequired(text = 'Kitchen tap leaking\nSince last night'): void {
   fireEvent.change(screen.getByLabelText('Write your Request'), { target: { value: text } });
   fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'c-plumbing' } });
+  // A Personal request (the default) is for a unit (HELP-15).
+  fireEvent.change(screen.getByLabelText('Select Unit'), { target: { value: 'unit-102' } });
 }
 
 async function submit(label = 'Submit'): Promise<void> {
@@ -161,14 +163,37 @@ describe('Create Request — classic page', () => {
     expect(body.category_id).toBe('c-plumbing');
   });
 
-  it('asks for the request and the category before sending', async () => {
+  it('asks for the request, the category and the unit before sending', async () => {
     renderForm();
 
     await submit();
 
     expect(screen.getByText('Write your request.')).toBeTruthy();
     expect(screen.getByText('Choose a category.')).toBeTruthy();
+    expect(screen.getByText('Choose the unit this request is for.')).toBeTruthy();
     expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('sends a Personal request for its unit by default (HELP-15)', async () => {
+    renderForm();
+    fillRequired();
+
+    await submit();
+
+    expect(mocks.create.mock.calls[0][0]).toMatchObject({ request_type: 'personal', unit_id: 'unit-102' });
+  });
+
+  it('hides the unit for a Community request and sends none', async () => {
+    renderForm();
+    fillRequired();
+    fireEvent.click(screen.getByLabelText('Community'));
+
+    expect(screen.queryByLabelText('Select Unit')).toBeNull();
+    await submit();
+
+    const body = mocks.create.mock.calls[0][0];
+    expect(body.request_type).toBe('community');
+    expect('unit_id' in body).toBe(false);
   });
 
   it('holds the request while a file has not uploaded, and retries it', async () => {

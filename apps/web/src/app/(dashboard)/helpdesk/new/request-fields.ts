@@ -46,12 +46,26 @@ export function checkFiles(attached: number, picked: readonly File[]): FileCheck
 export interface RequestErrors {
   text?: string;
   category?: string;
+  unit?: string;
 }
 
-export function validateRequest(text: string, category: string): RequestErrors {
+export interface RequestChecked {
+  text: string;
+  category: string;
+  /** Personal requests are for a unit (HELP-15). */
+  requestType?: 'personal' | 'community';
+  unitId?: string;
+}
+
+export function validateRequest({ text, category, requestType, unitId }: RequestChecked): RequestErrors {
   const errors: RequestErrors = {};
   if (requestSubject(text) === '') errors.text = 'Write your request.';
   else if (text.length > MAX_TEXT) errors.text = `Keep the request under ${MAX_TEXT} characters.`;
   if (!category) errors.category = 'Choose a category.';
+  if (requestType === 'personal' && !unitId) errors.unit = 'Choose the unit this request is for.';
   return errors;
+}
+
+export function hasRequestErrors(errors: RequestErrors): boolean {
+  return Object.values(errors).some(Boolean);
 }

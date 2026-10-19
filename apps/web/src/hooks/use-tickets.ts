@@ -38,6 +38,8 @@ export interface TicketFacets {
   driven_by: TicketFacetOption[];
   block: TicketFacetOption[];
   unit: TicketFacetOption[];
+  /** Resident (personal) and Community (HELP-15); older servers send none. */
+  type?: TicketFacetOption[];
 }
 
 export interface Ticket {
@@ -75,6 +77,9 @@ export interface Ticket {
   age_days?: number | null;
   attachment_urls?: string[];
   attachment_names?: string[];
+  // HELP-15; older servers send neither.
+  request_type?: 'personal' | 'community';
+  raised_on_behalf?: boolean;
   // GET /tickets/:id returns the whole thread; the list does not.
   comments?: TicketComment[];
 }
@@ -116,6 +121,8 @@ export interface TicketFilters {
   block?: string;
   /** A unit id, or 'none'. */
   unit_id?: string;
+  /** Personal or Community (HELP-15). */
+  type?: 'personal' | 'community';
   status?: string;
   priority?: string;
   category?: string;
@@ -142,6 +149,9 @@ interface CreateTicketInput {
   description?: string;
   priority?: string;
   unit_id?: string;
+  request_type?: 'personal' | 'community';
+  attachment_urls?: string[];
+  attachment_names?: string[];
   // QA #231 — populated by useUploadFileToS3 in the consumer page.
   // Backend rejects partial payloads (refine: both or neither).
   attachment_url?: string;
@@ -192,6 +202,7 @@ function filtersToParams(filters?: TicketFilters): Record<string, string> | unde
   if (filters.q) params.q = filters.q;
   if (filters.block) params.block = filters.block;
   if (filters.unit_id) params.unit_id = filters.unit_id;
+  if (filters.type) params.type = filters.type;
   if (filters.status) params.status = filters.status;
   if (filters.priority) params.priority = filters.priority;
   if (filters.category) params.category = filters.category;
@@ -363,6 +374,21 @@ export function useAddTicketComment() {
     },
     onSuccess: function invalidate(_data, variables) {
       queryClient.invalidateQueries({ queryKey: ticketKeys.detail(variables.ticket_id) });
+    },
+  });
+}
+
+/** Personal → Community, once (HELP-15). */
+export function useConvertToCommunity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function convertToCommunity(id: string) {
+      return api.post<{ data: Ticket }>(`/tickets/${id}/convert-to-community`, {});
+    },
+    onSuccess: function invalidate(_data, id) {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.detail(id) });
+      invalidateTicketLists(queryClient);
     },
   });
 }

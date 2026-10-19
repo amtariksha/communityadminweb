@@ -13,6 +13,7 @@ export interface RequestFilterValues {
   assigned_to: string;
   block: string;
   unit_id: string;
+  type: string;
 }
 
 export const NO_REQUEST_FILTERS: RequestFilterValues = {
@@ -21,6 +22,7 @@ export const NO_REQUEST_FILTERS: RequestFilterValues = {
   assigned_to: '',
   block: '',
   unit_id: '',
+  type: '',
 };
 
 interface RequestFiltersProps {
@@ -51,8 +53,8 @@ function statusOptions(scope: HelpdeskScope, layout: AdminLayout, facets?: Ticke
 /**
  * The list filters of HELP-S7 / S8, each option "name (n)" with counts
  * inside the scope from GET /tickets/facets. Closed Requests has no
- * Status filter. Sub-category, Serviced By and Type join with
- * HELP-17, HELP-18 and HELP-15.
+ * Status filter. Type is Resident / Community (HELP-15); Sub-category
+ * and Serviced By join with HELP-17 and HELP-18.
  */
 export function RequestFilters({ scope, layout, facets, values, onChange }: RequestFiltersProps): ReactNode {
   const set = (key: keyof RequestFilterValues) => (value: string) => onChange({ ...values, [key]: value });
@@ -99,6 +101,14 @@ export function RequestFilters({ scope, layout, facets, values, onChange }: Requ
         value={values.unit_id}
         onChange={set('unit_id')}
         options={optionsOf(facets?.unit, 'none')}
+      />
+      <CountedSelect
+        id="request-type"
+        label="Type"
+        allLabel="All"
+        value={values.type}
+        onChange={set('type')}
+        options={optionsOf(facets?.type)}
       />
     </>
   );

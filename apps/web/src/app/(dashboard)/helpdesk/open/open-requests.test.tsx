@@ -85,6 +85,10 @@ const FACETS = {
     { value: null, label: '(No block)', count: 2 },
   ],
   unit: [{ value: 'unit-1', label: 'A-101', count: 2 }],
+  type: [
+    { value: 'personal', label: 'Resident', count: 3 },
+    { value: 'community', label: 'Community', count: 2 },
+  ],
 };
 
 function lastFilters(): Record<string, unknown> {
@@ -174,6 +178,19 @@ describe('Open Requests', () => {
     ]);
     fireEvent.change(status, { target: { value: 'in_progress' } });
     expect(lastFilters()).toEqual(expect.objectContaining({ status: 'in_progress' }));
+  });
+
+  it('filters Resident and Community requests, with their counts (HELP-15)', () => {
+    const { container } = render(<RequestsList />);
+    const type = container.querySelector('select#request-type') as HTMLSelectElement;
+
+    expect(Array.from(type.options).map((option) => [option.value, option.textContent])).toEqual([
+      ['', 'All'],
+      ['personal', 'Resident (3)'],
+      ['community', 'Community (2)'],
+    ]);
+    fireEvent.change(type, { target: { value: 'community' } });
+    expect(lastFilters()).toEqual(expect.objectContaining({ type: 'community' }));
   });
 
   it('searches on the server once typing pauses', () => {
