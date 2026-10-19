@@ -78,9 +78,10 @@ import {
 import type { MemberImportResult, UnitDetailMember } from '@/hooks';
 import type { UpdateMemberInput } from '@/hooks/use-unit-members';
 import { MemberExtraFields, MemberForm, type MemberExtraValues } from './components/member-form';
+import { UnitEditForm } from './components/unit-edit-form';
+import type { UnitRecord } from './components/unit-edit-values';
+import { useUnitBlocks } from '@/hooks/use-unit-blocks';
 import { memberFormValues, memberTags } from './components/member-form-values';
-import { UnitCategorySelect } from './components/unit-category-select';
-import { area2Error, billingFieldsPayload, UnitBillingFields } from './components/unit-billing-fields';
 import { useUnitBillingCategories } from '@/hooks/use-unit-billing-categories';
 import { canReadFinance } from '@/lib/finance-roles';
 import { PoliceVerification } from './components/police-verification';
@@ -286,18 +287,10 @@ export default function UnitsContent(): ReactNode {
   const [detailUnitId, setDetailUnitId] = useState('');
   const [activeTab, setActiveTab] = useState<'details' | 'members' | 'history'>('members');
 
-  // Edit unit form (Details tab)
-  const [editUnitNumber, setEditUnitNumber] = useState('');
-  const [editBlock, setEditBlock] = useState('');
-  const [editFloor, setEditFloor] = useState('');
-  const [editArea, setEditArea] = useState('');
-  const [editUnitType, setEditUnitType] = useState('residential');
-  const [editIsActive, setEditIsActive] = useState(true);
-  const [editCategoryId, setEditCategoryId] = useState('');
+  // UNIT-16 — the unit the Details tab edits (UnitEditForm holds the values).
+  const [detailUnit, setDetailUnit] = useState<UnitRecord | null>(null);
   const categoriesQuery = useMemberCategories();
-  // INC-15 — unit type for billing and the second area (Sq.ft 2).
-  const [editBillingTypeId, setEditBillingTypeId] = useState('');
-  const [editArea2, setEditArea2] = useState('');
+  const blockNamesQuery = useUnitBlocks();
   const billingTypesQuery = useUnitBillingCategories({ enabled: canReadFinance() });
   const billingTypes = billingTypesQuery.isSuccess ? billingTypesQuery.data.data : null;
 
@@ -721,28 +714,9 @@ export default function UnitsContent(): ReactNode {
     );
   }
 
-  function openDetailDialog(unit: {
-    id: string;
-    unit_number: string;
-    block?: string | null;
-    floor: number;
-    area_sqft: number;
-    unit_type: string;
-    is_active: boolean;
-    member_category_id?: string | null;
-    billing_category_id?: string | null;
-    garden_area?: number | string | null;
-  }): void {
+  function openDetailDialog(unit: UnitRecord): void {
     setDetailUnitId(unit.id);
-    setEditUnitNumber(unit.unit_number);
-    setEditBlock(unit.block ?? '');
-    setEditFloor(String(unit.floor));
-    setEditArea(String(unit.area_sqft));
-    setEditUnitType(unit.unit_type);
-    setEditIsActive(unit.is_active);
-    setEditCategoryId(unit.member_category_id ?? '');
-    setEditBillingTypeId(unit.billing_category_id ?? '');
-    setEditArea2(unit.garden_area == null ? '' : String(Number(unit.garden_area)));
+    setDetailUnit(unit);
     setActiveTab('members');
     setDetailDialogOpen(true);
   }
@@ -753,50 +727,16 @@ export default function UnitsContent(): ReactNode {
     setActiveTab('details');
   });
 
-  function handleEditUnit(e: FormEvent): void {
-    e.preventDefault();
-    // Mirror the create-form guard — edits are the primary channel
-    // for ops to backfill block/floor on legacy rows, so we also
-    // soft-enforce here.
-    const normalizedBlock = editBlock.trim().toUpperCase();
-    if (!normalizedBlock) {
-      addToast({
-        title: 'Block is required',
-        description:
-          'Every unit needs a block for the guard app\'s unit picker.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    const floorNum = Number(editFloor);
-    if (!Number.isInteger(floorNum) || floorNum < -5 || floorNum > 200) {
-      addToast({
-        title: 'Floor must be a whole number between -5 and 200',
-        variant: 'destructive',
-      });
-      return;
-    }
-    const area2Problem = area2Error(editArea2);
-    if (area2Problem) {
-      addToast({ title: area2Problem, variant: 'destructive' });
+  function handleEditUnit(changes: Record<string, unknown>): void {
+    if (Object.keys(changes).length === 0) {
+      addToast({ title: 'Nothing to save', variant: 'default' });
       return;
     }
     updateUnit.mutate(
+      { id: detailUnitId, data: changes },
       {
-        id: detailUnitId,
-        data: {
-          ...billingFieldsPayload(billingTypes, editBillingTypeId, editArea2),
-          unit_number: editUnitNumber,
-          block: normalizedBlock,
-          floor: floorNum,
-          area_sqft: Number(editArea),
-          unit_type: editUnitType,
-          is_active: editIsActive,
-          member_category_id: editCategoryId || null,
-        },
-      },
-      {
-        onSuccess() {
+        onSuccess(saved) {
+          setDetailUnit((current) => (current ? { ...current, ...(saved?.data ?? changes) } as UnitRecord : current));
           addToast({ title: 'Unit updated successfully', variant: 'success' });
         },
         onError(error) {
@@ -1795,7 +1735,7 @@ export default function UnitsContent(): ReactNode {
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Unit {detail?.unit.unit_number ?? editUnitNumber}
+              Unit {detail?.unit.unit_number ?? detailUnit?.unit_number ?? ''}
               {detail?.unit.block ? ` — Block ${detail.unit.block}` : ''}
             </DialogTitle>
             <DialogDescription>
@@ -1825,107 +1765,16 @@ export default function UnitsContent(): ReactNode {
           </div>
 
           {/* Tab: Details */}
-          {activeTab === 'details' && (
-            <form onSubmit={handleEditUnit} className="space-y-4 py-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-unit-no">Unit Number</Label>
-                  <Input
-                    id="edit-unit-no"
-                    placeholder="e.g., A-301"
-                    required
-                    value={editUnitNumber}
-                    onChange={(e) => setEditUnitNumber(e.target.value)}
-                  />
-                  <FormFieldError error={updateUnit.error} field="unit_number" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-unit-block">Block *</Label>
-                  <Input
-                    id="edit-unit-block"
-                    placeholder="e.g., A"
-                    required
-                    maxLength={50}
-                    value={editBlock}
-                    onChange={(e) =>
-                      setEditBlock(e.target.value.toUpperCase())
-                    }
-                    onBlur={(e) =>
-                      setEditBlock(e.target.value.trim().toUpperCase())
-                    }
-                  />
-                  <FormFieldError error={updateUnit.error} field="block" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-unit-floor">Floor *</Label>
-                  <Input
-                    id="edit-unit-floor"
-                    type="number"
-                    placeholder="0"
-                    required
-                    min={-5}
-                    max={200}
-                    step={1}
-                    value={editFloor}
-                    onChange={(e) => setEditFloor(e.target.value)}
-                  />
-                  <FormFieldError error={updateUnit.error} field="floor" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-unit-area">Area (sq ft)</Label>
-                  <Input
-                    id="edit-unit-area"
-                    type="number"
-                    placeholder="1200"
-                    required
-                    value={editArea}
-                    onChange={(e) => setEditArea(e.target.value)}
-                  />
-                  <FormFieldError error={updateUnit.error} field="area_sqft" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-unit-type">Type</Label>
-                <Select
-                  id="edit-unit-type"
-                  required
-                  value={editUnitType}
-                  onChange={(e) => setEditUnitType(e.target.value)}
-                >
-                  <option value="residential">Residential</option>
-                  <option value="commercial">Commercial</option>
-                  <option value="parking">Parking only</option>
-                </Select>
-              </div>
-              <UnitCategorySelect
-                categories={categoriesQuery.data ?? []}
-                value={editCategoryId}
-                onChange={setEditCategoryId}
-              />
-              <UnitBillingFields
-                types={billingTypes}
-                typeId={editBillingTypeId}
-                onTypeChange={setEditBillingTypeId}
-                area2={editArea2}
-                onArea2Change={setEditArea2}
-              />
-              <div className="flex items-center gap-2">
-                <input
-                  id="edit-unit-active"
-                  type="checkbox"
-                  checked={editIsActive}
-                  onChange={(e) => setEditIsActive(e.target.checked)}
-                />
-                <Label htmlFor="edit-unit-active">Active</Label>
-              </div>
-              <div className="flex justify-end">
-                <Button type="submit" disabled={updateUnit.isPending}>
-                  {updateUnit.isPending ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
-            </form>
+          {activeTab === 'details' && detailUnit && (
+            <UnitEditForm
+              unit={detailUnit}
+              categories={categoriesQuery.data ?? []}
+              billingTypes={billingTypes}
+              blocks={(blockNamesQuery.data?.data ?? []).map((block) => block.name)}
+              saving={updateUnit.isPending}
+              error={updateUnit.error}
+              onSave={handleEditUnit}
+            />
           )}
 
           {/* Tab: Members */}

@@ -13,7 +13,7 @@ import { PanelFamily } from './panel-family';
 import { PanelMembers } from './panel-members';
 import { PanelStaff } from './panel-staff';
 import { PanelVehicles } from './panel-vehicles';
-import { APPROVED_USERS_ROUTE, blockUnitLabel } from './unit-labels';
+import { APPROVED_USERS_ROUTE, blockUnitLabel, unitPanelHref } from './unit-labels';
 
 function PanelError({ error }: { error: unknown }): ReactNode {
   if (error instanceof ApiError && error.code === 'unit_not_found') {
@@ -45,9 +45,8 @@ function PanelHeader({ panel }: { panel: UnitPanelData }): ReactNode {
       <h3 className="text-base font-semibold">Unit: {blockUnitLabel(panel.unit)}</h3>
       <div className="flex flex-wrap items-center gap-2">
         <ShowLogsButton recordTypes={['unit']} recordId={panel.unit.id} />
-        {/* Today's unit dialog, until UNIT-16 gives the form a page of its own. */}
         <Link
-          href={`/units?unit=${panel.unit.id}`}
+          href={`${unitPanelHref(panel.unit.id)}/edit`}
           className={buttonVariants({ variant: 'outline', size: 'sm' })}
           data-slot="button"
           data-size="sm"

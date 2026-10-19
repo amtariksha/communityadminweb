@@ -45,7 +45,7 @@ describe('UnitPanel', () => {
 
     expect(screen.getByRole('heading', { name: 'Unit: A-101' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Show Logs' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'View/Edit Unit details' }).getAttribute('href')).toBe('/units?unit=u-1');
+    expect(screen.getByRole('link', { name: 'View/Edit Unit details' }).getAttribute('href')).toBe('/units/approved/u-1/edit');
   });
 
   it('shows each section with its count, in order', () => {
