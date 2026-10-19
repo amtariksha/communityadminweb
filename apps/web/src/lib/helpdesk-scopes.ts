@@ -23,7 +23,6 @@ export const TICKET_LIST_ROLES: ReadonlySet<string> = new Set([
   'super_admin',
   'community_admin',
   'accountant',
-  'guard_supervisor',
   'security_supervisor',
   'facility_supervisor',
 ]);

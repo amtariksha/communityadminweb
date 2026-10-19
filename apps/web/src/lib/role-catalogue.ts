@@ -60,12 +60,6 @@ export const ASSIGNABLE_ROLES: RoleOption[] = [
       'External-friendly role — narrow gate and guard focus. Per-tenant permissions configured by the community admin.',
   },
   {
-    slug: 'guard_supervisor',
-    label: 'Guard Supervisor',
-    description:
-      'Gate supervisor with staff attendance, shift management, and visitor analytics access.',
-  },
-  {
     slug: 'security_guard',
     label: 'Security Guard',
     description: 'Gate security with visitor / staff / parcel management.',

@@ -18,7 +18,6 @@ export const ADMIN_ROLE_ALLOW_LIST = [
   'accountant',
   'security_supervisor',
   'facility_supervisor',
-  'guard_supervisor',
   'auditor',
   'moderator',
 ] as const;

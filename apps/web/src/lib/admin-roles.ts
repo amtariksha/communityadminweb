@@ -70,7 +70,6 @@ const ROLE_PRIORITY: readonly string[] = [
   'moderator',
   'facility_supervisor',
   'security_supervisor',
-  'guard_supervisor',
   'auditor',
 ];
 
@@ -155,17 +154,6 @@ export const SUPERVISOR_SIDEBAR_ALLOWLIST: Record<string, Set<string>> = {
     'Approvals',
     'Notifications',
     'Audit Trail',
-    'Settings',
-  ]),
-  guard_supervisor: new Set<string>([
-    'Dashboard',
-    'Gate',
-    'Staff',
-    'Member Directory',
-    'Tickets',
-    'Announcements',
-    'Documents',
-    'Notifications',
     'Settings',
   ]),
 };

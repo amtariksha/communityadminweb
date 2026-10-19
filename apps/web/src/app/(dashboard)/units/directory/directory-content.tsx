@@ -103,7 +103,6 @@ const ROLE_LABELS: Record<string, string> = {
   guard: 'Guard',
   security_guard: 'Guard',
   watchman: 'Watchman',
-  guard_supervisor: 'Guard Supervisor',
   security_supervisor: 'Security Supervisor',
   facility_supervisor: 'Facility Supervisor',
   auditor: 'Auditor',

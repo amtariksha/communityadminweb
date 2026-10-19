@@ -34,9 +34,9 @@ describe('applyTicketScope', () => {
   });
 
   it('never touches a role that runs the whole helpdesk', () => {
-    const guards = SUPERVISOR_SIDEBAR_ALLOWLIST.guard_supervisor;
+    const accounts = new Set(['Dashboard', 'Tickets']);
 
-    expect(applyTicketScope(guards, 'guard_supervisor', { scope: 'none' })).toBe(guards);
+    expect(applyTicketScope(accounts, 'accountant', { scope: 'none' })).toBe(accounts);
     expect(applyTicketScope(null, 'community_admin', { scope: 'none' })).toBeNull();
   });
 });
@@ -45,7 +45,7 @@ describe('isDelegatedTicketRole', () => {
   it.each([
     ['security_supervisor', true],
     ['facility_supervisor', true],
-    ['guard_supervisor', false],
+    ['accountant', false],
     ['community_admin', false],
     [undefined, false],
   ])('%s -> %s', (role, expected) => {

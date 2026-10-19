@@ -9,8 +9,9 @@
  *   - 003_users_roles.sql        : super_admin, accountant, moderator,
  *                                  auditor, committee_member, owner,
  *                                  tenant_resident
- *   - 018_gates_staff_rbac.sql   : community_admin, security_guard,
- *                                  guard_supervisor
+ *   - 018_gates_staff_rbac.sql   : community_admin, security_guard
+ *                                  (and the guard supervisor role, merged into
+ *                                  security_supervisor by migration 151)
  *   - 048_supervisor_roles_…sql  : security_supervisor, facility_supervisor
  *
  * **Family members.** The plan (§C) lists `'tenant'`, `'owner_family'`,
@@ -72,7 +73,6 @@ export const APP_ROLE_ACCESS = {
     'facility_supervisor',
     'security_supervisor',
     'accountant',
-    'guard_supervisor',
   ],
   resident: [
     'owner',
