@@ -2,36 +2,22 @@
 
 import { useState, type ReactNode } from 'react';
 import {
-  FileText,
-  File,
-  Image,
   FolderOpen,
   AlertTriangle,
-  Download,
-  Eye,
   Grid,
   List,
-  Trash2,
-  Loader2,
   ChevronLeft,
   ChevronRight,
-  Pencil,
+  Search,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/layout/page-header';
-import { formatDate } from '@/lib/utils';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import {
@@ -46,82 +32,13 @@ import { useUnitChoices } from '../helpdesk/new/use-unit-choices';
 import { UploadDocumentDialog } from './upload-document-dialog';
 import { CreateCategoryDialog } from './create-category-dialog';
 import { DocumentEditForm } from './edit/document-edit-form';
-import { canWriteDocuments } from './files/file-actions';
+import { DocumentsGrid } from './standard/documents-grid';
+import { DocumentsTable } from './standard/documents-table';
 
 type ViewMode = 'grid' | 'list';
 
 const ITEMS_PER_PAGE = 20;
 const EXPIRY_WINDOW_DAYS = 30;
-
-function getFileIcon(fileType: string): ReactNode {
-  switch (fileType) {
-    case 'pdf':
-      return <FileText className="h-5 w-5 text-destructive" />;
-    case 'doc':
-    case 'docx':
-      return <File className="h-5 w-5 text-primary" />;
-    case 'jpg':
-    case 'jpeg':
-    case 'png':
-    case 'image':
-      return <Image className="h-5 w-5 text-success" />;
-    default:
-      return <File className="h-5 w-5 text-muted-foreground" />;
-  }
-}
-
-/**
- * Derive a short file-type string (pdf, docx, jpg, …) from the stored
- * document row. The API returns `file_name` + `mime_type` but not a
- * discrete `file_type` field, and referencing `doc.file_type` directly
- * crashed the page with "Cannot read properties of undefined (reading
- * 'toUpperCase')". Prefer the extension on the file name, fall back
- * to the MIME subtype, then 'file' as a last resort.
- */
-function getFileType(doc: SocietyDocument): string {
-  const name = doc.file_name ?? '';
-  const dot = name.lastIndexOf('.');
-  if (dot > -1 && dot < name.length - 1) {
-    return name.slice(dot + 1).toLowerCase();
-  }
-  const mime = doc.mime_type ?? '';
-  if (mime.includes('/')) {
-    return mime.split('/')[1]?.toLowerCase() ?? 'file';
-  }
-  return 'file';
-}
-
-/** "Expires today / in N days" for a document inside the expiry window, else Active. */
-function ExpiryBadge({ daysLeft }: { daysLeft: number | undefined }): ReactNode {
-  if (daysLeft === undefined) {
-    return <Badge variant="success">Active</Badge>;
-  }
-  const label = daysLeft === 0 ? 'Expires today' : `Expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
-  return <Badge variant="warning">{label}</Badge>;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function TableSkeleton(): ReactNode {
-  return (
-    <>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <TableRow key={i}>
-          <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-          <TableCell><Skeleton className="h-4 w-14" /></TableCell>
-          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-          <TableCell><Skeleton className="h-8 w-16" /></TableCell>
-        </TableRow>
-      ))}
-    </>
-  );
-}
 
 export default function DocumentsContent(): ReactNode {
   const { addToast } = useToast();
@@ -139,11 +56,15 @@ export default function DocumentsContent(): ReactNode {
   const units = unitsQuery.data ?? [];
   const [filterFolderType, setFilterFolderType] = useState<string>('all');
   const [filterUnitId, setFilterUnitId] = useState<string>('all');
+  // FILE-21: the API's search (title, description, file name), typed and debounced.
+  const [searchText, setSearchText] = useState('');
+  const search = useDebouncedValue(searchText.trim(), 300);
 
   const documentsQuery = useDocuments({
     category_id: activeCategoryId || undefined,
     folder_type: filterFolderType !== 'all' ? filterFolderType : undefined,
     unit_id: filterUnitId !== 'all' ? filterUnitId : undefined,
+    search: search || undefined,
     page,
     limit: ITEMS_PER_PAGE,
   });
@@ -296,6 +217,20 @@ export default function DocumentsContent(): ReactNode {
                   </option>
                 ))}
               </Select>
+              <div className="relative w-56">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  aria-label="Search documents"
+                  placeholder="Search documents"
+                  className="pl-8 text-xs"
+                  value={searchText}
+                  onChange={(e) => {
+                    setSearchText(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
               <Button
                 variant={showExpiringOnly ? 'default' : 'outline'}
                 size="sm"
@@ -373,145 +308,17 @@ export default function DocumentsContent(): ReactNode {
           </div>
 
           {viewMode === 'list' ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Document</TableHead>
-                  <TableHead>File Type</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Uploaded</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {listLoading ? (
-                  <TableSkeleton />
-                ) : (
-                  documents.map((doc) => {
-                    const fileType = getFileType(doc);
-                    return (
-                    <TableRow key={doc.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          {getFileIcon(fileType)}
-                          <div>
-                            <span className="font-medium">{doc.title}</span>
-                            {doc.description && (
-                              <p className="text-xs text-muted-foreground">{doc.description}</p>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{fileType.toUpperCase()}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatFileSize(doc.file_size)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatDate(doc.created_at)}
-                      </TableCell>
-                      <TableCell>
-                        <ExpiryBadge daysLeft={daysLeftById.get(doc.id)} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Download"
-                            onClick={() => {
-                              const link = document.createElement('a');
-                              link.href = doc.file_url;
-                              link.download = doc.title;
-                              link.target = '_blank';
-                              link.click();
-                            }}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="View"
-                            onClick={() => handleViewDocument(doc)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {canWriteDocuments() && (
-                            <Button variant="ghost" size="icon" title="Edit" onClick={() => setEditingId(doc.id)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Delete"
-                            onClick={() => handleDeleteDocument(doc.id)}
-                            disabled={
-                              deleteDocument.isPending &&
-                              deleteDocument.variables === doc.id
-                            }
-                          >
-                            {deleteDocument.isPending &&
-                            deleteDocument.variables === doc.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin text-destructive" />
-                            ) : (
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
+            <DocumentsTable
+              documents={documents}
+              loading={listLoading}
+              daysLeftById={daysLeftById}
+              onView={(doc) => void handleViewDocument(doc)}
+              onEdit={setEditingId}
+              onDelete={handleDeleteDocument}
+              deletingId={deleteDocument.isPending ? (deleteDocument.variables as string | undefined) : undefined}
+            />
           ) : (
-            <>
-              {listLoading ? (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <Card key={i}>
-                      <CardContent className="p-4">
-                        <Skeleton className="mb-3 h-5 w-5" />
-                        <Skeleton className="mb-1 h-4 w-32" />
-                        <Skeleton className="h-3 w-24" />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {documents.map((doc) => {
-                    const fileType = getFileType(doc);
-                    return (
-                    <Card key={doc.id} className="cursor-pointer transition-shadow hover:shadow-md">
-                      <CardContent className="p-4">
-                        <div className="mb-3 flex items-start justify-between">
-                          {getFileIcon(fileType)}
-                          <div className="flex gap-1">
-                            {daysLeftById.has(doc.id) && (
-                              <ExpiryBadge daysLeft={daysLeftById.get(doc.id)} />
-                            )}
-                            <Badge variant="outline" className="text-xs">
-                              {fileType.toUpperCase()}
-                            </Badge>
-                          </div>
-                        </div>
-                        <h3 className="mb-1 line-clamp-2 text-sm font-medium">{doc.title}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {formatFileSize(doc.file_size)} &middot; {formatDate(doc.created_at)}
-                        </p>
-                      </CardContent>
-                    </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </>
+            <DocumentsGrid documents={documents} loading={listLoading} daysLeftById={daysLeftById} />
           )}
 
           {!listLoading && documents.length === 0 && (

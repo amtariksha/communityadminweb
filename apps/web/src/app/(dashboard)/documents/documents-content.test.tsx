@@ -10,6 +10,7 @@ import DocumentsContent from './documents-content';
 
 const mocks = vi.hoisted(() => {
   const mutation = () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false, variables: undefined });
+  const listCalls: Array<Record<string, unknown>> = [];
   const doc = (id: string, title: string) => ({
     id,
     title,
@@ -19,16 +20,22 @@ const mocks = vi.hoisted(() => {
     mime_type: 'application/pdf',
     file_url: `https://objects.example.test/society-files/${id}.pdf`,
     created_at: '2026-09-01T00:00:00.000Z',
+    uploaded_by_name: id === 'bylaws' ? 'Asha Secretary' : null,
   });
-  return { mutation, doc };
+  return { mutation, doc, listCalls };
 });
+
+vi.mock('@/hooks/use-debounced-value', () => ({ useDebouncedValue: <T,>(value: T): T => value }));
 
 vi.mock('@/hooks', () => ({
   useDocumentCategories: () => ({ data: [], isLoading: false }),
-  useDocuments: () => ({
-    data: { data: [mocks.doc('bylaws', 'Bylaws'), mocks.doc('lift', 'Lift insurance')], total: 2 },
-    isLoading: false,
-  }),
+  useDocuments: (filters: Record<string, unknown>) => {
+    mocks.listCalls.push(filters);
+    return {
+      data: { data: [mocks.doc('bylaws', 'Bylaws'), mocks.doc('lift', 'Lift insurance')], total: 2 },
+      isLoading: false,
+    };
+  },
   // The 10-day policy is not on the page shown; the list must still show it.
   useExpiringDocuments: () => ({
     data: [
@@ -72,5 +79,23 @@ describe('Documents — Expiring Soon', () => {
     expect(screen.queryByText('Bylaws')).toBeNull();
     expect(within(rowOf('Lift insurance')).getByText('Expires in 10 days')).toBeTruthy();
     expect(within(rowOf('Fire NOC')).getByText('Expires in 1 day')).toBeTruthy();
+  });
+});
+
+describe('Documents — search and Uploaded by (FILE-21)', () => {
+  it('sends what is typed as the list search', () => {
+    render(<DocumentsContent />);
+
+    fireEvent.change(screen.getByLabelText('Search documents'), { target: { value: ' insurance ' } });
+
+    expect(mocks.listCalls.at(-1)).toMatchObject({ search: 'insurance', page: 1 });
+  });
+
+  it('shows who uploaded each document', () => {
+    render(<DocumentsContent />);
+
+    expect(screen.getByRole('columnheader', { name: 'Uploaded by' })).toBeTruthy();
+    expect(within(rowOf('Bylaws')).getByText('Asha Secretary')).toBeTruthy();
+    expect(within(rowOf('Lift insurance')).getByText('—')).toBeTruthy();
   });
 });
