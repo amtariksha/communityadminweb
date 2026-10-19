@@ -22,8 +22,22 @@ export const scheduledReportsSchema = z.object({
     .optional(),
 });
 
+/**
+ * ANN-07 — Announcements › Setup › Default channels (push always). Mirrors
+ * communityos packages/shared/src/schemas/tenant.ts; written by
+ * PUT /announcements/setup/channels.
+ */
+export const ANNOUNCEMENT_CHANNELS = ['push', 'email', 'sms_general'] as const;
+
+export const announcementSettingsSchema = z.object({
+  default_channels: z.array(z.enum(ANNOUNCEMENT_CHANNELS)).max(3).optional(),
+});
+
+export type AnnouncementSettings = z.infer<typeof announcementSettingsSchema>;
+
 const tenantSettingsSchema = z.object({
   scheduled_reports: scheduledReportsSchema.optional(),
+  announcements: announcementSettingsSchema.optional(),
 });
 
 export const createTenantSchema = z.object({

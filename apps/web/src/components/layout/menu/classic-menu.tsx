@@ -583,14 +583,24 @@ export const classicMenu: MenuNode[] = [
     id: 'announcements',
     label: 'Announcements',
     icon: icon(Megaphone),
-    // One list for every state until ANN-10 adds the status routes.
-    href: '/announcements',
-    logs: ['announcement'],
+    // ANN-10: the states are the menu; Create Announcement is a page of its
+    // own (SB-07) and Close goes to Active, where the notices are. Today's
+    // /announcements list and one notice's page stay inside the module.
+    create: { label: 'Create Announcement', href: '/announcements/new' },
+    close: '/announcements/active',
+    aliases: ['/announcements'],
+    forms: [{ label: 'View Announcement', path: '/announcements/:id' }],
     children: [
-      planned('announcements.setup', 'Setup', 'ANN-10'),
-      planned('announcements.awaiting', 'Awaiting Approval', 'ANN-10'),
-      planned('announcements.active', 'Active', 'ANN-10'),
-      planned('announcements.retired', 'Retired', 'ANN-10'),
+      { id: 'announcements.setup', label: 'Setup', href: '/announcements/setup', logs: ['announcement'] },
+      {
+        id: 'announcements.awaiting-approval',
+        label: 'Awaiting Approval',
+        href: '/announcements/awaiting-approval',
+        logs: ['announcement'],
+      },
+      { id: 'announcements.active', label: 'Active', href: '/announcements/active', logs: ['announcement'] },
+      // Their Retired list has no Show Logs.
+      { id: 'announcements.retired', label: 'Retired', href: '/announcements/retired' },
     ],
   },
   {

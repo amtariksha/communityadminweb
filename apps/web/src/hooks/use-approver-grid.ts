@@ -9,7 +9,7 @@ import { ApiError } from '@/lib/api-error';
  * side, No Access / Level 1 / 2 / 3 across, a minimum per level. `null`
  * when the API does not have the route yet (404).
  */
-export type ApproverGridType = 'purchase_request';
+export type ApproverGridType = 'purchase_request' | 'announcement';
 
 export interface ApproverGridPerson {
   user_id: string;
@@ -50,7 +50,11 @@ export function useApproverGrid(type: ApproverGridType) {
         const res = await api.get<{ data: ApproverGrid }>(`/approvals/grid/${type}`);
         return res.data;
       } catch (error) {
-        if (error instanceof ApiError && error.status === 404) return null;
+        // A server without the route (404), or one that does not know this
+        // request type yet (e.g. announcements before ANN-04 is deployed).
+        if (error instanceof ApiError && (error.status === 404 || error.code === 'approver_grid_type_unknown')) {
+          return null;
+        }
         throw error;
       }
     },

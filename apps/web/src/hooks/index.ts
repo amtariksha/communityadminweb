@@ -478,8 +478,31 @@ export {
   useUpdateAnnouncement,
   usePublishAnnouncement,
   useDeleteAnnouncement,
+  useRetireAnnouncement,
+  useApproveAnnouncement,
+  useRejectAnnouncement,
+  useAnnouncementDelivery,
+  announcementState,
 } from './use-announcements';
-export type { Announcement, AnnouncementFilters } from './use-announcements';
+export type {
+  Announcement,
+  AnnouncementDelivery,
+  AnnouncementFilters,
+  AnnouncementInput,
+  AnnouncementState,
+  AnnouncementStateCounts,
+  ApprovalHistoryStep,
+} from './use-announcements';
+export {
+  announcementSetupKeys,
+  useAnnouncementChannels,
+  useAnnouncementRights,
+  useSaveAnnouncementChannels,
+  useSaveAnnouncementRights,
+} from './use-announcement-setup';
+export type { AnnouncementChannel, AnnouncementRightsRow } from './use-announcement-setup';
+export { useNotificationChannels } from './use-notification-channels';
+export type { NotificationChannels } from './use-notification-channels';
 
 // OCR
 export {

@@ -9,6 +9,9 @@ export {
   createTenantSchema,
   updateTenantSchema,
   scheduledReportsSchema,
+  announcementSettingsSchema,
+  ANNOUNCEMENT_CHANNELS,
+  type AnnouncementSettings,
   type CreateTenantInput,
   type UpdateTenantInput,
 } from './tenant';

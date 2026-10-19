@@ -22,6 +22,12 @@ const CLASSIC_WORDS: Readonly<Record<string, string>> = {
   Customer: 'Non Member',
   'Audit Trail': 'Logs',
   'Member Dues': 'SubLedgers',
+  // Announcement Mgr (ANN-10)
+  Author: 'Announcement By',
+  'Published On': 'Posted On',
+  'Expires On': 'Expiring On',
+  Body: 'Brief Description',
+  Expired: 'Retired',
 };
 
 export function wordFor(layout: AdminLayout, standardWord: string): string {

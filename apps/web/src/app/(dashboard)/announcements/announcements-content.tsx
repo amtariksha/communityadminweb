@@ -1,498 +1,155 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
-import {
-  Megaphone,
-  Plus,
-  ChevronLeft,
-  ChevronRight,
-  Pin,
-  Edit,
-  Trash2,
-  Send,
-  MoreHorizontal,
-  Eye,
-} from 'lucide-react';
+import { useCallback, useState, type ReactNode } from 'react';
+import { ChevronLeft, ChevronRight, Megaphone, Plus, Settings } from 'lucide-react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
-import { formatDate } from '@/lib/utils';
-import { dateIST, todayIST } from '@/lib/date';
-import { useToast } from '@/components/ui/toast';
 import { useOpenOnNewParam } from '@/hooks/use-open-on-new-param';
-import { friendlyError } from '@/lib/api-error';
-import {
-  useAnnouncements,
-  useCreateAnnouncement,
-  useUpdateAnnouncement,
-  usePublishAnnouncement,
-  useDeleteAnnouncement,
-} from '@/hooks';
-import type { Announcement } from '@/hooks';
+import { useAdminLayout } from '@/lib/layout-context';
+import { announcementState, useAnnouncements, type Announcement, type AnnouncementState } from '@/hooks';
+import { CATEGORY_OPTIONS, STATE_LABELS, recipientsLabel, typeLabel } from './_parts/labels';
+import { NoticeActionDialogs, useNoticeActions } from './_parts/notice-actions';
+import { NoticeDetailOf } from './_parts/notice-detail';
+import { NoticeEditor } from './_parts/notice-editor';
+import { NoticeTable } from './_parts/notice-table';
+import { StateTabs } from './_parts/state-tabs';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+const PAGE_SIZE = 20;
 
-function getPriorityBadgeVariant(
-  priority: string,
-): 'secondary' | 'default' | 'warning' | 'destructive' {
-  switch (priority) {
-    case 'low':
-      return 'secondary';
-    case 'normal':
-      return 'default';
-    case 'high':
-      return 'warning';
-    case 'urgent':
-      return 'destructive';
-    default:
-      return 'secondary';
-  }
-}
+const EMPTY_TEXT: Readonly<Record<AnnouncementState, string>> = {
+  draft: 'There are no drafts.',
+  awaiting_approval: 'Nothing is waiting for approval.',
+  active: 'There are no active announcements.',
+  retired: 'No retired announcements match.',
+};
 
-function getPublishStatus(announcement: Announcement): { label: string; variant: 'success' | 'warning' | 'secondary' } {
-  if (announcement.published_at) {
-    if (announcement.expires_at && new Date(announcement.expires_at) < new Date()) {
-      return { label: 'Expired', variant: 'secondary' };
-    }
-    return { label: 'Published', variant: 'success' };
-  }
-  return { label: 'Draft', variant: 'warning' };
-}
-
-/** ANN-01 — rows carry no `status`; the export takes the label the table shows. */
+/** ANN-01 / ANN-03 — the export's Status is the state the table shows. */
 export function exportRows(announcements: Announcement[]): Record<string, unknown>[] {
   return announcements.map((announcement) => ({
     ...announcement,
-    status: getPublishStatus(announcement).label,
+    status: STATE_LABELS[announcementState(announcement)],
+    recipients: recipientsLabel(announcement),
+    type: typeLabel(announcement),
   }));
 }
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
+type Editing = { open: false } | { open: true; notice?: Announcement };
 
+/**
+ * Standard Announcements (ANN-03 / ANN-04): Drafts · Awaiting Approval ·
+ * Active · Retired as tabs once the server counts them, search and Category,
+ * and every state's actions. Classic has a page per state (ANN-10).
+ */
 export default function AnnouncementsContent(): ReactNode {
-  const { addToast } = useToast();
-  const PAGE_SIZE = 20;
+  const [tab, setTab] = useState<AnnouncementState>('active');
+  const [category, setCategory] = useState('');
+  const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
+  const [editing, setEditing] = useState<Editing>({ open: false });
+  const [viewing, setViewing] = useState<Announcement | null>(null);
+  const actions = useNoticeActions(() => setViewing(null));
 
-  // Filters
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const query = useAnnouncements({ category: category || undefined, q: q || undefined, state: tab, page, limit: PAGE_SIZE });
+  const counts = query.data?.counts;
+  // A server from before ANN-03 ignores `state`: then one list, as before.
+  const rows = query.data?.data ?? [];
+  const total = query.data?.total ?? 0;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  // Create / edit dialog
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState('');
-  const [formTitle, setFormTitle] = useState('');
-  const [formBody, setFormBody] = useState('');
-  const [formCategory, setFormCategory] = useState('general');
-  const [formPriority, setFormPriority] = useState('normal');
-  const [formTargetAudience, setFormTargetAudience] = useState('all');
-  const [formIsPinned, setFormIsPinned] = useState(false);
-  const [formPublishNow, setFormPublishNow] = useState(true);
-  const [formExpiresAt, setFormExpiresAt] = useState('');
-
-  // Detail dialog
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
-
-  // Delete confirmation
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteTargetId, setDeleteTargetId] = useState('');
-
-  // Queries
-  const announcementsQuery = useAnnouncements({
-    category: categoryFilter || undefined,
-    page: currentPage,
-    limit: PAGE_SIZE,
-  });
-
-  // Mutations
-  const createMutation = useCreateAnnouncement();
-  const updateMutation = useUpdateAnnouncement();
-  const publishMutation = usePublishAnnouncement();
-  const deleteMutation = useDeleteAnnouncement();
-
-  const announcements = announcementsQuery.data?.data ?? [];
-  const total = announcementsQuery.data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
-  // Sort pinned first
-  const sortedAnnouncements = [...announcements].sort((a, b) => {
-    if (a.is_pinned && !b.is_pinned) return -1;
-    if (!a.is_pinned && b.is_pinned) return 1;
-    return 0;
-  });
-
-  // ---------------------------------------------------------------------------
-  // Handlers
-  // ---------------------------------------------------------------------------
-
-  function resetForm(): void {
-    setEditingId('');
-    setFormTitle('');
-    setFormBody('');
-    setFormCategory('general');
-    setFormPriority('normal');
-    setFormTargetAudience('all');
-    setFormIsPinned(false);
-    setFormPublishNow(true);
-    setFormExpiresAt('');
-  }
-
-  function handleOpenCreate(): void {
-    resetForm();
-    setFormOpen(true);
-  }
-
-  // The dashboard's "Create Announcement" / "Post Announcement" link here.
-  useOpenOnNewParam(handleOpenCreate);
-
-  function handleOpenEdit(announcement: Announcement): void {
-    setEditingId(announcement.id);
-    setFormTitle(announcement.title);
-    setFormBody(announcement.body);
-    setFormCategory(announcement.category);
-    setFormPriority(announcement.priority);
-    setFormTargetAudience(announcement.target_audience);
-    setFormIsPinned(announcement.is_pinned);
-    setFormPublishNow(false);
-    // ANN-01 — stored as 23:59:59 IST of the day; the date input shows that day.
-    setFormExpiresAt(announcement.expires_at ? dateIST(announcement.expires_at) : '');
-    setFormOpen(true);
-  }
-
-  function handleSubmitForm(): void {
-    if (!formTitle.trim() || !formBody.trim()) {
-      addToast({ title: 'Title and body are required', variant: 'destructive' });
-      return;
-    }
-
-    const payload = {
-      title: formTitle.trim(),
-      body: formBody.trim(),
-      category: formCategory,
-      priority: formPriority,
-      target_audience: formTargetAudience,
-      is_pinned: formIsPinned,
-      expires_at: formExpiresAt || undefined,
-    };
-
-    if (editingId) {
-      updateMutation.mutate(
-        { id: editingId, ...payload },
-        {
-          onSuccess() {
-            addToast({ title: 'Announcement updated', variant: 'success' });
-            setFormOpen(false);
-            resetForm();
-          },
-          onError(error) {
-            addToast({
-              title: 'Failed to update announcement',
-              description: friendlyError(error),
-              variant: 'destructive',
-            });
-          },
-        },
-      );
-    } else {
-      createMutation.mutate(
-        { ...payload, publish_now: formPublishNow },
-        {
-          onSuccess() {
-            addToast({ title: 'Announcement created', variant: 'success' });
-            setFormOpen(false);
-            resetForm();
-          },
-          onError(error) {
-            addToast({
-              title: 'Failed to create announcement',
-              description: friendlyError(error),
-              variant: 'destructive',
-            });
-          },
-        },
-      );
-    }
-  }
-
-  function handlePublish(id: string): void {
-    publishMutation.mutate(
-      { id },
-      {
-        onSuccess() {
-          addToast({ title: 'Announcement published', variant: 'success' });
-        },
-        onError(error) {
-          addToast({
-            title: 'Failed to publish announcement',
-            description: friendlyError(error),
-            variant: 'destructive',
-          });
-        },
-      },
-    );
-  }
-
-  function handleConfirmDelete(): void {
-    if (!deleteTargetId) return;
-
-    deleteMutation.mutate(
-      { id: deleteTargetId },
-      {
-        onSuccess() {
-          addToast({ title: 'Announcement deleted', variant: 'success' });
-          setDeleteOpen(false);
-          setDeleteTargetId('');
-        },
-        onError(error) {
-          addToast({
-            title: 'Failed to delete announcement',
-            description: friendlyError(error),
-            variant: 'destructive',
-          });
-        },
-      },
-    );
-  }
-
-  function handleViewDetail(announcement: Announcement): void {
-    setSelectedAnnouncement(announcement);
-    setDetailOpen(true);
-  }
-
-  function handleClearFilters(): void {
-    setCategoryFilter('');
-    setCurrentPage(1);
-  }
+  const layout = useAdminLayout();
+  const openCreate = useCallback(() => setEditing({ open: true }), []);
+  // The dashboard's Post Announcement: the form's page in classic (SB-07).
+  useOpenOnNewParam(openCreate, layout === 'classic' ? '/announcements/new' : undefined);
+  const choose = (next: AnnouncementState) => {
+    setTab(next);
+    setPage(1);
+  };
 
   return (
     <div className="space-y-6">
       <PageHeader
         breadcrumbs={[{ label: 'Announcements' }]}
         title="Announcements"
-        description="Create and publish announcements to residents — supports targeting by audience"
+        description="Post notices to residents — with approval, expiry and a Retired archive"
         actions={
           <>
             <ExportButton
-              data={exportRows(announcements)}
+              data={exportRows(rows)}
               filename={`announcements-${new Date().toISOString().split('T')[0]}`}
               columns={[
                 { key: 'title', label: 'Title' },
+                { key: 'type', label: 'Type' },
                 { key: 'priority', label: 'Priority' },
+                { key: 'recipients', label: 'Recipients' },
                 { key: 'status', label: 'Status' },
                 { key: 'created_at', label: 'Created' },
                 { key: 'published_at', label: 'Published' },
               ]}
             />
-            <Button onClick={handleOpenCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Announcement
+            <Link href="/announcements/setup" className={buttonVariants({ variant: 'outline' })}>
+              <Settings className="mr-2 h-4 w-4" /> Setup
+            </Link>
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" /> New Announcement
             </Button>
           </>
         }
       />
 
-      {/* Filters */}
+      {counts && <StateTabs active={tab} counts={counts} onChange={choose} />}
+
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-2">
+              <Label htmlFor="announcement-search">Search</Label>
+              <Input id="announcement-search" type="search" className="w-64" placeholder="Search announcements..." value={q}
+                onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="announcement-category">Category</Label>
-              <Select
-                id="announcement-category"
-                value={categoryFilter}
-                onChange={(e) => {
-                  setCategoryFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-              >
+              <Select id="announcement-category" value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }}>
                 <option value="">All</option>
-                <option value="general">General</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="event">Event</option>
-                <option value="emergency">Emergency</option>
+                {CATEGORY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </Select>
             </div>
-            <Button variant="outline" onClick={handleClearFilters}>
-              Clear
-            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Announcements table */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Megaphone className="h-5 w-5" />
-              Announcements
+              <Megaphone className="h-5 w-5" /> {counts ? STATE_LABELS[tab] : 'Announcements'}
             </CardTitle>
             <p className="text-sm text-muted-foreground">{total} total</p>
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Audience</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="w-20">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {announcementsQuery.isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-                  </TableRow>
-                ))
-              ) : sortedAnnouncements.length > 0 ? (
-                sortedAnnouncements.map((announcement) => {
-                  const publishStatus = getPublishStatus(announcement);
-                  return (
-                    <TableRow key={announcement.id} className="cursor-pointer" onClick={() => handleViewDetail(announcement)}>
-                      <TableCell className="font-medium max-w-[250px] truncate">
-                        <span className="flex items-center gap-2">
-                          {announcement.is_pinned && <Pin className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
-                          {announcement.title}
-                        </span>
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        {announcement.category}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getPriorityBadgeVariant(announcement.priority)}>
-                          {announcement.priority}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        {announcement.target_audience}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={publishStatus.variant}>
-                          {publishStatus.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatDate(announcement.created_at)}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewDetail(announcement); }}>
-                              <Eye className="mr-2 h-4 w-4" /> View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpenEdit(announcement); }}>
-                              <Edit className="mr-2 h-4 w-4" /> Edit
-                            </DropdownMenuItem>
-                            {!announcement.published_at && (
-                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePublish(announcement.id); }}>
-                                <Send className="mr-2 h-4 w-4" /> Publish
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteTargetId(announcement.id);
-                                setDeleteOpen(true);
-                              }}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                    No announcements found
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
+          <NoticeTable
+            rows={rows}
+            loading={query.isLoading}
+            actions={actions}
+            onView={setViewing}
+            onEdit={(notice) => setEditing({ open: true, notice })}
+            emptyText={counts ? EMPTY_TEXT[tab] : 'No announcements found'}
+          />
+          {pages > 1 && (
             <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </p>
+              <p className="text-sm text-muted-foreground">Page {page} of {pages}</p>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                >
+                <Button variant="outline" size="sm" aria-label="Previous page" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                >
+                <Button variant="outline" size="sm" aria-label="Next page" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -501,242 +158,28 @@ export default function AnnouncementsContent(): ReactNode {
         </CardContent>
       </Card>
 
-      {/* Create / Edit dialog */}
-      <Dialog open={formOpen} onOpenChange={(open) => { setFormOpen(open); if (!open) resetForm(); }}>
+      {editing.open && (
+        <NoticeEditor
+          key={editing.notice?.id ?? 'new'}
+          mode="dialog"
+          open
+          notice={editing.notice}
+          onClose={() => setEditing({ open: false })}
+          onSaved={() => setEditing({ open: false })}
+        />
+      )}
+
+      <Dialog open={viewing !== null} onOpenChange={(open) => !open && setViewing(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Edit Announcement' : 'New Announcement'}</DialogTitle>
-            <DialogDescription>
-              {editingId ? 'Update the announcement details' : 'Create a new community announcement'}
-            </DialogDescription>
+            <DialogTitle>{viewing?.title ?? ''}</DialogTitle>
+            <DialogDescription>{viewing?.author_name ? `By ${viewing.author_name}` : ''}</DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="form-title">Title</Label>
-              <Input
-                id="form-title"
-                placeholder="Announcement title"
-                value={formTitle}
-                onChange={(e) => setFormTitle(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="form-body">Body</Label>
-              <Textarea
-                id="form-body"
-                placeholder="Announcement content"
-                rows={4}
-                value={formBody}
-                onChange={(e) => setFormBody(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="form-category">Category</Label>
-                <Select
-                  id="form-category"
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
-                >
-                  <option value="general">General</option>
-                  <option value="maintenance">Maintenance</option>
-                  <option value="event">Event</option>
-                  <option value="emergency">Emergency</option>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="form-priority">Priority</Label>
-                <Select
-                  id="form-priority"
-                  value={formPriority}
-                  onChange={(e) => setFormPriority(e.target.value)}
-                >
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="form-audience">Target Audience</Label>
-                <Select
-                  id="form-audience"
-                  value={formTargetAudience}
-                  onChange={(e) => setFormTargetAudience(e.target.value)}
-                >
-                  <option value="all">All Residents</option>
-                  <option value="owners">Owners</option>
-                  <option value="tenants">Tenants</option>
-                  <option value="committee">Committee</option>
-                  {/* NotifPlan §1 — 'staff' added per migration 075;
-                      reaches every active society_staff row. Use for
-                      shift change updates, training notices, etc. */}
-                  <option value="staff">Staff</option>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="form-expires">Expires At</Label>
-                <Input
-                  id="form-expires"
-                  type="date"
-                  value={formExpiresAt}
-                  min={todayIST()}
-                  onChange={(e) => setFormExpiresAt(e.target.value)}
-                  aria-describedby="form-expires-hint"
-                />
-                <p id="form-expires-hint" className="text-xs text-muted-foreground">
-                  Expires at the end of this day
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={formIsPinned}
-                  onChange={(e) => setFormIsPinned(e.target.checked)}
-                  className="rounded border-input"
-                />
-                Pin announcement
-              </label>
-
-              {!editingId && (
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={formPublishNow}
-                    onChange={(e) => setFormPublishNow(e.target.checked)}
-                    className="rounded border-input"
-                  />
-                  Publish immediately
-                </label>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <DialogClose>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button
-              disabled={createMutation.isPending || updateMutation.isPending}
-              onClick={handleSubmitForm}
-            >
-              {(createMutation.isPending || updateMutation.isPending)
-                ? 'Saving...'
-                : editingId
-                  ? 'Update'
-                  : 'Create'}
-            </Button>
-          </DialogFooter>
+          {viewing && <NoticeDetailOf row={viewing} />}
         </DialogContent>
       </Dialog>
 
-      {/* Detail dialog */}
-      <Dialog open={detailOpen} onOpenChange={(open) => { setDetailOpen(open); if (!open) setSelectedAnnouncement(null); }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{selectedAnnouncement?.title ?? ''}</DialogTitle>
-            <DialogDescription>
-              {selectedAnnouncement?.author_name
-                ? `By ${selectedAnnouncement.author_name}`
-                : selectedAnnouncement?.created_at
-                  ? `Created ${formatDate(selectedAnnouncement.created_at)}`
-                  : ''}
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedAnnouncement && (
-            <div className="space-y-4 py-4">
-              <div className="flex flex-wrap gap-2">
-                <Badge variant={getPriorityBadgeVariant(selectedAnnouncement.priority)}>
-                  {selectedAnnouncement.priority}
-                </Badge>
-                <Badge variant={getPublishStatus(selectedAnnouncement).variant}>
-                  {getPublishStatus(selectedAnnouncement).label}
-                </Badge>
-                <Badge variant="secondary" className="capitalize">
-                  {selectedAnnouncement.category}
-                </Badge>
-                {selectedAnnouncement.is_pinned && (
-                  <Badge variant="secondary">
-                    <Pin className="mr-1 h-3 w-3" /> Pinned
-                  </Badge>
-                )}
-              </div>
-
-              <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
-                {selectedAnnouncement.body}
-              </div>
-
-              <div className="grid grid-cols-2 gap-y-2 text-sm">
-                <span className="text-muted-foreground">Audience</span>
-                <span className="capitalize">{selectedAnnouncement.target_audience}</span>
-
-                {selectedAnnouncement.target_blocks && selectedAnnouncement.target_blocks.length > 0 && (
-                  <>
-                    <span className="text-muted-foreground">Blocks</span>
-                    <span>{selectedAnnouncement.target_blocks.join(', ')}</span>
-                  </>
-                )}
-
-                {selectedAnnouncement.published_at && (
-                  <>
-                    <span className="text-muted-foreground">Published</span>
-                    <span>{formatDate(selectedAnnouncement.published_at)}</span>
-                  </>
-                )}
-
-                {selectedAnnouncement.expires_at && (
-                  <>
-                    <span className="text-muted-foreground">Expires</span>
-                    <span>{formatDate(selectedAnnouncement.expires_at)}</span>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <DialogClose>
-              <Button variant="outline">Close</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete confirmation dialog */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete Announcement</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this announcement? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button
-              variant="destructive"
-              disabled={deleteMutation.isPending}
-              onClick={handleConfirmDelete}
-            >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <NoticeActionDialogs actions={actions} />
     </div>
   );
 }
