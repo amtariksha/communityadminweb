@@ -70,6 +70,8 @@ export const standardMenu: NavGroup[] = [
       { label: 'Reconcile Debtors', href: '/accounts/reconcile-debtors', icon: <Sparkles className="h-4 w-4" />, feature: 'accounts' },
       { label: 'Invoices', href: '/invoices', icon: <FileText className="h-4 w-4" />, feature: 'invoices' },
       { label: 'Receipts', href: '/receipts', icon: <Receipt className="h-4 w-4" />, feature: 'receipts' },
+      // INC-20 — every unit with what it owes (classic: Income Tracker › Member Income).
+      { label: 'Member Dues', href: '/income/members', icon: <IndianRupee className="h-4 w-4" />, feature: 'invoices' },
       { label: 'Vendors', href: '/vendors', icon: <Users className="h-4 w-4" />, feature: 'vendors' },
       { label: 'Customers', href: '/customers', icon: <Users className="h-4 w-4" />, feature: 'vendors' },
       { label: 'Purchases', href: '/purchases', icon: <ShoppingCart className="h-4 w-4" />, feature: 'purchases' },

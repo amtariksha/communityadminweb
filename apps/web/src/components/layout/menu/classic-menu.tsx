@@ -170,7 +170,9 @@ export const classicMenu: MenuNode[] = [
         ],
       },
       planned('income.track-units', 'Track Units', 'INC-37'),
-      planned('income.member-income', 'Member Income', 'INC-35'),
+      // INC-20 — the unit dues workbench; INC-35 gives it the classic
+      // arrangement (opens empty until a block or a search is chosen).
+      { id: 'income.member-income', label: 'Member Income', href: '/income/members', logs: ['invoice', 'receipt'] },
       {
         // Classic routes (INC-33) over today's two registers until INC-36
         // turns them into fetch boxes.

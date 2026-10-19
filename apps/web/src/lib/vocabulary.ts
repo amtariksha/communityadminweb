@@ -21,6 +21,7 @@ const CLASSIC_WORDS: Readonly<Record<string, string>> = {
   Customers: 'Vendors for Non Member Income',
   Customer: 'Non Member',
   'Audit Trail': 'Logs',
+  'Member Dues': 'SubLedgers',
 };
 
 export function wordFor(layout: AdminLayout, standardWord: string): string {
