@@ -78,6 +78,12 @@ export interface TenantSettings {
     auto_post: boolean;
   };
 
+  // INC-23 — Setup › GST: whether Post Invoice offers GST on an ad-hoc
+  // invoice (unset = on). Read by POST /invoices/adhoc and the form.
+  billing_gst?: {
+    show_on_adhoc: boolean;
+  };
+
   // NotifPlan §"Phase 5" — per-tenant notification policy. Two
   // levers, both optional so an unset tenant continues to behave as
   // it did before this field existed:

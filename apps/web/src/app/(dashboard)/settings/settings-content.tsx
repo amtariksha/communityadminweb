@@ -31,6 +31,7 @@ import { DuesRemindersCard } from './dues-reminders-card';
 import { InterestCard } from './interest-card';
 import { TaxRegistrationCard } from './tax-registration-card';
 import { GatewayChargeCard } from './gateway-charge-card';
+import { BillingGstCard } from './billing-gst-card';
 import { BillingRulesCard } from './billing-rules-card';
 import { UnitTypesCard } from './unit-types-card';
 import { TdsConfigCard } from './tds-config-card';
@@ -563,6 +564,7 @@ export default function SettingsContent(): ReactNode {
       {/* Online payment charges — who bears the gateway charge (INC-12)      */}
       {/* ------------------------------------------------------------------- */}
       <GatewayChargeCard />
+      <BillingGstCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Notification Policy — urgent allowlist + default quiet hours        */}

@@ -99,6 +99,7 @@ describe('classic modules', () => {
       ['Auto Invoicing', '/income/setup/auto-invoicing'],
       ['Payment Gateway', '/income/setup/payment-gateway'],
       ['Customize Invoice', '/income/setup/customize-invoice'],
+      ['GST', '/income/setup/gst'],
       ['Defaulters', '/income/setup/defaulters'],
     ]);
     expect(entryHref(find(menu, 'income.setup') as MenuNode)).toBe('/income/setup/auto-invoicing');
