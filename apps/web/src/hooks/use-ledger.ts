@@ -140,6 +140,8 @@ interface AccountFilters {
   //   account_type: ['liability'] — Bill convert: Payable Account
   //   account_type: ['asset']    — Receipt entry: Bank/Cash Account
   account_type?: string | string[];
+  /** INC-38: an income picker's side; an older API ignores it and lists every income account. */
+  income_scope?: 'member' | 'non_member';
   page?: number;
   limit?: number;
 }
@@ -269,6 +271,7 @@ function accountFiltersToParams(filters?: AccountFilters): Record<string, string
       ? filters.account_type.join(',')
       : filters.account_type;
   }
+  if (filters.income_scope) params.income_scope = filters.income_scope;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   return params;

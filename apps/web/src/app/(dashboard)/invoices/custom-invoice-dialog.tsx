@@ -451,6 +451,7 @@ export function CustomInvoiceDialog({
                 value={defaultIncomeAccountId}
                 onChange={setDefaultIncomeAccountId}
                 accountType={['income']}
+                incomeScope="non_member"
                 placeholder="Pick income ledger (e.g. Sponsorship)…"
               />
             </div>
@@ -563,6 +564,7 @@ export function CustomInvoiceDialog({
                             updateLine(idx, { income_account_id: id })
                           }
                           accountType={['income']}
+                incomeScope="non_member"
                           placeholder="(uses default if not picked)"
                         />
                       </div>

@@ -48,6 +48,8 @@ interface AccountSearchSelectProps {
    * relevant — the COA can have hundreds of ledger rows.
    */
   accountType?: Array<'asset' | 'liability' | 'income' | 'expense' | 'equity'>;
+  /** INC-38: income accounts used for member or non-member invoices (Setup › Income Accounts). */
+  incomeScope?: 'member' | 'non_member';
   placeholder?: string;
   disabled?: boolean;
 }
@@ -65,6 +67,7 @@ export function AccountSearchSelect({
   value,
   onChange,
   accountType,
+  incomeScope,
   placeholder = 'Search account...',
   disabled,
 }: AccountSearchSelectProps): ReactNode {
@@ -87,6 +90,7 @@ export function AccountSearchSelect({
   const { data: listResp, isLoading } = useLedgerAccounts({
     search: debounced || undefined,
     account_type: accountTypeKey || undefined,
+    income_scope: incomeScope,
     limit: 50,
   });
 

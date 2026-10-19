@@ -121,7 +121,7 @@ function AmountFields({ page, form, set, errors }: { page: CreditNotePage; form:
       ) : (
         <div className="space-y-1">
           <Label>Account</Label>
-          <AccountSearchSelect value={form.ledgerAccountId} onChange={(id) => set({ ledgerAccountId: id })} accountType={['income']} placeholder="Search income accounts" />
+          <AccountSearchSelect value={form.ledgerAccountId} onChange={(id) => set({ ledgerAccountId: id })} accountType={['income']} incomeScope="member" placeholder="Search income accounts" />
           <FormFieldError message={errors.ledgerAccountId} />
         </div>
       )}

@@ -47,7 +47,7 @@ function GridRow({ index, line, withGst, rates, error, onChange }: {
     <TableRow>
       <TableCell className="w-8 text-muted-foreground">{index + 1}</TableCell>
       <TableCell className="min-w-56">
-        <AccountSearchSelect value={line.ledgerAccountId} onChange={(id) => onChange({ ledgerAccountId: id })} accountType={['income']} placeholder="Account" />
+        <AccountSearchSelect value={line.ledgerAccountId} onChange={(id) => onChange({ ledgerAccountId: id })} accountType={['income']} incomeScope="member" placeholder="Account" />
         <FormFieldError message={error} />
       </TableCell>
       <TableCell className="w-24">

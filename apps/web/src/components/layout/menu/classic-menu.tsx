@@ -203,7 +203,7 @@ export const classicMenu: MenuNode[] = [
             href: '/income/setup/auto-invoicing',
             logs: ['tenant_settings', 'billing_settings', 'billing_rule_line', 'unit_billing_category'],
           },
-          planned('income.setup.income-accounts', 'Income Accounts', 'INC-38'),
+          { id: 'income.setup.income-accounts', label: 'Income Accounts', href: '/income/setup/income-accounts', logs: ['ledger_account'] },
           planned('income.setup.utility-invoicing', 'Utility Invoicing', 'INC-34'),
           { id: 'income.setup.payment-gateway', label: 'Payment Gateway', href: '/income/setup/payment-gateway', logs: ['tenant_settings'] },
           { id: 'income.setup.customize-invoice', label: 'Customize Invoice', href: '/income/setup/customize-invoice', logs: ['tenant_settings'] },

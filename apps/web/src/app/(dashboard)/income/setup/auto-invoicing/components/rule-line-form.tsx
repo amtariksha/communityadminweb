@@ -31,7 +31,7 @@ function AccountField(props: {
   error?: string;
   onChange: (id: string) => void;
 }): ReactNode {
-  const accounts = useLedgerAccounts({ account_type: 'income', limit: 100 });
+  const accounts = useLedgerAccounts({ account_type: 'income', income_scope: 'member', limit: 100 });
   if (props.line) {
     return (
       <p className="text-sm">

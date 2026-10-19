@@ -109,6 +109,7 @@ describe('classic modules', () => {
     expect(find(menu, 'income.member-income')?.href).toBe('/income/members');
     expect(find(menu, 'income.setup')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Auto Invoicing', '/income/setup/auto-invoicing'],
+      ['Income Accounts', '/income/setup/income-accounts'],
       ['Payment Gateway', '/income/setup/payment-gateway'],
       ['Customize Invoice', '/income/setup/customize-invoice'],
       ['GST', '/income/setup/gst'],
