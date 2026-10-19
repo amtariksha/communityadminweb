@@ -1,18 +1,4 @@
 export interface TenantSettings {
-  ev_module?: boolean;
-  ai_accounting?: boolean;
-  document_vault?: boolean;
-  gate_module?: boolean;
-  helpdesk_module?: boolean;
-  digital_voting?: boolean;
-  // Community-admin toggles. Keep in sync with apps/api
-  // tenantSettingsSchema and admin-web featureToggles — if a key is
-  // missing from the backend Zod schema, Zod will strip it on save
-  // and the UI will reset it on reload.
-  visitor_management?: boolean;
-  maintenance_requests?: boolean;
-  parking_management?: boolean;
-
   // GATE-03 — minutes inside before the overstay sweep raises an alert
   // (unset = 240). Written by PATCH /tenant-settings/gate; keep in sync with
   // communityos/packages/shared/src/types/tenant.ts.

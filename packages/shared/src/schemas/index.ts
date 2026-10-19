@@ -8,6 +8,7 @@ export {
 export {
   createTenantSchema,
   updateTenantSchema,
+  scheduledReportsSchema,
   type CreateTenantInput,
   type UpdateTenantInput,
 } from './tenant';

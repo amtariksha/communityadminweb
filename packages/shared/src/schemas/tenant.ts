@@ -1,12 +1,29 @@
 import { z } from 'zod';
 
+/**
+ * The monthly report digest (REP-01). Mirrors communityos
+ * packages/shared/src/schemas/tenant.ts; the save merges top-level keys
+ * only, so the Automated reports card sends the object whole.
+ */
+export const scheduledReportsSchema = z.object({
+  enabled: z.boolean().optional(),
+  reports: z
+    .array(z.enum(['trial_balance', 'income_expenditure', 'defaulters', 'collection_summary']))
+    .optional(),
+  recipients: z.array(z.string().email()).optional(),
+  day_of_month: z.number().int().min(1).max(28).optional(),
+  time_of_day: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'HH:MM required')
+    .optional(),
+  last_sent_period: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'YYYY-MM required')
+    .optional(),
+});
+
 const tenantSettingsSchema = z.object({
-  ev_module: z.boolean().optional(),
-  ai_accounting: z.boolean().optional(),
-  document_vault: z.boolean().optional(),
-  gate_module: z.boolean().optional(),
-  helpdesk_module: z.boolean().optional(),
-  digital_voting: z.boolean().optional(),
+  scheduled_reports: scheduledReportsSchema.optional(),
 });
 
 export const createTenantSchema = z.object({
