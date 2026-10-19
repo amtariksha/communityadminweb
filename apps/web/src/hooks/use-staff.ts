@@ -125,6 +125,10 @@ export interface Gate {
   // As stored (the API maps the form's `main` to vehicle_and_pedestrian).
   gate_type: 'vehicle_and_pedestrian' | 'vehicle_only' | 'pedestrian_only' | 'service';
   is_active: boolean;
+  // GATE-20 (migration 214): In / Out. Absent from an older API, where every
+  // gate is both.
+  allows_entry?: boolean;
+  allows_exit?: boolean;
   staff_count?: number;
   created_at: string;
 }
@@ -232,6 +236,8 @@ interface CreateGateInput {
   name: string;
   location?: string;
   gate_type: string;
+  allows_entry?: boolean;
+  allows_exit?: boolean;
 }
 
 interface UpdateGateInput {

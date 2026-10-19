@@ -30,6 +30,7 @@ import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { useCreateGate, useDeleteGate, useGates, useUpdateGate } from '@/hooks/use-staff';
 import type { Gate } from '@/hooks/use-staff';
+import { gateDirectionLabel } from '@/hooks/use-gate-grid';
 
 // The values the API accepts (`main` is stored as vehicle_and_pedestrian).
 const GATE_TYPE_OPTIONS = [
@@ -51,9 +52,13 @@ interface GateFormValues {
   name: string;
   location: string;
   gateType: string;
+  // GATE-20: the gate lets people In, Out or both.
+  entry: boolean;
+  exit: boolean;
 }
 
-const EMPTY_FORM: GateFormValues = { name: '', location: '', gateType: 'main' };
+const EMPTY_FORM: GateFormValues = { name: '', location: '', gateType: 'main', entry: true, exit: true };
+export const NEEDS_DIRECTION = 'Tick In, Out or both.';
 
 interface GateDialogProps {
   open: boolean;
@@ -101,6 +106,22 @@ function GateDialog({ open, editing, values, saving, onOpenChange, onChange, onS
                 onChange={(e) => onChange({ ...values, location: e.target.value })}
               />
             </div>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Direction</legend>
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={values.entry} onChange={(e) => onChange({ ...values, entry: e.target.checked })} />
+                  In
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={values.exit} onChange={(e) => onChange({ ...values, exit: e.target.checked })} />
+                  Out
+                </label>
+              </div>
+              {!values.entry && !values.exit && (
+                <p role="alert" className="text-xs text-destructive">{NEEDS_DIRECTION}</p>
+              )}
+            </fieldset>
             <div className="space-y-2">
               <Label htmlFor="gate-type">Type</Label>
               <Select id="gate-type" value={values.gateType} onChange={(e) => onChange({ ...values, gateType: e.target.value })}>
@@ -116,7 +137,7 @@ function GateDialog({ open, editing, values, saving, onOpenChange, onChange, onS
             <DialogClose>
               <Button type="button" variant="outline">Cancel</Button>
             </DialogClose>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || (!values.entry && !values.exit)}>
               {saving ? 'Saving...' : 'Save Gate'}
             </Button>
           </DialogFooter>
@@ -144,6 +165,7 @@ function GateRow({ gate, onEdit, onDeactivate, onReactivate }: GateRowProps): Re
       </TableCell>
       <TableCell>{gate.location ?? '-'}</TableCell>
       <TableCell>{GATE_TYPE_LABEL[gate.gate_type] ?? gate.gate_type}</TableCell>
+      <TableCell>{gateDirectionLabel(gate)}</TableCell>
       <TableCell>{gate.staff_count ?? 0}</TableCell>
       <TableCell>
         <Badge variant={gate.is_active ? 'success' : 'secondary'}>{gate.is_active ? 'Active' : 'Inactive'}</Badge>
@@ -189,7 +211,13 @@ function useGateActions(onSaved: () => void) {
   }
 
   function save(editingId: string, values: GateFormValues): void {
-    const data = { name: values.name, location: values.location || undefined, gate_type: values.gateType };
+    const data = {
+      name: values.name,
+      location: values.location || undefined,
+      gate_type: values.gateType,
+      allows_entry: values.entry,
+      allows_exit: values.exit,
+    };
     const after = report(editingId ? 'Gate updated' : 'Gate created');
     const options = { ...after, onSuccess: () => { onSaved(); after.onSuccess(); } };
     if (editingId) updateGate.mutate({ id: editingId, data }, options);
@@ -221,12 +249,20 @@ export function GatesCard({ children }: { children?: ReactNode }): ReactNode {
 
   function openEdit(gate: Gate): void {
     setEditingId(gate.id);
-    setValues({ name: gate.name, location: gate.location ?? '', gateType: gate.gate_type });
+    setValues({
+      name: gate.name,
+      location: gate.location ?? '',
+      gateType: gate.gate_type,
+      // An older API sends neither flag: every gate is In and Out there.
+      entry: gate.allows_entry !== false,
+      exit: gate.allows_exit !== false,
+    });
     setDialogOpen(true);
   }
 
   function submit(event: FormEvent): void {
     event.preventDefault();
+    if (!values.entry && !values.exit) return;
     actions.save(editingId, values);
   }
 
@@ -261,6 +297,7 @@ export function GatesCard({ children }: { children?: ReactNode }): ReactNode {
                 <TableHead>Name</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>In / Out</TableHead>
                 <TableHead>Staff Count</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-28">Actions</TableHead>

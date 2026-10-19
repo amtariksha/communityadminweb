@@ -330,9 +330,11 @@ export const classicMenu: MenuNode[] = [
     icon: icon(ShieldCheck),
     // GATE-10: the gate registers under Incident Investigator (our Staff
     // Logs, Parcels and Overstays after theirs, GATE-D2). Today's /gate
-    // stays inside the module as Visitors.
+    // stays inside the module as Visitors. GATE-20: Setup holds the gates
+    // grid; Close goes back to the Visitors register.
+    close: '/gate/investigator/visitors',
     children: [
-      planned('gate.setup', 'Setup', 'GATE-40'),
+      { id: 'gate.setup', label: 'Setup', href: '/gate/setup', logs: ['gate'] },
       planned('gate.move', 'Move In/Out', 'GATE-45'),
       planned('gate.usage', 'Usage Summary', 'GATE-44'),
       {

@@ -127,7 +127,9 @@ describe('classic modules', () => {
   });
 
   it('Gate & Visitors opens Incident Investigator with the gate registers as sub-tabs', () => {
-    expect(labels('gate')).toEqual(['Incident Investigator']);
+    expect(labels('gate')).toEqual(['Setup', 'Incident Investigator']);
+    expect(find(menu, 'gate.setup')?.href).toBe('/gate/setup');
+    expect(find(menu, 'gate')?.close).toBe('/gate/investigator/visitors');
     expect(find(menu, 'gate.investigator')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Visitors', '/gate/investigator/visitors'],
       ['Panic Alerts', '/gate/investigator/panic-alerts'],
