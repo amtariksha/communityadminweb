@@ -14,7 +14,7 @@ import { StockMovementDialog } from '../../inventory/stock-movement-dialog';
 export const INVENTORY_BASE = '/asset-inventory/inventory';
 
 // common/procurement-roles.ts INVENTORY_WRITE_ROLES (ASSET-03).
-const WRITE_ROLES = new Set(['super_admin', 'community_admin', 'committee_member', 'accountant', 'facility_supervisor']);
+export const INVENTORY_WRITE_ROLES: ReadonlySet<string> = new Set(['super_admin', 'community_admin', 'committee_member', 'accountant', 'facility_supervisor']);
 
 export function belowReorder(row: Pick<MaterialListRow, 'current_stock' | 'minimum_stock'>): boolean {
   return Number(row.current_stock) < Number(row.minimum_stock);
@@ -50,7 +50,7 @@ export function InventoryList(): ReactNode {
   const [adding, setAdding] = useState(false);
   const [moving, setMoving] = useState<MaterialListRow | null>(null);
   const query = useMaterialList({ search: search || undefined, page, limit: pageSize });
-  const canWrite = WRITE_ROLES.has(currentRole() ?? '');
+  const canWrite = INVENTORY_WRITE_ROLES.has(currentRole() ?? '');
   const actions: DataTableAction<MaterialListRow>[] = [
     ...(canWrite ? [{ key: 'move', header: 'Add/Remove', label: 'Add/Remove', onClick: setMoving }] : []),
     { key: 'details', header: 'More details', label: 'More details', href: (row) => `${INVENTORY_BASE}/${row.id}` },

@@ -574,7 +574,7 @@ export const classicMenu: MenuNode[] = [
         tabs: [
           { id: 'assets.inventory.active', label: 'Active', href: '/asset-inventory/inventory/active', logs: INVENTORY_LOGS },
           planned('assets.inventory.bulk', 'Bulk Upload', 'ASSET-15'),
-          planned('assets.inventory.expired', 'Expired', 'ASSET-12'),
+          { id: 'assets.inventory.expired', label: 'Expired', href: '/asset-inventory/inventory/expired', logs: INVENTORY_LOGS },
           {
             id: 'assets.inventory.procurement',
             label: 'Procurement',

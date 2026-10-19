@@ -9,6 +9,8 @@ export type MaterialListRow = Material & { total_cost?: string };
 
 export interface MaterialListFilters {
   search?: string;
+  /** ASSET-12 — the Active list (default) or the Expired one. */
+  status?: 'active' | 'expired';
   page: number;
   limit: number;
 }
@@ -16,8 +18,11 @@ export interface MaterialListFilters {
 export type StockMovement = StockLog & { created_by_name?: string | null };
 
 /** The query string of the stock book and its export, without the page. */
-export function materialListParams(filters: Pick<MaterialListFilters, 'search'>): Record<string, string> {
-  return filters.search ? { search: filters.search } : {};
+export function materialListParams(filters: Pick<MaterialListFilters, 'search' | 'status'>): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (filters.search) params.search = filters.search;
+  if (filters.status === 'expired') params.status = 'expired';
+  return params;
 }
 
 /** One page of the stock book, searched on the server (ASSET-09). */
@@ -65,4 +70,57 @@ export function useAddRemoveStock() {
       qc.invalidateQueries({ queryKey: ['inventory', 'materials'] });
     },
   });
+}
+
+/** ASSET-11 — PATCH body: never the quantity (stock moves by Add / Remove only). */
+export interface MaterialChange {
+  name?: string;
+  unit?: string;
+  category?: string;
+  location?: string | null;
+  minimum_stock?: number;
+  unit_price?: number;
+  vendor_name?: string | null;
+  reorder_quantity?: number | null;
+}
+
+/** One item, active or expired (GET /inventory/materials/:id); falls back to the list on an older API. */
+export function useMaterialItem(id: string) {
+  return useQuery({
+    queryKey: ['inventory', 'materials', 'item', id] as const,
+    queryFn: async () => {
+      try {
+        return (await api.get<{ data: MaterialListRow }>(`/inventory/materials/${id}`)).data;
+      } catch (error) {
+        if ((error as { status?: number }).status !== 404) throw error;
+        const all = await api.get<{ data: MaterialListRow[] }>('/inventory/materials');
+        const found = all.data.find((row) => row.id === id);
+        if (!found) throw error;
+        return found;
+      }
+    },
+    enabled: id !== '',
+    retry: false,
+  });
+}
+
+function useMaterialMutation<Input>(request: (input: Input) => Promise<unknown>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: request,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['inventory', 'materials'] }),
+  });
+}
+
+export function useUpdateMaterial() {
+  return useMaterialMutation(({ id, change }: { id: string; change: MaterialChange }) =>
+    api.patch<{ data: MaterialListRow }>(`/inventory/materials/${id}`, change),
+  );
+}
+
+/** ASSET-12 — Mark Expired (true) or Re-activate (false). */
+export function useSetMaterialExpired() {
+  return useMaterialMutation(({ id, expired }: { id: string; expired: boolean }) =>
+    api.post<{ data: MaterialListRow }>(`/inventory/materials/${id}/${expired ? 'expire' : 'reactivate'}`),
+  );
 }

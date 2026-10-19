@@ -20,6 +20,8 @@ import { friendlyError } from '@/lib/api-error';
 interface CreatePoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** ASSET-11 — opened from an item: its vendor and re-order quantity × cost per unit. */
+  prefill?: { vendor_name: string; total_amount: number };
 }
 
 const EMPTY_FORM = {
@@ -30,10 +32,10 @@ const EMPTY_FORM = {
   notes: '',
 };
 
-export function CreatePoDialog({ open, onOpenChange }: CreatePoDialogProps): ReactNode {
+export function CreatePoDialog({ open, onOpenChange, prefill }: CreatePoDialogProps): ReactNode {
   const { addToast: toast } = useToast();
   const createPO = useCreateInventoryPurchaseOrder();
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(() => ({ ...EMPTY_FORM, ...(prefill ?? {}) }));
 
   async function handleSubmit(e: FormEvent): Promise<void> {
     e.preventDefault();

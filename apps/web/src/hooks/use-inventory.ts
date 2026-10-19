@@ -14,6 +14,12 @@ export interface Material {
   unit_price: number;
   location: string | null;
   created_at: string;
+  /** ASSET-11 — who it is usually bought from, the usual quantity to order. */
+  vendor_name?: string | null;
+  reorder_quantity?: number | string | null;
+  /** ASSET-12 — false once marked expired (absent from an older API). */
+  is_active?: boolean;
+  expired_at?: string | null;
 }
 
 export interface LOI {

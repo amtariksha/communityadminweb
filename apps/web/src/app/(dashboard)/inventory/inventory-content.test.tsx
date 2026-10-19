@@ -171,16 +171,16 @@ describe('InventoryContent', () => {
       render(<InventoryContent />);
       const dialog = openDialog(null, /add material/i, 'Add Material to Catalogue');
 
-      // Material Name is the dialog's first text field.
-      fireEvent.change(within(dialog).getAllByRole('textbox')[0], {
-        target: { value: '9W LED bulb' },
-      });
-      type(/unit price/i, '45.5');
+      type(/material name/i, '9W LED bulb');
+      // ASSET-11: the vendor is asked for, and the usual quantity to order.
+      type(/vendor name/i, 'Vendor A');
+      type(/re-order quantity/i, '20');
+      type(/cost per unit/i, '45.5');
       fireEvent.click(within(dialog).getByRole('button', { name: 'Save Material' }));
 
       await waitFor(() => expect(mocks.createMaterial.mutateAsync).toHaveBeenCalledTimes(1));
       expect(mocks.createMaterial.mutateAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ name: '9W LED bulb', unit_price: 45.5 }),
+        expect.objectContaining({ name: '9W LED bulb', unit_price: 45.5, vendor_name: 'Vendor A', reorder_quantity: 20 }),
       );
     });
   });

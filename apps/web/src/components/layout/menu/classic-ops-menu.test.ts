@@ -128,6 +128,7 @@ describe('Asset & Inventory (ASSET-07)', () => {
     ]);
     expect(tabs('assets.inventory')).toEqual([
       ['Active', '/asset-inventory/inventory/active'],
+      ['Expired', '/asset-inventory/inventory/expired'],
       ['Procurement', '/asset-inventory/inventory/procurement'],
       ['Movement Log', '/asset-inventory/inventory/movements'],
     ]);
