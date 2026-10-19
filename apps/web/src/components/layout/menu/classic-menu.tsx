@@ -97,9 +97,10 @@ export const classicMenu: MenuNode[] = [
     id: 'units',
     label: 'Units & Users',
     icon: icon(Home),
-    // Classic routes (UNIT-10). Add Users and Broadcast show today's
-    // screens until UNIT-14 and UNIT-09 rebuild them. Approved Users is the
-    // master–detail page (UNIT-12); /units stays inside it.
+    // Classic routes (UNIT-10). Broadcast shows today's screen until
+    // UNIT-09 rebuilds it. Add Users is the typed grid (UNIT-14; today's
+    // CSV import stays under it), Approved Users the master–detail page
+    // (UNIT-12; /units stays inside it).
     children: [
       {
         // UNIT-13: self-signups waiting for a decision; Edit is a page.

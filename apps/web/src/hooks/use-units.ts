@@ -358,7 +358,11 @@ export function useBulkImportMembers() {
   return useMutation({
     mutationFn: function importMembers(input: {
       members: Array<{
-        unit_number: string;
+        // One of the two: the paste-CSV dialog names units by number, the
+        // Add Users grid (UNIT-14) picks them by id.
+        unit_number?: string;
+        unit_id?: string;
+        intercom?: string;
         name: string;
         phone: string;
         member_type: 'owner' | 'tenant' | 'owner_family' | 'tenant_family';
