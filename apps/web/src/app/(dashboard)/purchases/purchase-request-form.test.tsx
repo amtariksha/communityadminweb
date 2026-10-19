@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApproverGrid } from '@/hooks/use-approver-grid';
 import type { PRDetail } from '@/hooks/use-purchase-requests';
 import { PurchaseRequestForm } from './purchase-request-form';
+import { checkQuotations } from './purchase-request/use-quotation-files';
 
 /**
  * EXP-08 — the purchase request form: lines by expense head with GST per
@@ -17,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   detail: undefined as PRDetail | null | undefined,
   grid: null as ApproverGrid | null,
   heads: undefined as unknown,
+  upload: vi.fn(),
+  attach: vi.fn(),
 }));
 
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
@@ -39,7 +42,9 @@ vi.mock('@/hooks/use-purchase-requests', () => ({
   useUpdatePurchaseRequest: () => ({ mutateAsync: mocks.update, isPending: false }),
   useSubmitPurchaseRequest: () => ({ mutateAsync: mocks.submit, isPending: false }),
   useWithdrawPurchaseRequest: () => ({ mutate: vi.fn(), isPending: false }),
+  useAddPurchaseRequestAttachment: () => ({ mutateAsync: mocks.attach }),
 }));
+vi.mock('@/hooks/use-documents', () => ({ useUploadFileToS3: () => ({ mutateAsync: mocks.upload }) }));
 
 const HEADS = {
   data: [
@@ -195,5 +200,34 @@ describe('PurchaseRequestForm', () => {
     mocks.heads = null;
     renderForm();
     expect(screen.getByText('Purchase requests with lines are not available yet.')).toBeTruthy();
+  });
+
+  it('sends picked quotations once the request is saved, as storage keys on the request', async () => {
+    mocks.upload.mockResolvedValue({ key: 'tenants/t-1/documents/q-1.pdf', fileUrl: 'https://files.example.com/q-1.pdf' });
+    const onSaved = renderForm();
+    fillHeader('v-ka');
+    addHead('Repairs');
+    fireEvent.change(screen.getByLabelText('Line 1 rate'), { target: { value: '100' } });
+    const quotation = new File(['%PDF'], 'quote.pdf', { type: 'application/pdf' });
+    fireEvent.change(screen.getByLabelText('Vendor quotations'), { target: { files: [quotation] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save as draft' }));
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalled());
+
+    expect(mocks.upload).toHaveBeenCalledWith({ file: quotation });
+    expect(mocks.attach).toHaveBeenCalledWith({
+      id: 'pr-1',
+      file_key: 'tenants/t-1/documents/q-1.pdf',
+      file_name: 'quote.pdf',
+      mime_type: 'application/pdf',
+      size_bytes: 4,
+    });
+  });
+
+  it('refuses other file types, files over 5 MB and a sixth file', () => {
+    const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'big.pdf', { type: 'application/pdf' });
+    const doc = new File(['x'], 'notes.docx', { type: 'application/msword' });
+    const ok = new File(['x'], 'ok.png', { type: 'image/png' });
+    expect(checkQuotations(0, [big, doc, ok]).accepted).toEqual([ok]);
+    expect(checkQuotations(5, [ok]).refused).toEqual(['ok.png: a request holds at most 5 files']);
   });
 });

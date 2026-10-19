@@ -19,6 +19,8 @@ import { ApprovalBlocks } from './purchase-request/approval-blocks';
 import { HeadPicker } from './purchase-request/head-picker';
 import { LinesGrid } from './purchase-request/lines-grid';
 import { PurchaseRequestView } from './purchase-request/purchase-request-view';
+import { QuotationFiles } from './purchase-request/quotation-files';
+import { useQuotationFiles } from './purchase-request/use-quotation-files';
 import { amountsOf, hasErrors, requestPayload, validateRequest, type RequestErrors } from './purchase-request/request-state';
 import { useRequestForm } from './purchase-request/use-request-form';
 
@@ -53,7 +55,14 @@ function Totals({ lines }: { lines: ReturnType<typeof useRequestForm>['values'][
   );
 }
 
-function useSave(form: ReturnType<typeof useRequestForm>, requestId: string | null | undefined, onSaved: PurchaseRequestFormProps['onSaved']) {
+type Quotations = ReturnType<typeof useQuotationFiles>;
+
+function useSave(
+  form: ReturnType<typeof useRequestForm>,
+  quotations: Quotations,
+  requestId: string | null | undefined,
+  onSaved: PurchaseRequestFormProps['onSaved'],
+) {
   const create = useCreatePurchaseRequest();
   const update = useUpdatePurchaseRequest();
   const submit = useSubmitPurchaseRequest();
@@ -65,13 +74,22 @@ function useSave(form: ReturnType<typeof useRequestForm>, requestId: string | nu
     setErrors(found);
     if (hasErrors(found)) return;
     const payload = requestPayload(form.values, sending);
+    const withFiles = async (id: string): Promise<void> => {
+      const failed = await quotations.attachAll(id);
+      if (failed.length > 0) {
+        addToast({ title: 'Request saved; some quotations were not attached', description: failed.join(', '), variant: 'warning' });
+      }
+    };
     try {
       if (!requestId) {
-        onSaved(await create.mutateAsync(payload), sending);
+        const created = await create.mutateAsync(payload);
+        await withFiles(created.purchase_request.id);
+        onSaved(created, sending);
         return;
       }
       const { approval, submit: _send, ...fields } = payload;
       const saved = await update.mutateAsync({ id: requestId, ...fields });
+      await withFiles(requestId);
       onSaved(sending ? await submit.mutateAsync({ id: requestId, approval }) : saved, sending);
     } catch (failure) {
       addToast({ title: 'Could not save the request', description: friendlyError(failure), variant: 'destructive' });
@@ -89,7 +107,8 @@ function useSave(form: ReturnType<typeof useRequestForm>, requestId: string | nu
  */
 export function PurchaseRequestForm(props: PurchaseRequestFormProps): ReactNode {
   const form = useRequestForm(props.requestId);
-  const { save, errors, saving } = useSave(form, props.requestId, props.onSaved);
+  const quotations = useQuotationFiles(form.stored?.attachments.length ?? 0);
+  const { save, errors, saving } = useSave(form, quotations, props.requestId, props.onSaved);
   const [picking, setPicking] = useState(false);
 
   if (form.heads.data === null) {
@@ -148,6 +167,13 @@ export function PurchaseRequestForm(props: PurchaseRequestFormProps): ReactNode 
         <Textarea id="pr-details" rows={4} value={values.details} onChange={(e) => setField('details', e.target.value)} />
         {errors.details && <p className="text-xs text-destructive">{errors.details}</p>}
       </div>
+      <QuotationFiles
+        attached={form.stored?.attachments ?? []}
+        waiting={quotations.files}
+        refused={quotations.refused}
+        onAdd={quotations.add}
+        onRemove={quotations.remove}
+      />
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold">Lines</h3>
