@@ -78,6 +78,7 @@ import Link from 'next/link';
 import { ConvertToInvoiceButton, CreatePurchaseRequestButton, ViewPurchaseRequestButton } from './create-request-button';
 import { useVendorInvoicesAvailable } from '@/hooks/use-vendor-bills';
 import { VendorInvoiceForm } from './vendor-invoice/vendor-invoice-form';
+import { VendorPaymentForm } from './vendor-payment/vendor-payment-form';
 
 // API responses may include joined fields beyond the base shared types
 interface PRRow {
@@ -241,6 +242,7 @@ export default function PurchasesContent(): ReactNode {
   const [billVendorFilter, setBillVendorFilter] = useState('');
   const [createBillDialogOpen, setCreateBillDialogOpen] = useState(false);
   const [newInvoiceOpen, setNewInvoiceOpen] = useState(false);
+  const [payBill, setPayBill] = useState<{ vendorId: string; billId: string } | null>(null);
   const invoicesAvailable = useVendorInvoicesAvailable();
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [agingDialogOpen, setAgingDialogOpen] = useState(false);
@@ -1802,6 +1804,11 @@ export default function PurchasesContent(): ReactNode {
                               size="sm"
                               className="h-8 p-1 text-xs"
                               onClick={() => {
+                                // EXP-14: the Pay vendor form once the API has it.
+                                if (invoicesAvailable.data) {
+                                  setPayBill({ vendorId: bill.vendor_id, billId: bill.id });
+                                  return;
+                                }
                                 setSelectedBillId(bill.id);
                                 setPaymentDialogOpen(true);
                               }}
@@ -1965,6 +1972,16 @@ export default function PurchasesContent(): ReactNode {
       {/* ------------------------------------------------------------------- */}
       {/* Record Payment Dialog                                                */}
       {/* ------------------------------------------------------------------- */}
+      {payBill && (
+        <VendorPaymentForm
+          mode="dialog"
+          open
+          vendorId={payBill.vendorId}
+          initialBillId={payBill.billId}
+          onClose={() => setPayBill(null)}
+          onSaved={() => setPayBill(null)}
+        />
+      )}
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
         <DialogContent>
           <form onSubmit={handleRecordPayment}>

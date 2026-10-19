@@ -37,11 +37,14 @@ import { todayIST } from '@/lib/date';
 interface DebitNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** EXP-14 "Post debit note in advance": the vendor is already chosen. */
+  vendorId?: string;
 }
 
 export function DebitNoteDialog({
   open,
   onOpenChange,
+  vendorId: presetVendorId,
 }: DebitNoteDialogProps): ReactNode {
   const { addToast } = useToast();
   const queryClient = useQueryClient();
@@ -68,13 +71,13 @@ export function DebitNoteDialog({
   useEffect(() => {
     if (!open) return;
     setVendorSearch('');
-    setVendorId('');
+    setVendorId(presetVendorId ?? '');
     setDate(todayIST());
     setAmount('');
     setReturnAccountId('');
     setReferenceNumber('');
     setNarration('');
-  }, [open]);
+  }, [open, presetVendorId]);
 
   const submit = useMutation({
     mutationFn: async (payload: {
