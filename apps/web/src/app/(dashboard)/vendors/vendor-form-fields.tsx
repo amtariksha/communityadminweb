@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTdsConfig } from '@/hooks';
-import { chooseTdsSection, type VendorFormValues } from './vendor-form';
+import { alternateEmailsError, chooseTdsSection, type VendorFormValues } from './vendor-form';
 import { VendorDefaultsFields } from './vendor-defaults-fields';
 
 interface VendorFormFieldsProps {
@@ -131,6 +131,34 @@ function TaxIdFields({ idPrefix, values, set }: { idPrefix: string; values: Vend
   );
 }
 
+/** VEND-08 — the society's own Vendor ID and the other addresses to write to. */
+function IdAndEmailFields({ idPrefix, values, set }: { idPrefix: string; values: VendorFormValues; set: Setter }): ReactNode {
+  const emailsError = alternateEmailsError(values.alternate_emails);
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <Field id={`${idPrefix}-code`} label="Vendor ID">
+        <Input
+          id={`${idPrefix}-code`}
+          placeholder="Your own short code, e.g. V-01"
+          maxLength={30}
+          value={values.vendor_code}
+          onChange={(e) => set('vendor_code', e.target.value)}
+        />
+      </Field>
+      <Field id={`${idPrefix}-alt-emails`} label="Alternate Email(s)">
+        <Input
+          id={`${idPrefix}-alt-emails`}
+          placeholder="Comma-separated, up to 5"
+          value={values.alternate_emails}
+          aria-invalid={emailsError ? true : undefined}
+          onChange={(e) => set('alternate_emails', e.target.value)}
+        />
+        {emailsError && <p className="text-xs text-destructive">{emailsError}</p>}
+      </Field>
+    </div>
+  );
+}
+
 /** Every field of the vendor form, shared by Add and Edit. */
 export function VendorFormFields({ idPrefix, values, onChange, showActive, phoneError }: VendorFormFieldsProps): ReactNode {
   const set: Setter = (field, value) => onChange({ ...values, [field]: value });
@@ -144,10 +172,14 @@ export function VendorFormFields({ idPrefix, values, onChange, showActive, phone
           <Input id={`${idPrefix}-contact`} placeholder="Person to speak to" maxLength={255} value={values.contact_person} onChange={(e) => set('contact_person', e.target.value)} />
         </Field>
       </div>
+      <IdAndEmailFields idPrefix={idPrefix} values={values} set={set} />
       <TaxIdFields idPrefix={idPrefix} values={values} set={set} />
       <ContactFields idPrefix={idPrefix} values={values} set={set} phoneError={phoneError} />
       <Field id={`${idPrefix}-address`} label="Billing Address">
         <Textarea id={`${idPrefix}-address`} rows={2} maxLength={1000} value={values.address} onChange={(e) => set('address', e.target.value)} />
+      </Field>
+      <Field id={`${idPrefix}-notes`} label="Notes">
+        <Textarea id={`${idPrefix}-notes`} rows={2} maxLength={1000} placeholder="Shown as Comments on the vendor list" value={values.notes} onChange={(e) => set('notes', e.target.value)} />
       </Field>
       <BankFields idPrefix={idPrefix} values={values} set={set} />
       <TdsFields idPrefix={idPrefix} values={values} onChange={onChange} />

@@ -42,6 +42,10 @@ interface CreateVendorInput {
   bank_ifsc?: string | null;
   tds_section?: string | null;
   tds_rate?: number | null;
+  /** VEND-08 — Vendor ID; alternate e-mails comma-separated; notes. */
+  vendor_code?: string | null;
+  alternate_emails?: string | null;
+  notes?: string | null;
 }
 
 interface UpdateVendorInput extends Partial<CreateVendorInput> {

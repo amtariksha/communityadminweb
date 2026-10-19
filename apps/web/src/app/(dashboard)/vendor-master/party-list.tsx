@@ -32,14 +32,16 @@ const COMMON = <Row extends { name: string; contact_person?: string | null; phon
   { key: 'email', header: 'Email', cell: (row) => dash(row.email) },
 ];
 
-// VEND-S1 columns; Id and Comments wait for vendor_code and notes (VEND-08).
+// VEND-S1 columns: Id = the Vendor ID, Comments = the notes (VEND-08).
 const VENDOR_COLUMNS: DataTableColumn<VendorRow>[] = [
+  { key: 'id', header: 'Id', cell: (row) => dash(row.vendor_code) },
   ...COMMON<VendorRow>(),
   { key: 'tds', header: 'TDS', cell: (row) => tdsText(row) },
   { key: 'gstin', header: 'GSTIN', cell: (row) => dash(row.gstin) },
   { key: 'igst', header: 'IGST', cell: (row) => rate(row.default_igst_rate) },
   { key: 'cgst', header: 'CGST', cell: (row) => rate(row.default_cgst_rate) },
   { key: 'sgst', header: 'SGST', cell: (row) => rate(row.default_sgst_rate) },
+  { key: 'comments', header: 'Comments', cell: (row) => dash(row.notes) },
 ];
 
 // VEND-S3 columns.

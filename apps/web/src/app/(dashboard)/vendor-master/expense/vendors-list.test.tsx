@@ -28,6 +28,8 @@ vi.mock('@/hooks/use-customers', () => ({ useCustomers: (filters: unknown) => mo
 const LIFTS = {
   id: 'v-1',
   name: 'Acme Lifts',
+  vendor_code: 'V-07',
+  notes: 'Quarterly service',
   contact_person: 'Ravi Test',
   phone: '+910000000051',
   email: 'lifts@example.test',
@@ -56,7 +58,9 @@ describe('PartyList', () => {
   it('lists active vendors with the tax set-up at a glance, counted by the server', () => {
     render(<PartyList kind="expense" />);
 
-    expect(headers()).toEqual(['S.No', 'Name', 'Contact', 'Phone', 'Email', 'TDS', 'GSTIN', 'IGST', 'CGST', 'SGST', 'Edit']);
+    expect(headers()).toEqual(['S.No', 'Id', 'Name', 'Contact', 'Phone', 'Email', 'TDS', 'GSTIN', 'IGST', 'CGST', 'SGST', 'Comments', 'Edit']);
+    expect(screen.getByText('V-07')).toBeTruthy();
+    expect(screen.getByText('Quarterly service')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Active Vendors for Expense Tracker (60)' })).toBeTruthy();
     expect(screen.getByText('2% (393(1))')).toBeTruthy();
     expect(mocks.vendors).toHaveBeenLastCalledWith(expect.objectContaining({ is_active: true, page: 1 }));

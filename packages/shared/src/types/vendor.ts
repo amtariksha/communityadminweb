@@ -29,6 +29,11 @@ export interface Vendor {
   payee_name?: string | null;
   state_code?: string | null;
   legal_name?: string | null;
+  // VEND-08 — the society's own Vendor ID (unique in the society, case
+  // ignored), up to five more e-mail addresses, and notes (Comments).
+  vendor_code?: string | null;
+  alternate_emails?: string[] | null;
+  notes?: string | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;

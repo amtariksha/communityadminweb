@@ -11,6 +11,7 @@ import { friendlyError } from '@/lib/api-error';
 import { normalizePhone } from '@/lib/validation';
 import { formatCurrency } from '@/lib/utils';
 import type { Vendor } from '@communityos/shared';
+import { VendorAttachments } from './vendor-attachments';
 import { VendorFormFields } from './vendor-form-fields';
 import {
   createVendorPayload,
@@ -89,6 +90,9 @@ function VendorFormBody(props: VendorFormPageProps & { vendor?: VendorWithTotals
         showActive={Boolean(props.vendor)}
         phoneError={<FormFieldError error={props.vendor ? update.error : create.error} field="phone" />}
       />
+      <div className="mt-6 border-t pt-4">
+        <VendorAttachments vendorId={props.vendor?.id} />
+      </div>
     </FormFrame>
   );
 }

@@ -19,6 +19,7 @@ import { UserSearchSelect } from '@/components/ui/user-search-select';
 import { useCreateVendor, useUpdateVendor, useVendor } from '@/hooks';
 import { friendlyError } from '@/lib/api-error';
 import { normalizePhone } from '@/lib/validation';
+import { VendorAttachments } from './vendor-attachments';
 import { VendorFormFields } from './vendor-form-fields';
 import {
   createVendorPayload,
@@ -171,6 +172,11 @@ export function EditVendorDialog({ vendorId, onClose }: { vendorId: string | nul
                 showActive
                 phoneError={<FormFieldError error={updateVendor.error} field="phone" />}
               />
+            ) : null}
+            {initial && vendorId ? (
+              <div className="mt-6 border-t pt-4">
+                <VendorAttachments vendorId={vendorId} />
+              </div>
             ) : (
               <div className="space-y-3"><Skeleton className="h-9 w-full" /><Skeleton className="h-9 w-full" /></div>
             )}

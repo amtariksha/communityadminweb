@@ -30,6 +30,10 @@ export interface VendorFormValues {
   /** Percent as typed; blank = none. */
   tds_rate: string;
   is_active: boolean;
+  /** VEND-08 — the society's own Vendor ID, comma-separated alternate e-mails, notes. */
+  vendor_code: string;
+  alternate_emails: string;
+  notes: string;
   /** VEND-05 — accounting defaults that fill the vendor's new invoices. */
   defaults: VendorDefaultsValues;
 }
@@ -49,6 +53,9 @@ export type VendorPayload = Partial<VendorDefaultsPayload> & Partial<{
   tds_section: string | null;
   tds_rate: number | null;
   is_active: boolean;
+  vendor_code: string | null;
+  alternate_emails: string | null;
+  notes: string | null;
 }>;
 
 type TextField = Exclude<keyof VendorFormValues, 'is_active' | 'tds_rate' | 'name' | 'defaults'>;
@@ -56,13 +63,15 @@ type TextField = Exclude<keyof VendorFormValues, 'is_active' | 'tds_rate' | 'nam
 const TEXT_FIELDS: readonly TextField[] = [
   'contact_person', 'phone', 'email', 'address', 'pan', 'gstin',
   'bank_name', 'bank_branch', 'bank_account_number', 'bank_ifsc', 'tds_section',
+  'vendor_code', 'alternate_emails', 'notes',
 ];
 
 export function emptyVendorForm(): VendorFormValues {
   return {
     name: '', contact_person: '', phone: '', email: '', address: '', pan: '', gstin: '',
     bank_name: '', bank_branch: '', bank_account_number: '', bank_ifsc: '',
-    tds_section: '', tds_rate: '', is_active: true, defaults: emptyDefaults(),
+    tds_section: '', tds_rate: '', is_active: true,
+    vendor_code: '', alternate_emails: '', notes: '', defaults: emptyDefaults(),
   };
 }
 
@@ -101,6 +110,9 @@ export function vendorFormFromVendor(vendor: Vendor): VendorFormValues {
     tds_section: vendor.tds_section ?? '',
     tds_rate: vendor.tds_rate == null ? '' : String(Number(vendor.tds_rate)),
     is_active: vendor.is_active,
+    vendor_code: vendor.vendor_code ?? '',
+    alternate_emails: (vendor.alternate_emails ?? []).join(', '),
+    notes: vendor.notes ?? '',
     defaults: defaultsFromVendor(vendor),
   };
 }
@@ -138,6 +150,16 @@ export function updateVendorPayload(initial: VendorFormValues, values: VendorFor
   if (rateValue(values.tds_rate) !== rateValue(initial.tds_rate)) payload.tds_rate = rateValue(values.tds_rate);
   if (values.is_active !== initial.is_active) payload.is_active = values.is_active;
   return { ...payload, ...changedDefaultsPayload(initial.defaults, values.defaults, initial.gstin, values.gstin) };
+}
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** What is wrong with the alternate e-mails as typed (comma-separated, at most five), or null. */
+export function alternateEmailsError(typed: string): string | null {
+  const list = typed.split(',').map((entry) => entry.trim()).filter(Boolean);
+  const bad = list.find((entry) => !EMAIL.test(entry));
+  if (bad !== undefined) return `"${bad}" is not a valid e-mail address`;
+  return list.length > 5 ? 'At most 5 alternate e-mail addresses' : null;
 }
 
 /** The rate % configured for a TDS section code, if any. */
