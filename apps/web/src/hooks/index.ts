@@ -651,6 +651,7 @@ export {
   useCreateEmployee,
   useUpdateEmployee,
   useDeactivateEmployee,
+  useReactivateEmployee,
   useCreateShift,
   useUpdateShift,
   useDeleteShift,

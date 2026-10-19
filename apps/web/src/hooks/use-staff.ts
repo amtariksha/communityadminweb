@@ -141,9 +141,15 @@ export interface RbacPermission {
 // Filter types
 // ---------------------------------------------------------------------------
 
+export type StaffSearchKey = 'any' | 'name' | 'category' | 'phone';
+
 export interface StaffFilters {
   staff_type?: string;
   is_active?: boolean;
+  // STAFF-10: the classic status lists and their search.
+  status?: 'active' | 'retired';
+  q?: string;
+  search_by?: StaffSearchKey;
   page?: number;
   limit?: number;
 }
@@ -273,7 +279,7 @@ export const rbacKeys = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function staffFiltersToParams(
+export function staffFiltersToParams(
   filters?: StaffFilters,
 ): Record<string, string> | undefined {
   if (!filters) return undefined;
@@ -281,6 +287,9 @@ function staffFiltersToParams(
   const params: Record<string, string> = {};
   if (filters.staff_type) params.staff_type = filters.staff_type;
   if (filters.is_active !== undefined) params.is_active = String(filters.is_active);
+  if (filters.status) params.status = filters.status;
+  if (filters.q) params.q = filters.q;
+  if (filters.q && filters.search_by && filters.search_by !== 'any') params.search_by = filters.search_by;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   return params;
@@ -489,6 +498,20 @@ export function useDeactivateEmployee() {
   return useMutation({
     mutationFn: function deactivateEmployee(id: string) {
       return api.delete<void>(`/staff/employees/${id}`);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: staffKeys.employees() });
+    },
+  });
+}
+
+/** Retired → Active (STAFF-10); the API gives a guard their role back. */
+export function useReactivateEmployee() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function reactivateEmployee(id: string) {
+      return api.post<{ data: Staff }>(`/staff/employees/${id}/reactivate`);
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: staffKeys.employees() });

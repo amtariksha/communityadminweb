@@ -25,6 +25,7 @@ import {
   Ellipsis,
 } from 'lucide-react';
 import { HELPDESK_BASE, HELPDESK_SCOPES } from '@/lib/helpdesk-scopes';
+import { STAFF_ACTIVE, STAFF_BASE, STAFF_RETIRED } from '@/lib/staff-statuses';
 import { MEETING_STATES, MEETINGS_BASE } from '@/lib/meeting-states';
 import { statusMenuChildren } from './status-menu';
 
@@ -306,17 +307,19 @@ export const classicMenu: MenuNode[] = [
     id: 'staff',
     label: 'Staff Manager',
     icon: icon(Users),
-    // Employees, attendance and shifts are tabs of one page until
-    // STAFF-10 gives each status its own route.
-    href: '/staff',
+    // STAFF-10: status lists as menu items (SB-05), Add Staff as a page
+    // (SB-07). Today's /staff stays inside the module.
+    create: { label: 'Add Staff', href: '/staff/new' },
+    close: '/staff/active',
+    aliases: ['/staff'],
     logs: ['staff'],
     children: [
-      planned('staff.setup', 'Setup', 'STAFF-10'),
-      planned('staff.active', 'Active', 'STAFF-10'),
-      planned('staff.attendance', 'Attendance', 'STAFF-10'),
-      planned('staff.temp', 'Temp', 'STAFF-10'),
-      planned('staff.retired', 'Retired', 'STAFF-10'),
-      planned('staff.blacklisted', 'Blacklisted', 'STAFF-10'),
+      { id: 'staff.setup', label: 'Setup', href: '/staff/setup', logs: ['staff'] },
+      ...statusMenuChildren('staff', STAFF_BASE, [STAFF_ACTIVE], { logs: ['staff'] }),
+      { id: 'staff.attendance', label: 'Attendance', href: '/staff/attendance', logs: ['staff'] },
+      planned('staff.temp', 'Temp', 'STAFF-40'),
+      ...statusMenuChildren('staff', STAFF_BASE, [STAFF_RETIRED], { logs: ['staff'] }),
+      planned('staff.blacklisted', 'Blacklisted', 'STAFF-40'),
       planned('staff.reports', 'Reports', 'REP-04'),
     ],
   },

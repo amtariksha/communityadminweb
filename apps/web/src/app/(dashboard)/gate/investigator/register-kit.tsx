@@ -10,23 +10,8 @@ import { todayIST } from '@/lib/date';
  * search, range, block) where any filter change goes back to page 1.
  */
 
-const IST = 'Asia/Kolkata';
-
-/** `19 Oct 2026` on India's calendar; `—` when there is no date. */
-export function indiaDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: IST });
-}
-
-/** `09:45 am` on India's clock; `—` when there is no time. */
-export function indiaTime(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: IST });
-}
-
-export function indiaDateTime(iso: string | null | undefined): string {
-  return iso ? `${indiaDate(iso)} ${indiaTime(iso)}` : '—';
-}
+// India-time formatting is shared with other classic lists.
+export { indiaDate, indiaDateTime, indiaTime } from '@/lib/india-time';
 
 export const REGISTER_PAGE_SIZES = [25, 50, 100] as const;
 

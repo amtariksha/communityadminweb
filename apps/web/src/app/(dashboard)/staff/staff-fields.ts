@@ -6,6 +6,25 @@ import type { Staff } from '@/hooks/use-staff';
  * staff_shift_assignments.effective_from / effective_until.
  */
 
+// Values MUST match the society_staff.staff_type CHECK constraint
+// (migration 018). Mismatches 400 with a raw pg CheckViolation that
+// leaks "Failing row contains …" to the user.
+export const STAFF_TYPE_OPTIONS = [
+  { value: 'security_guard', label: 'Security Guard' },
+  { value: 'watchman', label: 'Watchman' },
+  { value: 'housekeeping', label: 'Housekeeping' },
+  { value: 'gardener', label: 'Gardener' },
+  { value: 'plumber', label: 'Plumber' },
+  { value: 'electrician', label: 'Electrician' },
+  { value: 'manager', label: 'Manager' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+/** "Security Guard" for `security_guard`; the slug itself when unknown. */
+export function staffTypeLabel(type: string): string {
+  return STAFF_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? type.replace(/_/g, ' ');
+}
+
 export const LEAVE_TYPE_OPTIONS = [
   { value: 'casual', label: 'Casual Leave' },
   { value: 'sick', label: 'Sick Leave' },

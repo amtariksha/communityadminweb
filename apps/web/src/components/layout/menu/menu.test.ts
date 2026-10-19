@@ -137,6 +137,17 @@ describe('classic modules', () => {
     expect(find(withoutGate, 'gate.investigator')?.tabs?.map((tab) => tab.href)).toEqual(['/gate/investigator/panic-alerts']);
   });
 
+  it('Staff Manager lists Setup, the status lists and Attendance; Add Staff is a page', () => {
+    expect(find(menu, 'staff')?.children?.map((child) => [child.label, child.href])).toEqual([
+      ['Setup', '/staff/setup'],
+      ['Active', '/staff/active'],
+      ['Attendance', '/staff/attendance'],
+      ['Retired', '/staff/retired'],
+    ]);
+    expect(find(menu, 'staff')?.create).toEqual({ label: 'Add Staff', href: '/staff/new' });
+    expect(governingItem('/staff/retired')?.href).toBe('/staff');
+  });
+
   it('HelpDesk screens follow the Tickets feature and supervisor visibility', () => {
     const withoutTickets = visibleMenu(classicMenu, { roleAllowlist: null, enabledFeatures: ['invoices'] });
     expect(find(withoutTickets, 'helpdesk')).toBeUndefined();
@@ -233,6 +244,10 @@ describe('locate', () => {
     ['/gate', 'gate', 'gate.investigator', 'gate.investigator.visitors'],
     ['/staff/salaries', 'more', 'more.salaries', undefined],
     ['/staff', 'staff', undefined, undefined],
+    ['/staff/active', 'staff', 'staff.active', undefined],
+    ['/staff/retired', 'staff', 'staff.retired', undefined],
+    ['/staff/new', 'staff', 'staff.create', undefined],
+    ['/staff/2b7e1c4e-0000-4000-8000-000000000001/edit', 'staff', undefined, undefined],
     ['/units/approved', 'units', 'units.approved', undefined],
     ['/units/directory', 'units', 'units.directory', undefined],
     ['/income/registers/invoices', 'income', 'income.registers', 'income.registers.invoices'],

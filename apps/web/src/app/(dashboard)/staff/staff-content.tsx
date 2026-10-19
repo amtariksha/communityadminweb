@@ -45,12 +45,8 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
-import { FormFieldError } from '@/components/ui/form-field-error';
 import { formatDate } from '@/lib/utils';
-import { normalizePhone } from '@/lib/validation';
 import { ClickablePhone } from '@/components/ui/clickable-contact';
-import { UserSearchSelect } from '@/components/ui/user-search-select';
-import type { UserSearchHit } from '@/hooks/use-user-search';
 import {
   useStaffEmployees,
   useStaffShifts,
@@ -58,8 +54,6 @@ import {
   useStaffAttendance,
   useStaffLeaves,
   useGates,
-  useCreateEmployee,
-  useUpdateEmployee,
   useDeactivateEmployee,
   useAssignStaff,
   useClockIn,
@@ -81,28 +75,16 @@ import type {
 import {
   EMPLOYEE_EXPORT_COLUMNS,
   LEAVE_TYPE_OPTIONS,
+  STAFF_TYPE_OPTIONS,
   dateOnly,
   employeeExportRows,
   formatDuration,
-  salaryFromInput,
 } from './staff-fields';
 import { ShiftTemplatesCard } from './shift-templates-card';
+import { EmployeeForm } from './employee-form/employee-form';
 
 type TabKey = 'employees' | 'shifts' | 'attendance' | 'leaves';
 
-// Values MUST match the society_staff.staff_type CHECK constraint
-// (migration 018). Mismatches 400 with a raw pg CheckViolation that
-// leaks "Failing row contains …" to the user.
-const STAFF_TYPE_OPTIONS = [
-  { value: 'security_guard', label: 'Security Guard' },
-  { value: 'watchman', label: 'Watchman' },
-  { value: 'housekeeping', label: 'Housekeeping' },
-  { value: 'gardener', label: 'Gardener' },
-  { value: 'plumber', label: 'Plumber' },
-  { value: 'electrician', label: 'Electrician' },
-  { value: 'manager', label: 'Manager' },
-  { value: 'other', label: 'Other' },
-];
 
 function formatTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '-';
@@ -144,31 +126,9 @@ export default function StaffContent(): ReactNode {
   const [staffTypeFilter, setStaffTypeFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
 
-  // Employee dialog state
+  // Employee form (STAFF-10: the same form is the classic Add Staff page)
   const [addEmployeeOpen, setAddEmployeeOpen] = useState(false);
-  const [editingEmployeeId, setEditingEmployeeId] = useState('');
-  const [empName, setEmpName] = useState('');
-  const [empPhone, setEmpPhone] = useState('');
-  // Unified user-directory wiring (UserSearchSelect). When the
-  // operator picks an existing user, `empSelected` carries the
-  // directory hit so we can warn if they're already a resident in
-  // this society — staff role assigned on top of resident is a
-  // legitimate but rare combination, worth surfacing once.
-  const [empSelected, setEmpSelected] = useState<UserSearchHit | null>(null);
-  const [empType, setEmpType] = useState('security_guard');
-  const [empDesignation, setEmpDesignation] = useState('');
-  const [empAddress, setEmpAddress] = useState('');
-  const [empEmergencyContact, setEmpEmergencyContact] = useState('');
-  const [empJoinedAt, setEmpJoinedAt] = useState('');
-  const [empSalary, setEmpSalary] = useState('');
-
-  // QA #89 — join date can't be more than 30 days in the future. Same
-  // ceiling enforced server-side in employeeJoinDate Zod helper.
-  const maxJoinDate = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 30);
-    return d.toISOString().split('T')[0];
-  }, []);
+  const [editingEmployee, setEditingEmployee] = useState<Staff | null>(null);
 
   // Assignment dialog state
   const [assignOpen, setAssignOpen] = useState(false);
@@ -244,8 +204,6 @@ export default function StaffContent(): ReactNode {
   const gates = gatesQuery.data ?? [];
 
   // Mutations
-  const createEmployee = useCreateEmployee();
-  const updateEmployee = useUpdateEmployee();
   const deactivateEmployee = useDeactivateEmployee();
   const assignStaff = useAssignStaff();
   const clockIn = useClockIn();
@@ -258,128 +216,9 @@ export default function StaffContent(): ReactNode {
   // Employee handlers
   // ---------------------------------------------------------------------------
 
-  function resetEmployeeForm(): void {
-    setEditingEmployeeId('');
-    setEmpName('');
-    setEmpPhone('');
-    setEmpSelected(null);
-    setEmpType('security_guard');
-    setEmpDesignation('');
-    setEmpAddress('');
-    setEmpEmergencyContact('');
-    setEmpJoinedAt('');
-    setEmpSalary('');
-  }
-
-  function handleOpenEditEmployee(emp: Staff): void {
-    setEditingEmployeeId(emp.id);
-    setEmpName(emp.name);
-    setEmpPhone(emp.phone);
-    setEmpSelected(null);
-    setEmpType(emp.staff_type);
-    setEmpDesignation(emp.designation ?? '');
-    setEmpAddress(emp.address ?? '');
-    setEmpEmergencyContact(emp.emergency_contact ?? '');
-    setEmpJoinedAt(dateOnly(emp.join_date));
-    setEmpSalary(emp.salary == null ? '' : String(Number(emp.salary)));
+  function openEmployeeForm(employee: Staff | null): void {
+    setEditingEmployee(employee);
     setAddEmployeeOpen(true);
-  }
-
-  function handleSaveEmployee(e: FormEvent): void {
-    e.preventDefault();
-    // Phone checks mirror units-content.tsx — reject non-Indian-mobile
-    // inputs client-side so the 400 from the backend's indianPhone
-    // Zod never lands as a late toast. Emergency contact is optional;
-    // primary phone is required on create (the input itself is
-    // `disabled` on edit, so edit path skips the check).
-    const emergency = normalizePhone(empEmergencyContact);
-    if (!emergency.ok) {
-      addToast({
-        title: 'Invalid emergency contact',
-        description: emergency.error,
-        variant: 'destructive',
-      });
-      return;
-    }
-    const salary = salaryFromInput(empSalary);
-    if (!salary.ok) {
-      addToast({ title: 'Invalid salary', description: 'Enter a monthly amount above zero.', variant: 'destructive' });
-      return;
-    }
-
-    if (editingEmployeeId) {
-      updateEmployee.mutate(
-        {
-          id: editingEmployeeId,
-          data: {
-            name: empName,
-            staff_type: empType,
-            designation: empDesignation || undefined,
-            address: empAddress || undefined,
-            emergency_contact: emergency.value || undefined,
-            salary: salary.value,
-          },
-        },
-        {
-          onSuccess() {
-            setAddEmployeeOpen(false);
-            resetEmployeeForm();
-            addToast({ title: 'Employee updated', variant: 'success' });
-          },
-          onError(error) {
-            addToast({ title: 'Failed to update employee', description: friendlyError(error), variant: 'destructive' });
-          },
-        },
-      );
-    } else {
-      // Prefer the directory hit (no duplicate users row); fall back
-      // to the typed value when no autocomplete row was picked.
-      const rawPhone = empSelected?.phone ?? empPhone;
-      const phone = normalizePhone(rawPhone);
-      if (!phone.ok || !phone.value) {
-        addToast({
-          title: 'Invalid phone number',
-          description: phone.ok
-            ? 'Phone is required.'
-            : phone.error,
-          variant: 'destructive',
-        });
-        return;
-      }
-      // QA #89 — block obvious typos before they hit the API. The
-      // server still enforces this in employeeJoinDate, but failing
-      // fast keeps the toast useful.
-      if (empJoinedAt && empJoinedAt > maxJoinDate) {
-        addToast({
-          title: 'Invalid join date',
-          description: 'Join date cannot be more than 30 days in the future.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      createEmployee.mutate(
-        {
-          name: empName,
-          phone: phone.value,
-          staff_type: empType,
-          designation: empDesignation || undefined,
-          address: empAddress || undefined,
-          emergency_contact: emergency.value || undefined,
-          join_date: empJoinedAt || undefined,
-          salary: salary.value,
-        },
-        {
-          onSuccess() {
-            setAddEmployeeOpen(false);
-            resetEmployeeForm();
-            addToast({ title: 'Employee added', variant: 'success' });
-          },
-          onError(error) {
-            addToast({ title: 'Failed to add employee', description: friendlyError(error), variant: 'destructive' });
-          },
-        },
-      );
-    }
   }
 
   function handleDeactivateEmployee(id: string): void {
@@ -594,164 +433,20 @@ export default function StaffContent(): ReactNode {
                   <option value="true">Active</option>
                   <option value="false">Inactive</option>
                 </Select>
-                <Dialog open={addEmployeeOpen} onOpenChange={(open) => { setAddEmployeeOpen(open); if (!open) resetEmployeeForm(); }}>
-                  <DialogTrigger>
-                    <Button size="sm" onClick={() => resetEmployeeForm()}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Employee
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <form onSubmit={handleSaveEmployee}>
-                      <DialogHeader>
-                        <DialogTitle>{editingEmployeeId ? 'Edit Employee' : 'Add Employee'}</DialogTitle>
-                        <DialogDescription>
-                          {editingEmployeeId ? 'Update employee details' : 'Add a new staff member'}
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="emp-name">Name</Label>
-                            <Input
-                              id="emp-name"
-                              required
-                              placeholder="Full name"
-                              value={empName}
-                              onChange={(e) => setEmpName(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Phone</Label>
-                            {editingEmployeeId ? (
-                              <Input
-                                type="tel"
-                                disabled
-                                value={empPhone}
-                              />
-                            ) : (
-                              <>
-                                <UserSearchSelect
-                                  scope="tenant"
-                                  value={empSelected}
-                                  placeholder="Phone or name (3+ chars)…"
-                                  onChange={(hit) => {
-                                    setEmpSelected(hit);
-                                    if (hit) {
-                                      setEmpPhone(hit.phone);
-                                      if (hit.name && !empName) setEmpName(hit.name);
-                                    }
-                                  }}
-                                  onQueryChange={(q) => setEmpPhone(q)}
-                                />
-                                {empSelected && empSelected.units.some((u) => u.is_current) && (
-                                  <p className="text-xs text-amber-600">
-                                    Already a resident of{' '}
-                                    {empSelected.units
-                                      .filter((u) => u.is_current)
-                                      .map((u) => u.unit_number)
-                                      .join(', ')}
-                                    . Adding a staff role on top is supported but unusual.
-                                  </p>
-                                )}
-                              </>
-                            )}
-                            <FormFieldError
-                              error={editingEmployeeId ? updateEmployee.error : createEmployee.error}
-                              field="phone"
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="emp-type">Staff Type</Label>
-                            <Select
-                              id="emp-type"
-                              value={empType}
-                              onChange={(e) => setEmpType(e.target.value)}
-                            >
-                              {STAFF_TYPE_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                              ))}
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="emp-designation">Designation</Label>
-                            <Input
-                              id="emp-designation"
-                              placeholder="e.g., Head Guard"
-                              value={empDesignation}
-                              onChange={(e) => setEmpDesignation(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="emp-address">Address</Label>
-                          <Input
-                            id="emp-address"
-                            placeholder="Home address"
-                            value={empAddress}
-                            onChange={(e) => setEmpAddress(e.target.value)}
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="emp-emergency">Emergency Contact</Label>
-                            <Input
-                              id="emp-emergency"
-                              type="tel"
-                              placeholder="10-digit phone"
-                              maxLength={10}
-                              pattern="[0-9]{10}"
-                              inputMode="numeric"
-                              title="Emergency contact must be exactly 10 digits"
-                              value={empEmergencyContact}
-                              onChange={(e) => setEmpEmergencyContact(e.target.value.replace(/\D/g, ''))}
-                            />
-                          </div>
-                          {!editingEmployeeId && (
-                            <div className="space-y-2">
-                              <Label htmlFor="emp-joined">Join Date</Label>
-                              <Input
-                                id="emp-joined"
-                                type="date"
-                                value={empJoinedAt}
-                                // QA #89 — server rejects join dates more
-                                // than 30 days in the future. Clamp the
-                                // date picker so the typo can't be picked
-                                // and the form-level check below catches
-                                // anything pasted by hand.
-                                max={maxJoinDate}
-                                onChange={(e) => setEmpJoinedAt(e.target.value)}
-                              />
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="emp-salary">Monthly Salary (₹)</Label>
-                          <Input
-                            id="emp-salary"
-                            type="number"
-                            inputMode="decimal"
-                            min="0"
-                            step="0.01"
-                            placeholder="Optional"
-                            value={empSalary}
-                            onChange={(e) => setEmpSalary(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <DialogClose>
-                          <Button type="button" variant="outline">Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={createEmployee.isPending || updateEmployee.isPending}>
-                          {(createEmployee.isPending || updateEmployee.isPending) ? 'Saving...' : 'Save'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+                <Button size="sm" onClick={() => openEmployeeForm(null)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Employee
+                </Button>
+                {addEmployeeOpen && (
+                  <EmployeeForm
+                    key={editingEmployee?.id ?? 'new'}
+                    mode="dialog"
+                    open
+                    employee={editingEmployee}
+                    onClose={() => setAddEmployeeOpen(false)}
+                    onSaved={() => setAddEmployeeOpen(false)}
+                  />
+                )}
               </div>
             </div>
           </CardHeader>
@@ -807,7 +502,7 @@ export default function StaffContent(): ReactNode {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleOpenEditEmployee(emp)}>
+                            <DropdownMenuItem onClick={() => openEmployeeForm(emp)}>
                               Edit
                             </DropdownMenuItem>
                             {emp.is_active && (
