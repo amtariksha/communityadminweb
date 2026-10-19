@@ -39,7 +39,9 @@ const journalLineSchema = z.object({
 
 export const createJournalEntrySchema = z
   .object({
-    financial_year_id: z.string().uuid('Financial year ID must be a valid UUID'),
+    // GL-11: optional; when absent the API takes the open financial year
+    // holding entry_date (Create Journal Entry as a page sends no year).
+    financial_year_id: z.string().uuid('Financial year ID must be a valid UUID').optional(),
     entry_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
     narration: z.string().min(1, 'Narration is required').max(1000),
     source_type: z.string().max(50).default('manual'),

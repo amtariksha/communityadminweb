@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -92,6 +92,17 @@ describe('General Ledger classic routes', () => {
     const tabs = screen.getByRole('navigation', { name: 'Sub-tabs' });
     expect([...tabs.querySelectorAll('a')].map((link) => link.textContent)).toEqual(['Assets', 'Liabilities', 'Income', 'Expense']);
     expect(screen.getByRole('link', { name: 'Income' }).getAttribute('aria-current')).toBe('page');
+  });
+
+  it('offers Create Journal Entry on every page and frames it as a page of the module', () => {
+    renderAt('/general-ledger/trial-balance');
+    expect(screen.getByRole('link', { name: 'Create Journal Entry' }).getAttribute('href')).toBe(
+      '/general-ledger/journal-entries/create',
+    );
+    cleanup();
+    renderAt('/general-ledger/journal-entries/create');
+    expect(screen.getByRole('heading', { name: 'General Ledger › Create Journal Entry' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Close' })).toBeNull();
   });
 
   it('offers Show Logs over the page’s records', () => {

@@ -29,6 +29,8 @@ export interface FormFrameProps {
   /** A second way to save, in both presentations, e.g. "Save and Close Meeting". */
   secondaryAction?: { label: string; onClick: () => void };
   saving?: boolean;
+  /** Save stays disabled, e.g. while a journal does not balance. */
+  saveDisabled?: boolean;
   /** The screen's own word for Save, e.g. "Submit". */
   saveLabel?: string;
   /** Shown on the save button while saving, e.g. "Submitting…". */
@@ -51,11 +53,11 @@ export function FormFrame(props: FormFrameProps): ReactNode {
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (!saving) onSave();
+    if (!saving && !props.saveDisabled) onSave();
   }
 
   const saveButton = (
-    <Button type="submit" form={headingId + '-form'} disabled={saving}>
+    <Button type="submit" form={headingId + '-form'} disabled={saving || props.saveDisabled}>
       {saving ? savingLabel : saveLabel}
     </Button>
   );

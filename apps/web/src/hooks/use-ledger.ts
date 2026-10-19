@@ -208,7 +208,9 @@ interface CreateFinancialYearInput {
 }
 
 interface CreateJournalEntryInput {
-  financial_year_id: string;
+  // GL-11: absent, the API takes the open year holding entry_date.
+  financial_year_id?: string;
+  voucher_type_name?: string;
   entry_date: string;
   narration: string;
   source_type?: string;

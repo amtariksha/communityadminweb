@@ -343,7 +343,9 @@ export const classicMenu: MenuNode[] = [
     label: 'General Ledger',
     icon: icon(BookOpen),
     // GL-09: the six children as classic routes. Today's /accounts (tree,
-    // dialogs, Tally import) stays inside Chart of Accounts.
+    // dialogs, Tally import) stays inside Chart of Accounts. Create Journal
+    // Entry is a page of its own (GL-11), offered on every page.
+    create: { label: 'Create Journal Entry', href: '/general-ledger/journal-entries/create' },
     children: [
       {
         id: 'ledger.chart',
@@ -363,7 +365,7 @@ export const classicMenu: MenuNode[] = [
         // An entry's own page (/general-ledger/journal-entries/<id>) stays here.
         aliases: ['/general-ledger/journal-entries'],
         tabs: [
-          planned('ledger.journal.create', 'Create Journal Entry', 'GL-11'),
+          { id: 'ledger.journal.create', label: 'Create Journal Entry', href: '/general-ledger/journal-entries/create', logs: ['journal_entry'] },
           { id: 'ledger.journal.old', label: 'Old Journal Entries', href: '/general-ledger/journal-entries/old', logs: ['journal_entry'] },
           {
             id: 'ledger.journal.bulk-posting',
