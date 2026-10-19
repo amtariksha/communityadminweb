@@ -8,11 +8,15 @@ import { Select } from '@/components/ui/select';
 import { UnitSearchSelect } from '@/components/ui/unit-search-select';
 import { useAccountGroups } from '@/hooks/use-ledger';
 import { useUnitBlocks } from '@/hooks/use-unit-blocks';
-import { useUnits } from '@/hooks/use-units';
+import { UNIT_PICKER_LIMIT, useUnits } from '@/hooks/use-units';
 import { useVendors } from '@/hooks/use-vendors';
 import type { CatalogueParam } from '@/hooks/use-reports';
 import { useHelpdeskCategories } from '@/hooks/use-helpdesk';
 import { ANY, CUSTOM_RANGE, financialYearOptions, type ParamValue, type RangeValue } from './report-param-state';
+
+// The unit and vendor parameters offer every unit and vendor, not the first 100
+// (GET /units allows up to 1,000; GET /vendors has no cap and is held to the same).
+const VENDOR_PICKER_LIMIT = 1000;
 
 /** One widget per parameter type (REP-S2). */
 
@@ -80,7 +84,7 @@ function BlockField({ param, value, onChange }: FieldProps): ReactNode {
 }
 
 function UnitField({ value, onChange }: FieldProps): ReactNode {
-  const units = useUnits({ limit: 100 });
+  const units = useUnits({ limit: UNIT_PICKER_LIMIT });
   return <UnitSearchSelect value={String(value)} onChange={onChange} units={units.data?.data ?? []} placeholder="Choose a unit" />;
 }
 
@@ -101,7 +105,7 @@ function AccountGroupField({ param, value, onChange }: FieldProps): ReactNode {
 }
 
 function VendorField({ param, value, onChange }: FieldProps): ReactNode {
-  const vendors = useVendors({ limit: 100 });
+  const vendors = useVendors({ limit: VENDOR_PICKER_LIMIT });
   const options = [{ value: '', label: 'Choose a vendor' }, ...(vendors.data?.data ?? []).map((vendor) => ({ value: vendor.id, label: vendor.name }))];
   return (
     <Select id={fieldId(param)} aria-label={param.label} value={String(value)} onChange={(event) => onChange(event.target.value)}>

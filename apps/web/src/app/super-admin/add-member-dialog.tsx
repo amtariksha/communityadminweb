@@ -18,7 +18,7 @@ import {
 import { useToast } from '@/components/ui/toast';
 import {
   useAddMemberWithRoles,
-  useTenants,
+  useTenantChoices,
   useSuperAdminUnitsForTenant,
 } from '@/hooks';
 import { normalizePhone } from '@/lib/validation';
@@ -60,10 +60,11 @@ export default function AddMemberDialog({
   // until the tenant is picked (super-admin units list keys off it).
   const [selectedUnitId, setSelectedUnitId] = useState('');
 
-  const tenantsQuery = useTenants({ limit: 100 });
+  // Every society, not only the first 100 (GET /tenants pages at 100).
+  const tenantsQuery = useTenantChoices();
   const addMember = useAddMemberWithRoles();
 
-  const tenantsList = tenantsQuery.data?.data ?? [];
+  const tenantsList = tenantsQuery.data ?? [];
   const effectiveTenantId = preselectedTenantId ?? selectedTenantId;
   const unitsQuery = useSuperAdminUnitsForTenant(effectiveTenantId || null);
   const tenantUnits = unitsQuery.data ?? [];

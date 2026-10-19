@@ -44,7 +44,7 @@ import {
   useAssignUserRole,
   useRemoveUserRole,
   useSuperAdminUnitsForTenant,
-  useTenants,
+  useTenantChoices,
 } from '@/hooks';
 import {
   useDeleteSuperAdminUser,
@@ -138,7 +138,8 @@ export default function UserManagement(): ReactNode {
     include_deleted: showDeleted,
   });
   const userRolesQuery = useSuperAdminUserRoles(selectedUser?.id ?? '');
-  const tenantsQuery = useTenants({ limit: 100 });
+  // Every society, not only the first 100 (GET /tenants pages at 100).
+  const tenantsQuery = useTenantChoices();
   // Units for the currently-selected tenant — only fetched when the
   // resident-role branch is active. Disabled otherwise.
   const unitsQuery = useSuperAdminUnitsForTenant(newRoleTenantId || null);
@@ -153,7 +154,7 @@ export default function UserManagement(): ReactNode {
   const users = usersQuery.data?.data ?? [];
   const totalUsers = usersQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalUsers / ITEMS_PER_PAGE));
-  const tenantsList = tenantsQuery.data?.data ?? [];
+  const tenantsList = tenantsQuery.data ?? [];
   const roles = userRolesQuery.data ?? [];
 
   // ---------------------------------------------------------------------------

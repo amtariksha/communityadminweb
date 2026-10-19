@@ -278,6 +278,7 @@ export {
   useTenantStats,
   useSuperAdminDashboard,
 } from './use-tenants';
+export { useTenantChoices } from './use-tenant-choices';
 
 // Dashboard
 export {

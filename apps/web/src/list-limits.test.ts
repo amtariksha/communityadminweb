@@ -44,6 +44,17 @@ describe('list limits', () => {
     expect(sourceFiles(SRC).flatMap(overCap)).toEqual([]);
   });
 
+  it('the report unit / vendor parameters and the super-admin society pickers offer every row', () => {
+    const read = (file: string) => readFileSync(join(SRC, file), 'utf8');
+    const report = read('components/reports/run/report-param-fields.tsx');
+    expect(report).toContain('useUnits({ limit: UNIT_PICKER_LIMIT })');
+    expect(report).toContain('useVendors({ limit: VENDOR_PICKER_LIMIT })');
+    for (const file of ['app/super-admin/user-management.tsx', 'app/super-admin/add-member-dialog.tsx']) {
+      expect(read(file)).not.toMatch(/useTenants\(/);
+      expect(read(file)).toContain('useTenantChoices()');
+    }
+  });
+
   it('finds the lookup callers it is meant to check', () => {
     const accounts = readFileSync(join(SRC, 'app/(dashboard)/accounts/accounts-content.tsx'), 'utf8');
     expect([...accounts.matchAll(HOOK_CALL)].map(([, hook, limit]) => `${hook} ${limit}`)).toContain(
