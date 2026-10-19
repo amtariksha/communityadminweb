@@ -38,6 +38,8 @@ import { WaiveInterestButton } from './waive-interest-button';
 import { activeRules } from '@/lib/invoice-rule';
 import { describeInvoicePayer, INVOICE_PARTY_OPTIONS, type InvoiceParty } from './invoice-payer';
 import { INVOICE_LEDGER_OPTIONS, ledgerFilterIgnored, type InvoiceLedger } from './invoice-ledger';
+import { EmailStatusCell } from '@/components/billing-email/email-status-cell';
+import { canWriteFinance } from '@/lib/finance-roles';
 import { describeGenerateResult } from './generate-summary';
 import { ExportButton } from '@/components/ui/export-button';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
@@ -189,6 +191,7 @@ export default function InvoicesContent(): ReactNode {
   const [unitFilter, setUnitFilter] = useState('');
   const [partyFilter, setPartyFilter] = useState<InvoiceParty>('');
   const [ledgerFilter, setLedgerFilter] = useState<InvoiceLedger>('');
+  const [canSendEmail] = useState(() => canWriteFinance());
   // Free-text search + invoice-date range. Wired to `q`,
   // `start_date`, `end_date` query params on the backend.
   // `searchInput` is the unthrottled text; `searchQ` is what's
@@ -966,6 +969,7 @@ export default function InvoicesContent(): ReactNode {
                 <TableHead className="text-right">Balance</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Due Date</TableHead>
+                <TableHead>E-mail</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -1018,6 +1022,12 @@ export default function InvoicesContent(): ReactNode {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(String(invoice.due_date))}
+                    </TableCell>
+                    <TableCell>
+                      {/* INC-31 — the latest e-mail of the invoice; E-mail again. */}
+                      {invoice.status !== 'draft' && (
+                        <EmailStatusCell documentType="invoice" documentId={invoice.id} status={invoice.email_status} canSend={canSendEmail} />
+                      )}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>

@@ -53,6 +53,7 @@ describe('ModuleFrame', () => {
     expect(links.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
       ['Receipts', '/income/registers/receipts'],
       ['Invoices', '/income/registers/invoices'],
+      ['Email Status Monitor', '/income/registers/email-status'],
     ]);
     expect(screen.getByRole('link', { name: 'Invoices' }).getAttribute('aria-current')).toBe('page');
     expect(screen.getByRole('link', { name: 'Receipts' }).getAttribute('aria-current')).toBeNull();
@@ -104,6 +105,7 @@ describe('screen finder', () => {
     expect(matchScreens(entries, 'income invoices').map((e) => e.href)).toEqual([
       '/income/registers/receipts',
       '/income/registers/invoices',
+      '/income/registers/email-status',
     ]);
     expect(matchScreens(entries, 'panic').map((e) => e.path)).toEqual([
       'Gate & Visitors › Incident Investigator › Panic Alerts',

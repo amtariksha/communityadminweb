@@ -219,7 +219,7 @@ export const classicMenu: MenuNode[] = [
             aliases: ['/invoices'],
             logs: ['invoice'],
           },
-          planned('income.registers.email-status', 'Email Status Monitor', 'INC-31'),
+          { id: 'income.registers.email-status', label: 'Email Status Monitor', href: '/income/registers/email-status', logs: ['billing-email-log'] },
         ],
       },
       // INC-29 — filter, pick and remind units with dues past due.

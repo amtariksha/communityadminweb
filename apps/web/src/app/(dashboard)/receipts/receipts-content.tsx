@@ -1,5 +1,6 @@
 'use client';
 
+import { EmailStatusCell } from '@/components/billing-email/email-status-cell';
 import { useState, useMemo, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Plus, Receipt, IndianRupee, CreditCard, Banknote, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -663,6 +664,7 @@ export default function ReceiptsContent(): ReactNode {
                 <TableHead>Date</TableHead>
                 <TableHead>Reference</TableHead>
                 <TableHead>Allocated To</TableHead>
+                <TableHead>E-mail</TableHead>
                 {/* QA #463 — actions column (Download PDF) added so the
                     operator can hand the payer a printed receipt
                     immediately after recording cash / cheque / UPI. */}
@@ -745,6 +747,15 @@ export default function ReceiptsContent(): ReactNode {
                           </div>
                         );
                       })()}
+                    </TableCell>
+                    <TableCell>
+                      {/* INC-31 — the latest e-mail of the receipt; E-mail again. */}
+                      <EmailStatusCell
+                        documentType="receipt"
+                        documentId={receipt.id}
+                        status={(receipt as { email_status?: string | null }).email_status}
+                        canSend={finance.canWrite}
+                      />
                     </TableCell>
                     <TableCell className="text-right">
                       {/* QA #463 — per-row PDF download. Generates

@@ -119,6 +119,8 @@ export interface Invoice {
   lpi_amount: number;
   /** Absent on an API older than INC-14. */
   income_scope?: InvoiceIncomeScope;
+  /** INC-31 — the latest billing e-mail of the invoice (null = never); absent on an older API. */
+  email_status?: string | null;
   created_at: string | Date;
   // Joined fields returned by the list query.
   unit_number?: string | null;

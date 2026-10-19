@@ -111,6 +111,7 @@ describe('classic modules', () => {
     expect(find(menu, 'income.registers')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Receipts', '/income/registers/receipts'],
       ['Invoices', '/income/registers/invoices'],
+      ['Email Status Monitor', '/income/registers/email-status'],
     ]);
   });
 
@@ -231,7 +232,7 @@ describe('visibleMenu', () => {
       enabledFeatures: ['invoices'],
     });
     const registers = find(menu, 'income.registers');
-    expect(registers?.tabs?.map((tab) => tab.label)).toEqual(['Invoices']);
+    expect(registers?.tabs?.map((tab) => tab.label)).toEqual(['Invoices', 'Email Status Monitor']);
     expect(entryHref(registers as MenuNode)).toBe('/income/registers/invoices');
     expect(find(menu, 'bank')).toBeUndefined();
   });
