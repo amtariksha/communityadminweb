@@ -34,9 +34,12 @@ const FILE_BUTTONS: ReadonlyArray<{ label: string; format: ServerExportFormat }>
   { label: 'CSV', format: 'csv' },
 ];
 
-function exportError(error: unknown): string {
-  const code = (error as { code?: unknown } | null)?.code;
-  if (code === 'export_too_large' && error instanceof Error) return error.message;
+export function exportError(error: unknown): string {
+  const failure = error as { code?: unknown; status?: unknown } | null;
+  if (failure?.code === 'export_too_large' && error instanceof Error) return error.message;
+  // The admin web ships before the API: a list whose export route is not
+  // deployed yet answers 404.
+  if (failure?.status === 404) return 'This export is not available yet.';
   return `Could not export: ${friendlyError(error)}`;
 }
 

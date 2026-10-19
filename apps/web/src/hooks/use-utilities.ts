@@ -23,6 +23,9 @@ export interface Meter {
   is_active: boolean;
   created_at: string;
   unit_number?: string;
+  /** Latest reading (UTIL-05); absent from an older API. */
+  last_reading_value?: string | number | null;
+  last_reading_date?: string | null;
 }
 
 export interface Reading {
@@ -61,13 +64,21 @@ export interface UtilityBill {
   period_to: string;
   consumption: number;
   amount: number;
+  /** As shown: follows the linked invoice (paid, or pending again once cancelled). */
   status: 'pending' | 'invoiced' | 'paid';
   invoice_id: string | null;
+  invoice_status?: string | null;
   reading_id: string | null;
   created_at: string;
   meter_number?: string;
   meter_type?: string;
   unit_number?: string;
+}
+
+/** A meter Calculate Bills did not bill, and why (UTIL-02). */
+export interface SkippedMeter {
+  meter_number: string;
+  reason: string;
 }
 
 export interface UtilityStats {
@@ -395,7 +406,7 @@ export function useCalculateBills() {
 
   return useMutation({
     mutationFn: function calculateBills(input: CalculateBillsInput) {
-      return api.post<{ data: { bills: UtilityBill[]; count: number } }>(
+      return api.post<{ data: { bills: UtilityBill[]; count: number; skipped?: SkippedMeter[] } }>(
         '/utilities/calculate',
         input,
       );

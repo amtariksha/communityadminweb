@@ -180,6 +180,18 @@ describe('DataTable — export strip', () => {
     expect(saveBlob).not.toHaveBeenCalled();
   });
 
+  it('says the export is not available yet when its route is not deployed (404)', async () => {
+    download.mockRejectedValue(Object.assign(new Error('Not Found'), { status: 404 }));
+    renderTable({ export: exportConfig });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'CSV' }));
+    });
+
+    expect(screen.getByRole('alert').textContent).toBe('This export is not available yet.');
+    expect(saveBlob).not.toHaveBeenCalled();
+  });
+
   it('Copy puts the visible page on the clipboard', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
