@@ -171,3 +171,30 @@ export function useRunSchedule() {
     },
   });
 }
+
+export interface PublishItem {
+  key: string;
+  params?: Record<string, unknown>;
+  title?: string;
+}
+
+export interface PublishOutcome {
+  key: string;
+  status: 'published' | 'awaiting_approval' | 'failed';
+  announcement_id?: string;
+  publication_id?: string;
+  error_code?: string;
+}
+
+/** Post reports to the notice board, one notice each (REP-09). */
+export function usePublishReports() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: function publishReports(body: { items: PublishItem[]; audience: string; expires_on?: string }) {
+      return api.post<{ data: PublishOutcome[] }>('/report-catalogue/publish', body);
+    },
+    onSuccess: function refresh() {
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+    },
+  });
+}

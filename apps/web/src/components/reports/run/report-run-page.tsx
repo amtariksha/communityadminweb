@@ -12,6 +12,7 @@ import { todayIST } from '@/lib/date';
 import { CatalogueState } from '../catalogue-state';
 import { ADMIN_REPORTS_HREF, moduleReportsPage } from '../module-reports';
 import { ScheduleCell } from '../report-index-table';
+import { PublishDialog } from '../publish/publish-dialog';
 import { ReportOutput } from './report-output';
 import { ReportParamField } from './report-param-fields';
 import { initialValues, requestParams, type ParamValue } from './report-param-state';
@@ -51,6 +52,18 @@ function Breadcrumb({ origin, name }: { origin: Origin; name: string }): ReactNo
       ))}
       <span className="text-foreground">{name}</span>
     </nav>
+  );
+}
+
+function PublishButton({ row }: { row: CatalogueRow }): ReactNode {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button type="button" variant="outline" disabled={!row.available} onClick={() => setOpen(true)}>
+        Publish
+      </Button>
+      {open && <PublishDialog rows={[row]} open={open} onOpenChange={setOpen} />}
+    </>
   );
 }
 
@@ -143,9 +156,7 @@ function ReportRun({ row, from }: { row: CatalogueRow; from?: string }): ReactNo
         actions={
           <>
             {row.schedulable && <ScheduleCell row={row} />}
-            <Button type="button" variant="outline" disabled title="Publishing comes with a later release">
-              Publish
-            </Button>
+            {row.publishable && <PublishButton row={row} />}
             <Link href={origin.closeHref} className={buttonVariants({ variant: 'outline' })} data-slot="button" data-size="default">
               Close
             </Link>

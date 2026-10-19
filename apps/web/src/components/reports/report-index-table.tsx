@@ -8,11 +8,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { CatalogueRow } from '@/hooks/use-reports';
 import { runHref, type IndexSection } from './report-index-model';
 import { ScheduleDialog } from './schedule/schedule-dialog';
+import { canPublish } from './publish/publish-state';
+import type { PublishSelection } from './publish/publish-selection';
 
 interface ReportIndexTableProps {
   section: IndexSection;
   /** Module page the rows are opened from (run page breadcrumb and Close). */
   from?: string;
+  /** Publish ticks; without it the boxes are shown disabled. */
+  selection?: PublishSelection;
 }
 
 function ReportName({ row, from }: { row: CatalogueRow; from?: string }): ReactNode {
@@ -50,14 +54,21 @@ export function ScheduleCell({ row }: { row: CatalogueRow }): ReactNode {
   );
 }
 
-// Publish (REP-09) is not built yet: shown, disabled.
-
-function PublishCell({ row }: { row: CatalogueRow }): ReactNode {
-  return <input type="checkbox" disabled aria-label={`Publish ${row.name}`} className="h-4 w-4" />;
+function PublishCell({ row, selection }: { row: CatalogueRow; selection?: PublishSelection }): ReactNode {
+  return (
+    <input
+      type="checkbox"
+      aria-label={`Publish ${row.name}`}
+      className="h-4 w-4"
+      disabled={!selection || !canPublish(row)}
+      checked={selection?.selected.has(row.key) ?? false}
+      onChange={() => selection?.toggle(row.key)}
+    />
+  );
 }
 
 /** One module section of the index: No. · Report Name · Schedule Report · Publish Report. */
-export function ReportIndexTable({ section, from }: ReportIndexTableProps): ReactNode {
+export function ReportIndexTable({ section, from, selection }: ReportIndexTableProps): ReactNode {
   return (
     <section aria-label={section.title} className="space-y-2">
       <h3 className="text-base font-semibold">{`${section.section}. ${section.title}`}</h3>
@@ -87,7 +98,7 @@ export function ReportIndexTable({ section, from }: ReportIndexTableProps): Reac
                     <ReportName row={row} from={from} />
                   </TableCell>
                   <TableCell>{row.schedulable ? <ScheduleCell row={row} /> : null}</TableCell>
-                  <TableCell>{row.publishable ? <PublishCell row={row} /> : null}</TableCell>
+                  <TableCell>{row.publishable ? <PublishCell row={row} selection={selection} /> : null}</TableCell>
                 </TableRow>
               ))}
             </Fragment>

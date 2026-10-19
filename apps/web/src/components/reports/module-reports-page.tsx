@@ -8,6 +8,7 @@ import { CatalogueState } from './catalogue-state';
 import { indexSections } from './report-index-model';
 import { ReportIndexTable } from './report-index-table';
 import { moduleReportsByCatalogue } from './module-reports';
+import { PublishSelectedButton, usePublishSelection } from './publish/publish-selection';
 
 /**
  * A module's Reports page (REP-S6): its section of Admin Reports, inside
@@ -28,6 +29,7 @@ function ModuleReports({ module }: { module: string }): ReactNode {
   const catalogue = useReportCatalogue(module);
   const sections = useMemo(() => indexSections(catalogue.data ?? []), [catalogue.data]);
   const from = moduleReportsByCatalogue(module)?.menuId;
+  const selection = usePublishSelection();
 
   if (!catalogue.data) {
     return <CatalogueState loading={catalogue.isLoading} error={catalogue.error} onRetry={() => void catalogue.refetch()} />;
@@ -37,8 +39,11 @@ function ModuleReports({ module }: { module: string }): ReactNode {
   }
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <PublishSelectedButton rows={catalogue.data} selection={selection} />
+      </div>
       {sections.map((section) => (
-        <ReportIndexTable key={section.section} section={section} from={from} />
+        <ReportIndexTable key={section.section} section={section} from={from} selection={selection} />
       ))}
     </div>
   );

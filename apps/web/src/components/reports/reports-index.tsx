@@ -9,6 +9,7 @@ import { useReportCatalogue, type CatalogueRow } from '@/hooks/use-reports';
 import { CatalogueState } from './catalogue-state';
 import { filterCatalogue, indexSections } from './report-index-model';
 import { ReportIndexTable } from './report-index-table';
+import { PublishSelectedButton, usePublishSelection, type PublishSelection } from './publish/publish-selection';
 
 function SearchForm({ onSearch }: { onSearch: (text: string) => void }): ReactNode {
   const [draft, setDraft] = useState('');
@@ -36,7 +37,7 @@ function SearchForm({ onSearch }: { onSearch: (text: string) => void }): ReactNo
   );
 }
 
-function IndexBody({ rows, search }: { rows: readonly CatalogueRow[]; search: string }): ReactNode {
+function IndexBody({ rows, search, selection }: { rows: readonly CatalogueRow[]; search: string; selection: PublishSelection }): ReactNode {
   const sections = useMemo(() => indexSections(filterCatalogue(rows, search)), [rows, search]);
   if (sections.length === 0) {
     return (
@@ -48,7 +49,7 @@ function IndexBody({ rows, search }: { rows: readonly CatalogueRow[]; search: st
   return (
     <div className="space-y-6">
       {sections.map((section) => (
-        <ReportIndexTable key={section.section} section={section} />
+        <ReportIndexTable key={section.section} section={section} selection={selection} />
       ))}
     </div>
   );
@@ -62,6 +63,7 @@ function IndexBody({ rows, search }: { rows: readonly CatalogueRow[]; search: st
 export function ReportsIndex(): ReactNode {
   const catalogue = useReportCatalogue();
   const [search, setSearch] = useState('');
+  const selection = usePublishSelection();
 
   return (
     <div className="space-y-4">
@@ -70,9 +72,7 @@ export function ReportsIndex(): ReactNode {
         description="Every report of every module, numbered as the committee quotes them."
         actions={
           <>
-            <Button type="button" variant="outline" disabled title="Publishing comes with a later release">
-              Publish selected reports to Notice Board
-            </Button>
+            <PublishSelectedButton rows={catalogue.data ?? []} selection={selection} />
             <Link href="/" className={buttonVariants({ variant: 'outline' })} data-slot="button" data-size="default">
               Close
             </Link>
@@ -81,7 +81,7 @@ export function ReportsIndex(): ReactNode {
       />
       <SearchForm onSearch={setSearch} />
       {catalogue.data ? (
-        <IndexBody rows={catalogue.data} search={search} />
+        <IndexBody rows={catalogue.data} search={search} selection={selection} />
       ) : (
         <CatalogueState loading={catalogue.isLoading} error={catalogue.error} onRetry={() => void catalogue.refetch()} />
       )}

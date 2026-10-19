@@ -9,6 +9,7 @@ vi.mock('@/hooks/use-reports', () => ({
   useReportCatalogue: () => catalogue.current,
   useReportSchedules: () => ({ data: [] }),
   useSaveSchedule: () => ({ mutate: vi.fn(), isPending: false }),
+  usePublishReports: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 vi.mock('@/lib/vocabulary', () => ({ useWord: () => (word: string) => word }));
 
@@ -64,14 +65,23 @@ describe('Admin Reports index (REP-04)', () => {
     expect(screen.getByRole('link', { name: 'Balance Sheet' }).getAttribute('href')).toBe('/admin-reports/gl.balance_sheet');
   });
 
-  it('offers Schedule on a report and not on a Planned row; Publish waits for REP-09', () => {
+  it('offers Schedule and Publish on a report and neither on a Planned row', () => {
     render(<ReportsIndex />);
 
     const row = screen.getByText('Balance Sheet').closest('tr') as HTMLElement;
     expect((within(row).getByRole('button', { name: 'Schedule' }) as HTMLButtonElement).disabled).toBe(false);
-    expect((within(row).getByRole('checkbox') as HTMLInputElement).disabled).toBe(true);
+    expect((within(row).getByRole('checkbox') as HTMLInputElement).disabled).toBe(false);
     const planned = screen.getByText('Ageing Report - by Unit').closest('tr') as HTMLElement;
     expect((within(planned).getByRole('button', { name: 'Schedule' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((within(planned).getByRole('checkbox') as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it('enables "Publish selected reports" once a row is ticked', () => {
+    render(<ReportsIndex />);
+    const bulk = screen.getByRole('button', { name: 'Publish selected reports to Notice Board' }) as HTMLButtonElement;
+    expect(bulk.disabled).toBe(true);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Publish Balance Sheet' }));
+    expect(bulk.disabled).toBe(false);
   });
 
   it("shows an active schedule's frequency in its row", () => {
