@@ -329,12 +329,33 @@ export const classicMenu: MenuNode[] = [
     id: 'bank',
     label: 'Bank & Cash',
     icon: icon(Landmark),
+    // BANK-06. Today's /bank (all tabs) stays inside the module; Close goes
+    // to the accounts register, where the desk works (Setup is BANK-17).
+    aliases: ['/bank'],
+    close: '/bank-cash/accounts',
     children: [
-      planned('bank.setup', 'Setup', 'BANK-06'),
-      planned('bank.transfer', 'Transfer', 'BANK-06'),
-      { id: 'bank.accounts', label: 'Bank & Cash Accounts', href: '/bank' },
+      planned('bank.setup', 'Setup', 'BANK-17'),
+      { id: 'bank.transfer', label: 'Transfer', href: '/bank-cash/transfer', logs: ['bank_transfer'] },
+      {
+        id: 'bank.accounts',
+        label: 'Bank & Cash Accounts',
+        tabs: [
+          { id: 'bank.accounts.register', label: 'Register', href: '/bank-cash/accounts', logs: ['bank_account', 'bank_reconciliation'] },
+          { id: 'bank.accounts.cheques', label: 'Cheques', href: '/bank-cash/accounts/cheques', logs: ['bank_cheque'] },
+          { id: 'bank.accounts.statement-import', label: 'Statement Import', href: '/bank-cash/accounts/statement-import', logs: ['bank_reconciliation'] },
+          { id: 'bank.accounts.new', label: 'Add account', href: '/bank-cash/accounts/new', logs: ['bank_account'] },
+        ],
+      },
+      // The four tax registers are BANK-15; today's tax screen meanwhile.
       { id: 'bank.taxes', label: 'Taxes', href: '/tax' },
-      planned('bank.fixed-deposits', 'Fixed Deposits', 'BANK-06'),
+      {
+        id: 'bank.fixed-deposits',
+        label: 'Fixed Deposits',
+        tabs: [
+          { id: 'bank.fixed-deposits.active', label: 'Active Fixed Deposits', href: '/bank-cash/fixed-deposits/active', logs: ['fixed_deposit'] },
+          { id: 'bank.fixed-deposits.archived', label: 'Archived Fixed Deposits', href: '/bank-cash/fixed-deposits/archived', logs: ['fixed_deposit'] },
+        ],
+      },
       reportsMenuNode('bank', 'REP-06'),
     ],
   },

@@ -54,6 +54,8 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   ['/general-ledger/trial-balance', '/reports'],
   ['/general-ledger/financial-statements', '/reports'],
   ['/general-ledger', '/accounts'],
+  // Bank & Cash follows the Bank entry.
+  ['/bank-cash', '/bank'],
 ];
 
 /**
