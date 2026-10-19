@@ -11,7 +11,8 @@ import { useUnitBlocks } from '@/hooks/use-unit-blocks';
 import { useUnits } from '@/hooks/use-units';
 import { useVendors } from '@/hooks/use-vendors';
 import type { CatalogueParam } from '@/hooks/use-reports';
-import { CUSTOM_RANGE, financialYearOptions, type ParamValue, type RangeValue } from './report-param-state';
+import { useHelpdeskCategories } from '@/hooks/use-helpdesk';
+import { ANY, CUSTOM_RANGE, financialYearOptions, type ParamValue, type RangeValue } from './report-param-state';
 
 /** One widget per parameter type (REP-S2). */
 
@@ -53,7 +54,7 @@ function RangeField({ param, value, onChange }: FieldProps): ReactNode {
   return (
     <div className="flex flex-wrap items-end gap-2">
       <Select id={fieldId(param)} aria-label={param.label} value={range.preset} onChange={(event) => set({ preset: event.target.value })}>
-        <Options options={RANGE_PRESETS} />
+        <Options options={param.required ? RANGE_PRESETS : [{ value: ANY, label: 'Any date' }, ...RANGE_PRESETS]} />
       </Select>
       {range.preset === CUSTOM_RANGE && (
         <>
@@ -110,11 +111,19 @@ function VendorField({ param, value, onChange }: FieldProps): ReactNode {
 }
 
 function ChoiceField({ param, value, onChange, options }: FieldProps & { options: ReadonlyArray<{ value: string; label: string }> }): ReactNode {
+  // An optional choice can be left on All (no filter).
+  const shown = param.required || param.type !== 'select' ? options : [{ value: ANY, label: 'All' }, ...options];
   return (
     <Select id={fieldId(param)} aria-label={param.label} value={String(value)} onChange={(event) => onChange(event.target.value)}>
-      <Options options={options} />
+      <Options options={shown} />
     </Select>
   );
+}
+
+function TicketCategoryField(props: FieldProps): ReactNode {
+  const categories = useHelpdeskCategories();
+  const options = (categories.data ?? []).map((category) => ({ value: category.id, label: category.name }));
+  return <ChoiceField {...props} options={options} param={{ ...props.param, type: 'select' }} />;
 }
 
 function Widget(props: FieldProps): ReactNode {
@@ -141,6 +150,8 @@ function Widget(props: FieldProps): ReactNode {
       return <AccountGroupField {...props} />;
     case 'vendor':
       return <VendorField {...props} />;
+    case 'ticket_category':
+      return <TicketCategoryField {...props} />;
     case 'boolean':
       return <input id={fieldId(param)} type="checkbox" className="h-4 w-4" checked={value === true} onChange={(event) => onChange(event.target.checked)} />;
     case 'number':

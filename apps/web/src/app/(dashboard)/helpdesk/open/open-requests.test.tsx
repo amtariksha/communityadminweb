@@ -284,6 +284,26 @@ describe('Open Requests', () => {
     expect(nav.replace).toHaveBeenCalledWith('/helpdesk/requests/7');
   });
 
+  it('prints the Job Report Summary and downloads Full Request Details with the filters in force (HELP-22)', async () => {
+    download.mockReset().mockResolvedValue(new Blob(['x']));
+    const { container } = render(<RequestsList />);
+    fireEvent.change(container.querySelector('select#request-category') as HTMLSelectElement, { target: { value: 'c-plumbing' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Print Job Report Summary/ }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Download Full Request Details/ }));
+    });
+
+    expect(download).toHaveBeenCalledWith('/tickets/export/job-summary', {
+      params: { scope: 'open', category_id: 'c-plumbing', layout: 'classic' },
+    });
+    expect(download).toHaveBeenCalledWith('/tickets/export/full-details', {
+      params: { scope: 'open', category_id: 'c-plumbing', layout: 'classic', format: 'xlsx' },
+    });
+  });
+
   it('says so when there is nothing open', () => {
     mocks.useTickets.mockReturnValue({ data: { data: [], total: 0 }, isLoading: false });
     render(<RequestsList />);

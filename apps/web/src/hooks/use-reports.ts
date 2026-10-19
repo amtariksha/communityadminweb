@@ -20,6 +20,8 @@ export type ReportParamType =
   | 'income_account'
   | 'account_group'
   | 'vendor'
+  /** One of the society's helpdesk categories (HELP-21). */
+  | 'ticket_category'
   | 'select'
   | 'boolean'
   | 'number';

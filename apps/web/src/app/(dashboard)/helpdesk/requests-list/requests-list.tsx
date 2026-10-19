@@ -11,6 +11,7 @@ import { useAdminLayout } from '@/lib/layout-context';
 import { useWord } from '@/lib/vocabulary';
 import { TicketDetailDialog } from '../../tickets/ticket-detail-dialog';
 import { requestColumns } from './request-columns';
+import { RequestDownloads } from './request-downloads';
 import { NO_REQUEST_FILTERS, RequestFilters, type RequestFilterValues } from './request-filters';
 
 // Their lists show 100 rows a page (HELP-S7).
@@ -83,6 +84,7 @@ function ScopeList({ scope }: { scope: HelpdeskScope }): ReactNode {
   return (
     <div className="space-y-4">
       {layout === 'standard' && <PageHeader title={scope.label} />}
+      {scope.slug === 'open' && <RequestDownloads params={{ ...ticketListParams(filters), layout }} />}
       <DataTable<Ticket>
         title={scope.label}
         columns={columns}
