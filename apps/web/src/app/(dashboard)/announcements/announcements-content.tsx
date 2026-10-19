@@ -48,6 +48,7 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { ExportButton } from '@/components/ui/export-button';
 import { formatDate } from '@/lib/utils';
+import { dateIST, todayIST } from '@/lib/date';
 import { useToast } from '@/components/ui/toast';
 import { useOpenOnNewParam } from '@/hooks/use-open-on-new-param';
 import { friendlyError } from '@/lib/api-error';
@@ -89,6 +90,14 @@ function getPublishStatus(announcement: Announcement): { label: string; variant:
     return { label: 'Published', variant: 'success' };
   }
   return { label: 'Draft', variant: 'warning' };
+}
+
+/** ANN-01 — rows carry no `status`; the export takes the label the table shows. */
+export function exportRows(announcements: Announcement[]): Record<string, unknown>[] {
+  return announcements.map((announcement) => ({
+    ...announcement,
+    status: getPublishStatus(announcement).label,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -180,7 +189,8 @@ export default function AnnouncementsContent(): ReactNode {
     setFormTargetAudience(announcement.target_audience);
     setFormIsPinned(announcement.is_pinned);
     setFormPublishNow(false);
-    setFormExpiresAt(announcement.expires_at ?? '');
+    // ANN-01 — stored as 23:59:59 IST of the day; the date input shows that day.
+    setFormExpiresAt(announcement.expires_at ? dateIST(announcement.expires_at) : '');
     setFormOpen(true);
   }
 
@@ -298,7 +308,7 @@ export default function AnnouncementsContent(): ReactNode {
         actions={
           <>
             <ExportButton
-              data={announcements as unknown as Record<string, unknown>[]}
+              data={exportRows(announcements)}
               filename={`announcements-${new Date().toISOString().split('T')[0]}`}
               columns={[
                 { key: 'title', label: 'Title' },
@@ -333,7 +343,6 @@ export default function AnnouncementsContent(): ReactNode {
                 <option value="">All</option>
                 <option value="general">General</option>
                 <option value="maintenance">Maintenance</option>
-                <option value="security">Security</option>
                 <option value="event">Event</option>
                 <option value="emergency">Emergency</option>
               </Select>
@@ -534,7 +543,6 @@ export default function AnnouncementsContent(): ReactNode {
                 >
                   <option value="general">General</option>
                   <option value="maintenance">Maintenance</option>
-                  <option value="security">Security</option>
                   <option value="event">Event</option>
                   <option value="emergency">Emergency</option>
                 </Select>
@@ -580,8 +588,13 @@ export default function AnnouncementsContent(): ReactNode {
                   id="form-expires"
                   type="date"
                   value={formExpiresAt}
+                  min={todayIST()}
                   onChange={(e) => setFormExpiresAt(e.target.value)}
+                  aria-describedby="form-expires-hint"
                 />
+                <p id="form-expires-hint" className="text-xs text-muted-foreground">
+                  Expires at the end of this day
+                </p>
               </div>
             </div>
 

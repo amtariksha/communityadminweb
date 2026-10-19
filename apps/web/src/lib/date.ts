@@ -15,6 +15,16 @@ export function todayIST(): string {
   }).format(new Date());
 }
 
+/**
+ * The India calendar day (`YYYY-MM-DD`) of an instant — e.g. an
+ * announcement's `expires_at` (23:59:59 IST) shown back in a date input.
+ */
+export function dateIST(instant: string): string {
+  const parsed = new Date(instant);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(parsed);
+}
+
 export interface MonthRange {
   /** `YYYY-MM`. */
   month: string;
