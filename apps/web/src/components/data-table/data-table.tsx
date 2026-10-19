@@ -59,6 +59,8 @@ export interface DataTableProps<Row> {
   error?: unknown;
   onRetry?: () => void;
   emptyText: string;
+  /** Extra classes for a row, e.g. a visitor past their stay in red (GATE-10). */
+  rowClassName?: (row: Row) => string | undefined;
   /**
    * Fetch mode (SB-09): the classic register opens empty with this panel
    * above it and shows rows only once `fetched` (the page sets it when the
@@ -159,7 +161,7 @@ function BodyRows<Row>(props: DataTableProps<Row> & { span: number }): ReactNode
   }
   if (rows.length === 0) return <StateRow span={span}>{props.emptyText}</StateRow>;
   return rows.map((row, index) => (
-    <TableRow key={props.rowKey(row)}>
+    <TableRow key={props.rowKey(row)} className={props.rowClassName?.(row)}>
       <TableCell>{serialNumber(page, pageSize, index)}</TableCell>
       {columns.map((column) => (
         <TableCell key={column.key} className={column.className}>

@@ -262,19 +262,33 @@ export const classicMenu: MenuNode[] = [
     id: 'gate',
     label: 'Gate & Visitors',
     icon: icon(ShieldCheck),
+    // GATE-10: the gate registers under Incident Investigator (our Staff
+    // Logs, Parcels and Overstays after theirs, GATE-D2). Today's /gate
+    // stays inside the module as Visitors.
     children: [
-      planned('gate.setup', 'Setup', 'GATE-10'),
-      planned('gate.move', 'Move In/Out', 'GATE-10'),
-      planned('gate.usage', 'Usage Summary', 'GATE-10'),
+      planned('gate.setup', 'Setup', 'GATE-40'),
+      planned('gate.move', 'Move In/Out', 'GATE-45'),
+      planned('gate.usage', 'Usage Summary', 'GATE-44'),
       {
         id: 'gate.investigator',
         label: 'Incident Investigator',
         tabs: [
-          { id: 'gate.investigator.visitors', label: 'Visitors & Logs', href: '/gate' },
+          {
+            id: 'gate.investigator.visitors',
+            label: 'Visitors',
+            href: '/gate/investigator/visitors',
+            aliases: ['/gate'],
+            logs: ['gate'],
+          },
           { id: 'gate.investigator.panic', label: 'Panic Alerts', href: '/sos' },
+          planned('gate.investigator.incidents', 'Incidents', 'GATE-42'),
+          { id: 'gate.investigator.vehicles', label: 'Vehicle Logs', href: '/gate/investigator/vehicles' },
+          { id: 'gate.investigator.staff-logs', label: 'Staff Logs', href: '/gate/investigator/staff-logs', logs: ['gate'] },
+          { id: 'gate.investigator.parcels', label: 'Parcels', href: '/gate/investigator/parcels', logs: ['gate'] },
+          { id: 'gate.investigator.overstays', label: 'Overstays', href: '/gate/investigator/overstays', logs: ['gate'] },
         ],
       },
-      planned('gate.reports', 'Reports', 'REP-04'),
+      planned('gate.reports', 'Reports', 'GATE-30'),
     ],
   },
   {

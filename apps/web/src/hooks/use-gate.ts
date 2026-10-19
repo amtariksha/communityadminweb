@@ -30,6 +30,10 @@ export interface Visitor {
   created_by: string | null;
   created_by_name?: string;
   created_at: string;
+  // GATE-10: the unit's block and the gate of entry.
+  block?: string | null;
+  gate_name?: string | null;
+  gate_id?: string | null;
 }
 
 export interface StaffLog {
@@ -46,6 +50,7 @@ export interface StaffLog {
   logged_by: string | null;
   logged_by_name?: string;
   created_at: string;
+  block?: string | null;
 }
 
 export interface Parcel {
@@ -63,6 +68,10 @@ export interface Parcel {
   received_by: string | null;
   received_by_name?: string;
   created_at: string;
+  block?: string | null;
+  delivery_mode?: string;
+  // Who collected: the directory user's name, else the typed name (GATE-10).
+  collected_by_display?: string | null;
 }
 
 export interface GateStats {
@@ -101,7 +110,15 @@ export interface UnrecognizedVehicle {
 // Filter types
 // ---------------------------------------------------------------------------
 
-export interface VisitorFilters {
+/** India days `YYYY-MM-DD`, a block and a search (GATE-10 registers). */
+export interface GateRegisterFilters {
+  date_from?: string;
+  date_to?: string;
+  block?: string;
+  q?: string;
+}
+
+export interface VisitorFilters extends GateRegisterFilters {
   status?: string;
   unit_id?: string;
   date?: string;
@@ -115,14 +132,14 @@ export interface MyVisitorFilters {
   limit?: number;
 }
 
-export interface StaffLogFilters {
+export interface StaffLogFilters extends Omit<GateRegisterFilters, 'block'> {
   date?: string;
   staff_type?: string;
   page?: number;
   limit?: number;
 }
 
-export interface ParcelFilters {
+export interface ParcelFilters extends GateRegisterFilters {
   unit_id?: string;
   status?: string;
   page?: number;
@@ -215,12 +232,21 @@ export const gateKeys = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function visitorFiltersToParams(
+function registerParams(filters: GateRegisterFilters): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (filters.date_from) params.date_from = filters.date_from;
+  if (filters.date_to) params.date_to = filters.date_to;
+  if (filters.block) params.block = filters.block;
+  if (filters.q) params.q = filters.q;
+  return params;
+}
+
+export function visitorFiltersToParams(
   filters?: VisitorFilters,
 ): Record<string, string> | undefined {
   if (!filters) return undefined;
 
-  const params: Record<string, string> = {};
+  const params: Record<string, string> = registerParams(filters);
   if (filters.status) params.status = filters.status;
   if (filters.unit_id) params.unit_id = filters.unit_id;
   if (filters.date) params.date = filters.date;
@@ -241,12 +267,12 @@ function myVisitorFiltersToParams(
   return params;
 }
 
-function staffLogFiltersToParams(
+export function staffLogFiltersToParams(
   filters?: StaffLogFilters,
 ): Record<string, string> | undefined {
   if (!filters) return undefined;
 
-  const params: Record<string, string> = {};
+  const params: Record<string, string> = registerParams(filters);
   if (filters.date) params.date = filters.date;
   if (filters.staff_type) params.staff_type = filters.staff_type;
   if (filters.page !== undefined) params.page = String(filters.page);
@@ -254,12 +280,12 @@ function staffLogFiltersToParams(
   return params;
 }
 
-function parcelFiltersToParams(
+export function parcelFiltersToParams(
   filters?: ParcelFilters,
 ): Record<string, string> | undefined {
   if (!filters) return undefined;
 
-  const params: Record<string, string> = {};
+  const params: Record<string, string> = registerParams(filters);
   if (filters.unit_id) params.unit_id = filters.unit_id;
   if (filters.status) params.status = filters.status;
   if (filters.page !== undefined) params.page = String(filters.page);

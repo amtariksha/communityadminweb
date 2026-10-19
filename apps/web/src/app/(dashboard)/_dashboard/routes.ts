@@ -21,7 +21,8 @@ export const DASHBOARD_ROUTES = {
   trialBalance: '/reports?report=trial-balance',
   financialStatements: '/reports?report=balance-sheet',
   utilities: '/utilities',
-  gate: '/gate',
+  // Incident Investigator's visitor register (GATE-10).
+  gate: '/gate/investigator/visitors',
   units: '/units',
   bookFacilities: '/amenities?new=1',
   newMeeting: '/governance?new=1',

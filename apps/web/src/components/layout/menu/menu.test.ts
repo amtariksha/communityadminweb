@@ -120,6 +120,21 @@ describe('classic modules', () => {
     expect(entryHref(find(menu, 'helpdesk.setup') as MenuNode)).toBe('/helpdesk/setup/categories');
   });
 
+  it('Gate & Visitors opens Incident Investigator with the gate registers as sub-tabs', () => {
+    expect(labels('gate')).toEqual(['Incident Investigator']);
+    expect(find(menu, 'gate.investigator')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
+      ['Visitors', '/gate/investigator/visitors'],
+      ['Panic Alerts', '/sos'],
+      ['Vehicle Logs', '/gate/investigator/vehicles'],
+      ['Staff Logs', '/gate/investigator/staff-logs'],
+      ['Parcels', '/gate/investigator/parcels'],
+      ['Overstays', '/gate/investigator/overstays'],
+    ]);
+    expect(governingItem('/gate/investigator/parcels')?.href).toBe('/gate');
+    const withoutGate = visibleMenu(classicMenu, { roleAllowlist: null, enabledFeatures: ['invoices'] });
+    expect(find(withoutGate, 'gate.investigator')?.tabs?.map((tab) => tab.href)).toEqual(['/sos']);
+  });
+
   it('HelpDesk screens follow the Tickets feature and supervisor visibility', () => {
     const withoutTickets = visibleMenu(classicMenu, { roleAllowlist: null, enabledFeatures: ['invoices'] });
     expect(find(withoutTickets, 'helpdesk')).toBeUndefined();
@@ -184,7 +199,13 @@ describe('visibleMenu', () => {
       roleAllowlist: getSidebarAllowlist('security_supervisor'),
     });
     const investigator = find(menu, 'gate.investigator');
-    expect(investigator?.tabs?.map((tab) => tab.href)).toEqual(['/gate']);
+    expect(investigator?.tabs?.map((tab) => tab.href)).toEqual([
+      '/gate/investigator/visitors',
+      '/gate/investigator/vehicles',
+      '/gate/investigator/staff-logs',
+      '/gate/investigator/parcels',
+      '/gate/investigator/overstays',
+    ]);
     expect(find(menu, 'income')).toBeUndefined();
     expect(find(menu, 'ledger')).toBeUndefined();
   });
@@ -202,6 +223,10 @@ describe('locate', () => {
     ['/accounts/123', 'ledger', 'ledger.chart', undefined],
     ['/accounts/reconcile-debtors', 'more', 'more.reconcile', undefined],
     ['/sos', 'gate', 'gate.investigator', 'gate.investigator.panic'],
+    ['/gate/investigator/visitors', 'gate', 'gate.investigator', 'gate.investigator.visitors'],
+    ['/gate/investigator/overstays', 'gate', 'gate.investigator', 'gate.investigator.overstays'],
+    // Today's gate page stays inside the module, as Visitors.
+    ['/gate', 'gate', 'gate.investigator', 'gate.investigator.visitors'],
     ['/staff/salaries', 'more', 'more.salaries', undefined],
     ['/staff', 'staff', undefined, undefined],
     ['/units/approved', 'units', 'units.approved', undefined],
