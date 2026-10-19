@@ -57,6 +57,9 @@ const ENTITY_TYPES = [
   { value: 'directory', label: 'Directory & Emergency Numbers' },
   { value: 'meeting', label: 'Meeting' },
   { value: 'meeting_task', label: 'Meeting Task' },
+  { value: 'material', label: 'Inventory Item' },
+  { value: 'stock_movement', label: 'Stock Movement' },
+  { value: 'inventory', label: 'Procurement' },
 ];
 
 const ACTION_TYPES = [

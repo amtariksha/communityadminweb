@@ -223,7 +223,9 @@ describe('AssetsContent', () => {
       fireEvent.click(screen.getByRole('button', { name: /add amc/i }));
       const dialog = dialogTitled('Create AMC Contract');
 
-      setField(/^asset/i, 'asset-1');
+      // The asset picker searches the server (no 100-asset preload).
+      setField(/^asset/i, 'DG');
+      fireEvent.click(within(dialog).getByRole('button', { name: /^DG Set/ }));
       setField(/^vendor/i, 'vendor-1');
       setField(/contract number/i, 'AMC-9');
       setField(/start date/i, '2026-11-01');
@@ -284,7 +286,9 @@ describe('AssetsContent', () => {
 
       expect((screen.getByLabelText(/description/i) as HTMLInputElement).required).toBe(true);
 
-      setField(/^asset/i, 'asset-1');
+      // The asset picker searches the server (no 100-asset preload).
+      setField(/^asset/i, 'DG');
+      fireEvent.click(within(dialog).getByRole('button', { name: /^DG Set/ }));
       setField(/service date/i, '2026-10-10');
       setField(/description/i, 'Oil and filter change');
       setField(/next service due/i, '2027-01-10');

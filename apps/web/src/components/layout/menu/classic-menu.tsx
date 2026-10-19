@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { HELPDESK_BASE, HELPDESK_SCOPES } from '@/lib/helpdesk-scopes';
 import { STAFF_ACTIVE, STAFF_BASE, STAFF_RETIRED } from '@/lib/staff-statuses';
+import { ASSET_STATUS_ROUTES, ASSETS_BASE } from '@/lib/asset-statuses';
 import { MEETING_STATES, MEETINGS_BASE } from '@/lib/meeting-states';
 import { statusMenuChildren } from './status-menu';
 
@@ -82,6 +83,9 @@ const planned = (id: string, label: string, ticket: string): MenuNode => ({
 // Society Profile's activity log: society settings, help and contact,
 // emergency numbers and the downloadable files (PROF-S8).
 const PROFILE_LOGS = ['tenant_settings', 'tenant-setting', 'tenant', 'directory', 'document'];
+
+// The stock book's log: items, movements and today's procurement writes.
+const INVENTORY_LOGS = ['material', 'stock_movement', 'inventory'];
 
 // "More" collects our extra screens; it is a group, not a module.
 export const MORE_GROUP_ID = 'more';
@@ -436,11 +440,52 @@ export const classicMenu: MenuNode[] = [
     id: 'assets',
     label: 'Asset & Inventory',
     icon: icon(Wrench),
+    // ASSET-07 to ASSET-10. Assets by status, the stock book, Add / Edit
+    // Asset as pages; today's maintenance tabs live under More.
+    close: '/asset-inventory/assets/active',
+    forms: [
+      { label: 'Add Asset', path: '/asset-inventory/assets/new' },
+      { label: 'Edit Asset', path: '/asset-inventory/assets/:id' },
+    ],
     children: [
-      planned('assets.setup', 'Setup', 'ASSET-07'),
-      { id: 'assets.assets', label: 'Assets', href: '/assets', logs: ['asset', 'amc_contract'] },
-      { id: 'assets.inventory', label: 'Inventory', href: '/inventory' },
-      planned('assets.reports', 'Reports', 'REP-04'),
+      {
+        id: 'assets.setup',
+        label: 'Setup',
+        tabs: [
+          { id: 'assets.setup.asset-categories', label: 'Setup Asset Categories', href: '/asset-inventory/setup/asset-categories' },
+          planned('assets.setup.inventory-categories', 'Setup Inventory Categories', 'ASSET-17'),
+        ],
+      },
+      {
+        id: 'assets.assets',
+        label: 'Assets',
+        create: { label: 'Add Asset', href: '/asset-inventory/assets/new' },
+        aliases: ['/asset-inventory/assets'],
+        tabs: [
+          ...statusMenuChildren('assets.assets', ASSETS_BASE, ASSET_STATUS_ROUTES, { logs: ['asset', 'amc_contract'] }),
+          planned('assets.assets.bulk', 'Bulk Upload', 'ASSET-15'),
+          { id: 'assets.assets.edits', label: 'View User Edits', href: '/asset-inventory/assets/edits' },
+        ],
+      },
+      {
+        id: 'assets.inventory',
+        label: 'Inventory',
+        aliases: ['/asset-inventory/inventory'],
+        tabs: [
+          { id: 'assets.inventory.active', label: 'Active', href: '/asset-inventory/inventory/active', logs: INVENTORY_LOGS },
+          planned('assets.inventory.bulk', 'Bulk Upload', 'ASSET-15'),
+          planned('assets.inventory.expired', 'Expired', 'ASSET-12'),
+          {
+            id: 'assets.inventory.procurement',
+            label: 'Procurement',
+            href: '/asset-inventory/inventory/procurement',
+            aliases: ['/inventory'],
+            logs: ['inventory'],
+          },
+          { id: 'assets.inventory.movements', label: 'Movement Log', href: '/asset-inventory/inventory/movements', logs: INVENTORY_LOGS },
+        ],
+      },
+      planned('assets.reports', 'Reports', 'ASSET-14'),
     ],
   },
   {
@@ -536,6 +581,8 @@ export const classicMenu: MenuNode[] = [
       { id: 'more.payments', label: 'Online Payments', href: '/payments' },
       { id: 'more.reconcile', label: 'Reconcile Debtors', href: '/accounts/reconcile-debtors' },
       { id: 'more.sos', label: 'SOS & Safety', href: '/sos' },
+      // Today's AMC, service history, checklists and audits (ASSET-S16).
+      { id: 'more.asset-maintenance', label: 'Asset Maintenance', href: '/assets', logs: ['asset', 'amc_contract'] },
       { id: 'more.patrol', label: 'Guard Patrol', href: '/patrol' },
       { id: 'more.cctv', label: 'CCTV', href: '/cctv' },
       { id: 'more.voting', label: 'Voting', href: '/voting' },

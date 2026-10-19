@@ -72,3 +72,47 @@ export function frequencyLabel(value: string | null | undefined): string {
   const slug = LEGACY_FREQUENCY[key] ?? key;
   return CHECKLIST_FREQUENCY_OPTIONS.find((option) => option.value === slug)?.label ?? value;
 }
+
+// 2026-05-09 (QA #350) \u2014 Asset type list must match the backend
+// Zod enum exactly:
+//   apps/api/src/modules/asset/asset.controller.ts \u2192
+//   z.enum(['equipment','furniture','vehicle','infrastructure',
+//           'electrical','plumbing','fire_safety','security','hvac',
+//           'elevator','generator','cctv','other'])
+// The previous UI exposed `heater`, `stp`, `pump`, `ac`, `gas_bank`,
+// `transformer`, `fire_system`, `gym_equipment`, `lift` \u2014 none of
+// which the backend accepts \u2192 every Save click 400'd with an enum
+// validation error. We could have expanded the backend enum but
+// the user preferred tightening the UI to the 13 sanctioned
+// values (per the bug-triage decision log). The label is the
+// human-readable label; the value is the wire format.
+export const ASSET_TYPES = [
+  { value: 'equipment', label: 'Equipment' },
+  { value: 'furniture', label: 'Furniture' },
+  { value: 'vehicle', label: 'Vehicle' },
+  { value: 'infrastructure', label: 'Infrastructure' },
+  { value: 'electrical', label: 'Electrical' },
+  { value: 'plumbing', label: 'Plumbing' },
+  { value: 'fire_safety', label: 'Fire Safety' },
+  { value: 'security', label: 'Security' },
+  { value: 'hvac', label: 'HVAC' },
+  { value: 'elevator', label: 'Elevator' },
+  { value: 'generator', label: 'Generator' },
+  { value: 'cctv', label: 'CCTV' },
+  { value: 'other', label: 'Other' },
+];
+
+// Values must match the backend enum + DB CHECK (migration 036); there
+// is no 'critical' — the worst state is 'non_functional'.
+export const CONDITIONS = [
+  { value: 'excellent', label: 'Excellent' },
+  { value: 'good', label: 'Good' },
+  { value: 'fair', label: 'Fair' },
+  { value: 'poor', label: 'Poor' },
+  { value: 'non_functional', label: 'Non-functional' },
+];
+
+/** The label of an asset category (today's 13 types). */
+export function categoryLabel(value: string | null | undefined): string {
+  return ASSET_TYPES.find((type) => type.value === value)?.label ?? (value ?? '').replace(/_/g, ' ');
+}

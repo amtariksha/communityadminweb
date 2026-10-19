@@ -10,7 +10,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useAssets, type Asset } from '@/hooks/use-assets';
+import { ASSET_STATUS_WORDS, mayRunStatusAction, statusActions } from '@/lib/asset-statuses';
+import { currentRole } from '@/lib/current-role';
 import { ASSET_TYPE_ICONS, conditionBadgeVariant, warrantyStatus } from './asset-ui';
+import { useAssetStatusChange } from './use-asset-status-change';
 
 export const ASSET_PAGE_SIZE = 25;
 const SEARCH_DELAY_MS = 300;
@@ -20,6 +23,35 @@ interface AssetListTabProps {
   addAsset: ReactNode;
   onEdit: (asset: Asset) => void;
   onQr: (asset: Asset) => void;
+}
+
+const STATUS_BADGE: Readonly<Record<string, 'success' | 'warning' | 'secondary'>> = {
+  active: 'success',
+  under_maintenance: 'warning',
+  decommissioned: 'secondary',
+};
+
+/** Send to Service, Back in Service, Mark Expired, Re-activate (ASSET-08). */
+function StatusButtons({ asset }: { asset: Asset }): ReactNode {
+  const change = useAssetStatusChange();
+  const role = currentRole();
+  return (
+    <>
+      {statusActions(asset.status)
+        .filter((action) => mayRunStatusAction(action, role))
+        .map((action) => (
+          <button
+            key={action.label}
+            type="button"
+            className="rounded px-1.5 py-0.5 text-xs text-primary hover:bg-muted"
+            disabled={change.pending}
+            onClick={() => change.run(asset, action)}
+          >
+            {action.label}
+          </button>
+        ))}
+    </>
+  );
 }
 
 function AssetRow({ asset, onEdit, onQr }: { asset: Asset } & Pick<AssetListTabProps, 'onEdit' | 'onQr'>): ReactNode {
@@ -36,13 +68,19 @@ function AssetRow({ asset, onEdit, onQr }: { asset: Asset } & Pick<AssetListTabP
       <TableCell><Badge variant={warranty.variant}>{warranty.label}</Badge></TableCell>
       <TableCell className="text-sm">{asset.manufacturer}</TableCell>
       <TableCell>
-        <div className="flex items-center gap-1">
+        <Badge variant={STATUS_BADGE[asset.status] ?? 'secondary'}>
+          {ASSET_STATUS_WORDS[asset.status as keyof typeof ASSET_STATUS_WORDS] ?? asset.status}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        <div className="flex flex-wrap items-center gap-1">
           <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => onQr(asset)} title="View & Print QR Code">
             <QrCode className="h-4 w-4 text-primary" />
           </button>
           <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => onEdit(asset)} title="Edit asset">
             <Pencil className="h-4 w-4 text-muted-foreground" />
           </button>
+          <StatusButtons asset={asset} />
         </div>
       </TableCell>
     </TableRow>
@@ -107,6 +145,7 @@ export function AssetListTab({ addAsset, onEdit, onQr }: AssetListTabProps): Rea
                   <TableHead>Condition</TableHead>
                   <TableHead>Warranty</TableHead>
                   <TableHead>Manufacturer</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>

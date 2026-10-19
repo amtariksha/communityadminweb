@@ -118,7 +118,7 @@ function LoadedEditForm(props: DocumentEditFormProps & { file: DocumentFile; ver
       mode={props.mode}
       open={props.open}
       title={`Edit File — ${file.title}`}
-      description={<ShowLogsButton recordTypes={['document']} recordId={file.id} />}
+      description={props.mode === 'page' ? <ShowLogsButton recordTypes={['document']} recordId={file.id} /> : undefined}
       onClose={props.onClose}
       onSave={() => void save()}
       saving={saving}

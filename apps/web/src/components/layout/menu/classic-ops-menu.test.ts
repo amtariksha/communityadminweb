@@ -112,3 +112,36 @@ describe('Society Profile (PROF-10)', () => {
     expect(locate('/directory', menu)?.child?.id).toBe('profile.emergency');
   });
 });
+
+describe('Asset & Inventory (ASSET-07)', () => {
+  it('expands to Setup · Assets · Inventory with their sub-tabs', () => {
+    expect(children('assets')?.map(([label]) => label)).toEqual(['Setup', 'Assets', 'Inventory']);
+    expect(tabs('assets.assets')).toEqual([
+      ['Active Assets', '/asset-inventory/assets/active'],
+      ['Under Service Assets', '/asset-inventory/assets/under-service'],
+      ['Expired Assets', '/asset-inventory/assets/expired'],
+      ['View User Edits', '/asset-inventory/assets/edits'],
+    ]);
+    expect(tabs('assets.inventory')).toEqual([
+      ['Active', '/asset-inventory/inventory/active'],
+      ['Procurement', '/asset-inventory/inventory/procurement'],
+      ['Movement Log', '/asset-inventory/inventory/movements'],
+    ]);
+  });
+
+  it('offers Add Asset on the Assets pages and opens the asset form as a page', () => {
+    expect(find(menu, 'assets.assets')?.create?.href).toBe('/asset-inventory/assets/new');
+    expect(locate('/asset-inventory/assets/new', menu)?.child?.label).toBe('Add Asset');
+    expect(locate('/asset-inventory/assets/7f9c', menu)?.child?.label).toBe('Edit Asset');
+    expect(locate('/asset-inventory/assets/under-service', menu)?.tab?.id).toBe('assets.assets.under-service');
+    expect(locate('/asset-inventory/inventory/7f9c', menu)?.child?.id).toBe('assets.inventory');
+  });
+
+  it('follows the assets feature, and keeps today’s pages reachable', () => {
+    expect(governingItem('/asset-inventory/assets/active')?.href).toBe('/assets');
+    expect(governingItem('/asset-inventory/inventory/active')?.href).toBe('/inventory');
+    expect(find(visibleMenu(classicMenu, { roleAllowlist: null, enabledFeatures: ['units'] }), 'assets')).toBeUndefined();
+    expect(locate('/inventory', menu)?.tab?.id).toBe('assets.inventory.procurement');
+    expect(locate('/assets', menu)?.child?.id).toBe('more.asset-maintenance');
+  });
+});

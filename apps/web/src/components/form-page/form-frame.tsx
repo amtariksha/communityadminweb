@@ -98,7 +98,7 @@ export function FormFrame(props: FormFrameProps): ReactNode {
           <h2 id={headingId} className="text-lg font-semibold">
             {title}
           </h2>
-          {description && <p className="text-sm text-muted-foreground">{description}</p>}
+          {description && <div className="text-sm text-muted-foreground">{description}</div>}
         </div>
         {form}
         <div className="flex flex-wrap gap-2 border-t pt-4">

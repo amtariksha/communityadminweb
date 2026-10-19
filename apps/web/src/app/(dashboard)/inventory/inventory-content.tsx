@@ -9,7 +9,6 @@ import {
   Wrench,
   ArrowDownUp,
   Plus,
-  AlertTriangle,
   ArrowRight,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
@@ -41,7 +40,6 @@ import { useToast } from '@/components/ui/toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
   useMaterials,
-  useCreateMaterial,
   useLOIs,
   useCreateLOI,
   useConvertLOIToPO,
@@ -53,15 +51,25 @@ import {
   useRecordStockMovement,
   useStaffEmployees,
 } from '@/hooks';
+import { AddMaterialDialog } from './add-material-dialog';
 import { CreatePoDialog } from './create-po-dialog';
+import { StockCatalogueTable } from './stock-catalogue-table';
 import { CreateWorkOrderDialog } from './create-work-order-dialog';
 
-export function InventoryContent() {
-  const [activeTab, setActiveTab] = useState<'materials' | 'loi' | 'po' | 'grn' | 'wo' | 'logs'>('materials');
+export type InventoryTab = 'materials' | 'loi' | 'po' | 'grn' | 'wo' | 'logs';
+const ALL_TABS: readonly InventoryTab[] = ['materials', 'loi', 'po', 'grn', 'wo', 'logs'];
+
+/**
+ * Inventory & Procurement. The classic layout shows parts of it as
+ * Inventory › Procurement and › Movement Log (`tabs`, decision D4).
+ */
+export function InventoryContent({ tabs = ALL_TABS }: { tabs?: readonly InventoryTab[] } = {}) {
+  const [activeTab, setActiveTab] = useState<InventoryTab>(tabs[0]);
   const { addToast: toast } = useToast();
 
   // Queries
-  const { data: materials = [], isLoading: materialsLoading } = useMaterials();
+  // Every item, for the Stock In / Out picker; the catalogue pages itself.
+  const { data: materials = [] } = useMaterials();
   const { data: lois = [], isLoading: loisLoading } = useLOIs();
   const { data: pos = [], isLoading: posLoading } = useInventoryPurchaseOrders();
   const { data: grns = [], isLoading: grnsLoading } = useGRNs();
@@ -71,7 +79,6 @@ export function InventoryContent() {
   const staffList = staffData?.data ?? [];
 
   // Mutations
-  const createMaterial = useCreateMaterial();
   const createLOI = useCreateLOI();
   const convertLoiToPo = useConvertLOIToPO();
   const createGRN = useCreateGRN();
@@ -86,7 +93,6 @@ export function InventoryContent() {
   const [moveOpen, setMoveOpen] = useState(false);
 
   // Form States
-  const [matForm, setMatForm] = useState({ name: '', category: 'Electrical', unit: 'PCS', current_stock: 0, minimum_stock: 5, unit_price: 0, location: '' });
   const [loiForm, setLoiForm] = useState({ vendor: '', title: '', estimated_value: 0, valid_until: '', deliverables: '' });
   const [grnForm, setGrnForm] = useState({ vendor_name: '', received_by: '', items_count: 1, invoice_number: '', notes: '' });
   const [moveForm, setMoveForm] = useState({ material_id: '', movement_type: 'IN' as 'IN' | 'OUT', quantity: 1, notes: '' });
@@ -111,7 +117,7 @@ export function InventoryContent() {
           { key: 'grn', label: 'Goods Received (GRN)', icon: ClipboardList },
           { key: 'wo', label: 'Work Orders', icon: Wrench },
           { key: 'logs', label: 'Movement Logs', icon: ArrowDownUp },
-        ].map((tab) => {
+        ].filter((tab) => tabs.includes(tab.key as InventoryTab)).map((tab) => {
           const Icon = tab.icon;
           const active = activeTab === tab.key;
           return (
@@ -147,54 +153,7 @@ export function InventoryContent() {
             </div>
           </CardHeader>
           <CardContent>
-            {materialsLoading ? (
-              <div className="py-8 text-center text-muted-foreground">Loading stock catalogue...</div>
-            ) : materials.length === 0 ? (
-              <div className="py-12 text-center text-muted-foreground">No materials registered. Click &quot;Add Material&quot;.</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Code & Name</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Current Stock</TableHead>
-                    <TableHead>Min Threshold</TableHead>
-                    <TableHead>Unit Price</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead className="text-right">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {materials.map((m) => {
-                    const isLow = Number(m.current_stock) <= Number(m.minimum_stock);
-                    return (
-                      <TableRow key={m.id}>
-                        <TableCell>
-                          <div className="font-medium">{m.name}</div>
-                          <div className="font-mono text-xs text-muted-foreground">{m.item_code}</div>
-                        </TableCell>
-                        <TableCell><Badge variant="outline">{m.category}</Badge></TableCell>
-                        <TableCell className="font-semibold">
-                          {m.current_stock} {m.unit}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{m.minimum_stock} {m.unit}</TableCell>
-                        <TableCell>{formatCurrency(m.unit_price)}</TableCell>
-                        <TableCell>{m.location || '—'}</TableCell>
-                        <TableCell className="text-right">
-                          {isLow ? (
-                            <Badge variant="destructive" className="gap-1">
-                              <AlertTriangle className="h-3 w-3" /> Low Stock
-                            </Badge>
-                          ) : (
-                            <Badge variant="success">Normal</Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
+            <StockCatalogueTable />
           </CardContent>
         </Card>
       )}
@@ -477,72 +436,7 @@ export function InventoryContent() {
       {/* Modals & Dialogs */}
 
       {/* Add Material Dialog */}
-      <Dialog open={matOpen} onOpenChange={setMatOpen}>
-        <DialogContent>
-          <form onSubmit={async (e) => {
-            e.preventDefault();
-            try {
-              await createMaterial.mutateAsync(matForm);
-              toast({ title: 'Success', description: 'Material added to catalogue' });
-              setMatOpen(false);
-            } catch {
-              toast({ title: 'Error', description: 'Failed to create material', variant: 'destructive' });
-            }
-          }}>
-            <DialogHeader>
-              <DialogTitle>Add Material to Catalogue</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 py-3">
-              <div>
-                <Label>Material Name *</Label>
-                <Input value={matForm.name} onChange={(e) => setMatForm({ ...matForm, name: e.target.value })} required />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Category</Label>
-                  <Select value={matForm.category} onChange={(e) => setMatForm({ ...matForm, category: e.target.value })}>
-                    {['Electrical', 'Plumbing', 'Housekeeping', 'Civil', 'Pool Chemicals', 'Security', 'General'].map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </Select>
-                </div>
-                <div>
-                  <Label>Unit of Measure</Label>
-                  <Select value={matForm.unit} onChange={(e) => setMatForm({ ...matForm, unit: e.target.value })}>
-                    {['PCS', 'KG', 'LITERS', 'BOX', 'METERS', 'ROLL'].map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Current Stock</Label>
-                  <Input type="number" value={matForm.current_stock} onChange={(e) => setMatForm({ ...matForm, current_stock: Number(e.target.value) })} />
-                </div>
-                <div>
-                  <Label>Min. Reorder Level</Label>
-                  <Input type="number" value={matForm.minimum_stock} onChange={(e) => setMatForm({ ...matForm, minimum_stock: Number(e.target.value) })} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="mat-unit-price">Unit Price (INR)</Label>
-                  <Input id="mat-unit-price" type="number" min="0" step="0.01" value={matForm.unit_price} onChange={(e) => setMatForm({ ...matForm, unit_price: Number(e.target.value) })} />
-                </div>
-                <div>
-                  <Label>Store Location</Label>
-                  <Input placeholder="e.g. Store Room Rack A-2" value={matForm.location} onChange={(e) => setMatForm({ ...matForm, location: e.target.value })} />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-              <Button type="submit" disabled={createMaterial.isPending}>Save Material</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <AddMaterialDialog open={matOpen} onOpenChange={setMatOpen} />
 
       {/* Add LOI Dialog */}
       <Dialog open={loiOpen} onOpenChange={setLoiOpen}>

@@ -8,14 +8,11 @@ import {
   AlertTriangle,
   Clock,
   Package,
-  QrCode,
-  Printer,
   ClipboardCheck,
   Calendar,
   ShieldCheck,
   CheckCircle,
 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,12 +43,9 @@ import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/utils';
 import {
-  useAssets,
   useAssetDashboard,
   useAMCs,
   useServiceLogs,
-  useCreateAsset,
-  useUpdateAsset,
   useCreateAMC,
   useLogService,
   useAssetChecklists,
@@ -76,52 +70,18 @@ import { useVendors } from '@/hooks';
 import { UserSearchSelect } from '@/components/ui/user-search-select';
 import type { UserSearchHit } from '@/hooks/use-user-search';
 import { AmcEditDialog } from './amc-edit-dialog';
+import { AssetForm } from './asset-form';
+import { AssetQrDialog } from './asset-qr-dialog';
+import { AssetSearchSelect, type AssetChoice } from './asset-search-select';
 import { AssetListTab } from './asset-list-tab';
-import { CHECKLIST_FREQUENCY_OPTIONS, formatDate } from './asset-ui';
+import { ASSET_TYPES, CHECKLIST_FREQUENCY_OPTIONS, CONDITIONS, formatDate } from './asset-ui';
 import { ChecklistsTable } from './checklists-table';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-// 2026-05-09 (QA #350) \u2014 Asset type list must match the backend
-// Zod enum exactly:
-//   apps/api/src/modules/asset/asset.controller.ts \u2192
-//   z.enum(['equipment','furniture','vehicle','infrastructure',
-//           'electrical','plumbing','fire_safety','security','hvac',
-//           'elevator','generator','cctv','other'])
-// The previous UI exposed `heater`, `stp`, `pump`, `ac`, `gas_bank`,
-// `transformer`, `fire_system`, `gym_equipment`, `lift` \u2014 none of
-// which the backend accepts \u2192 every Save click 400'd with an enum
-// validation error. We could have expanded the backend enum but
-// the user preferred tightening the UI to the 13 sanctioned
-// values (per the bug-triage decision log). The label is the
-// human-readable label; the value is the wire format.
-const ASSET_TYPES = [
-  { value: 'equipment', label: 'Equipment' },
-  { value: 'furniture', label: 'Furniture' },
-  { value: 'vehicle', label: 'Vehicle' },
-  { value: 'infrastructure', label: 'Infrastructure' },
-  { value: 'electrical', label: 'Electrical' },
-  { value: 'plumbing', label: 'Plumbing' },
-  { value: 'fire_safety', label: 'Fire Safety' },
-  { value: 'security', label: 'Security' },
-  { value: 'hvac', label: 'HVAC' },
-  { value: 'elevator', label: 'Elevator' },
-  { value: 'generator', label: 'Generator' },
-  { value: 'cctv', label: 'CCTV' },
-  { value: 'other', label: 'Other' },
-];
 
-// Values must match the backend enum + DB CHECK (migration 036); there
-// is no 'critical' — the worst state is 'non_functional'.
-const CONDITIONS = [
-  { value: 'excellent', label: 'Excellent' },
-  { value: 'good', label: 'Good' },
-  { value: 'fair', label: 'Fair' },
-  { value: 'poor', label: 'Poor' },
-  { value: 'non_functional', label: 'Non-functional' },
-];
 
 // QA #342 — values must match the backend enum + DB CHECK exactly.
 // Backend: apps/api/src/modules/asset/asset.controller.ts (Zod) +
@@ -187,23 +147,13 @@ export default function AssetsContent(): ReactNode {
   // QR Modal
   const [qrModalAsset, setQrModalAsset] = useState<Asset | null>(null);
 
-  // Asset dialog
+  // Asset dialog (the shared form, SB-07)
   const [assetDialogOpen, setAssetDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
-  const [assetName, setAssetName] = useState('');
-  const [assetType, setAssetType] = useState('generator');
-  const [assetLocation, setAssetLocation] = useState('');
-  const [assetManufacturer, setAssetManufacturer] = useState('');
-  const [assetModel, setAssetModel] = useState('');
-  const [assetSerial, setAssetSerial] = useState('');
-  const [assetPurchaseDate, setAssetPurchaseDate] = useState('');
-  const [assetPurchaseCost, setAssetPurchaseCost] = useState('');
-  const [assetWarrantyExpiry, setAssetWarrantyExpiry] = useState('');
-  const [assetCondition, setAssetCondition] = useState('good');
 
   // AMC dialog
   const [amcDialogOpen, setAmcDialogOpen] = useState(false);
-  const [amcAssetId, setAmcAssetId] = useState('');
+  const [amcAsset, setAmcAsset] = useState<AssetChoice | null>(null);
   const [amcVendorId, setAmcVendorId] = useState('');
   const [amcContractNumber, setAmcContractNumber] = useState('');
   const [amcStartDate, setAmcStartDate] = useState('');
@@ -212,7 +162,7 @@ export default function AssetsContent(): ReactNode {
 
   // Service dialog
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
-  const [serviceAssetId, setServiceAssetId] = useState('');
+  const [serviceAsset, setServiceAsset] = useState<AssetChoice | null>(null);
   const [serviceType, setServiceType] = useState('maintenance');
   const [serviceDate, setServiceDate] = useState('');
   const [serviceVendor, setServiceVendor] = useState('');
@@ -261,9 +211,8 @@ export default function AssetsContent(): ReactNode {
 
   // Queries
   const { data: dashboard, isLoading: dashLoading } = useAssetDashboard();
-  // Pickers (AMC, service log) list up to the API's page cap; the Assets
-  // tab pages through every asset itself (ASSET-02).
-  const { data: assetsData } = useAssets({ page: 1, limit: 100 });
+  // The AMC and service-log pickers search the server (AssetSearchSelect);
+  // the Assets tab pages through every asset itself (ASSET-02).
   const [editingAmc, setEditingAmc] = useState<AMCContract | null>(null);
   const { data: amcsData, isLoading: amcsLoading } = useAMCs();
   const { data: vendorsResponse } = useVendors();
@@ -273,13 +222,10 @@ export default function AssetsContent(): ReactNode {
   const [serviceFilterAssetId, setServiceFilterAssetId] = useState('');
   const { data: serviceLogs, isLoading: servicesLoading } = useServiceLogs(serviceFilterAssetId);
 
-  const assets = assetsData?.data ?? [];
   const amcs = amcsData?.data ?? [];
   const services = (serviceLogs as ServiceLog[] | undefined) ?? [];
 
   // Mutations
-  const createAsset = useCreateAsset();
-  const updateAsset = useUpdateAsset();
   const createAMC = useCreateAMC();
   const logService = useLogService();
 
@@ -287,80 +233,18 @@ export default function AssetsContent(): ReactNode {
   // Handlers
   // -----------------------------------------------------------------------
 
-  function resetAssetForm(): void {
-    setEditingAsset(null);
-    setAssetName('');
-    setAssetType('generator');
-    setAssetLocation('');
-    setAssetManufacturer('');
-    setAssetModel('');
-    setAssetSerial('');
-    setAssetPurchaseDate('');
-    setAssetPurchaseCost('');
-    setAssetWarrantyExpiry('');
-    setAssetCondition('good');
-  }
-
   function openEditAsset(asset: Asset): void {
     setEditingAsset(asset);
-    setAssetName(asset.name);
-    setAssetType(asset.asset_type);
-    setAssetLocation(asset.location);
-    setAssetManufacturer(asset.manufacturer);
-    setAssetModel(asset.model);
-    setAssetSerial(asset.serial_number);
-    setAssetPurchaseDate(asset.purchase_date ? asset.purchase_date.split('T')[0] : '');
-    setAssetPurchaseCost(String(asset.purchase_cost ?? ''));
-    setAssetWarrantyExpiry(asset.warranty_expiry ? asset.warranty_expiry.split('T')[0] : '');
-    setAssetCondition(asset.condition);
     setAssetDialogOpen(true);
   }
 
-  function handleAssetSubmit(e: FormEvent): void {
-    e.preventDefault();
-    const payload = {
-      name: assetName,
-      asset_type: assetType,
-      location: assetLocation,
-      manufacturer: assetManufacturer || undefined,
-      model: assetModel || undefined,
-      serial_number: assetSerial || undefined,
-      purchase_date: assetPurchaseDate || undefined,
-      purchase_cost: assetPurchaseCost ? Number(assetPurchaseCost) : undefined,
-      warranty_expiry: assetWarrantyExpiry || undefined,
-      condition: assetCondition || undefined,
-    };
-
-    if (editingAsset) {
-      updateAsset.mutate(
-        { id: editingAsset.id, ...payload },
-        {
-          onSuccess() {
-            addToast({ title: 'Asset updated', variant: 'success' });
-            setAssetDialogOpen(false);
-            resetAssetForm();
-          },
-          onError(err) {
-            addToast({ title: 'Failed to update asset', description: friendlyError(err), variant: 'destructive' });
-          },
-        },
-      );
-    } else {
-      createAsset.mutate(payload, {
-        onSuccess() {
-          addToast({ title: 'Asset created', variant: 'success' });
-          setAssetDialogOpen(false);
-          resetAssetForm();
-        },
-        onError(err) {
-          addToast({ title: 'Failed to create asset', description: friendlyError(err), variant: 'destructive' });
-        },
-      });
-    }
+  function openAddAsset(): void {
+    setEditingAsset(null);
+    setAssetDialogOpen(true);
   }
 
   function resetAmcForm(): void {
-    setAmcAssetId('');
+    setAmcAsset(null);
     setAmcVendorId('');
     setAmcContractNumber('');
     setAmcStartDate('');
@@ -370,6 +254,10 @@ export default function AssetsContent(): ReactNode {
 
   function handleAmcSubmit(e: FormEvent): void {
     e.preventDefault();
+    if (!amcAsset) {
+      addToast({ title: 'Select an asset', variant: 'destructive' });
+      return;
+    }
     // amc_contracts keeps the vendor by name, not by id.
     const vendor = vendors.find((v) => v.id === amcVendorId);
     if (!vendor) {
@@ -378,7 +266,7 @@ export default function AssetsContent(): ReactNode {
     }
     createAMC.mutate(
       {
-        asset_id: amcAssetId,
+        asset_id: amcAsset.id,
         vendor_name: vendor.name,
         contract_number: amcContractNumber,
         start_date: amcStartDate,
@@ -399,7 +287,7 @@ export default function AssetsContent(): ReactNode {
   }
 
   function resetServiceForm(): void {
-    setServiceAssetId('');
+    setServiceAsset(null);
     setServiceType('maintenance');
     setServiceDate('');
     setServiceVendor('');
@@ -410,9 +298,13 @@ export default function AssetsContent(): ReactNode {
 
   function handleServiceSubmit(e: FormEvent): void {
     e.preventDefault();
+    if (!serviceAsset) {
+      addToast({ title: 'Select an asset', variant: 'destructive' });
+      return;
+    }
     logService.mutate(
       {
-        asset_id: serviceAssetId,
+        asset_id: serviceAsset.id,
         service_type: serviceType,
         service_date: serviceDate,
         vendor_name: serviceVendor || undefined,
@@ -511,78 +403,10 @@ export default function AssetsContent(): ReactNode {
           onEdit={openEditAsset}
           onQr={setQrModalAsset}
           addAsset={
-        <Dialog open={assetDialogOpen} onOpenChange={(open) => { setAssetDialogOpen(open); if (!open) resetAssetForm(); }}>
-          <DialogTrigger>
-            <Button size="sm">
+            <Button size="sm" onClick={openAddAsset}>
               <Plus className="mr-2 h-4 w-4" />
               Add Asset
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <form onSubmit={handleAssetSubmit}>
-              <DialogHeader>
-                <DialogTitle>{editingAsset ? 'Edit Asset' : 'Create Asset'}</DialogTitle>
-                <DialogDescription>
-                  {editingAsset ? 'Update asset details' : 'Add a new asset to track'}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid grid-cols-2 gap-4 py-4">
-                <div className="col-span-2 space-y-2">
-                  <Label htmlFor="asset-name">Name *</Label>
-                  <Input id="asset-name" value={assetName} onChange={(e) => setAssetName(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="asset-type">Type *</Label>
-                  <Select id="asset-type" value={assetType} onChange={(e) => setAssetType(e.target.value)}>
-                    {ASSET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="asset-location">Location *</Label>
-                  <Input id="asset-location" value={assetLocation} onChange={(e) => setAssetLocation(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="asset-manufacturer">Manufacturer</Label>
-                  <Input id="asset-manufacturer" value={assetManufacturer} onChange={(e) => setAssetManufacturer(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="asset-model">Model</Label>
-                  <Input id="asset-model" value={assetModel} onChange={(e) => setAssetModel(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="asset-serial">Serial Number</Label>
-                  <Input id="asset-serial" value={assetSerial} onChange={(e) => setAssetSerial(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="asset-purchase-date">Purchase Date</Label>
-                  <Input id="asset-purchase-date" type="date" value={assetPurchaseDate} onChange={(e) => setAssetPurchaseDate(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="asset-cost">Purchase Cost</Label>
-                  <Input id="asset-cost" type="number" value={assetPurchaseCost} onChange={(e) => setAssetPurchaseCost(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="asset-warranty">Warranty Expiry</Label>
-                  <Input id="asset-warranty" type="date" value={assetWarrantyExpiry} onChange={(e) => setAssetWarrantyExpiry(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="asset-condition">Condition</Label>
-                  <Select id="asset-condition" value={assetCondition} onChange={(e) => setAssetCondition(e.target.value)}>
-                    {CONDITIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <DialogClose>
-                  <Button type="button" variant="outline">Cancel</Button>
-                </DialogClose>
-                <Button type="submit" disabled={createAsset.isPending || updateAsset.isPending}>
-                  {editingAsset ? 'Update' : 'Create'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
           }
         />
       )}
@@ -608,10 +432,7 @@ export default function AssetsContent(): ReactNode {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="amc-asset">Asset *</Label>
-                      <Select id="amc-asset" value={amcAssetId} onChange={(e) => setAmcAssetId(e.target.value)} required>
-                        <option value="">Select asset</option>
-                        {assets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                      </Select>
+                      <AssetSearchSelect id="amc-asset" value={amcAsset} onChange={setAmcAsset} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="amc-vendor">Vendor *</Label>
@@ -739,10 +560,7 @@ export default function AssetsContent(): ReactNode {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="service-asset">Asset *</Label>
-                      <Select id="service-asset" value={serviceAssetId} onChange={(e) => setServiceAssetId(e.target.value)} required>
-                        <option value="">Select asset</option>
-                        {assets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                      </Select>
+                      <AssetSearchSelect id="service-asset" value={serviceAsset} onChange={setServiceAsset} />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -1434,50 +1252,16 @@ export default function AssetsContent(): ReactNode {
         </DialogContent>
       </Dialog>
 
-      {/* ROOT-LEVEL DIALOG: QR Sticker Modal */}
-      <Dialog open={Boolean(qrModalAsset)} onOpenChange={(open) => !open && setQrModalAsset(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <QrCode className="h-5 w-5 text-primary" />
-              Asset QR Badge
-            </DialogTitle>
-            <DialogDescription>
-              Printable equipment verification badge for field scanning and inspection.
-            </DialogDescription>
-          </DialogHeader>
-          {qrModalAsset && (
-            <div className="flex flex-col items-center justify-center p-6 border rounded-xl bg-card space-y-4">
-              <div className="p-4 bg-white rounded-lg shadow-sm border">
-                <QRCodeSVG
-                  value={`ASSET:${qrModalAsset.id}:${qrModalAsset.name}`}
-                  size={180}
-                  level="H"
-                />
-              </div>
-              <div className="text-center space-y-1">
-                <div className="font-bold text-base">{qrModalAsset.name}</div>
-                <div className="text-[11px] text-muted-foreground font-mono">ID: {qrModalAsset.id}</div>
-                <div className="text-xs font-medium text-muted-foreground">
-                  Location: {qrModalAsset.location} · {qrModalAsset.asset_type}
-                </div>
-                {qrModalAsset.serial_number && (
-                  <div className="text-xs text-muted-foreground">S/N: {qrModalAsset.serial_number}</div>
-                )}
-              </div>
-            </div>
-          )}
-          <DialogFooter className="flex items-center gap-2">
-            <DialogClose>
-              <Button variant="outline">Close</Button>
-            </DialogClose>
-            <Button onClick={() => window.print()} className="gap-2">
-              <Printer className="h-4 w-4" />
-              Print QR Badge
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AssetQrDialog asset={qrModalAsset} onClose={() => setQrModalAsset(null)} />
+      {assetDialogOpen && (
+        <AssetForm
+          mode="dialog"
+          open
+          asset={editingAsset}
+          onClose={() => setAssetDialogOpen(false)}
+          onSaved={() => setAssetDialogOpen(false)}
+        />
+      )}
       <AmcEditDialog amc={editingAmc} onClose={() => setEditingAmc(null)} />
     </div>
   );

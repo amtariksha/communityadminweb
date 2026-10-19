@@ -48,6 +48,10 @@ vi.mock('@/hooks', () => ({
   useRecordStockMovement: () => mocks.other,
 }));
 
+vi.mock('@/hooks/use-inventory-list', () => ({
+  useMaterialList: () => ({ data: { data: [], total: 0 }, isLoading: false }),
+}));
+
 vi.mock('@/components/ui/toast', () => ({
   useToast: () => ({ addToast: mocks.addToast }),
 }));

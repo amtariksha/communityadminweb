@@ -23,6 +23,10 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   ['/society-profile', '/directory'],
   // Expense Tracker screens follow the Purchases entry (EXP-08, EXP-09).
   ['/expense-tracker', '/purchases'],
+  // Asset & Inventory (ASSET-07): the stock book follows Inventory, the
+  // rest Assets (both the assets feature).
+  ['/asset-inventory/inventory', '/inventory'],
+  ['/asset-inventory', '/assets'],
 ];
 
 /**
