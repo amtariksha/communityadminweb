@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode } from 'react';
 import { useVendorInvoicesAvailable } from '@/hooks/use-vendor-bills';
 import { VendorInvoiceForm } from '@/app/(dashboard)/purchases/vendor-invoice/vendor-invoice-form';
@@ -16,6 +16,8 @@ export const BY_VENDORS_HOME = '/purchases';
 export function VendorInvoicePage(): ReactNode {
   const router = useRouter();
   const params = useParams<{ vendorId: string }>();
+  // EXP-10 — opened from Closed Purchase Request › Convert to invoice.
+  const fromRequest = useSearchParams().get('from_request') ?? undefined;
   const available = useVendorInvoicesAvailable();
 
   if (available.data === false) {
@@ -31,6 +33,7 @@ export function VendorInvoicePage(): ReactNode {
     <VendorInvoiceForm
       mode="page"
       vendorId={params.vendorId}
+      fromRequestId={fromRequest}
       onClose={() => router.push(BY_VENDORS_HOME)}
       onSaved={() => router.push(BY_VENDORS_HOME)}
     />

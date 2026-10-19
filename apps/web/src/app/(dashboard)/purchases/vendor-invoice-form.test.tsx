@@ -15,6 +15,11 @@ vi.mock('@/components/ui/select', () => ({
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('@/hooks/use-debounced-value', () => ({ useDebouncedValue: <T,>(value: T) => value }));
 vi.mock('@/hooks/use-ocr', () => ({ useOcrInvoice: () => ({ mutateAsync: vi.fn(), isPending: false }) }));
+// EXP-10 — converting a purchase request: from-request.test.tsx covers it.
+vi.mock('./vendor-invoice/from-request', () => ({
+  useRequestPrefill: () => ({ ready: true, detail: null }),
+  useConvertRequestToInvoice: () => ({ mutate: vi.fn(), isPending: false }),
+}));
 
 const HEAD = 'head-amc-lift';
 const mocks = vi.hoisted(() => ({

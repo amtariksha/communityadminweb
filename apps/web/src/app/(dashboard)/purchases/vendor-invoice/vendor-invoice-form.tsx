@@ -25,12 +25,15 @@ import {
 import { InvoiceLineGrid } from './invoice-line-grid';
 import { useInvoiceScan } from './use-invoice-scan';
 import { InvoiceEntriesPanel, InvoiceTdsBlock } from './invoice-side-panels';
+import { useConvertRequestToInvoice, useRequestPrefill } from './from-request';
 
 export interface VendorInvoiceFormProps {
   mode: FormMode;
   /** Fixed by the route on the page (By Vendors › Invoice); chosen in the form in the dialog. */
   vendorId?: string;
   open?: boolean;
+  /** EXP-10 — an approved purchase request to convert: its lines and vendor fill the form. */
+  fromRequestId?: string;
   onClose: () => void;
   onSaved: (bill: PostedVendorInvoice) => void;
 }
@@ -67,11 +70,13 @@ export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
   const vendor = useVendor(header.vendorId);
   const tdsConfig = useTdsConfig();
   const create = useCreateVendorInvoice();
+  const convert = useConvertRequestToInvoice();
+  const fromRequest = useRequestPrefill(props.fromRequestId, setHeader, setRows);
   const fileRef = useRef<HTMLInputElement>(null);
   const prefilledFor = useRef<string>('');
 
   const headList = useMemo(() => heads.data?.data ?? [], [heads.data]);
-  useVendorDefaults(vendor.data, headList, prefilledFor, setHeader, setRows);
+  useVendorDefaults(vendor.data, headList, prefilledFor, setHeader, setRows, Boolean(props.fromRequestId));
 
   const input = useMemo(() => toInvoiceInput(header, rows), [header, rows]);
   const debouncedInput = useDebouncedValue(input, 400);
@@ -83,15 +88,18 @@ export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
   function save(): void {
     setTouched(true);
     if (!input) return;
-    create.mutate(input, {
-      onSuccess(bill) {
+    const handlers = {
+      onSuccess(bill: PostedVendorInvoice) {
         addToast({ title: `Invoice posted as ${bill.bill_number}`, variant: 'success' });
         props.onSaved(bill);
       },
-      onError(error) {
+      onError(error: Error) {
         addToast({ title: 'Could not post the invoice', description: friendlyError(error), variant: 'destructive' });
       },
-    });
+    };
+    // EXP-10: from a purchase request, posting converts the request.
+    if (props.fromRequestId) convert.mutate({ requestId: props.fromRequestId, input }, handlers);
+    else create.mutate(input, handlers);
   }
 
   const vendorName = vendor.data?.name ?? '';
@@ -99,10 +107,10 @@ export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
     <FormFrame
       mode={mode}
       open={props.open}
-      title={fixedVendorId ? `Post vendor invoice — ${vendorName}` : 'Post vendor invoice'}
+      title={`${fixedVendorId ? `Post vendor invoice — ${vendorName}` : 'Post vendor invoice'}${fromRequest.detail ? ` (from ${fromRequest.detail.purchase_request.pr_number})` : ''}`}
       saveLabel="Post Entries"
       savingLabel="Posting…"
-      saving={create.isPending}
+      saving={create.isPending || convert.isPending}
       onSave={save}
       onClose={props.onClose}
       dialogClassName="max-w-6xl"
@@ -133,14 +141,16 @@ function useVendorDefaults(
   prefilledFor: { current: string },
   setHeader: (fn: (h: InvoiceHeader) => InvoiceHeader) => void,
   setRows: (fn: (rows: InvoiceRow[]) => InvoiceRow[]) => void,
+  // EXP-10: lines come from the purchase request, not the vendor's default.
+  keepRows = false,
 ): void {
   useEffect(() => {
     if (!vendor || prefilledFor.current === vendor.id) return;
     if (vendor.default_expense_account_id && heads.length === 0) return;
     prefilledFor.current = vendor.id;
     setHeader((h) => ({ ...h, ...vendorHeaderDefaults(vendor) }));
-    setRows((rows) => [defaultRow(vendor, heads), ...rows.slice(1)]);
-  }, [vendor, heads, prefilledFor, setHeader, setRows]);
+    if (!keepRows) setRows((rows) => [defaultRow(vendor, heads), ...rows.slice(1)]);
+  }, [vendor, heads, prefilledFor, setHeader, setRows, keepRows]);
 }
 
 function HeaderFields(props: { header: InvoiceHeader; onChange: (patch: Partial<InvoiceHeader>) => void; vendors: Vendor[] | null }): ReactNode {

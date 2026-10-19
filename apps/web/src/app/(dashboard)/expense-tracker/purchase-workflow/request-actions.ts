@@ -14,8 +14,13 @@ import {
 } from '@/hooks/use-purchase-requests';
 import { friendlyError } from '@/lib/api-error';
 import { getUser } from '@/lib/auth';
+import { canWriteFinance } from '@/lib/finance-roles';
 
 export const REQUEST_PAGE = (id: string): string => `/expense-tracker/purchase-workflow/${id}`;
+
+/** EXP-10 — Post vendor invoice for the request's vendor, filled from the request. */
+export const CONVERT_PAGE = (row: Pick<PRListRow, 'id' | 'vendor_id'>): string =>
+  `/expense-tracker/by-vendors/${row.vendor_id}/invoice?from_request=${row.id}`;
 
 /**
  * The labelled row buttons of a bucket (EXP-S4): View always; Edit and
@@ -62,6 +67,18 @@ export function useRequestActions(bucket: PRBucket): DataTableAction<PRListRow>[
   }
   if (bucket === 'level') {
     return [view, { key: 'withdraw', header: 'Withdraw', label: 'Withdraw', hidden: (row) => !mine(row), onClick: (row) => withdraw.mutate(row.id, done('Request withdrawn')) }];
+  }
+  if (bucket === 'closed' && canWriteFinance()) {
+    return [
+      view,
+      {
+        key: 'convert',
+        header: 'Convert',
+        label: 'Convert to invoice',
+        hidden: (row) => row.status !== 'approved' || !row.vendor_id,
+        href: CONVERT_PAGE,
+      },
+    ];
   }
   return [view];
 }

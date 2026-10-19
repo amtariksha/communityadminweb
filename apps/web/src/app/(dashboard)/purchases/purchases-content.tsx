@@ -75,7 +75,7 @@ import {
 import type { TdsConfig, VendorPaymentRow } from '@/hooks';
 import { useOcrInvoice } from '@/hooks/use-ocr';
 import Link from 'next/link';
-import { CreatePurchaseRequestButton, ViewPurchaseRequestButton } from './create-request-button';
+import { ConvertToInvoiceButton, CreatePurchaseRequestButton, ViewPurchaseRequestButton } from './create-request-button';
 import { useVendorInvoicesAvailable } from '@/hooks/use-vendor-bills';
 import { VendorInvoiceForm } from './vendor-invoice/vendor-invoice-form';
 
@@ -1264,16 +1264,21 @@ export default function PurchasesContent(): ReactNode {
                             </>
                           )}
                           {pr.status === 'approved' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 p-1 text-xs"
-                              title="Convert to Bill"
-                              onClick={() => openConvertDialog(pr)}
-                            >
-                              <ArrowRightLeft className="mr-1 h-3 w-3" />
-                              Convert
-                            </Button>
+                            <ConvertToInvoiceButton
+                              requestId={pr.id}
+                              legacy={
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 p-1 text-xs"
+                                  title="Convert to Bill"
+                                  onClick={() => openConvertDialog(pr)}
+                                >
+                                  <ArrowRightLeft className="mr-1 h-3 w-3" />
+                                  Convert
+                                </Button>
+                              }
+                            />
                           )}
                         </div>
                       </TableCell>

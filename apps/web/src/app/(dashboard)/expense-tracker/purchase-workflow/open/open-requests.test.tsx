@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PRListFilters, PRListResponse } from '@/hooks/use-purchase-requests';
 import { currentMonthRange } from '../closed/closed-requests';
+import { CONVERT_PAGE } from '../request-actions';
 import { OpenRequests, shownLevels } from './open-requests';
 
 /** EXP-09 / EXP-S4 — stacked buckets with counts; level buckets where the grid has approvers. */
@@ -96,5 +97,9 @@ describe('Open Purchase Request', () => {
   it('Closed defaults to the current month in India', () => {
     expect(currentMonthRange(new Date('2026-10-31T20:00:00Z'))).toEqual({ from: '2026-11-01', to: '2026-11-30' });
     expect(currentMonthRange(new Date('2026-02-10T00:00:00Z'))).toEqual({ from: '2026-02-01', to: '2026-02-28' });
+  });
+
+  it('Convert to invoice opens Post vendor invoice for the request’s vendor, from the request (EXP-10)', () => {
+    expect(CONVERT_PAGE({ id: 'pr-1', vendor_id: 'v-1' })).toBe('/expense-tracker/by-vendors/v-1/invoice?from_request=pr-1');
   });
 });
