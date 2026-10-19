@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useFormMode } from '@/components/form-page';
 import { PageHeader } from '@/components/layout/page-header';
 import { MemberIncomeTable } from '@/components/member-income/member-income-table';
+import { CollectionFormView } from '@/components/unit-posting/collection-form';
 import { PostInvoiceForm } from '@/components/unit-posting/post-invoice-form';
 import { useToast } from '@/components/ui/toast';
 import { useFinanceAccess } from '@/hooks/use-finance-access';
@@ -15,7 +16,7 @@ import { todayIST } from '@/lib/date';
 import { saveBlob } from '@/lib/download';
 import { useAdminLayout } from '@/lib/layout-context';
 import { isNotDeployed } from '@/lib/not-deployed';
-import { invoiceHref, invoiceMoreActions, memberRowActions } from './member-row-actions';
+import { collectionHref, invoiceHref, invoiceMoreActions, memberRowActions, printReceipt } from './member-row-actions';
 
 /**
  * The treasurer's daily screen: every unit with what it owes and the
@@ -29,6 +30,7 @@ export function MemberIncomeContent(): ReactNode {
   const access = useFinanceAccess();
   const { addToast } = useToast();
   const [invoiceFor, setInvoiceFor] = useState<UnitDuesRow | null>(null);
+  const [collectFor, setCollectFor] = useState<{ unitId: string; billId: string | null } | null>(null);
 
   async function print(row: UnitDuesRow): Promise<void> {
     try {
@@ -45,6 +47,11 @@ export function MemberIncomeContent(): ReactNode {
     else setInvoiceFor(row);
   }
 
+  function collection(row: UnitDuesRow): void {
+    if (mode === 'page') router.push(collectionHref(row.unit_id));
+    else setCollectFor({ unitId: row.unit_id, billId: null });
+  }
+
   return (
     <div className="space-y-6">
       {!classic && (
@@ -53,7 +60,7 @@ export function MemberIncomeContent(): ReactNode {
       <MemberIncomeTable
         scope="member"
         title="Member Dues"
-        rowActions={memberRowActions(access, { print: (row) => void print(row), invoice })}
+        rowActions={memberRowActions(access, { print: (row) => void print(row), invoice, collection })}
         exportFilename="member-dues"
       />
       {invoiceFor && (
@@ -66,6 +73,25 @@ export function MemberIncomeContent(): ReactNode {
           moreActions={invoiceMoreActions(invoiceFor.unit_id)}
           onClose={() => setInvoiceFor(null)}
           onPosted={() => setInvoiceFor(null)}
+          onPostedAndCollect={(posted) => {
+            setInvoiceFor(null);
+            setCollectFor({ unitId: posted.unit_id, billId: posted.id });
+          }}
+        />
+      )}
+      {collectFor && (
+        <CollectionFormView
+          key={`${collectFor.unitId}:${collectFor.billId ?? ''}`}
+          unitId={collectFor.unitId}
+          mode="dialog"
+          open
+          today={todayIST()}
+          preselectBillId={collectFor.billId}
+          onClose={() => setCollectFor(null)}
+          onPosted={(receipt, printIt) => {
+            setCollectFor(null);
+            if (printIt) void printReceipt(receipt.id, receipt.receipt_number).catch((error: unknown) => addToast({ title: 'Could not print the receipt', description: friendlyError(error), variant: 'destructive' }));
+          }}
         />
       )}
     </div>

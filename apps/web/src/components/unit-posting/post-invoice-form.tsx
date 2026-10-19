@@ -24,6 +24,8 @@ export interface PostInvoiceFormProps {
   open?: boolean;
   onClose: () => void;
   onPosted: (invoice: PostedUnitInvoice) => void;
+  /** "Post amount and Collect": posted, then the collection form with this invoice ticked. */
+  onPostedAndCollect?: (invoice: PostedUnitInvoice) => void;
   /** Other postings from the unit's row, shown as a button column under the form. */
   moreActions?: ReadonlyArray<{ label: string; href: string }>;
   today: string;
@@ -106,7 +108,7 @@ function GstFields({ form, set, rates, error }: { form: PostInvoiceForm; set: Se
 }
 
 /** INC-23 — Post Invoice for a unit (INC-S18): posted at once, no draft. */
-export function PostInvoiceForm({ unitId, mode, open, onClose, onPosted, moreActions = [], today }: PostInvoiceFormProps): ReactNode {
+export function PostInvoiceForm({ unitId, mode, open, onClose, onPosted, onPostedAndCollect, moreActions = [], today }: PostInvoiceFormProps): ReactNode {
   const { addToast } = useToast();
   const [form, setForm] = useState<PostInvoiceForm>(() => emptyPostInvoiceForm(today));
   const [submitted, setSubmitted] = useState(false);
@@ -118,14 +120,15 @@ export function PostInvoiceForm({ unitId, mode, open, onClose, onPosted, moreAct
   const shown = submitted ? errors : {};
   const dueHint = options ? defaultDueDate(form.invoiceDate, options.due_days) : '';
 
-  function save(): void {
+  function save(collect: boolean): void {
     setSubmitted(true);
     if (Object.keys(errors).length > 0) return;
     post.mutate(toAdhocPayload(unitId, form, options), {
       onSuccess: (response) => {
         const invoice = response.data;
         addToast({ title: `${invoice.invoice_number} posted`, description: `${formatCurrency(Number(invoice.net_amount))} is now due from the unit.`, variant: 'success' });
-        onPosted(invoice);
+        if (collect && onPostedAndCollect) onPostedAndCollect(invoice);
+        else onPosted(invoice);
       },
       onError: (error) => {
         const description = isNotDeployed(error) ? 'Posting an invoice for a unit is not available yet on this server.' : friendlyError(error);
@@ -135,7 +138,18 @@ export function PostInvoiceForm({ unitId, mode, open, onClose, onPosted, moreAct
   }
 
   return (
-    <FormFrame mode={mode} open={open} title="Post Invoice" onClose={onClose} onSave={save} saving={post.isPending} saveLabel="Post amount" savingLabel="Posting…" dialogClassName="max-w-2xl">
+    <FormFrame
+      mode={mode}
+      open={open}
+      title="Post Invoice"
+      onClose={onClose}
+      onSave={() => save(false)}
+      secondaryAction={onPostedAndCollect ? { label: 'Post amount and Collect', onClick: () => save(true) } : undefined}
+      saving={post.isPending}
+      saveLabel="Post amount"
+      savingLabel="Posting…"
+      dialogClassName="max-w-2xl"
+    >
       <UnitPostingHeader unitId={unitId} />
       <MainFields form={form} set={set} errors={shown} dueHint={dueHint} />
       <PeriodFields form={form} set={set} errors={shown} />

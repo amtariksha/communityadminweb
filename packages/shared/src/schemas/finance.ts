@@ -85,18 +85,35 @@ export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
 const receiptAllocationSchema = z.object({
   invoice_id: z.string().uuid('Invoice ID must be a valid UUID'),
   amount: z.number().positive('Allocation amount must be positive'),
+  // INC-26 — TDS withheld against the bill (mirrors communityos).
+  tds_amount: z.number().min(0).optional(),
 });
 
-export const createReceiptSchema = z.object({
-  financial_year_id: z.string().uuid('Financial year ID must be a valid UUID'),
-  unit_id: z.string().uuid('Unit ID must be a valid UUID'),
-  receipt_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
-  amount: z.number().positive('Amount must be positive'),
-  mode: z.enum(['cash', 'cheque', 'bank_transfer', 'upi', 'online']),
-  reference_number: z.string().max(100).nullable().default(null),
-  bank_account_id: z.string().uuid().nullable().default(null),
-  narration: z.string().max(1000).default(''),
-  allocations: z.array(receiptAllocationSchema).default([]),
-});
+// Mirrors communityos packages/shared/src/schemas/finance.ts (INC-26: dd mode,
+// payer, payment bank, instrument date; number for cheque / DD / transfer,
+// bank for cheque / DD).
+export const createReceiptSchema = z
+  .object({
+    financial_year_id: z.string().uuid('Financial year ID must be a valid UUID'),
+    unit_id: z.string().uuid('Unit ID must be a valid UUID'),
+    receipt_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+    amount: z.number().positive('Amount must be positive'),
+    mode: z.enum(['cash', 'cheque', 'bank_transfer', 'upi', 'online', 'dd']),
+    reference_number: z.string().max(100).nullable().default(null),
+    bank_account_id: z.string().uuid().nullable().default(null),
+    narration: z.string().max(1000).default(''),
+    allocations: z.array(receiptAllocationSchema).default([]),
+    payer_member_id: z.string().uuid().optional(),
+    payment_bank: z.string().trim().max(100).nullable().optional(),
+    instrument_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  })
+  .superRefine((body, ctx) => {
+    if (['cheque', 'dd', 'bank_transfer'].includes(body.mode) && !body.reference_number?.trim()) {
+      ctx.addIssue({ code: 'custom', path: ['reference_number'], message: 'Give the payment number' });
+    }
+    if (['cheque', 'dd'].includes(body.mode) && !body.payment_bank?.trim()) {
+      ctx.addIssue({ code: 'custom', path: ['payment_bank'], message: 'Give the bank the cheque or DD is drawn on' });
+    }
+  });
 
 export type CreateReceiptInput = z.infer<typeof createReceiptSchema>;

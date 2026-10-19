@@ -81,6 +81,8 @@ function getPaymentModeLabel(mode: string): string {
       return 'NEFT';
     case 'online':
       return 'Razorpay';
+    case 'dd':
+      return 'DD';
     default:
       return mode;
   }
@@ -168,6 +170,10 @@ export default function ReceiptsContent(): ReactNode {
   const [receiptAmount, setReceiptAmount] = useState('');
   const [receiptMode, setReceiptMode] = useState<string>('cash');
   const [receiptReference, setReceiptReference] = useState('');
+  // INC-26 — the bank a cheque or DD is drawn on (the API requires it).
+  const [receiptBank, setReceiptBank] = useState('');
+  const receiptNeedsNumber = receiptMode === 'cheque' || receiptMode === 'dd' || receiptMode === 'bank_transfer';
+  const receiptNeedsBank = receiptMode === 'cheque' || receiptMode === 'dd';
   const [receiptDate, setReceiptDate] = useState('');
 
   // Form state for credit note
@@ -254,6 +260,7 @@ export default function ReceiptsContent(): ReactNode {
     setReceiptAmount('');
     setReceiptMode('cash');
     setReceiptReference('');
+    setReceiptBank('');
     setReceiptDate('');
   }
 
@@ -274,6 +281,7 @@ export default function ReceiptsContent(): ReactNode {
         amount: Number(receiptAmount),
         mode: receiptMode,
         reference_number: receiptReference || null,
+        payment_bank: receiptNeedsBank ? receiptBank.trim() : null,
         // INC-03 — settle the unit's oldest posted invoices; only the
         // remainder is held as an advance.
         allocation_mode: 'fifo',
@@ -478,6 +486,7 @@ export default function ReceiptsContent(): ReactNode {
                       >
                         <option value="cash">Cash</option>
                         <option value="cheque">Cheque</option>
+                        <option value="dd">DD</option>
                         <option value="upi">UPI</option>
                         <option value="bank_transfer">NEFT / Bank Transfer</option>
                         <option value="online">Razorpay / Online</option>
@@ -489,11 +498,25 @@ export default function ReceiptsContent(): ReactNode {
                       <Input
                         id="receipt-reference"
                         placeholder="e.g., UPI-12345678"
+                        required={receiptNeedsNumber}
                         value={receiptReference}
                         onChange={(e) => setReceiptReference(e.target.value)}
                       />
                       <FormFieldError error={createReceipt.error} field="reference_number" />
                     </div>
+                    {receiptNeedsBank && (
+                      <div className="space-y-2">
+                        <Label htmlFor="receipt-bank">Payment Bank</Label>
+                        <Input
+                          id="receipt-bank"
+                          required
+                          maxLength={100}
+                          value={receiptBank}
+                          onChange={(e) => setReceiptBank(e.target.value)}
+                        />
+                        <FormFieldError error={createReceipt.error} field="payment_bank" />
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="receipt-date">Date</Label>
                       <Input

@@ -144,7 +144,7 @@ export interface InvoiceLine {
   total: number;
 }
 
-export type ReceiptMode = 'cash' | 'cheque' | 'bank_transfer' | 'upi' | 'online';
+export type ReceiptMode = 'cash' | 'cheque' | 'bank_transfer' | 'upi' | 'online' | 'dd';
 
 export interface Receipt {
   id: string;

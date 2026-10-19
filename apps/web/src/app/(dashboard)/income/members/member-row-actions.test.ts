@@ -15,7 +15,7 @@ const ROW = {
 describe('Member Income row buttons', () => {
   it('gives finance readers Account History and Print', () => {
     const print = vi.fn();
-    const actions = memberRowActions({ canRead: true, canWrite: false }, { print, invoice: vi.fn() });
+    const actions = memberRowActions({ canRead: true, canWrite: false }, { print, invoice: vi.fn(), collection: vi.fn() });
 
     expect(actions.map((action) => action.header)).toEqual(['Account History', 'Print']);
     expect(actions[0].href?.(ROW)).toBe(statementHref('u-1'));
@@ -25,11 +25,12 @@ describe('Member Income row buttons', () => {
 
   it('adds Post Invoice for finance writers', () => {
     const invoice = vi.fn();
-    const actions = memberRowActions({ canRead: true, canWrite: true }, { print: vi.fn(), invoice });
+    const actions = memberRowActions({ canRead: true, canWrite: true }, { print: vi.fn(), invoice, collection: vi.fn() });
 
     expect(actions.map((action) => [action.header, action.label])).toEqual([
       ['Account History', 'View'],
       ['Post Invoice', 'Invoice'],
+      ['Post Collection', 'Collection'],
       ['Print', 'Print'],
     ]);
     actions[1].onClick?.(ROW);
@@ -37,6 +38,6 @@ describe('Member Income row buttons', () => {
   });
 
   it('gives others no buttons', () => {
-    expect(memberRowActions({ canRead: false, canWrite: false }, { print: vi.fn(), invoice: vi.fn() })).toEqual([]);
+    expect(memberRowActions({ canRead: false, canWrite: false }, { print: vi.fn(), invoice: vi.fn(), collection: vi.fn() })).toEqual([]);
   });
 });

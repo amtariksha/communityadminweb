@@ -99,7 +99,8 @@ interface ReceiptFilters {
 // Input types
 // ---------------------------------------------------------------------------
 
-interface CreateReceiptInput {
+export interface CreateReceiptInput {
+  /** Empty = the current financial year. */
   financial_year_id: string;
   unit_id: string;
   receipt_date: string;
@@ -111,10 +112,16 @@ interface CreateReceiptInput {
   allocations?: Array<{
     invoice_id: string;
     amount: number;
+    /** INC-26 — TDS withheld against the bill; the bill is settled by amount + TDS. */
+    tds_amount?: number;
   }>;
   // INC-03 — 'fifo' with no allocations settles the oldest open invoices.
   // An API without it strips the key and books the receipt as an advance.
   allocation_mode?: 'selected' | 'fifo';
+  // INC-26 — the payer, the bank a cheque / DD is drawn on, its date.
+  payer_member_id?: string;
+  payment_bank?: string | null;
+  instrument_date?: string | null;
 }
 
 export interface CreatedReceipt extends Receipt {

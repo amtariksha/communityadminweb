@@ -1,4 +1,6 @@
 import type { DataTableAction } from '@/components/data-table';
+import { api } from '@/lib/api';
+import { saveBlob } from '@/lib/download';
 import type { UnitDuesRow } from '@/hooks/use-unit-ledger';
 import type { FinanceAccess } from '@/lib/finance-roles';
 
@@ -6,6 +8,14 @@ export const MEMBER_INCOME_BASE = '/income/members';
 
 export const statementHref = (unitId: string): string => `${MEMBER_INCOME_BASE}/${unitId}/statement`;
 export const invoiceHref = (unitId: string): string => `${MEMBER_INCOME_BASE}/${unitId}/invoice`;
+export const collectionHref = (unitId: string, billId?: string): string =>
+  `${MEMBER_INCOME_BASE}/${unitId}/collection${billId ? `?bill=${billId}` : ''}`;
+
+/** "Post and Print Receipt": the receipt PDF (GET /receipts/:id/pdf). */
+export async function printReceipt(receiptId: string, receiptNumber: string): Promise<void> {
+  const blob = await api.download(`/receipts/${receiptId}/pdf`);
+  saveBlob(blob, `receipt-${receiptNumber}.pdf`);
+}
 
 /** Other postings from the Post Invoice form (INC-S18's button column), as they ship. */
 export function invoiceMoreActions(unitId: string): Array<{ label: string; href: string }> {
@@ -24,6 +34,8 @@ export interface MemberRowHandlers {
   print: (row: UnitDuesRow) => void;
   /** Post Invoice: the form as a page (classic) or a dialog (standard). */
   invoice: (row: UnitDuesRow) => void;
+  /** Post Collection: likewise. */
+  collection: (row: UnitDuesRow) => void;
 }
 
 /**
@@ -41,5 +53,10 @@ export function memberRowActions(access: FinanceAccess, handlers: MemberRowHandl
   };
   const print: DataTableAction<UnitDuesRow> = { key: 'print', header: 'Print', label: 'Print', onClick: handlers.print };
   if (!access.canWrite) return [history, print];
-  return [history, { key: 'invoice', header: 'Post Invoice', label: 'Invoice', onClick: handlers.invoice }, print];
+  return [
+    history,
+    { key: 'invoice', header: 'Post Invoice', label: 'Invoice', onClick: handlers.invoice },
+    { key: 'collection', header: 'Post Collection', label: 'Collection', onClick: handlers.collection },
+    print,
+  ];
 }
