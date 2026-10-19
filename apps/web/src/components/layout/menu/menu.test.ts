@@ -158,7 +158,8 @@ describe('classic modules', () => {
   });
 
   it('Parking Manager shows Slots and Vehicles with our sub-tabs', () => {
-    expect(labels('parking')).toEqual(['Slots', 'Vehicles']);
+    expect(labels('parking')).toEqual(['Setup', 'Slots', 'Vehicles']);
+    expect(find(menu, 'parking.setup')?.href).toBe('/parking/setup');
     expect(find(menu, 'parking.slots')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Slots', '/parking/slots'],
       ['Sublets', '/parking/slots/sublets'],
@@ -280,6 +281,9 @@ describe('locate', () => {
     ['/parking/slots/sublets', 'parking', 'parking.slots', 'parking.slots.sublets'],
     // Add / Edit Slot pages (PARK-07) stay under Slots.
     ['/parking/slots/new', 'parking', 'parking.slots', 'parking.slots.list'],
+    // Add / Edit Vehicle pages (PARK-09) stay under All Vehicles.
+    ['/parking/vehicles/new', 'parking', 'parking.vehicles', 'parking.vehicles.all'],
+    ['/parking/setup', 'parking', 'parking.setup', undefined],
     ['/approvals/vehicles', 'parking', 'parking.vehicles', 'parking.vehicles.awaiting'],
     ['/parking', 'parking', undefined, undefined],
     ['/move-in-out/verify', 'move', 'move.verify', undefined],

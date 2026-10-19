@@ -26,6 +26,7 @@ import { RoleDelegationCard } from './role-delegation-card';
 import { PermissionsGrid, type PermissionCell, type PermissionField } from './permissions-grid';
 import { GatesCard } from './gates-card';
 import { OverstayThresholdField } from './overstay-threshold-field';
+import { ParkingCard } from './parking-card';
 import { ReportSchedulesCard } from './report-schedules-card';
 import { DuesRemindersCard } from './dues-reminders-card';
 import { InterestCard } from './interest-card';
@@ -456,6 +457,9 @@ export default function SettingsContent(): ReactNode {
       <GatesCard>
         <OverstayThresholdField />
       </GatesCard>
+
+      {/* Parking Setup — resident add / edit switches, extra field (PARK-10) */}
+      <ParkingCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Amenities — set up on the Amenities page (AMEN-03). The copy that   */}

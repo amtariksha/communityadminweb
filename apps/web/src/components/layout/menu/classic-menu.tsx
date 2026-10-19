@@ -424,7 +424,8 @@ export const classicMenu: MenuNode[] = [
     // queue as sub-tabs (PARK-D5). Today's /parking stays inside the module.
     aliases: ['/parking'],
     children: [
-      planned('parking.setup', 'Setup', 'PARK-10'),
+      // PARK-10: resident add / edit switches and the extra field's name.
+      { id: 'parking.setup', label: 'Setup', href: '/parking/setup', logs: ['tenant_settings'] },
       {
         id: 'parking.slots',
         label: 'Slots',
