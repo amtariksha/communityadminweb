@@ -23,6 +23,8 @@ const COLUMN_COUNT = 7;
 interface MetersTabProps {
   meterTypeFilter: string;
   setMeterTypeFilter: (value: string) => void;
+  /** Track Utility Flats › More › Add meter (UTIL-11): open Add Meter for this unit. */
+  addForUnit?: string | null;
 }
 
 function StateRow({ children, className }: { children: ReactNode; className?: string }): ReactNode {
@@ -93,9 +95,9 @@ function MeterRows({ query, onToggle }: { query: ReturnType<typeof useMeters>; o
   return meters.map((meter) => <MeterRow key={meter.id} meter={meter} onToggle={onToggle} />);
 }
 
-export function MetersTab({ meterTypeFilter, setMeterTypeFilter }: MetersTabProps): ReactNode {
+export function MetersTab({ meterTypeFilter, setMeterTypeFilter, addForUnit = null }: MetersTabProps): ReactNode {
   const { addToast } = useToast();
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(addForUnit !== null);
   const metersQuery = useMeters({ meter_type: meterTypeFilter || undefined });
   const updateMutation = useUpdateMeter();
   const meters = metersQuery.data ?? [];
@@ -157,7 +159,7 @@ export function MetersTab({ meterTypeFilter, setMeterTypeFilter }: MetersTabProp
           </TableBody>
         </Table>
       </CardContent>
-      <AddMeterDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <AddMeterDialog open={createOpen} onOpenChange={setCreateOpen} defaultUnitId={addForUnit ?? undefined} />
     </Card>
   );
 }

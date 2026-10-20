@@ -23,6 +23,8 @@ import { METER_TYPES, meterTypeLabel, type MeterType } from './utility-ui';
 interface AddMeterDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The unit to start with (Track Utility Flats › More › Add meter). */
+  defaultUnitId?: string;
 }
 
 function GasPlansNote(): ReactNode {
@@ -60,9 +62,9 @@ function CommonMeterToggle({ checked, onChange }: { checked: boolean; onChange: 
 }
 
 /** Register a meter for a unit, or a common society meter (unit_id NULL, is_common). */
-export function AddMeterDialog({ open, onOpenChange }: AddMeterDialogProps): ReactNode {
+export function AddMeterDialog({ open, onOpenChange, defaultUnitId = '' }: AddMeterDialogProps): ReactNode {
   const { addToast } = useToast();
-  const [unitId, setUnitId] = useState('');
+  const [unitId, setUnitId] = useState(defaultUnitId);
   const [meterType, setMeterType] = useState<MeterType>('water');
   const [meterNumber, setMeterNumber] = useState('');
   const [isCommon, setIsCommon] = useState(false);

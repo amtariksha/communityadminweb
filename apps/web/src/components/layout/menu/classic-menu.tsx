@@ -355,16 +355,49 @@ export const classicMenu: MenuNode[] = [
     id: 'utility',
     label: 'Utility Tracker',
     icon: icon(Gauge),
-    // Meters, readings, bills and slab rates are tabs of one page until
-    // UTIL-10 gives each its own route.
-    href: '/utilities',
+    // UTIL-10: six children. Our meter register, readings, bills and
+    // trends are sub-tabs of Track Utility Flats (decision default); the
+    // standard /utilities page with its tabs stays as it is.
+    aliases: ['/utilities'],
     children: [
-      planned('utility.setup', 'Setup', 'UTIL-10'),
-      planned('utility.flats', 'Track Utility Flats', 'UTIL-11'),
-      planned('utility.income', 'Utility Income', 'UTIL-10'),
-      planned('utility.bulk', 'Bulk Posting', 'UTIL-12'),
-      planned('utility.registers', 'Receipts & Invoices', 'UTIL-12'),
-      planned('utility.defaulters', 'Defaulters', 'UTIL-10'),
+      {
+        id: 'utility.setup',
+        label: 'Setup',
+        href: '/utilities/setup',
+        forms: [
+          { label: 'Edit Simple Interest', path: '/utilities/setup/interest' },
+          { label: 'Add Meter Rule', path: '/utilities/setup/rules/new' },
+          { label: 'Edit Meter Rule', path: '/utilities/setup/rules/:ruleId/edit' },
+        ],
+      },
+      {
+        id: 'utility.flats',
+        label: 'Track Utility Flats',
+        tabs: [
+          { id: 'utility.flats.units', label: 'Utility Flats', href: '/utilities/flats', logs: ['unit'] },
+          { id: 'utility.flats.meters', label: 'Meters', href: '/utilities/flats/meters', logs: ['utility'] },
+          { id: 'utility.flats.readings', label: 'Readings', href: '/utilities/flats/readings', logs: ['utility'] },
+          { id: 'utility.flats.bills', label: 'Bills', href: '/utilities/flats/bills', logs: ['utility', 'invoice'] },
+          { id: 'utility.flats.trends', label: 'Trends', href: '/utilities/flats/trends' },
+        ],
+      },
+      { id: 'utility.income', label: 'Utility Income', href: '/utilities/income', logs: ['invoice', 'receipt'] },
+      {
+        id: 'utility.bulk',
+        label: 'Bulk Posting',
+        href: '/utilities/bulk-posting',
+        forms: [{ label: 'Invoices in Batch', path: '/utilities/bulk-posting/bills' }],
+      },
+      {
+        id: 'utility.registers',
+        label: 'Receipts & Invoices',
+        tabs: [
+          { id: 'utility.registers.receipts', label: 'Receipts', href: '/utilities/registers/receipts', logs: ['receipt'] },
+          { id: 'utility.registers.invoices', label: 'Invoices', href: '/utilities/registers/invoices', logs: ['invoice'] },
+          { id: 'utility.registers.credit-notes', label: 'Credit Notes', href: '/utilities/registers/credit-notes', logs: ['credit_note'] },
+        ],
+      },
+      { id: 'utility.defaulters', label: 'Defaulters', href: '/utilities/defaulters', logs: ['invoice', 'tenant_settings'] },
     ],
   },
   {

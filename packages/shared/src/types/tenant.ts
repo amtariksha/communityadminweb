@@ -128,6 +128,8 @@ export interface TenantSettings {
       subject: string;
       message_html: string;
     } | null;
+    /** UTIL-14 — bank accounts left out of utility payment instructions. */
+    excluded_bank_account_ids?: string[];
   };
 
   // INC-23 — Setup › GST: whether Post Invoice offers GST on an ad-hoc

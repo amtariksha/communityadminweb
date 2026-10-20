@@ -25,7 +25,12 @@ export interface UtilitySettingsView {
    * utility reminder text (null = ours; absent on an API older than UTIL-09).
    * The whole object is absent on an API older than UTIL-07.
    */
-  utility_billing?: { auto_post: boolean; reminder_template?: UtilityReminderText | null };
+  utility_billing?: {
+    auto_post: boolean;
+    reminder_template?: UtilityReminderText | null;
+    /** UTIL-14 — absent on an API older than UTIL-14. */
+    excluded_bank_account_ids?: string[];
+  };
 }
 
 /** The utility reminder text (UTIL-09). */
@@ -68,7 +73,11 @@ export function useSaveUtilityInterest() {
 export function useSaveUtilityBilling() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: function saveUtilityBilling(input: { auto_post?: boolean; reminder_template?: UtilityReminderText | null }) {
+    mutationFn: function saveUtilityBilling(input: {
+      auto_post?: boolean;
+      reminder_template?: UtilityReminderText | null;
+      excluded_bank_account_ids?: string[];
+    }) {
       return api.put<{ data: UtilitySettingsView }>('/utilities/settings/billing', input).then((res) => res.data);
     },
     onSuccess: function refresh(saved) {

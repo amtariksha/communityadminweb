@@ -248,9 +248,28 @@ describe('visibleMenu', () => {
   });
 
   it('turns a module whose children are all planned into a plain link', () => {
+    const module: MenuNode = {
+      id: 'sample',
+      label: 'Sample',
+      href: '/utilities',
+      children: [{ id: 'sample.a', label: 'A', planned: 'X-1' }],
+    };
+    const [shown] = visibleMenu([module], EVERYONE);
+    expect(shown?.href).toBe('/utilities');
+    expect(shown?.children).toBeUndefined();
+  });
+
+  it('shows Utility Tracker with its six children in order (UTIL-10)', () => {
     const utility = find(visibleMenu(classicMenu, EVERYONE), 'utility');
-    expect(utility?.href).toBe('/utilities');
-    expect(utility?.children).toBeUndefined();
+    expect(utility?.children?.map((child) => child.label)).toEqual([
+      'Setup',
+      'Track Utility Flats',
+      'Utility Income',
+      'Bulk Posting',
+      'Receipts & Invoices',
+      'Defaulters',
+    ]);
+    expect(find(classicMenu, 'utility.flats')?.tabs?.map((tab) => tab.label)).toEqual(['Utility Flats', 'Meters', 'Readings', 'Bills', 'Trends']);
   });
 
   it('follows the society’s features, tab by tab', () => {
