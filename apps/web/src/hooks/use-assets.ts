@@ -7,6 +7,8 @@ import { api } from '@/lib/api';
 // Types
 // ---------------------------------------------------------------------------
 //
+// AMC contracts have their own hooks (VEND-10): hooks/use-amc-contracts.ts.
+//
 // Field names here are the API's own (communityos
 // `apps/api/src/modules/asset/asset.controller.ts` Zod schemas and the
 // rows `asset.service.ts` returns). The API strips unknown body keys
@@ -49,22 +51,6 @@ export interface Asset {
   room?: string | null;
 }
 
-export interface AMCContract {
-  id: string;
-  asset_id: string;
-  asset_name: string;
-  vendor_name: string;
-  vendor_contact: string | null;
-  contract_number: string | null;
-  start_date: string;
-  end_date: string;
-  // NUMERIC column: arrives as a string.
-  cost: number | string | null;
-  status: string;
-  /** Days before end_date that admins are reminded (VEND-04). */
-  reminder_days?: number | null;
-}
-
 export interface ServiceLog {
   id: string;
   asset_id: string;
@@ -97,13 +83,6 @@ export interface AssetFilters {
   limit?: number;
 }
 
-export interface AMCFilters {
-  status?: string;
-  asset_id?: string;
-  page?: number;
-  limit?: number;
-}
-
 interface PaginatedResponse<T> {
   data: T[];
   total: number;
@@ -118,9 +97,6 @@ export const assetKeys = {
   list: (filters?: AssetFilters) => [...assetKeys.all, 'list', filters] as const,
   detail: (id: string) => [...assetKeys.all, 'detail', id] as const,
   dashboard: () => [...assetKeys.all, 'dashboard'] as const,
-  amc: () => [...assetKeys.all, 'amc'] as const,
-  amcList: (filters?: AMCFilters) => [...assetKeys.amc(), 'list', filters] as const,
-  amcExpiring: (days: number) => [...assetKeys.amc(), 'expiring', days] as const,
   serviceLists: () => [...assetKeys.all, 'services'] as const,
   services: (assetId: string) => [...assetKeys.serviceLists(), assetId] as const,
 };
@@ -139,19 +115,6 @@ function assetFiltersToParams(
   if (filters.status) params.status = filters.status;
   if (filters.condition) params.condition = filters.condition;
   if (filters.search) params.search = filters.search;
-  if (filters.page !== undefined) params.page = String(filters.page);
-  if (filters.limit !== undefined) params.limit = String(filters.limit);
-  return params;
-}
-
-function amcFiltersToParams(
-  filters?: AMCFilters,
-): Record<string, string> | undefined {
-  if (!filters) return undefined;
-
-  const params: Record<string, string> = {};
-  if (filters.status) params.status = filters.status;
-  if (filters.asset_id) params.asset_id = filters.asset_id;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   return params;
@@ -195,32 +158,6 @@ export function useAssetDashboard() {
         });
     },
     staleTime: 30 * 1000,
-  });
-}
-
-export function useAMCs(filters?: AMCFilters) {
-  return useQuery({
-    queryKey: assetKeys.amcList(filters),
-    queryFn: function fetchAMCs() {
-      return api.get<PaginatedResponse<AMCContract>>('/assets/amc', {
-        params: amcFiltersToParams(filters),
-      });
-    },
-  });
-}
-
-export function useExpiringAMCs(days: number) {
-  return useQuery({
-    queryKey: assetKeys.amcExpiring(days),
-    queryFn: function fetchExpiringAMCs() {
-      return api
-        .get<{ data: AMCContract[] }>('/assets/amc/expiring', {
-          params: { days: String(days) },
-        })
-        .then(function unwrap(res) {
-          return res.data;
-        });
-    },
   });
 }
 
@@ -294,28 +231,6 @@ interface UpdateAssetInput {
   status?: string;
 }
 
-interface CreateAMCInput {
-  asset_id: string;
-  vendor_name: string;
-  vendor_contact?: string;
-  contract_number?: string;
-  start_date: string;
-  end_date: string;
-  cost?: number;
-}
-
-interface UpdateAMCInput {
-  id: string;
-  vendor_name?: string;
-  vendor_contact?: string;
-  contract_number?: string;
-  start_date?: string;
-  end_date?: string;
-  cost?: number;
-  status?: string;
-  reminder_days?: number;
-}
-
 interface LogServiceInput {
   asset_id: string;
   service_type: string;
@@ -349,35 +264,6 @@ export function useUpdateAsset() {
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: assetKeys.all });
-    },
-  });
-}
-
-export function useCreateAMC() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: function createAMC(input: CreateAMCInput) {
-      return api.post<{ data: AMCContract }>('/assets/amc', input);
-    },
-    onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: assetKeys.amc() });
-      queryClient.invalidateQueries({ queryKey: assetKeys.dashboard() });
-    },
-  });
-}
-
-export function useUpdateAMC() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: function updateAMC(input: UpdateAMCInput) {
-      const { id, ...body } = input;
-      return api.patch<{ data: AMCContract }>(`/assets/amc/${id}`, body);
-    },
-    onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: assetKeys.amc() });
-      queryClient.invalidateQueries({ queryKey: assetKeys.dashboard() });
     },
   });
 }

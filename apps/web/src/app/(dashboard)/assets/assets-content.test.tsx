@@ -26,11 +26,9 @@ const mocks = vi.hoisted(() => {
     RAVI_USER_ID: 'user-77',
     addToast: vi.fn(),
     createAsset: mutation(),
-    createAMC: mutation(),
     logService: mutation(),
     createSchedule: mutation(),
     other: mutation(),
-    updateAMC: mutation(),
     useAssets: vi.fn(),
     query,
   };
@@ -69,24 +67,6 @@ vi.mock('@/hooks/use-assets', () => ({
     overdue_services: 3,
   }),
   useAssets: (filters?: Record<string, unknown>) => mocks.useAssets(filters),
-  useAMCs: mocks.query({
-    data: [
-      {
-        id: 'amc-1',
-        asset_id: 'asset-1',
-        asset_name: 'DG Set',
-        vendor_name: 'Pumpline Service Co.',
-        contract_number: 'AMC-1',
-        start_date: '2026-01-01T12:00:00.000Z',
-        end_date: '2099-01-01T12:00:00.000Z',
-        // pg returns NUMERIC as a string
-        cost: '12000.00',
-        status: 'active',
-        reminder_days: 30,
-      },
-    ],
-    total: 1,
-  }),
   useServiceLogs: mocks.query([
     {
       id: 'svc-1',
@@ -108,11 +88,9 @@ vi.mock('@/hooks/use-assets', () => ({
   useConductedAudits: mocks.query([]),
   useVendorAudits: mocks.query([]),
   useCreateAsset: () => mocks.createAsset,
-  useCreateAMC: () => mocks.createAMC,
   useLogService: () => mocks.logService,
   useCreateAuditSchedule: () => mocks.createSchedule,
   useUpdateAsset: () => mocks.other,
-  useUpdateAMC: () => mocks.updateAMC,
   useCreateChecklist: () => mocks.other,
   useRecordConductedAudit: () => mocks.other,
   useCreateVendorAudit: () => mocks.other,

@@ -30,7 +30,7 @@ export function AssetsBulkUpload(): ReactNode {
       <ImportDoors
         target={TARGET}
         title="Bulk Upload Assets"
-        description="One row per asset. Category is one of the asset types (Lift, Fire Safety, DG Set, CCTV …); a blank Asset Code takes the next AST- number. Any row with an error stops the upload until it is fixed or removed."
+        description="One row per asset. Category is one of the society's asset categories (Setup › Setup Asset Categories), any case; older words such as Lift or DG Set still work. A blank Asset Code takes the next AST- number. Any row with an error stops the upload until it is fixed or removed."
         columns={COLUMNS}
         applyLabel="Add"
         allowed={WRITE_ROLES.has(currentRole() ?? '')}

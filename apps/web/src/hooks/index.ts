@@ -877,22 +877,16 @@ export {
   useAssets,
   useAsset,
   useAssetDashboard,
-  useAMCs,
-  useExpiringAMCs,
   useServiceLogs,
   useCreateAsset,
   useUpdateAsset,
-  useCreateAMC,
-  useUpdateAMC,
   useLogService,
 } from './use-assets';
 export type {
   Asset,
-  AMCContract,
   ServiceLog,
   AssetDashboard,
   AssetFilters,
-  AMCFilters,
 } from './use-assets';
 
 // CCTV Cameras
