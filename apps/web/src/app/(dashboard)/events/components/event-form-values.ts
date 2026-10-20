@@ -21,6 +21,8 @@ export interface EventFormValues {
   amenityId: string;
   classType: EventClassType;
   endDate: string;
+  /** AMEN-43 — the account ticket invoices credit ('' = the facility's, else Other Income). */
+  incomeAccountId: string;
 }
 
 export type EventClassType = 'regular' | 'one_time';
@@ -51,7 +53,7 @@ export function eventFormValues(event?: EventItem | null, today = todayIST()): E
     return {
       title: '', coverImageUrl: '', eventDate: today, startTime: '18:00', endTime: '20:00',
       location: 'Community Clubhouse', capacity: '', audience: 'all', status: 'published', description: '',
-      amenityId: '', classType: 'one_time', endDate: '',
+      amenityId: '', classType: 'one_time', endDate: '', incomeAccountId: '',
     };
   }
   return {
@@ -68,6 +70,7 @@ export function eventFormValues(event?: EventItem | null, today = todayIST()): E
     amenityId: event.amenity_id ?? '',
     classType: event.class_type ?? 'one_time',
     endDate: event.end_date && event.end_date !== event.event_date ? event.end_date.slice(0, 10) : '',
+    incomeAccountId: event.income_account_id ?? '',
   };
 }
 
@@ -96,6 +99,7 @@ export function eventPayload(values: EventFormValues): { payload?: CreateEventIn
       amenity_id: values.amenityId || null,
       class_type: values.classType,
       end_date: regular && values.endDate ? values.endDate : null,
+      income_account_id: values.incomeAccountId || null,
       max_attendees: capacity,
       cover_image_url: values.coverImageUrl || null,
       target_audience: values.audience,

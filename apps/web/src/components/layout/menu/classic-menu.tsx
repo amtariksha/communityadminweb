@@ -681,7 +681,15 @@ export const classicMenu: MenuNode[] = [
           { id: 'amenity.calendar', label: 'Reservations Calendar', href: '/amenities/calendar', logs: ['amenity'] },
         ],
       },
-      { id: 'amenity.event', label: 'Event', href: '/events' },
+      {
+        id: 'amenity.event',
+        label: 'Event',
+        tabs: [
+          { id: 'amenity.event.events', label: 'Events', href: '/events', logs: ['event'] },
+          // AMEN-43 — who bought tickets, paid and left to pay.
+          { id: 'amenity.event.attendees', label: 'Members Attending', href: '/amenities/events/attendees', logs: ['event'] },
+        ],
+      },
       reportsMenuNode('amenity', 'AMEN-30'),
     ],
   },

@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { FormFrame, type FormMode } from '@/components/form-page';
+import { AccountSearchSelect } from '@/components/ui/account-search-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -184,6 +185,15 @@ export function EventForm({ mode, event, open, onClose, onSaved }: EventFormProp
       <ClassVenueFields values={values} set={set} />
       <WhenFields values={values} set={set} />
       <AudienceFields values={values} set={set} />
+      <Field id="event-income-account" label="Ticket Income Account">
+        <AccountSearchSelect
+          value={values.incomeAccountId}
+          onChange={(incomeAccountId) => set({ incomeAccountId })}
+          accountType={['income']}
+          incomeScope="member"
+          placeholder="The facility's account, else Other Income"
+        />
+      </Field>
       <Field id="event-desc" label="Event Description & Instructions">
         <Textarea
           id="event-desc"

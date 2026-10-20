@@ -15,6 +15,11 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: state.toast }) }));
+vi.mock('@/components/ui/account-search-select', () => ({
+  AccountSearchSelect: ({ value, onChange }: { value: string; onChange: (id: string) => void }) => (
+    <input aria-label="Ticket Income Account" value={value} onChange={(e) => onChange(e.target.value)} />
+  ),
+}));
 vi.mock('@/hooks', () => ({
   useAmenities: () => ({ data: { data: [{ id: 'am-1', name: 'Party Hall', is_active: true }, { id: 'am-2', name: 'Old Gym', is_active: false }] } }),
   useCreateEvent: () => ({ mutateAsync: state.create, isPending: false }),
