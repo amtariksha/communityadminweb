@@ -23,8 +23,21 @@ const OWN_PREFIX: Partial<Record<BillingNumberSeries, string>> = {
   non_member_credit_note: 'NMCN-',
 };
 
+/** The member series each non-member series numbers on until it is set up. */
+export const MEMBER_SERIES: Partial<Record<BillingNumberSeries, BillingNumberSeries>> = {
+  non_member_invoice: 'member_invoice',
+  non_member_receipt: 'member_receipt',
+  non_member_credit_note: 'credit_note',
+};
+
 export const isShared = (row: NumberingRow): boolean => row.shares_with !== null;
-export const canShare = (row: NumberingRow): boolean => row.series.startsWith('non_member_');
+export const canShare = (row: NumberingRow): boolean => MEMBER_SERIES[row.series] !== undefined;
+
+/** The row whose numbers a shared (or about to be shared) series takes. */
+export function memberRowOf(rows: readonly NumberingRow[], row: NumberingRow): NumberingRow | null {
+  const member = row.shares_with ?? MEMBER_SERIES[row.series];
+  return rows.find((item) => item.series === member) ?? null;
+}
 
 export function draftOf(row: NumberingRow): NumberingDraft {
   return { prefix: row.prefix, pad: String(row.pad), next: String(row.next), own: !isShared(row) };

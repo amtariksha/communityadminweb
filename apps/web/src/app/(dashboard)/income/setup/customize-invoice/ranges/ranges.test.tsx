@@ -150,5 +150,8 @@ describe('range helpers', () => {
     expect(linesToHtml('One\n\n<ul><li>Two</li></ul>\n')).toBe('<p>One</p><ul><li>Two</li></ul>');
     expect(linesToHtml('  \n ')).toBeNull();
     expect(htmlToLines('<p>A &amp; B</p><p>Line<br>break</p>')).toBe('A & B\nLine\nbreak');
+    // A "<" that starts no basic tag stays text.
+    expect(linesToHtml('Pay to <society name> by <b>NEFT</b>')).toBe('<p>Pay to &lt;society name> by <b>NEFT</b></p>');
+    expect(htmlToLines('<p>Pay to &lt;society name&gt;</p>')).toBe('Pay to <society name>');
   });
 });

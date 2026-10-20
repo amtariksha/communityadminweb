@@ -12,9 +12,9 @@ const SAMPLES: ReadonlyArray<[SampleType, string]> = [
   ['credit_note', 'Credit Note'],
 ];
 
-/** "Post one first" stays as the server says it; a missing route is "not available yet". */
+/** "Post one first" and other refusals stay as the server says them; a missing route (no code) is "not available yet". */
 export function sampleMessage(error: unknown): string {
-  if (error instanceof ApiError && error.status === 404 && error.code !== 'no_sample_document') {
+  if (error instanceof ApiError && error.status === 404 && !error.code) {
     return 'Sample documents are not available yet on this server.';
   }
   return friendlyError(error);

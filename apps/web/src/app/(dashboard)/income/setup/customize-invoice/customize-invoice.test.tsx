@@ -124,4 +124,13 @@ describe('Customize Invoice › Sample', () => {
 
     expect((await screen.findByRole('alert')).textContent).toBe('Post one first to see a sample.');
   });
+
+  it('says "not available yet" when the server has no sample route', async () => {
+    mocks.sample.mockRejectedValue(new ApiError(404, { message: 'Cannot GET /billing-documents/sample' } as never));
+    render(<CustomizeInvoiceSetupPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sample Invoice' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Sample documents are not available yet on this server.');
+  });
 });

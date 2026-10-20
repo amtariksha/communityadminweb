@@ -11,11 +11,14 @@ import { NumberingCard } from './numbering-card';
 
 function DocumentCards({ canWrite }: { canWrite: boolean }): ReactNode {
   const query = useDocumentSettings();
-  if (isNotDeployed(query.error)) {
-    return <p className="text-sm text-muted-foreground">Document options are not available yet on this server.</p>;
+  // A failed refetch keeps the cards (and their unsaved edits) on screen.
+  if (!query.data) {
+    if (isNotDeployed(query.error)) {
+      return <p className="text-sm text-muted-foreground">Document options are not available yet on this server.</p>;
+    }
+    if (query.error) return <p role="alert" className="text-sm text-destructive">{friendlyError(query.error)}</p>;
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
   }
-  if (query.error) return <p role="alert" className="text-sm text-destructive">{friendlyError(query.error)}</p>;
-  if (!query.data) return <p className="text-sm text-muted-foreground">Loading…</p>;
   return (
     <>
       <DocumentOptionsCard view={query.data} canWrite={canWrite} />

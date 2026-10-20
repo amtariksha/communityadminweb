@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/toast';
 import { useNumbering, useSaveNumbering, type NumberingRow } from '@/hooks/use-billing-documents';
 import { ApiError, friendlyError } from '@/lib/api-error';
 import { isNotDeployed } from '@/lib/not-deployed';
-import { draftError, draftOf, toNumberingPayload, type NumberingDraft, type NumberingDrafts } from './numbering';
+import { draftError, draftOf, memberRowOf, toNumberingPayload, type NumberingDraft, type NumberingDrafts } from './numbering';
 import { NumberingRowView } from './numbering-row';
 
 function NumberingTable({ rows, canWrite }: { rows: NumberingRow[]; canWrite: boolean }): ReactNode {
@@ -19,7 +19,6 @@ function NumberingTable({ rows, canWrite }: { rows: NumberingRow[]; canWrite: bo
   const [drafts, setDrafts] = useState<NumberingDrafts>(() => Object.fromEntries(rows.map((row) => [row.series, draftOf(row)])));
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
-  const labels = new Map(rows.map((row) => [row.series, row.label]));
   const errors = Object.fromEntries(rows.map((row) => [row.series, draftError(row, drafts[row.series] ?? draftOf(row))]));
   const payload = toNumberingPayload(rows, drafts);
   const canSave = Object.keys(payload).length > 0 && Object.values(errors).every((error) => error === null) && !save.isPending;
@@ -61,7 +60,7 @@ function NumberingTable({ rows, canWrite }: { rows: NumberingRow[]; canWrite: bo
               key={row.series}
               row={row}
               draft={drafts[row.series] ?? draftOf(row)}
-              sharesLabel={row.shares_with ? labels.get(row.shares_with) ?? null : null}
+              memberRow={memberRowOf(rows, row)}
               canWrite={canWrite}
               error={errors[row.series] ?? serverErrors[row.series] ?? null}
               change={(draft) => change(row.series, draft)}
@@ -90,9 +89,9 @@ export function NumberingCard({ canWrite }: { canWrite: boolean }): ReactNode {
   const query = useNumbering();
   let body: ReactNode;
   if (isNotDeployed(query.error)) body = <p className="text-sm text-muted-foreground">Numbering is not available yet on this server.</p>;
+  else if (query.data) body = <NumberingTable key={query.dataUpdatedAt} rows={query.data} canWrite={canWrite} />;
   else if (query.error) body = <p role="alert" className="text-sm text-destructive">{friendlyError(query.error)}</p>;
-  else if (!query.data) body = <p className="text-sm text-muted-foreground">Loading…</p>;
-  else body = <NumberingTable key={query.dataUpdatedAt} rows={query.data} canWrite={canWrite} />;
+  else body = <p className="text-sm text-muted-foreground">Loading…</p>;
   return (
     <Card id="numbering">
       <CardHeader>

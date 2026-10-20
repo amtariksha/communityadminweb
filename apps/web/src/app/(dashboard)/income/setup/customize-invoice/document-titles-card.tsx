@@ -50,11 +50,14 @@ export function DocumentTitlesCard(): ReactNode {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedKey]);
 
-  if (isNotDeployed(query.error)) {
-    return <Shell><p className="text-sm text-muted-foreground">Document titles are not available yet on this server.</p></Shell>;
+  // A failed refetch keeps the form (and its unsaved edits) on screen.
+  if (!query.data) {
+    if (isNotDeployed(query.error)) {
+      return <Shell><p className="text-sm text-muted-foreground">Document titles are not available yet on this server.</p></Shell>;
+    }
+    if (query.error) return <Shell><p role="alert" className="text-sm text-destructive">{friendlyError(query.error)}</p></Shell>;
+    return <Shell><p className="text-sm text-muted-foreground">Loading…</p></Shell>;
   }
-  if (query.error) return <Shell><p role="alert" className="text-sm text-destructive">{friendlyError(query.error)}</p></Shell>;
-  if (query.isLoading) return <Shell><p className="text-sm text-muted-foreground">Loading…</p></Shell>;
 
   const errors = titlesErrors(form);
   const canSave = canWrite && !sameTitles(form, saved) && Object.keys(errors).length === 0 && !save.isPending;

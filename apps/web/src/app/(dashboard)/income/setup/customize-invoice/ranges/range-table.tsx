@@ -28,6 +28,8 @@ export interface RangeTableProps {
 }
 
 const VALUE_COLUMNS: Record<RangeKind, number> = { footer: 1, prefix: 1, header_title: 1, period: 3 };
+/** The most ranges PUT /billing-document-ranges takes per series and kind. */
+const MAX_ROWS = 50;
 
 function RangeEditor({ series, kind, title, numberLabel, canWrite, list }: RangeTableProps & { list: DocumentRangeList }): ReactNode {
   const { addToast } = useToast();
@@ -98,7 +100,7 @@ function RangeEditor({ series, kind, title, numberLabel, canWrite, list }: Range
       {serverError && <p role="alert" className="text-sm text-destructive">{serverError}</p>}
       {canWrite && (
         <div className="flex gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => edit([...rows, blankRow(newKey())])}>
+          <Button type="button" variant="outline" size="sm" disabled={rows.length >= MAX_ROWS} onClick={() => edit([...rows, blankRow(newKey())])}>
             <Plus className="mr-2 h-4 w-4" />
             Add row
           </Button>
@@ -116,10 +118,10 @@ function RangeEditor({ series, kind, title, numberLabel, canWrite, list }: Range
 export function RangeTable(props: RangeTableProps): ReactNode {
   const query = useDocumentRanges(props.series, props.kind);
   let body: ReactNode;
-  if (isNotDeployed(query.error)) body = <p className="text-sm text-muted-foreground">Not available yet on this server.</p>;
+  if (query.data) body = <RangeEditor key={query.dataUpdatedAt} {...props} list={query.data} />;
+  else if (isNotDeployed(query.error)) body = <p className="text-sm text-muted-foreground">Not available yet on this server.</p>;
   else if (query.error) body = <p role="alert" className="text-sm text-destructive">{friendlyError(query.error)}</p>;
-  else if (!query.data) body = <p className="text-sm text-muted-foreground">Loading…</p>;
-  else body = <RangeEditor key={query.dataUpdatedAt} {...props} list={query.data} />;
+  else body = <p className="text-sm text-muted-foreground">Loading…</p>;
   return (
     <section aria-label={props.title} className="space-y-2">
       <h3 className="text-sm font-semibold">{props.title}</h3>

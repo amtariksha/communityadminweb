@@ -25,6 +25,8 @@ export function LetterheadCard({ view, canWrite }: LetterheadCardProps): ReactNo
   const remove = useRemoveLetterhead();
   const input = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // The signed link expires; a broken preview says so instead of a broken image.
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
   const hasLetterhead = view.look.letterheadKey !== null;
   const busy = upload.isPending || remove.isPending;
 
@@ -63,11 +65,19 @@ export function LetterheadCard({ view, canWrite }: LetterheadCardProps): ReactNo
         <p className="text-xs text-muted-foreground">Drawn across the top of invoices in place of the society&apos;s name and address. JPG or PNG, up to 1 MB.</p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {isWebLink(view.letterhead_url) ? (
+        {isWebLink(view.letterhead_url) && brokenUrl !== view.letterhead_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={view.letterhead_url} alt="Letter head" className="max-h-40 rounded border object-contain" />
+          <img
+            src={view.letterhead_url}
+            alt="Letter head"
+            referrerPolicy="no-referrer"
+            className="max-h-40 rounded border object-contain"
+            onError={() => setBrokenUrl(view.letterhead_url)}
+          />
         ) : (
-          <p className="text-sm text-muted-foreground">{hasLetterhead ? 'A letter head is set.' : 'No letter head: documents print the text header.'}</p>
+          <p className="text-sm text-muted-foreground">
+            {hasLetterhead ? 'A letter head is set. Reload the page to see it.' : 'No letter head: documents print the text header.'}
+          </p>
         )}
         {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
         {canWrite && (

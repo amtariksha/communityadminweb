@@ -175,6 +175,8 @@ export function useSaveDocumentRanges() {
         data: ranges,
         current_number: old?.current_number ?? 0,
       }));
+      // Documents may have been issued since the read: fetch the series' current number again.
+      void queryClient.invalidateQueries({ queryKey: billingDocumentKeys.ranges(input.series, input.kind) });
     },
   });
 }

@@ -10,26 +10,28 @@ import { canShare, draftOf, formatNext, isShared, ownDraft, type NumberingDraft 
 interface NumberingRowViewProps {
   row: NumberingRow;
   draft: NumberingDraft;
-  /** Label of the member series a shared row numbers on. */
-  sharesLabel: string | null;
+  /** The member series a shared row numbers on (or will, once saved). */
+  memberRow: NumberingRow | null;
   canWrite: boolean;
   error: string | null;
   change: (draft: NumberingDraft) => void;
 }
 
-function SharedCells({ row, sharesLabel }: Pick<NumberingRowViewProps, 'row' | 'sharesLabel'>): ReactNode {
+function SharedCells({ row, memberRow }: Pick<NumberingRowViewProps, 'row' | 'memberRow'>): ReactNode {
+  // The member series' numbers, which this series takes (now, or once saved).
+  const source = memberRow ?? row;
   return (
     <>
       <TableCell colSpan={2} className="text-sm text-muted-foreground">
-        Shares the {sharesLabel ?? 'member'} series ({row.prefix})
+        Shares the {memberRow?.label ?? 'member'} series ({source.prefix})
       </TableCell>
-      <TableCell className="text-right tabular-nums">{row.last_issued}</TableCell>
-      <TableCell className="text-sm text-muted-foreground">{formatNext(draftOf(row))}</TableCell>
+      <TableCell className="text-right tabular-nums">{source.last_issued}</TableCell>
+      <TableCell className="text-sm text-muted-foreground">{formatNext(draftOf(source))}</TableCell>
     </>
   );
 }
 
-function OwnCells({ row, draft, canWrite, change }: Omit<NumberingRowViewProps, 'sharesLabel' | 'error'>): ReactNode {
+function OwnCells({ row, draft, canWrite, change }: Omit<NumberingRowViewProps, 'memberRow' | 'error'>): ReactNode {
   const preview = formatNext(draft);
   return (
     <>
@@ -55,10 +57,12 @@ function OwnCells({ row, draft, canWrite, change }: Omit<NumberingRowViewProps, 
   );
 }
 
-function Action({ row, draft, canWrite, change }: Omit<NumberingRowViewProps, 'sharesLabel' | 'error'>): ReactNode {
+function Action({ row, draft, canWrite, change }: Omit<NumberingRowViewProps, 'memberRow' | 'error'>): ReactNode {
   if (!canWrite || !canShare(row)) return null;
   if (!draft.own) {
-    return <Button type="button" variant="outline" size="sm" onClick={() => change(ownDraft(row))}>Use its own series</Button>;
+    // A series already on its own goes back to its saved prefix and counter.
+    const own = isShared(row) ? ownDraft(row) : draftOf(row);
+    return <Button type="button" variant="outline" size="sm" onClick={() => change(own)}>Use its own series</Button>;
   }
   const label = isShared(row) ? 'Keep sharing' : 'Share the member series';
   return <Button type="button" variant="ghost" size="sm" onClick={() => change({ ...draftOf(row), own: false })}>{label}</Button>;
@@ -71,7 +75,7 @@ export function NumberingRowView(props: NumberingRowViewProps): ReactNode {
     <>
       <TableRow>
         <TableCell className="font-medium">{row.label}</TableCell>
-        {draft.own ? <OwnCells {...props} /> : <SharedCells row={row} sharesLabel={props.sharesLabel} />}
+        {draft.own ? <OwnCells {...props} /> : <SharedCells row={row} memberRow={props.memberRow} />}
         <TableCell className="text-right">
           <Action {...props} />
         </TableCell>

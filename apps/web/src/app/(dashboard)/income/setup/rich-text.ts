@@ -8,6 +8,10 @@
 // A line that already opens or closes a block is not wrapped in <p>.
 const BLOCK_LINE = /^<\/?(p|ul|ol|li)\b/i;
 
+// A "<" that does not start one of the basic tags is text ("Pay to <society name>"):
+// escaped so the server's allow-list does not drop it as an unknown tag.
+const NOT_A_TAG = /<(?!\/?(?:p|br|b|strong|i|em|u|ol|ul|li|sub|sup|a)(?=[\s>/]))/gi;
+
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", nbsp: ' ' };
 
 function decodeEntities(text: string): string {
@@ -22,7 +26,12 @@ export function linesToHtml(text: string): string | null {
     .map((line) => line.trim())
     .filter((line) => line !== '');
   if (lines.length === 0) return null;
-  return lines.map((line) => (BLOCK_LINE.test(line) ? line : `<p>${line}</p>`)).join('');
+  return lines
+    .map((line) => {
+      const text = line.replace(NOT_A_TAG, '&lt;');
+      return BLOCK_LINE.test(line) ? text : `<p>${text}</p>`;
+    })
+    .join('');
 }
 
 /** Stored HTML back as editable lines: paragraphs and line breaks become new lines. */

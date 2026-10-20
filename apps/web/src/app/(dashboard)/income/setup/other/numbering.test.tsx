@@ -93,6 +93,19 @@ describe('Numbering (INC-41)', () => {
     expect(mocks.save).toHaveBeenCalledWith({ non_member_invoice: { prefix: 'NMI-', pad: 4 }, non_member_receipt: null });
   });
 
+  it('previews the member numbers a series will take, and "Use its own series" brings its own back', () => {
+    render(<NumberingCard canWrite />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Share the member series' }));
+    expect(screen.getByText('Shares the Receipt series (RCT-)')).toBeTruthy();
+    expect(screen.getByText('RCT-0051')).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Use its own series' })[1]);
+    expect((screen.getByLabelText('Prefix, Non-member Receipt') as HTMLInputElement).value).toBe('NMR-');
+    expect((screen.getByLabelText('Next number, Non-member Receipt') as HTMLInputElement).value).toBe('8');
+    expect(saveButton().disabled).toBe(true);
+  });
+
   it('shows the server refusal on its series', async () => {
     mocks.save.mockRejectedValue(
       new ApiError(400, { message: 'MF/1301 is already used', code: 'next_number_taken', errors: { member_invoice: ['MF/1301 is already used'] } } as never),
