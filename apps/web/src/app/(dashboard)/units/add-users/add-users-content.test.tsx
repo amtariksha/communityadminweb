@@ -13,6 +13,8 @@ vi.mock('next/link', () => ({
   default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
 }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
+// UNIT-29's spreadsheet section has its own test (mass-upload.test.tsx).
+vi.mock('./mass-upload', () => ({ MassUpload: () => <section aria-label="Mass Upload" /> }));
 
 const state = vi.hoisted(() => ({ role: 'community_admin', importMembers: vi.fn(), residentSettings: null as unknown }));
 // UNIT-20 — the invite choice shows once the API has resident settings.

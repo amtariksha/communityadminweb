@@ -11,6 +11,7 @@ import { currentRole } from '@/lib/current-role';
 import { useUnitChoices } from '../../helpdesk/new/use-unit-choices';
 import { blockUnitLabel } from '../approved/unit-labels';
 import { AddUsersGrid, type UnitOption } from './add-users-grid';
+import { MassUpload } from './mass-upload';
 import {
   applyImportResult,
   applyRequestErrors,
@@ -45,7 +46,8 @@ function useUnitOptions(): UnitOption[] {
 /**
  * Units & Users › Add Users (UNIT-14, screen UNIT-S3): residents typed into
  * numbered rows; Create User Accounts sends every filled row in one
- * request and writes each row's outcome into its Result cell.
+ * request and writes each row's outcome into its Result cell. Below it the
+ * Mass Upload of the same columns from a spreadsheet (UNIT-29).
  */
 export function AddUsersContent(): ReactNode {
   const { addToast } = useToast();
@@ -121,8 +123,9 @@ export function AddUsersContent(): ReactNode {
           Add More Blocks / Edit Blocks
         </Link>
       </div>
+      <MassUpload allowed={canCreate} invitesOffered={invitesOffered} invitesEnabled={Boolean(residentSettings.data?.invite_email_enabled)} />
       <p className="text-sm text-muted-foreground">
-        Many at once from a spreadsheet: <Link href="/units/import" className="text-primary hover:underline">import units with their owners and tenants</Link>.
+        New units with their owners and tenants: <Link href="/units/import" className="text-primary hover:underline">import units</Link>.
       </p>
     </div>
   );
