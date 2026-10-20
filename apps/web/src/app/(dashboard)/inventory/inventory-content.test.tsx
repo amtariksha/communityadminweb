@@ -188,7 +188,7 @@ describe('InventoryContent', () => {
   describe('Issue LOI', () => {
     function fillRequired(dialog: HTMLElement): void {
       const [vendor, title] = within(dialog).getAllByRole('textbox');
-      fireEvent.change(vendor, { target: { value: 'Otis Elevators' } });
+      fireEvent.change(vendor, { target: { value: 'Liftwell Elevators' } });
       fireEvent.change(title, { target: { value: 'Lift modernisation — Tower A' } });
     }
 
@@ -224,7 +224,7 @@ describe('InventoryContent', () => {
 
       await waitFor(() => expect(mocks.createLOI.mutateAsync).toHaveBeenCalledTimes(1));
       expect(mocks.createLOI.mutateAsync).toHaveBeenCalledWith({
-        vendor: 'Otis Elevators',
+        vendor: 'Liftwell Elevators',
         title: 'Lift modernisation — Tower A',
         estimated_value: 125000.75,
         valid_until: '2026-12-31',

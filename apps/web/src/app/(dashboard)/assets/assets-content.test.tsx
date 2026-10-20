@@ -41,7 +41,7 @@ const DG_SET = vi.hoisted(() => ({
   name: 'DG Set',
   asset_type: 'generator',
   location: 'Basement',
-  manufacturer: 'Kirloskar',
+  manufacturer: 'Pumpline',
   model: '',
   serial_number: '',
   purchase_date: '',
@@ -69,7 +69,7 @@ vi.mock('@/hooks/use-assets', () => ({
         id: 'amc-1',
         asset_id: 'asset-1',
         asset_name: 'DG Set',
-        vendor_name: 'Kirloskar Service',
+        vendor_name: 'Pumpline Service Co.',
         contract_number: 'AMC-1',
         start_date: '2026-01-01T12:00:00.000Z',
         end_date: '2099-01-01T12:00:00.000Z',
@@ -113,7 +113,7 @@ vi.mock('@/hooks/use-assets', () => ({
 }));
 
 vi.mock('@/hooks', () => ({
-  useVendors: mocks.query({ data: [{ id: 'vendor-1', name: 'Kirloskar Service' }] }),
+  useVendors: mocks.query({ data: [{ id: 'vendor-1', name: 'Pumpline Service Co.' }] }),
   useStaffEmployees: mocks.query({
     data: [{ id: mocks.STAFF_ROW_ID, name: 'Ravi Kumar', staff_type: 'electrician' }],
   }),
@@ -240,7 +240,7 @@ describe('AssetsContent', () => {
       expect(mocks.createAMC.mutate).toHaveBeenCalledTimes(1);
       expect(mocks.createAMC.mutate.mock.calls[0][0]).toEqual({
         asset_id: 'asset-1',
-        vendor_name: 'Kirloskar Service',
+        vendor_name: 'Pumpline Service Co.',
         contract_number: 'AMC-9',
         start_date: '2026-11-01',
         end_date: '2027-10-31',
