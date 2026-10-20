@@ -38,6 +38,8 @@ export const RBAC_RESOURCES = [
   'reports',
   'analytics',
   'settings',
+  'violations',
+  'community_forms',
 ] as const;
 
 export const RBAC_ROLES = [
@@ -144,7 +146,7 @@ export function PermissionsGrid(props: PermissionsGridProps): ReactNode {
               <TableHead className="sticky left-0 bg-background">Role</TableHead>
               {RBAC_RESOURCES.map((resource) => (
                 <TableHead key={resource} className="min-w-[100px] text-center capitalize">
-                  {resource}
+                  {resource.replace(/_/g, ' ')}
                 </TableHead>
               ))}
             </TableRow>

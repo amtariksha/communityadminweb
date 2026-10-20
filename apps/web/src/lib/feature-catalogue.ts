@@ -46,6 +46,8 @@ export const MODULE_FEATURES: FeatureToggle[] = [
   { key: 'cctv', label: 'CCTV', description: 'Camera feeds and ANPR rules.' },
   { key: 'staff', label: 'Staff', description: 'Society staff roster, shifts, attendance, leaves.' },
   { key: 'documents', label: 'Documents', description: 'Document vault — bylaws, NOCs, ID proofs.' },
+  // RULE-01 — Community Rules & Violations.
+  { key: 'violations', label: 'Rules & Violations', description: 'Rule categories, violations raised against units, warnings and penalties.' },
 ];
 
 /**
