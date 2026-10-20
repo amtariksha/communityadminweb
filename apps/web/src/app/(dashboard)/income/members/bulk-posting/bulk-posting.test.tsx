@@ -31,6 +31,10 @@ describe('Member Income › Bulk Posting', () => {
     ]);
   });
 
+  it('posts collections through the receipts imports', () => {
+    expect(memberImport('member_collection')?.endpoint).toBe('/receipts/imports');
+  });
+
   it('knows each job by its import type, and opening balances are the community admin’s', () => {
     expect(memberImport('unit_opening_balance')?.roles).toEqual(['super_admin', 'community_admin']);
     expect(memberImport('nothing')).toBeUndefined();

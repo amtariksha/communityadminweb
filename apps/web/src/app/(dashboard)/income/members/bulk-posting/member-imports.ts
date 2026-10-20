@@ -100,6 +100,29 @@ export const MEMBER_IMPORT_MATRICES: readonly MemberImportMatrix[] = [
       },
     ],
   },
+  {
+    heading: 'Post Collection in Bulk',
+    note: 'A stack of cheques entered once: each collection settles the unit’s oldest bills first; the rest is held as its advance.',
+    jobs: [
+      {
+        type: 'member_collection',
+        label: 'Collections',
+        description: 'One row = one collection, posted as Post Collection posts it. A payment number already used is reported.',
+        endpoint: RECEIPT_IMPORTS_ENDPOINT,
+        columns: [
+          ...UNIT_COLUMNS,
+          { key: 'receipt_date', label: 'Date' },
+          { key: 'amount', label: 'Amount' },
+          { key: 'mode', label: 'Mode' },
+          { key: 'reference_number', label: 'Payment Number' },
+          { key: 'payment_bank', label: 'Payment Bank' },
+          { key: 'instrument_date', label: 'Instrument Date' },
+          { key: 'bank_code', label: 'Bank & Cash Account Code' },
+          { key: 'comment', label: 'Comment' },
+        ],
+      },
+    ],
+  },
 ];
 
 export const MEMBER_IMPORTS: readonly MemberImport[] = MEMBER_IMPORT_MATRICES.flatMap((matrix) => matrix.jobs);
