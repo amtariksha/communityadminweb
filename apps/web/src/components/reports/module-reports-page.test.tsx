@@ -40,7 +40,8 @@ describe('Reports menu entries from the registry', () => {
   it('gives a registered module its Reports page and keeps the others planned', () => {
     expect(reportsMenuNode('ledger', 'REP-04')).toEqual({ id: 'ledger.reports', label: 'Reports', href: '/accounts/reports' });
     expect(reportsMenuNode('gate', 'GATE-30')).toEqual({ id: 'gate.reports', label: 'Reports', href: '/gate/reports' });
-    expect(reportsMenuNode('forms', 'REP-04')).toEqual({ id: 'forms.reports', label: 'Reports', planned: 'REP-04' });
+    expect(reportsMenuNode('forms', 'FORM-07')).toEqual({ id: 'forms.reports', label: 'Reports', href: '/community-forms/reports' });
+    expect(reportsMenuNode('parking', 'PARK-30')).toEqual({ id: 'parking.reports', label: 'Reports', planned: 'PARK-30' });
   });
 
   it('puts every Reports page under the Reports menu entry', () => {

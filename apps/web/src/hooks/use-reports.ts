@@ -25,6 +25,8 @@ export type ReportParamType =
   | 'user'
   | 'poll'
   | 'amenity'
+  /** One of the society's community forms (FORM-07). */
+  | 'community_form'
   | 'select'
   | 'boolean'
   | 'number';

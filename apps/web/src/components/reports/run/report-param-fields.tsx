@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { useCommunityForms } from '@/hooks/use-community-forms';
 import { AccountSearchSelect } from '@/components/ui/account-search-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -156,6 +157,16 @@ function AmenityField({ param, value, onChange }: FieldProps): ReactNode {
   );
 }
 
+function CommunityFormField({ param, value, onChange }: FieldProps): ReactNode {
+  const forms = useCommunityForms({ limit: 100 });
+  const options = [{ value: '', label: 'Choose a form' }, ...(forms.data?.data ?? []).map((form) => ({ value: form.id, label: form.name }))];
+  return (
+    <Select id={fieldId(param)} aria-label={param.label} value={String(value)} onChange={(event) => onChange(event.target.value)}>
+      <Options options={options} />
+    </Select>
+  );
+}
+
 function ChoiceField({ param, value, onChange, options }: FieldProps & { options: ReadonlyArray<{ value: string; label: string }> }): ReactNode {
   // An optional choice can be left on All (no filter).
   const shown = param.required || param.type !== 'select' ? options : [{ value: ANY, label: 'All' }, ...options];
@@ -189,6 +200,8 @@ function Widget(props: FieldProps): ReactNode {
       return <PollField {...props} />;
     case 'amenity':
       return <AmenityField {...props} />;
+    case 'community_form':
+      return <CommunityFormField {...props} />;
     case 'financial_year':
       return <ChoiceField {...props} options={financialYearOptions(today)} />;
     case 'block':
