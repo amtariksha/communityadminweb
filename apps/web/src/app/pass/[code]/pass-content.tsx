@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { InactivePassCard, passStampOf } from './inactive-pass';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -41,16 +42,6 @@ type PassState =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'loaded'; data: PassData };
-
-function getOverlayLabel(data: PassData): string | null {
-  const now = new Date();
-  const validUntil = new Date(data.valid_until);
-
-  if (data.status === 'revoked') return 'REVOKED';
-  if (data.status === 'expired' || validUntil < now) return 'EXPIRED';
-  if (data.entries_used >= data.max_entries) return 'USED';
-  return null;
-}
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -121,7 +112,11 @@ export default function PassContent({ code }: { code: string }): ReactNode {
     return <PartyGuestRegister code={code} pass={data} />;
   }
 
-  const overlayLabel = getOverlayLabel(data);
+  const overlayLabel = passStampOf(data);
+  // A pass that is no longer valid comes back as its status alone (no QR).
+  if (overlayLabel !== null && !data.qr_data_url) {
+    return <InactivePassCard stamp={overlayLabel} />;
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-950 px-4 py-8">
