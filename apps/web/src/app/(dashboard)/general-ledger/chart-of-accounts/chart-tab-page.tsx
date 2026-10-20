@@ -9,7 +9,14 @@ import { useToast } from '@/components/ui/toast';
 import { ExportStrip } from '@/components/data-table/export-strip';
 import { printableTable, toTsv, type TextColumn } from '@/components/data-table/table-text';
 import { useAccountGroups } from '@/hooks';
-import { useAllLedgerAccounts, useSaveAccountsBulk, type AccountBulkRow, type ChartAccount } from '@/hooks/use-chart-of-accounts';
+import {
+  useAllLedgerAccounts,
+  useSaveAccountsBulk,
+  type AccountBulkResult,
+  type AccountBulkRow,
+  type ChartAccount,
+} from '@/hooks/use-chart-of-accounts';
+import { DeactivatedAccounts } from '@/components/ledger-accounts/deactivated-accounts';
 import { ApiError, friendlyError } from '@/lib/api-error';
 import { currentRole } from '@/lib/current-role';
 import { AccountGrid } from './account-grid';
@@ -33,6 +40,12 @@ function tabGroups(groups: readonly AccountGroup[], tab: ChartTab, accounts: rea
     .sort((a, b) => String(a.code ?? '').localeCompare(String(b.code ?? '')));
 }
 
+function savedText(result: AccountBulkResult): string {
+  const parts = [`${result.created} added`, `${result.updated} changed`];
+  if (result.deactivated) parts.push(`${result.deactivated} deactivated`);
+  return `${parts.join(', ')}, ${result.entries_posted} opening-balance entries posted.`;
+}
+
 function AssetNotes(): ReactNode {
   return (
     <div className="space-y-1 text-sm text-muted-foreground">
@@ -52,7 +65,8 @@ function AssetNotes(): ReactNode {
  * General Ledger › Chart of Accounts › one type (GL-12, screens GL-S1 to
  * GL-S4): the type's accounts as one editable list with five spare rows and
  * one Save Changes; Assets also edits opening balances (each change posts
- * its delta entry). Deactivating is GL-14, default bank accounts GL-18.
+ * its delta entry). De-Activate marks rows for the same save; deactivated
+ * accounts are listed below with Activate and Delete (GL-14).
  */
 export function ChartTabPage({ slug }: { slug: ChartTab['slug'] }): ReactNode {
   const tab = CHART_TABS[slug];
@@ -61,13 +75,17 @@ export function ChartTabPage({ slug }: { slug: ChartTab['slug'] }): ReactNode {
   const accountsQuery = useAllLedgerAccounts(tab.groupTypes);
   const saveMutation = useSaveAccountsBulk();
   const canSave = useMemo(() => WRITE_ROLES.has(currentRole() ?? ''), []);
-  const accounts = accountsQuery.data ?? [];
+  // Deactivated accounts have their own table (an API older than GL-14 lists them too).
+  const accounts = (accountsQuery.data ?? []).filter((account) => account.is_active !== false);
 
-  async function save(rows: AccountBulkRow[]): Promise<void> {
+  async function save(rows: AccountBulkRow[], deactivations: string[]): Promise<void> {
     try {
-      const result = await saveMutation.mutateAsync({ type: tab.type, rows });
-      const { created, updated, entries_posted: posted } = result.data;
-      addToast({ title: 'Accounts saved', description: `${created} added, ${updated} changed, ${posted} opening-balance entries posted.`, variant: 'success' });
+      const result = await saveMutation.mutateAsync({ type: tab.type, rows, ...(deactivations.length > 0 ? { deactivations } : {}) });
+      addToast({ title: 'Accounts saved', description: savedText(result.data), variant: 'success' });
+      // An API older than GL-14 ignores the deactivations it does not know.
+      if (deactivations.length > 0 && result.data.deactivated === undefined) {
+        addToast({ title: 'Accounts were not deactivated', description: 'Deactivating accounts is not available yet on this server.', variant: 'destructive' });
+      }
     } catch (error) {
       // An API older than GL-12 has no bulk route.
       const missing = error instanceof ApiError && error.status === 404;
@@ -113,6 +131,7 @@ export function ChartTabPage({ slug }: { slug: ChartTab['slug'] }): ReactNode {
             onNothingToSave={() => addToast({ title: 'No changes to save' })}
           />
         )}
+        <DeactivatedAccounts types={tab.groupTypes} heading={tab.deactivatedHeading} canChange={canSave} />
       </CardContent>
     </Card>
   );

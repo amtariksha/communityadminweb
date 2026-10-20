@@ -15,10 +15,12 @@ import {
 } from './grid-state';
 
 /** Marking a row inactive instead of deleting it (history is kept). */
-export interface GridDeactivate {
+export interface GridDeactivate<Values = unknown> {
   header: string;
   // Button text, e.g. "Delete"; its accessible name is "<label> row <n>".
   label: string;
+  // Rows that may not be marked (e.g. a system account) show no button.
+  allowed?: (row: GridRowState<Values>) => boolean;
 }
 
 export interface GridSaveResult {
@@ -38,7 +40,7 @@ export interface EditableGridProps<Values> {
   /** Errors by row key; nothing is saved while there are any. */
   validate?: (rows: readonly GridRowState<Values>[]) => Record<string, string>;
   reorder?: boolean;
-  deactivate?: GridDeactivate;
+  deactivate?: GridDeactivate<Values>;
   readOnly?: boolean;
   isSaving?: boolean;
   serialHeader?: string;
@@ -121,7 +123,9 @@ function RowButtons<Values>({
       )}
       {deactivate && (
         <TableCell className="align-top">
-          {row.inactive ? (
+          {deactivate.allowed && !deactivate.allowed(row) ? (
+            <span className="text-muted-foreground">—</span>
+          ) : row.inactive ? (
             <Button type="button" size="sm" variant="outline" aria-label={`Undo ${deactivate.label.toLowerCase()} row ${position}`} onClick={() => grid.update(row.key, { inactive: false })}>
               <Undo2 className="mr-1 h-4 w-4" /> Undo
             </Button>

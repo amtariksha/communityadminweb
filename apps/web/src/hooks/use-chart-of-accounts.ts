@@ -12,13 +12,17 @@ const MAX_PAGES = 30;
 
 export interface ChartAccount extends LedgerAccount {
   group_name?: string;
+  // GL-14: who deactivated the account and when (null while active).
+  deactivated_by_name?: string | null;
+  deactivated_at?: string | null;
 }
 
-async function fetchAllAccounts(types: readonly AccountType[]): Promise<ChartAccount[]> {
+async function fetchAllAccounts(types: readonly AccountType[], inactive = false): Promise<ChartAccount[]> {
   const accounts: ChartAccount[] = [];
   for (let page = 1; page <= MAX_PAGES; page += 1) {
     const params: Record<string, string> = { page: String(page), limit: String(PAGE) };
     if (types.length > 0) params.account_type = types.join(',');
+    if (inactive) params.is_active = 'false';
     const result = await api.get<{ data: ChartAccount[]; total: number }>('/ledger/accounts', { params });
     accounts.push(...result.data);
     if (accounts.length >= result.total || result.data.length < PAGE) break;
@@ -37,6 +41,40 @@ export function useAllLedgerAccounts(types: readonly AccountType[] = []) {
   });
 }
 
+/**
+ * The deactivated accounts of the given types (GL-14). `is_active=false`
+ * means the same on an API older than GL-14, so this list is right on both.
+ */
+export function useDeactivatedAccounts(types: readonly AccountType[] = []) {
+  return useQuery({
+    queryKey: [...ledgerKeys.accounts(), 'deactivated', [...types].sort().join(',')],
+    queryFn: () => fetchAllAccounts(types, true),
+  });
+}
+
+function useAccountAction<Input>(call: (input: Input) => Promise<unknown>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: call,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ledgerKeys.accounts() }),
+  });
+}
+
+/** POST /ledger/accounts/:id/deactivate (GL-14). */
+export function useDeactivateLedgerAccount() {
+  return useAccountAction((id: string) => api.post(`/ledger/accounts/${id}/deactivate`, {}));
+}
+
+/** POST /ledger/accounts/:id/activate (GL-14). */
+export function useActivateLedgerAccount() {
+  return useAccountAction((id: string) => api.post(`/ledger/accounts/${id}/activate`, {}));
+}
+
+/** DELETE /ledger/accounts/:id — only a deactivated, never-posted account (GL-14). */
+export function useDeleteLedgerAccount() {
+  return useAccountAction((id: string) => api.delete(`/ledger/accounts/${id}`));
+}
+
 /** One row of PUT /ledger/accounts/bulk (GL-12). */
 export interface AccountBulkRow {
   id?: string;
@@ -50,13 +88,15 @@ export interface AccountBulkResult {
   created: number;
   updated: number;
   entries_posted: number;
+  // GL-14; absent on an older API, which ignores deactivations.
+  deactivated?: number;
 }
 
 /** Save one type's added and changed accounts from the editable grid. */
 export function useSaveAccountsBulk() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { type: 'asset' | 'liability' | 'income' | 'expense'; rows: AccountBulkRow[] }) =>
+    mutationFn: (input: { type: 'asset' | 'liability' | 'income' | 'expense'; rows: AccountBulkRow[]; deactivations?: string[] }) =>
       api.put<{ data: AccountBulkResult }>('/ledger/accounts/bulk', input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ledgerKeys.accounts() });

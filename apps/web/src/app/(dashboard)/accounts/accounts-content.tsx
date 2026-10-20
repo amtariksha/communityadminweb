@@ -43,6 +43,12 @@ import {
 import type { AccountGroup, LedgerAccount } from '@communityos/shared';
 import { HsnSacField } from './hsn-sac-field';
 import { todayIST } from '@/lib/date';
+import { currentRole } from '@/lib/current-role';
+import { useDeactivateLedgerAccount } from '@/hooks/use-chart-of-accounts';
+import { accountActionError, DeactivatedAccounts } from '@/components/ledger-accounts/deactivated-accounts';
+
+// Writers of the chart of accounts (De-Activate, Activate, Delete — GL-14).
+const ACCOUNT_WRITE_ROLES: ReadonlySet<string> = new Set(['super_admin', 'community_admin', 'accountant']);
 
 // ---------------------------------------------------------------------------
 // Main page
@@ -67,7 +73,18 @@ export default function AccountsContent(): ReactNode {
   const setOpeningBalance = useSetOpeningBalance();
 
   const isLoading = groupsLoading || accountsLoading;
-  const accounts = accountsResponse?.data ?? [];
+  // GL-14: deactivated accounts are listed under the tree, not in it.
+  const accounts = (accountsResponse?.data ?? []).filter((account) => account.is_active !== false);
+  const canWriteAccounts = useMemo(() => ACCOUNT_WRITE_ROLES.has(currentRole() ?? ''), []);
+  const deactivate = useDeactivateLedgerAccount();
+
+  function handleDeactivateAccount(account: LedgerAccount): void {
+    if (!window.confirm(`De-Activate ${account.name}? It leaves the pickers and takes no new postings; its history stays.`)) return;
+    deactivate.mutate(account.id, {
+      onSuccess: () => addToast({ title: `${account.name} deactivated`, variant: 'success' }),
+      onError: (error) => addToast({ title: 'Could not deactivate the account', description: accountActionError(error), variant: 'destructive' }),
+    });
+  }
   const tree = groups && accounts.length >= 0 ? buildTree(groups, accounts) : [];
   const currentFY = financialYears?.find((fy) => fy.is_current);
 
@@ -444,6 +461,7 @@ export default function AccountsContent(): ReactNode {
                   depth={0}
                   onEditGroup={setEditingGroup}
                   onEditAccount={handleOpenEditAccount}
+                  onDeactivateAccount={canWriteAccounts ? handleDeactivateAccount : undefined}
                 />
               ))}
             </div>
@@ -458,6 +476,8 @@ export default function AccountsContent(): ReactNode {
           )}
         </CardContent>
       </Card>
+
+      <DeactivatedAccounts types={[]} heading="Deactivated Accounts" canChange={canWriteAccounts} />
 
       <EditAccountGroupDialog group={editingGroup} onClose={() => setEditingGroup(null)} />
 

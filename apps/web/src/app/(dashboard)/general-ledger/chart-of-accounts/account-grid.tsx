@@ -8,6 +8,7 @@ import {
   type GridCellProps,
   type GridChange,
   type GridColumn,
+  type GridDeactivate,
   type GridRowState,
   type GridSaveResult,
 } from '@/components/editable-grid';
@@ -137,21 +138,33 @@ interface AccountGridProps {
   readOnly: boolean;
   isSaving: boolean;
   /** Resolves when saved; rejects with the API error otherwise. */
-  save: (rows: AccountBulkRow[]) => Promise<unknown>;
+  save: (rows: AccountBulkRow[], deactivations: string[]) => Promise<unknown>;
   onNothingToSave: () => void;
 }
+
+// GL-14: a saved account other than a system one may be marked De-Activate.
+const DEACTIVATE: GridDeactivate<AccountValues> = {
+  header: 'De-Activate',
+  label: 'De-Activate',
+  allowed: (row) => row.id !== undefined && !row.values.system,
+};
 
 /** One type of the chart of accounts on the shared editable grid (GL-12, SB-08). */
 export function AccountGrid({ tab, groups, accounts, readOnly, isSaving, save, onNothingToSave }: AccountGridProps): ReactNode {
   const withOpening = tab.slug === 'assets';
 
   async function onSave(change: GridChange<AccountValues>): Promise<GridSaveResult | void> {
-    if (change.upserts.length === 0) return onNothingToSave();
+    if (change.upserts.length === 0 && change.deactivations.length === 0) return onNothingToSave();
     try {
-      await save(toAccountRows(change, withOpening));
+      await save(toAccountRows(change, withOpening), change.deactivations.flatMap((row) => (row.id ? [row.id] : [])));
     } catch (error) {
-      // The API numbers the rows it was sent: the upserts.
-      return { rowErrors: rowErrorsFromApi(error, { ...change, rows: change.upserts }) };
+      // The API numbers the rows it was sent: the upserts, then the deactivations.
+      return {
+        rowErrors: {
+          ...rowErrorsFromApi(error, { ...change, rows: change.upserts }),
+          ...rowErrorsFromApi(error, change, 'deactivations'),
+        },
+      };
     }
   }
 
@@ -164,6 +177,7 @@ export function AccountGrid({ tab, groups, accounts, readOnly, isSaving, save, o
       isBlank={isBlank}
       validate={(rows) => validateAccounts(rows, withOpening)}
       spareRows={5}
+      deactivate={DEACTIVATE}
       readOnly={readOnly}
       isSaving={isSaving}
       emptyText="No accounts of this type yet. Add them in the blank rows."

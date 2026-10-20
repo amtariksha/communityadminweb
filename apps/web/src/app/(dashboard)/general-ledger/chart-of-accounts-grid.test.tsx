@@ -7,7 +7,7 @@ import { ChartTabPage } from './chart-of-accounts/chart-tab-page';
 
 // General Ledger › Chart of Accounts as one editable list per type (GL-12).
 
-vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), put: vi.fn(), download: vi.fn() } }));
+vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), put: vi.fn(), post: vi.fn(), delete: vi.fn(), download: vi.fn() } }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 
 const SOCIETY = '11111111-1111-4111-8111-111111111111';
@@ -34,15 +34,24 @@ const ASSETS = [
   account('a-lift', 'A-101', 'Lift Deposit', 'g-ca'),
 ];
 
+const RETIRED = [
+  account('a-old', 'A-090', 'Old Fixed Deposit', 'g-ca', { is_active: false, deactivated_by_name: 'Ravi Accountant', deactivated_at: '2026-09-01T05:00:00Z' }),
+];
+
 const get = vi.mocked(api.get);
 const put = vi.mocked(api.put);
+const post = vi.mocked(api.post);
+const del = vi.mocked(api.delete);
 
 beforeEach(() => {
   signIn('accountant');
-  get.mockImplementation(async (path: string) => {
+  get.mockImplementation(async (path: string, options?: { params?: Record<string, string> }) => {
     if (path === '/ledger/account-groups') return { data: GROUPS };
+    if (options?.params?.is_active === 'false') return { data: RETIRED, total: RETIRED.length };
     return { data: ASSETS, total: ASSETS.length };
   });
+  post.mockResolvedValue({ data: {} });
+  del.mockResolvedValue({ data: {} });
   put.mockResolvedValue({ data: { created: 1, updated: 2, entries_posted: 0 } });
 });
 afterEach(() => {
@@ -134,6 +143,33 @@ describe('Chart of Accounts grid', () => {
     const select = (await screen.findByLabelText('Group, row 1')) as HTMLSelectElement;
     expect([...select.options].map((option) => option.textContent)).toEqual(['Select…', 'CL — Current Liabilities', 'EQ — Reserves (Equity)']);
     expect(screen.queryByText('Opening Balance')).toBeNull();
+  });
+
+  it('marks an account De-Activate and sends it with the save; a system account has no button (GL-14)', async () => {
+    put.mockResolvedValue({ data: { created: 0, updated: 0, entries_posted: 0, deactivated: 1 } });
+    renderTab();
+    await screen.findByDisplayValue('Sinking Fund Deposit');
+    expect(screen.queryByRole('button', { name: 'De-Activate row 1' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'De-Activate row 3' }));
+    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+
+    await waitFor(() => expect(put).toHaveBeenCalled());
+    expect(put.mock.calls[0][1]).toEqual({ type: 'asset', rows: [], deactivations: ['a-lift'] });
+  });
+
+  it('lists deactivated accounts with who and when, and activates or deletes one (GL-14)', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderTab();
+    const table = await screen.findByRole('table', { name: 'Deactivated Asset Accounts' });
+    expect(within(table).getByText('Old Fixed Deposit')).toBeTruthy();
+    expect(within(table).getByText('Ravi Accountant')).toBeTruthy();
+    // Deactivated accounts stay out of the editable list.
+    expect(screen.queryByDisplayValue('Old Fixed Deposit')).toBeNull();
+
+    fireEvent.click(within(table).getByRole('button', { name: 'Activate Old Fixed Deposit' }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/ledger/accounts/a-old/activate', {}));
+    fireEvent.click(within(table).getByRole('button', { name: 'Delete Old Fixed Deposit' }));
+    await waitFor(() => expect(del).toHaveBeenCalledWith('/ledger/accounts/a-old'));
   });
 
   it('is read-only for a committee member', async () => {

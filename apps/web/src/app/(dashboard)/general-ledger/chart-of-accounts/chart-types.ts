@@ -8,16 +8,19 @@ export interface ChartTab {
   // Group types listed on the tab: equity sits under Liabilities (G3).
   groupTypes: readonly AccountType[];
   heading: string;
+  // GL-14: the table of the tab's deactivated accounts.
+  deactivatedHeading: string;
 }
 
 export const CHART_TABS: Readonly<Record<ChartTab['slug'], ChartTab>> = {
-  assets: { slug: 'assets', type: 'asset', groupTypes: ['asset'], heading: 'Set up Asset Accounts' },
+  assets: { slug: 'assets', type: 'asset', groupTypes: ['asset'], heading: 'Set up Asset Accounts', deactivatedHeading: 'Deactivated Asset Accounts' },
   liabilities: {
     slug: 'liabilities',
     type: 'liability',
     groupTypes: ['liability', 'equity'],
     heading: 'Set up Liability Accounts',
+    deactivatedHeading: 'Deactivated Liability Accounts',
   },
-  income: { slug: 'income', type: 'income', groupTypes: ['income'], heading: 'Set up Income Accounts' },
-  expense: { slug: 'expense', type: 'expense', groupTypes: ['expense'], heading: 'Set up Expense Heads' },
+  income: { slug: 'income', type: 'income', groupTypes: ['income'], heading: 'Set up Income Accounts', deactivatedHeading: 'Deactivated Income Accounts' },
+  expense: { slug: 'expense', type: 'expense', groupTypes: ['expense'], heading: 'Set up Expense Heads', deactivatedHeading: 'Deactivated Expense Accounts' },
 };

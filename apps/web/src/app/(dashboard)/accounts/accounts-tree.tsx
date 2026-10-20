@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { BookOpen, ChevronDown, ChevronRight, Pencil } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, Pencil, PowerOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatTallyBalance } from '@/lib/utils';
@@ -66,6 +66,8 @@ interface TreeNodeViewProps {
   // Absent: the tree is read-only (no edit pencils).
   onEditGroup?: (group: AccountGroup) => void;
   onEditAccount?: (account: LedgerAccount) => void;
+  // GL-14: absent, no De-Activate button.
+  onDeactivateAccount?: (account: LedgerAccount) => void;
 }
 
 const typeColors: Record<string, string> = {
@@ -75,7 +77,7 @@ const typeColors: Record<string, string> = {
   expense: 'text-warning',
 };
 
-export function TreeNodeView({ node, depth, onEditGroup, onEditAccount }: TreeNodeViewProps): ReactNode {
+export function TreeNodeView({ node, depth, onEditGroup, onEditAccount, onDeactivateAccount }: TreeNodeViewProps): ReactNode {
   const [expanded, setExpanded] = useState(depth < 2);
   const hasChildren = node.children.length > 0 || node.accounts.length > 0;
 
@@ -122,6 +124,7 @@ export function TreeNodeView({ node, depth, onEditGroup, onEditAccount }: TreeNo
               depth={depth + 1}
               onEditGroup={onEditGroup}
               onEditAccount={onEditAccount}
+              onDeactivateAccount={onDeactivateAccount}
             />
           ))}
           {node.accounts.map((account) => (
@@ -173,6 +176,20 @@ export function TreeNodeView({ node, depth, onEditGroup, onEditAccount }: TreeNo
                   title="Edit account"
                 >
                   <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              )}
+              {onDeactivateAccount && !account.is_system && (
+                <button
+                  type="button"
+                  className="hidden rounded p-0.5 hover:bg-muted group-hover:inline-flex"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeactivateAccount(account);
+                  }}
+                  title="De-Activate account"
+                  aria-label={`De-Activate ${account.name}`}
+                >
+                  <PowerOff className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>
               )}
             </div>
