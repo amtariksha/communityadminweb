@@ -140,6 +140,8 @@ export interface DirectoryFilters {
   status?: DirectoryStatus;
   /** MOVE-07 — tenant agreement state. */
   agreement?: DirectoryAgreement;
+  /** DASH-11 — members who never signed in or have no login. */
+  app_status?: 'never_logged_in';
   page?: number;
   limit?: number;
 }
@@ -204,6 +206,7 @@ export function directoryFiltersToParams(
   if (filters.block) params.block = filters.block;
   if (filters.status && filters.status !== 'current') params.status = filters.status;
   if (filters.agreement) params.agreement = filters.agreement;
+  if (filters.app_status) params.app_status = filters.app_status;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   return params;

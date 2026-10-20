@@ -144,7 +144,8 @@ describe('ClassicDashboard', () => {
 
     expect(within(card('Units & Users')).getByText(/Units: 40/).textContent).toContain('30 occupied');
     expect(within(card('Units & Users')).getByText(/Users: 71/)).toBeTruthy();
-    expect(link('5 Admins').getAttribute('href')).toBe('/settings');
+    // DASH-11 — Admins open Access Control.
+    expect(link('5 Admins').getAttribute('href')).toBe('/units/access-control/committee');
     expect(within(card('HelpDesk Tracker')).getByText(/Open Requests: 4/)).toBeTruthy();
     expect(within(card('HelpDesk Tracker')).getByText(/1 overdue/)).toBeTruthy();
     expect(link('HelpDesk Tracker').getAttribute('href')).toBe('/helpdesk/open');
@@ -162,6 +163,30 @@ describe('ClassicDashboard', () => {
     expect(income.textContent).toContain('₹1,500');
     expect(within(income).getByTestId('donut')).toBeTruthy();
     expect(card('Expense Tracker').textContent).toContain('₹3,000');
+  });
+
+  it('links the people who never signed in to the filtered directory, once the API counts them (DASH-11)', () => {
+    const before = render(<ClassicDashboard />);
+    expect(screen.queryByText(/Never Logged In/)).toBeNull();
+    before.unmount();
+    mocks.summary = { ...SUMMARY, users: { members: 71, admins: 5, never_logged_in: 9 } };
+    render(<ClassicDashboard />);
+
+    expect(link('9 Never Logged In').getAttribute('href')).toBe('/units/directory?app_status=never_logged_in');
+  });
+
+  it('shows the Variance Amount with its sign once a budget is set, and hides it without one (DASH-12)', () => {
+    render(<ClassicDashboard />);
+    expect(card('Expense Tracker').textContent).not.toContain('Variance Amount');
+
+    mocks.summary = { ...SUMMARY, expense: { total: '80000.00', open_purchase_requests: 3, variance: '20000.00' } };
+    const { unmount } = render(<ClassicDashboard />);
+    expect(screen.getAllByText(/Variance Amount: ₹20,000/).length).toBeGreaterThan(0);
+    unmount();
+
+    mocks.summary = { ...SUMMARY, expense: { total: '110000.00', open_purchase_requests: 3, variance: '-10000.00' } };
+    render(<ClassicDashboard />);
+    expect(screen.getAllByText(/Variance Amount: -₹10,000|Variance Amount: ₹-10,000/).length).toBeGreaterThan(0);
   });
 
   it('lists the bank rows and counts the rest', () => {

@@ -13,7 +13,10 @@ export function ExpenseCard({ status, summary }: BandProps): ReactNode {
     <DashCard title="Expense Tracker">
       <CardState status={status}>
         <p>{`Expenses: ${money(expense?.total)}`}</p>
-        {/* "Variance Amount" joins this card with DASH-12. */}
+        {/* DASH-12 — budget minus booked; hidden while no budget is set (null). */}
+        {expense?.variance != null && (
+          <p className={Number(expense.variance) < 0 ? 'text-destructive' : undefined}>{`Variance Amount: ${money(expense.variance)}`}</p>
+        )}
         {expense && (
           <ActionLink href={DASHBOARD_ROUTES.purchases}>
             {expense.open_purchase_requests} Open Purchase Requests

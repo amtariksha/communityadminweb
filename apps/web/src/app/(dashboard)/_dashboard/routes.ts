@@ -26,6 +26,9 @@ export const DASHBOARD_ROUTES = {
   // Incident Investigator's visitor register (GATE-10).
   gate: '/gate/investigator/visitors',
   units: '/units',
+  // DASH-11 — Units & Users › Access Control, and the people who never signed in.
+  accessControl: '/units/access-control/committee',
+  neverLoggedIn: '/units/directory?app_status=never_logged_in',
   bookFacilities: '/amenities?new=1',
   newMeeting: '/governance?new=1',
   vendors: '/vendors',

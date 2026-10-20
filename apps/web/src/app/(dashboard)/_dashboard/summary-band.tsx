@@ -11,9 +11,12 @@ function UnitsUsersCard({ status, summary, access }: BandProps): ReactNode {
       <CardState status={status}>
         <p>{`Units: ${units ? units.total : DASH} · ${units ? units.occupied : DASH} occupied`}</p>
         <p>{`Users: ${users ? users.members : DASH}`}</p>
-        {/* "Never Logged In" joins this card with DASH-11. */}
-        {users && access.canOpen(DASHBOARD_ROUTES.settings) && (
-          <ActionLink href={DASHBOARD_ROUTES.settings}>{users.admins} Admins</ActionLink>
+        {users && access.canOpen(DASHBOARD_ROUTES.accessControl) && (
+          <ActionLink href={DASHBOARD_ROUTES.accessControl}>{users.admins} Admins</ActionLink>
+        )}
+        {/* DASH-11 — null on an API from before the count. */}
+        {users && users.never_logged_in !== null && access.canOpen(DASHBOARD_ROUTES.neverLoggedIn) && (
+          <ActionLink href={DASHBOARD_ROUTES.neverLoggedIn}>{users.never_logged_in} Never Logged In</ActionLink>
         )}
       </CardState>
     </DashCard>

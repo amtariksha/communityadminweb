@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AppStatusSelect, useAppStatusFilter } from './app-status-filter';
 import {
   Table,
   TableBody,
@@ -159,6 +160,7 @@ export default function DirectoryContent(): ReactNode {
   // UNIT-18 — Current (default) or Past (moved out) members.
   const [statusFilter, setStatusFilter] = useState<'current' | 'past'>('current');
   const [blockFilter, setBlockFilter] = useState('');
+  const [appFilter, setAppFilter] = useAppStatusFilter();
   const [currentPage, setCurrentPage] = useState(1);
 
   // Edit member state
@@ -207,6 +209,7 @@ export default function DirectoryContent(): ReactNode {
     member_type: memberTypeFilter || undefined,
     block: blockFilter || undefined,
     status: statusFilter,
+    app_status: appFilter || undefined,
     page: currentPage,
     limit: PAGE_SIZE,
   });
@@ -226,6 +229,7 @@ export default function DirectoryContent(): ReactNode {
     setMemberTypeFilter('');
     setBlockFilter('');
     setStatusFilter('current');
+    setAppFilter('');
     setCurrentPage(1);
   }
 
@@ -551,6 +555,7 @@ export default function DirectoryContent(): ReactNode {
                 ))}
               </Select>
             </div>
+            <AppStatusSelect value={appFilter} onChange={(value) => { setAppFilter(value); setCurrentPage(1); }} />
             <Button variant="outline" size="sm" onClick={handleSearch}>
               Search
             </Button>
