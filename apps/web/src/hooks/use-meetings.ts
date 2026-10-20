@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { LinkedResolution, MeetingAttachment, MeetingInvitee } from './use-meeting-invites';
 
 export interface MeetingItem {
   id: string;
@@ -26,6 +27,25 @@ export interface MeetingItem {
   duration_minutes?: number | null;
   notes?: string | null;
   agenda_items?: string[];
+  /** PROJ-42 — absent from an API older than it. */
+  audience?: MeetingAudience;
+  invited_count?: number;
+  attendee_count?: number;
+  /** PROJ-43 */
+  remind_1h?: boolean;
+  remind_1d?: boolean;
+  remind_1w?: boolean;
+}
+
+/** PROJ-42 — who a meeting is for besides the people named. */
+export type MeetingAudience = 'committee_staff' | 'owners' | 'all_users' | 'primary_contacts';
+
+/** One meeting as GET /meetings/:id returns it; the lists are absent from an older API. */
+export interface MeetingDetail extends MeetingItem {
+  tasks: MomTask[];
+  invitees?: MeetingInvitee[];
+  attachments?: MeetingAttachment[];
+  resolutions?: LinkedResolution[];
 }
 
 export interface MomTask {
@@ -43,7 +63,10 @@ export interface MomTask {
   description: string | null;
   assignee_id: string | null;
   due_date: string | null;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: 'pending' | 'in_progress' | 'completed' | 'recurred';
+  /** PROJ-46 */
+  recurrence?: TaskRecurrence;
+  recurred_from?: string | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -64,6 +87,12 @@ export interface CreateMeetingInput {
   duration_minutes?: number | null;
   notes?: string | null;
   agenda_items?: string[];
+  /** PROJ-42 / PROJ-43 — an older API drops them. */
+  audience?: MeetingAudience;
+  invitee_ids?: string[];
+  remind_1h?: boolean;
+  remind_1d?: boolean;
+  remind_1w?: boolean;
 }
 
 export interface UpdateMeetingInput extends Partial<CreateMeetingInput> {}
@@ -76,7 +105,11 @@ export interface CreateMomTaskInput {
   status?: 'pending' | 'in_progress' | 'completed';
   /** PROJ-21 — an active task category. */
   category_id?: string | null;
+  /** PROJ-46 — closing a recurring task makes its next instance. */
+  recurrence?: TaskRecurrence;
 }
+
+export type TaskRecurrence = 'none' | 'daily' | 'weekly' | 'monthly';
 
 export interface UpdateMomTaskInput extends Partial<CreateMomTaskInput> {
   meeting_id?: string | null;
@@ -117,7 +150,7 @@ export function useMeeting(id: string) {
   return useQuery({
     queryKey: meetingKeys.detail(id),
     queryFn: async () => {
-      const response = await api.get<{ data: MeetingItem & { tasks: MomTask[] } }>(
+      const response = await api.get<{ data: MeetingDetail }>(
         `/meetings/${id}`,
       );
       return response.data;

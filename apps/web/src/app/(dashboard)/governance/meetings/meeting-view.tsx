@@ -6,6 +6,7 @@ import { ShowLogsButton } from '@/components/show-logs';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
+import { StoredFileLinks } from '../stored-files';
 import type { LoadedMeeting } from './meeting-loader';
 import { MEETINGS_BASE } from '@/lib/meeting-states';
 
@@ -20,7 +21,7 @@ function Section({ title, children }: { title: string; children: ReactNode }): R
 
 const STATUS_WORDS: Readonly<Record<string, string>> = { scheduled: 'Open', completed: 'Closed', cancelled: 'Cancelled' };
 
-/** View of a closed meeting (PROJ-S7): agenda, minutes and its tasks, read only. */
+/** View of a closed meeting (PROJ-S7): agenda, minutes, attendance, attachments and its tasks, read only. */
 export function MeetingView({ meeting }: { meeting: LoadedMeeting }): ReactNode {
   const back = `${MEETINGS_BASE}/${meeting.status === 'scheduled' ? 'open' : 'closed'}`;
   return (
@@ -48,6 +49,22 @@ export function MeetingView({ meeting }: { meeting: LoadedMeeting }): ReactNode 
         <Section title="Minutes">
           <p className="whitespace-pre-wrap text-sm">{meeting.minutes || 'No minutes were recorded.'}</p>
         </Section>
+        {meeting.invitees && meeting.invitees.length > 0 && (
+          <Section title="Attendance">
+            <ul className="list-disc space-y-0.5 pl-5 text-sm">
+              {meeting.invitees.map((row) => (
+                <li key={row.user_id}>
+                  {row.name ?? 'Unnamed'} — {row.attended ? 'Attended' : 'Did not attend'}
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
+        {meeting.attachments && meeting.attachments.length > 0 && (
+          <Section title="Attachments">
+            <StoredFileLinks files={meeting.attachments.map((file) => ({ url: file.file_url, name: file.file_name }))} />
+          </Section>
+        )}
         <Section title="Tasks">
           {meeting.tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">No tasks came from this meeting.</p>

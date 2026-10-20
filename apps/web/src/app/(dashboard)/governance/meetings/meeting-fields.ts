@@ -1,4 +1,5 @@
 import type { CreateMeetingInput, MeetingItem } from '@/hooks';
+import type { MeetingAudience, MeetingDetail } from '@/hooks/use-meetings';
 import { todayIST } from '@/lib/date';
 
 /**
@@ -26,7 +27,28 @@ export type MeetingFormValues = Required<Pick<CreateMeetingInput, 'title' | 'mee
   notes: string;
   agenda: string[];
   status: NonNullable<CreateMeetingInput['status']>;
+  /** PROJ-42 — the Attendees radio and the people ticked on the two pick-lists (null: not known, left as stored). */
+  audience: MeetingAudience;
+  invitee_ids: string[] | null;
+  /** PROJ-43 — Send Alert an hour, a day, a week before. */
+  remind_1h: boolean;
+  remind_1d: boolean;
+  remind_1w: boolean;
 };
+
+/** The Attendees radio (PROJ-S8). */
+export const AUDIENCES: ReadonlyArray<{ value: MeetingAudience; label: string }> = [
+  { value: 'committee_staff', label: 'Association Committee + Office Staff' },
+  { value: 'owners', label: 'Only Owners' },
+  { value: 'all_users', label: 'All Users' },
+  { value: 'primary_contacts', label: 'Primary Contact' },
+];
+
+export const REMINDERS = [
+  { key: 'remind_1h', label: 'Hour before' },
+  { key: 'remind_1d', label: 'Day before' },
+  { key: 'remind_1w', label: 'Week before Meeting' },
+] as const;
 
 export const DEFAULT_VENUE = 'Clubhouse Committee Boardroom';
 
@@ -62,8 +84,14 @@ export function meetingFormValues(meeting?: MeetingItem | null): MeetingFormValu
       notes: '',
       agenda: [''],
       status: 'scheduled',
+      audience: 'committee_staff',
+      invitee_ids: [],
+      remind_1h: false,
+      remind_1d: false,
+      remind_1w: false,
     };
   }
+  const invitees = (meeting as MeetingDetail).invitees;
   return {
     title: meeting.title,
     meeting_date: meeting.meeting_date,
@@ -74,6 +102,11 @@ export function meetingFormValues(meeting?: MeetingItem | null): MeetingFormValu
     notes: meeting.notes ?? '',
     agenda: agendaOf(meeting),
     status: meeting.status,
+    audience: meeting.audience ?? 'committee_staff',
+    invitee_ids: invitees ? invitees.filter((row) => row.source === 'named').map((row) => row.user_id) : null,
+    remind_1h: meeting.remind_1h ?? false,
+    remind_1d: meeting.remind_1d ?? false,
+    remind_1w: meeting.remind_1w ?? false,
   };
 }
 
@@ -115,5 +148,10 @@ export function meetingPayload(values: MeetingFormValues): CreateMeetingInput {
     agenda: lines.join('\n') || null,
     agenda_items: lines,
     status: values.status,
+    audience: values.audience,
+    remind_1h: values.remind_1h,
+    remind_1d: values.remind_1d,
+    remind_1w: values.remind_1w,
+    ...(values.invitee_ids ? { invitee_ids: values.invitee_ids } : {}),
   };
 }

@@ -5,17 +5,47 @@ import { FormFrame, type FormMode } from '@/components/form-page';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
-import { useUpdateMeeting, type MeetingItem } from '@/hooks';
+import { useUpdateMeeting } from '@/hooks';
+import { useMarkAttendance } from '@/hooks/use-meeting-invites';
+import type { MeetingDetail, MeetingItem } from '@/hooks/use-meetings';
 import { friendlyError } from '@/lib/api-error';
 import { formatDate } from '@/lib/utils';
 
 export interface MeetingMinutesFormProps {
   mode: FormMode;
-  meeting: MeetingItem;
+  /** The standard cards hand a list row (no invitees); the page the whole meeting. */
+  meeting: MeetingItem & Partial<MeetingDetail>;
+  /** Below the minutes on the page: linked resolutions (PROJ-48). */
+  extra?: React.ReactNode;
   open?: boolean;
   onClose: () => void;
   /** `closed`: the meeting was closed with its minutes. */
   onSaved: (closed: boolean) => void;
+}
+
+function AttendanceTicks(props: {
+  invitees: NonNullable<MeetingDetail['invitees']>;
+  attended: ReadonlySet<string>;
+  onChange: (next: ReadonlySet<string>) => void;
+}): React.ReactNode {
+  if (props.invitees.length === 0) return null;
+  const toggle = (id: string): void => {
+    const next = new Set(props.attended);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    props.onChange(next);
+  };
+  return (
+    <fieldset className="space-y-1 pt-2">
+      <legend className="font-medium">Attended</legend>
+      {props.invitees.map((row) => (
+        <label key={row.user_id} className="flex items-center gap-2">
+          <input type="checkbox" checked={props.attended.has(row.user_id)} onChange={() => toggle(row.user_id)} />
+          {row.name ?? 'Unnamed'}
+        </label>
+      ))}
+    </fieldset>
+  );
 }
 
 /**
@@ -27,10 +57,18 @@ export function MeetingMinutesForm(props: MeetingMinutesFormProps): ReactNode {
   const { meeting } = props;
   const { addToast } = useToast();
   const update = useUpdateMeeting();
+  const attendance = useMarkAttendance();
   const [minutes, setMinutes] = useState(meeting.minutes ?? '');
+  const invitees = meeting.invitees ?? [];
+  const [attended, setAttended] = useState<ReadonlySet<string>>(() => new Set(invitees.filter((row) => row.attended).map((row) => row.user_id)));
+  const changed = invitees.filter((row) => row.attended !== attended.has(row.user_id));
 
   async function save(close: boolean): Promise<void> {
     try {
+      // PROJ-42 — the ticks first: a closed meeting takes no more changes.
+      if (changed.length > 0) {
+        await attendance.mutateAsync({ meetingId: meeting.id, rows: changed.map((row) => ({ user_id: row.user_id, attended: attended.has(row.user_id) })) });
+      }
       await update.mutateAsync({
         id: meeting.id,
         data: close ? { minutes, status: 'completed' } : { minutes },
@@ -51,7 +89,7 @@ export function MeetingMinutesForm(props: MeetingMinutesFormProps): ReactNode {
       onClose={props.onClose}
       onSave={() => void save(false)}
       secondaryAction={{ label: 'Save and Close Meeting', onClick: () => void save(true) }}
-      saving={update.isPending}
+      saving={update.isPending || attendance.isPending}
       saveLabel="Save Minutes"
       dialogClassName="sm:max-w-lg"
     >
@@ -65,6 +103,8 @@ export function MeetingMinutesForm(props: MeetingMinutesFormProps): ReactNode {
           value={minutes}
           onChange={(event) => setMinutes(event.target.value)}
         />
+        <AttendanceTicks invitees={invitees} attended={attended} onChange={setAttended} />
+        {props.extra}
       </div>
     </FormFrame>
   );

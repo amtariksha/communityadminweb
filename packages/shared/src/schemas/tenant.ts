@@ -61,11 +61,26 @@ export const violationSettingsSchema = z.object({
 
 export type ViolationSettings = z.infer<typeof violationSettingsSchema>;
 
+/**
+ * PROJ-42 / PROJ-43 — Projects & Meetings › SetUp › Meeting notifications
+ * (`settings_json.meetings`): whether Send Invitations and the meeting
+ * reminders reach anyone; both off until a community admin switches them
+ * on. Mirrors communityos packages/shared/src/schemas/tenant.ts; written by
+ * PUT /meetings/settings.
+ */
+export const meetingSettingsSchema = z.object({
+  invitations_enabled: z.boolean().optional(),
+  reminders_enabled: z.boolean().optional(),
+});
+
+export type MeetingSettings = z.infer<typeof meetingSettingsSchema>;
+
 const tenantSettingsSchema = z.object({
   scheduled_reports: scheduledReportsSchema.optional(),
   announcements: announcementSettingsSchema.optional(),
   move_in: moveInSettingsSchema.optional(),
   violations: violationSettingsSchema.optional(),
+  meetings: meetingSettingsSchema.optional(),
   // INC-39 / INC-41 / INC-42 — billing_documents and billing_numbering are
   // not declared: they are written only through PUT /billing-documents/settings
   // and PUT /billing-numbering (HTML sanitiser, prefix checks), as in the API.

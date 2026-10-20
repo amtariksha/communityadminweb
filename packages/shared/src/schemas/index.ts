@@ -12,10 +12,12 @@ export {
   announcementSettingsSchema,
   moveInSettingsSchema,
   violationSettingsSchema,
+  meetingSettingsSchema,
   ANNOUNCEMENT_CHANNELS,
   type AnnouncementSettings,
   type MoveInSettings,
   type ViolationSettings,
+  type MeetingSettings,
   type CreateTenantInput,
   type UpdateTenantInput,
 } from './tenant';

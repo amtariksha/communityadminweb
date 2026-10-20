@@ -68,6 +68,12 @@ vi.mock('@/hooks/use-meetings', () => ({
   useCreateStandaloneTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 vi.mock('@/hooks/use-task-categories', () => ({ useTaskCategories: () => ({ data: [] }) }));
+vi.mock('@/hooks/use-meeting-invites', () => ({
+  isMeetingRouteMissing: () => true,
+  useInvitablePeople: () => ({ error: { status: 404 } }),
+  useMarkAttendance: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+vi.mock('./projects/projects-list', () => ({ ProjectsList: () => null }));
 
 vi.mock('@/hooks/use-user-search', () => ({
   useUserSearch: (q: string) => ({

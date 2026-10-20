@@ -8,6 +8,7 @@ import { useSaveTaskCategories, useTaskCategories, type TaskCategoryGridRow } fr
 import { ApiError, friendlyError } from '@/lib/api-error';
 import { currentRole } from '@/lib/current-role';
 import { isNotDeployed } from '@/lib/not-deployed';
+import { MeetingNotificationsCard } from './meeting-notifications-card';
 import { MAX_ACTIVE_CATEGORIES, TaskCategoriesGrid } from './task-categories-grid';
 
 // PUT /meetings/task-categories/bulk: MEETING_WRITE_ROLES.
@@ -54,14 +55,18 @@ export function SetupContent(): ReactNode {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Setup Task Categories</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <p className="text-sm text-muted-foreground">Up to {MAX_ACTIVE_CATEGORIES} active categories. A retired category keeps its tasks.</p>
-        {body()}
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Setup Task Categories</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm text-muted-foreground">Up to {MAX_ACTIVE_CATEGORIES} active categories. A retired category keeps its tasks.</p>
+          {body()}
+        </CardContent>
+      </Card>
+      {/* PROJ-42 / PROJ-43 — off until a community admin switches them on. */}
+      <MeetingNotificationsCard />
+    </div>
   );
 }

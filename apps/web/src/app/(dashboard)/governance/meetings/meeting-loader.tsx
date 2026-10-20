@@ -3,10 +3,11 @@
 import { useParams } from 'next/navigation';
 import { type ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMeeting, type MeetingItem, type MomTask } from '@/hooks';
+import { useMeeting } from '@/hooks';
+import type { MeetingDetail } from '@/hooks/use-meetings';
 import { friendlyError } from '@/lib/api-error';
 
-export type LoadedMeeting = MeetingItem & { tasks: MomTask[] };
+export type LoadedMeeting = MeetingDetail;
 
 /** The meeting named in the route, handed to `children` once loaded. */
 export function WithMeeting({ children }: { children: (meeting: LoadedMeeting) => ReactNode }): ReactNode {

@@ -16,6 +16,8 @@ vi.mock('next/link', () => ({
 vi.mock('@/hooks/use-debounced-value', () => ({ useDebouncedValue: <T,>(value: T): T => value }));
 const mocks = vi.hoisted(() => ({ list: vi.fn() }));
 vi.mock('@/hooks/use-meeting-lists', () => ({ useMeetingList: (filters: unknown) => mocks.list(filters) }));
+vi.mock('@/lib/current-role', () => ({ currentRole: () => 'committee_member' }));
+vi.mock('./invite-dialog', () => ({ InviteDialog: ({ meeting }: { meeting: { title: string } }): ReactNode => <div role="dialog">Invite {meeting.title}</div> }));
 
 const MEETING = {
   id: 'm-1',
@@ -25,6 +27,8 @@ const MEETING = {
   end_time: '20:00:00',
   status: 'scheduled',
   created_by_name: 'Asha Test',
+  invited_count: 12,
+  attendee_count: 0,
 };
 
 describe('MeetingsList', () => {
@@ -65,5 +69,14 @@ describe('MeetingsList', () => {
     render(<MeetingsList />);
 
     expect(screen.getAllByRole('link', { name: 'Edit' })).toHaveLength(1);
+  });
+
+  it('shows Attendees and Invited and opens Invite for the meeting (PROJ-42)', () => {
+    render(<MeetingsList />);
+
+    expect(screen.getByRole('columnheader', { name: 'Invited' })).toBeTruthy();
+    expect(screen.getByText('12')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Invite' }));
+    expect(screen.getByRole('dialog').textContent).toBe('Invite Water tank cleaning');
   });
 });

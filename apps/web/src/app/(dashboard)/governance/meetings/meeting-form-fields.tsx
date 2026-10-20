@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DURATIONS, MAX_AGENDA_LINES, effectiveEndTime, type DurationChoice, type MeetingFormValues } from './meeting-fields';
+import { MeetingInviteFields } from './meeting-invite-fields';
 
 type Set = (patch: Partial<MeetingFormValues>) => void;
 
@@ -77,7 +78,7 @@ function AgendaFields({ values, set }: { values: MeetingFormValues; set: Set }):
   );
 }
 
-/** The meeting form's fields (PROJ-S8): topic, date, venue, time and duration, status, notes, agenda lines. */
+/** The meeting form's fields (PROJ-S8): topic, date, venue, time and duration, status, notes, agenda lines, attendees, alerts and invitees. */
 export function MeetingFormFields({ values, set }: { values: MeetingFormValues; set: Set }): ReactNode {
   return (
     <div className="grid gap-4 text-sm">
@@ -104,6 +105,7 @@ export function MeetingFormFields({ values, set }: { values: MeetingFormValues; 
         <Textarea id="m-notes" rows={2} maxLength={4000} value={values.notes} onChange={(e) => set({ notes: e.target.value })} />
       </Field>
       <AgendaFields values={values} set={set} />
+      <MeetingInviteFields values={values} set={set} />
     </div>
   );
 }

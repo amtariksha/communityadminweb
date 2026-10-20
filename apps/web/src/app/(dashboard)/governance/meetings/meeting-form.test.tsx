@@ -10,13 +10,23 @@ import { MeetingMinutesForm } from './meeting-minutes-form';
  * the meeting, Save Minutes keeps it open.
  */
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), addToast: vi.fn() }));
+const mocks = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), addToast: vi.fn(), attendance: vi.fn() }));
 vi.mock('@/hooks', () => ({
   useCreateMeeting: () => ({ mutateAsync: mocks.create, isPending: false }),
   useUpdateMeeting: () => ({ mutateAsync: mocks.update, isPending: false }),
 }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: mocks.addToast }) }));
 vi.mock('@/hooks/use-meetings', () => ({ useNextMeetingNumbers: () => ({ data: { meeting_no: 12, task_no: 40 } }) }));
+vi.mock('@/hooks/use-meeting-invites', () => ({
+  isMeetingRouteMissing: () => false,
+  useInvitablePeople: () => ({
+    data: {
+      committee: [{ user_id: 'u-sec', name: 'Asha Test', designation: 'Secretary' }],
+      office_staff: [{ user_id: 'u-acc', name: 'Kiran Test', designation: 'Accountant' }],
+    },
+  }),
+  useMarkAttendance: () => ({ mutateAsync: mocks.attendance, isPending: false }),
+}));
 
 const MEETING: MeetingItem = {
   id: 'm-1',
@@ -114,6 +124,42 @@ describe.each(['dialog', 'page'] as const)('MeetingForm as a %s', (mode) => {
   });
 });
 
+describe('MeetingForm audience, alerts and invitees (PROJ-42, PROJ-43)', () => {
+  beforeEach(() => mocks.create.mockReset().mockResolvedValue({ ...MEETING, id: 'm-2' }));
+
+  it('sends the Attendees choice, the alert ticks and the people ticked on both pick-lists', async () => {
+    render(<MeetingForm mode="page" onClose={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Meeting Title *'), { target: { value: 'Owners meeting' } });
+    fireEvent.change(screen.getByLabelText('Agenda 1 *'), { target: { value: 'Lift fund' } });
+    fireEvent.click(screen.getByLabelText('Only Owners'));
+    fireEvent.click(screen.getByLabelText('Day before'));
+    fireEvent.click(screen.getByLabelText(/Asha Test/));
+    fireEvent.click(screen.getByLabelText(/Kiran Test/));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Meeting' }));
+
+    await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({ audience: 'owners', remind_1h: false, remind_1d: true, remind_1w: false, invitee_ids: ['u-sec', 'u-acc'] }),
+    );
+  });
+
+  it('defaults to the committee and office staff with no alerts', async () => {
+    render(<MeetingForm mode="page" onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect((screen.getByLabelText('Association Committee + Office Staff') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('Hour before') as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('leaves the named invitees alone when an older API did not send them', async () => {
+    mocks.update.mockReset().mockResolvedValue(MEETING);
+    render(<MeetingForm mode="page" meeting={MEETING} onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect(screen.getByText('Naming invitees is not available yet.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    await waitFor(() => expect(mocks.update).toHaveBeenCalled());
+    expect(mocks.update.mock.calls[0][0].data).not.toHaveProperty('invitee_ids');
+  });
+});
+
 describe('MeetingForm headings (PROJ-20)', () => {
   it('shows the next Meet.ID on the create page and the meeting\'s own on edit', () => {
     const { unmount } = render(<MeetingForm mode="page" onClose={vi.fn()} onSaved={vi.fn()} />);
@@ -142,6 +188,21 @@ describe('MeetingMinutesForm', () => {
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith(true));
     expect(mocks.update).toHaveBeenCalledWith({ id: 'm-1', data: { minutes: 'Approved the budget', status: 'completed' } });
+  });
+
+  it('saves the Attended ticks before closing the meeting (PROJ-42)', async () => {
+    mocks.attendance.mockReset().mockResolvedValue([]);
+    const invitees = [
+      { user_id: 'u-1', name: 'Asha Test', source: 'named' as const, invited_at: '2026-10-20T10:00:00Z', attended: false },
+      { user_id: 'u-2', name: 'Ravi Test', source: 'audience' as const, invited_at: '2026-10-20T10:00:00Z', attended: true },
+    ];
+    render(<MeetingMinutesForm mode="page" meeting={{ ...MEETING, invitees }} onClose={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText('Asha Test'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save and Close Meeting' }));
+
+    await waitFor(() => expect(mocks.update).toHaveBeenCalled());
+    expect(mocks.attendance).toHaveBeenCalledWith({ meetingId: 'm-1', rows: [{ user_id: 'u-1', attended: true }] });
+    expect(mocks.attendance.mock.invocationCallOrder[0]).toBeLessThan(mocks.update.mock.invocationCallOrder[0]);
   });
 
   it('Save Minutes keeps the meeting open', async () => {
