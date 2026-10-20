@@ -148,8 +148,9 @@ export const classicMenu: MenuNode[] = [
       // UNIT-18: past members; Edit opens the resident record (Re-activate).
       { id: 'units.deactivated', label: 'De-Activated Users', href: '/units/deactivated', logs: ['member'] },
       planned('units.survey', 'Survey', 'P9'),
-      planned('units.pets', 'Pet Setup', 'UNIT-35'),
-      planned('units.consent', 'Consent Activity', 'P9'),
+      // UNIT-35 / UNIT-37
+      { id: 'units.pets', label: 'Pet Setup', href: '/units/pet-setup', logs: ['pet_settings', 'pet'] },
+      { id: 'units.consent', label: 'Consent Activity', href: '/units/consent' },
       reportsMenuNode('units', 'REP-06'),
       // Ours, after their children: people list, resident tags, KYC queue.
       { id: 'units.directory', label: 'Member Directory', href: '/units/directory', logs: ['member'] },

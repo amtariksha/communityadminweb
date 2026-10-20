@@ -80,6 +80,8 @@ describe('classic modules', () => {
       'Access Control',
       'Broadcast',
       'De-Activated Users',
+      'Pet Setup',
+      'Consent Activity',
       'Reports',
       'Member Directory',
       'Member Categories',

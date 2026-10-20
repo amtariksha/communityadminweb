@@ -80,6 +80,8 @@ interface CreateTemplateInput {
   // category (sends as a generic announcement-style payload).
   category?: string | null;
   urgency?: 'normal' | 'urgent';
+  /** UNIT-37 — a third-party deal or offer: skipped for anyone who withdrew third-party offers. */
+  is_promotional?: boolean;
 }
 
 // ---------------------------------------------------------------------------

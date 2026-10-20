@@ -58,6 +58,7 @@ import {
 import { useAdminLayout } from '@/lib/layout-context';
 import {
   BroadcastChannel,
+  BroadcastPromotional,
   BroadcastConfirm,
   BroadcastRecipients,
   recipientAudience,
@@ -195,6 +196,7 @@ export default function NotificationsContent(): ReactNode {
   }, []);
   const [composeCategory, setComposeCategory] = useState<NotificationCategory | ''>('');
   const [composeUrgent, setComposeUrgent] = useState(false);
+  const [composePromotional, setComposePromotional] = useState(false);
   // QA — staged template id (for the Test-send button to operate on
   // before the user confirms broadcast). Cleared after broadcast.
   const [stagedTemplateId, setStagedTemplateId] = useState<string | null>(null);
@@ -230,6 +232,7 @@ export default function NotificationsContent(): ReactNode {
     setComposeBlocks([]);
     setComposeCategory('');
     setComposeUrgent(false);
+    setComposePromotional(false);
     setStagedTemplateId(null);
   }
 
@@ -269,6 +272,8 @@ export default function NotificationsContent(): ReactNode {
         ...(byBlock ? { target_blocks: composeBlocks } : {}),
         category: composeCategory || null,
         urgency: composeUrgent ? 'urgent' : 'normal',
+        // Sent only when ticked, so an API before UNIT-37 sees the same request.
+        ...(composePromotional ? { is_promotional: true } : {}),
       });
       const id = res.data.id;
       setStagedTemplateId(id);
@@ -447,6 +452,13 @@ export default function NotificationsContent(): ReactNode {
                   mayEssential={role === 'super_admin' || role === 'community_admin'}
                   onChange={(channel) => {
                     setComposeChannel(channel);
+                    setStagedTemplateId(null);
+                  }}
+                />
+                <BroadcastPromotional
+                  checked={composePromotional}
+                  onChange={(checked) => {
+                    setComposePromotional(checked);
                     setStagedTemplateId(null);
                   }}
                 />

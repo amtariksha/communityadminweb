@@ -156,3 +156,19 @@ export function BroadcastConfirm(props: {
     </Dialog>
   );
 }
+
+/**
+ * UNIT-37 — "Third-party deal or offer": residents who withdrew Third-Party
+ * Deals and Offers (Consent Activity) get this message on no channel.
+ */
+export function BroadcastPromotional(props: { checked: boolean; onChange: (checked: boolean) => void }): ReactNode {
+  return (
+    <label className="flex items-start gap-2 text-sm">
+      <input type="checkbox" className="mt-0.5" checked={props.checked} onChange={(event) => props.onChange(event.target.checked)} />
+      <span>
+        Third-party deal or offer
+        <span className="block text-xs text-muted-foreground">Not sent to residents who withdrew consent to third-party deals and offers.</span>
+      </span>
+    </label>
+  );
+}

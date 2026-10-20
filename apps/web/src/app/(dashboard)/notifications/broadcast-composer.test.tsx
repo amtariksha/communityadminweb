@@ -107,6 +107,24 @@ describe('Broadcast composer', () => {
     expect(state.create.mock.calls[0][0]).toMatchObject({ target_audience: 'owners', target_blocks: ['A'] });
   });
 
+  it('marks a third-party deal or offer as promotional, and sends nothing extra when unticked (UNIT-37)', async () => {
+    render(<NotificationsContent />);
+
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Bakery offer' } });
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Ten percent off.' } });
+    fireEvent.click(screen.getByLabelText(/Third-party deal or offer/));
+    fireEvent.click(screen.getByRole('button', { name: /Send Notification/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await vi.waitFor(() => expect(state.create).toHaveBeenCalled());
+    expect(state.create.mock.calls[0][0]).toMatchObject({ is_promotional: true });
+
+    fireEvent.click(screen.getByLabelText(/Third-party deal or offer/));
+    fireEvent.click(screen.getByRole('button', { name: /Send Notification/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await vi.waitFor(() => expect(state.create).toHaveBeenCalledTimes(2));
+    expect(state.create.mock.calls[1][0]).not.toHaveProperty('is_promotional');
+  });
+
   it('will not send when no one matches', () => {
     state.count = 0;
     render(<NotificationsContent />);
