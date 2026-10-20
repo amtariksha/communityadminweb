@@ -11,7 +11,18 @@ export type RegisterAsset = Asset & {
   asset_code?: string | null;
   description?: string | null;
   notes?: string | null;
+  /** ASSET-18 — on the asset's own page; absent from an older API. */
+  parts?: AssetPart[];
 };
+
+/** A part (sub-component) of an asset (ASSET-18). */
+export interface AssetPart {
+  id: string;
+  name: string;
+  asset_code: string | null;
+  status: string;
+  purchase_cost: string | null;
+}
 
 export interface AssetRegisterFilters {
   status?: AssetStatus;

@@ -20,6 +20,9 @@ export interface Asset {
   /** ASSET-16 — the society's category (absent from an older API, or null before it was linked). */
   category_id?: string | null;
   category_name?: string | null;
+  /** ASSET-18 — the asset this one is a part of. */
+  parent_asset_id?: string | null;
+  parent_name?: string | null;
   location: string;
   manufacturer: string;
   model: string;
@@ -247,6 +250,7 @@ interface CreateAssetInput {
   /** An API without categories (ASSET-16) reads the fixed type. */
   asset_type?: string;
   category_id?: string;
+  parent_asset_id?: string | null;
   location: string;
   manufacturer?: string;
   model?: string;
@@ -262,6 +266,7 @@ interface UpdateAssetInput {
   name?: string;
   asset_type?: string;
   category_id?: string;
+  parent_asset_id?: string | null;
   location?: string;
   manufacturer?: string;
   model?: string;

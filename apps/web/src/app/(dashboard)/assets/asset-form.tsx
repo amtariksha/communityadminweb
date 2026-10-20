@@ -10,6 +10,7 @@ import { categoryChoices, useAssetCategories, type CategoryChoice } from '@/hook
 import { useCreateAsset, useUpdateAsset, type Asset } from '@/hooks/use-assets';
 import { friendlyError } from '@/lib/api-error';
 import { LOCATION_PARTS, assetFormError, assetFormValues, assetPayload, type AssetFormValues } from './asset-form-fields';
+import { AssetSearchSelect } from './asset-search-select';
 import { ASSET_TYPES, CONDITIONS } from './asset-ui';
 
 export interface AssetFormProps {
@@ -76,7 +77,23 @@ function CategoryField({ values, set, options }: { values: AssetFormValues; set:
   );
 }
 
-function AssetFields({ values, set, options }: { values: AssetFormValues; set: Set; options: CategoryOptions }): ReactNode {
+/** ASSET-18 — Parent Asset: any asset of the society that is not itself a part (and not this one). */
+function ParentField({ values, set, selfId }: { values: AssetFormValues; set: Set; selfId?: string }): ReactNode {
+  return (
+    <div className="col-span-2 space-y-2">
+      <Label htmlFor="asset-parent">Parent Asset (this asset is a part of it)</Label>
+      <AssetSearchSelect
+        id="asset-parent"
+        value={values.parent}
+        onChange={(parent) => set({ parent: parent ? { id: parent.id, name: parent.name } : null })}
+        exclude={(asset) => asset.id === selfId || Boolean(asset.parent_asset_id)}
+        clearLabel="Remove"
+      />
+    </div>
+  );
+}
+
+function AssetFields({ values, set, options, selfId }: { values: AssetFormValues; set: Set; options: CategoryOptions; selfId?: string }): ReactNode {
   return (
     <div className="grid grid-cols-2 gap-4">
       <Text id="asset-name" label="Name *" value={values.name} onChange={(name) => set({ name })} wide />
@@ -98,6 +115,7 @@ function AssetFields({ values, set, options }: { values: AssetFormValues; set: S
           {CONDITIONS.map((condition) => <option key={condition.value} value={condition.value}>{condition.label}</option>)}
         </Select>
       </div>
+      <ParentField values={values} set={set} selfId={selfId} />
     </div>
   );
 }
@@ -146,7 +164,7 @@ export function AssetForm(props: AssetFormProps): ReactNode {
       dialogClassName="max-w-lg"
     >
       {!editing && <p className="mb-2 text-xs text-muted-foreground">Leave Asset Code blank to get the next AST- number; the QR badge carries the code.</p>}
-      <AssetFields values={values} set={set} options={options} />
+      <AssetFields values={values} set={set} options={options} selfId={props.asset?.id} />
     </FormFrame>
   );
 }

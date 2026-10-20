@@ -12,6 +12,10 @@ interface AssetSearchSelectProps {
   id: string;
   value: AssetChoice | null;
   onChange: (asset: AssetChoice | null) => void;
+  /** Assets not offered, e.g. the asset itself and parts when picking a parent (ASSET-18). */
+  exclude?: (asset: Asset) => boolean;
+  /** Text of the button that clears the choice. */
+  clearLabel?: string;
 }
 
 const SHOWN = 20;
@@ -21,11 +25,11 @@ const SHOWN = 20;
  * asset code) instead of loading one page of assets, so every asset of
  * the society can be picked (AMC and service log forms).
  */
-export function AssetSearchSelect({ id, value, onChange }: AssetSearchSelectProps): ReactNode {
+export function AssetSearchSelect({ id, value, onChange, exclude, clearLabel = 'Change' }: AssetSearchSelectProps): ReactNode {
   const [draft, setDraft] = useState('');
   const search = useDebouncedValue(draft.trim(), 300);
   const query = useAssets({ page: 1, limit: SHOWN, search: search || undefined });
-  const hits = value ? [] : (query.data?.data ?? []);
+  const hits = value ? [] : (query.data?.data ?? []).filter((asset) => !exclude?.(asset));
 
   if (value) {
     return (
@@ -35,7 +39,7 @@ export function AssetSearchSelect({ id, value, onChange }: AssetSearchSelectProp
           {value.location ? ` · ${value.location}` : ''}
         </span>
         <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
-          Change
+          {clearLabel}
         </Button>
       </div>
     );

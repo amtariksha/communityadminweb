@@ -17,6 +17,7 @@ import {
 import { currentRole } from '@/lib/current-role';
 import { AssetForm } from '../../../assets/asset-form';
 import { useAssetStatusChange } from '../../../assets/use-asset-status-change';
+import { AssetParts } from './asset-parts';
 
 function listFor(status: string): string {
   return `${ASSETS_BASE}/${ASSET_STATUS_ROUTES.find((route) => route.status === status)?.slug ?? 'active'}`;
@@ -50,13 +51,16 @@ export function AssetEditPage(): ReactNode {
   if (!query.data) return <Skeleton className="h-64 w-full" />;
   const back = listFor(query.data.status);
   return (
-    <AssetForm
-      key={query.dataUpdatedAt}
-      mode="page"
-      asset={query.data}
-      header={<StatusLine asset={query.data} />}
-      onClose={() => router.push(back)}
-      onSaved={() => router.push(back)}
-    />
+    <div className="space-y-4">
+      <AssetForm
+        key={query.dataUpdatedAt}
+        mode="page"
+        asset={query.data}
+        header={<StatusLine asset={query.data} />}
+        onClose={() => router.push(back)}
+        onSaved={() => router.push(back)}
+      />
+      <AssetParts parts={query.data.parts} />
+    </div>
   );
 }

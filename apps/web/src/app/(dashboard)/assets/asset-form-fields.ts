@@ -1,5 +1,11 @@
 import type { Asset } from '@/hooks/use-assets';
 
+/** ASSET-18 — the asset this one is a part of. */
+export interface ParentChoice {
+  id: string;
+  name: string;
+}
+
 export interface AssetFormValues {
   name: string;
   /** The fixed type, for an API without categories. */
@@ -21,6 +27,7 @@ export interface AssetFormValues {
   wing: string;
   floor: string;
   room: string;
+  parent: ParentChoice | null;
 }
 
 /** The detailed location parts (ASSET-S6) and their lengths. */
@@ -53,6 +60,7 @@ export function assetFormValues(asset?: Asset | null): AssetFormValues {
     wing: asset?.wing ?? '',
     floor: asset?.floor ?? '',
     room: asset?.room ?? '',
+    parent: asset?.parent_asset_id ? { id: asset.parent_asset_id, name: asset.parent_name ?? 'Parent asset' } : null,
   };
 }
 
@@ -86,5 +94,7 @@ export function assetPayload(values: AssetFormValues, byCategory = false) {
     wing: values.wing.trim() || null,
     floor: values.floor.trim() || null,
     room: values.room.trim() || null,
+    // ASSET-18: null stands the asset on its own.
+    parent_asset_id: values.parent?.id ?? null,
   };
 }
