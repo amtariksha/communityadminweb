@@ -358,6 +358,8 @@ export interface MemberImportResult {
   /** One line per skipped row, from before per-row results existed. */
   errors: string[];
   results?: MemberImportRowResult[];
+  /** UNIT-20 — invites sent with `send_invites` (absent otherwise). */
+  invites?: { sent: number; skipped: number; failed: number };
 }
 
 export function useBulkImportMembers() {
@@ -376,6 +378,8 @@ export function useBulkImportMembers() {
         email?: string;
         move_in_date?: string;
       }>;
+      /** UNIT-20 — invite every member added. */
+      send_invites?: boolean;
     }) {
       // `results` (one entry per row) arrives with UNIT-04; an API that
       // is not updated yet sends only the counts and `errors`.

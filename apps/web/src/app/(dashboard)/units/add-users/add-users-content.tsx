@@ -5,6 +5,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { useBulkImportMembers } from '@/hooks/use-units';
+import { useResidentSettings } from '@/hooks/use-resident-settings';
 import { friendlyError } from '@/lib/api-error';
 import { currentRole } from '@/lib/current-role';
 import { useUnitChoices } from '../../helpdesk/new/use-unit-choices';
@@ -53,15 +54,21 @@ export function AddUsersContent(): ReactNode {
   const importMembers = useBulkImportMembers();
   const canCreate = CREATE_ROLES.has(currentRole() ?? '');
   const filled = grid.rows.some((row) => !isBlankRow(row));
+  // UNIT-20 — the invite choice, offered once the API has resident invites.
+  const residentSettings = useResidentSettings();
+  const invitesOffered = Boolean(residentSettings.data);
+  const [sendInvites, setSendInvites] = useState(false);
 
   async function createAccounts(): Promise<void> {
     const prepared = prepareImport(grid.rows);
     grid.setRows(prepared.rows);
     if (prepared.members.length === 0) return;
     try {
-      const response = await importMembers.mutateAsync({ members: prepared.members });
+      const response = await importMembers.mutateAsync({ members: prepared.members, ...(invitesOffered ? { send_invites: sendInvites } : {}) });
       grid.setRows((current) => applyImportResult(current, prepared.sentKeys, response.data));
-      addToast({ title: `${response.data.imported} added, ${response.data.skipped} not added`, variant: response.data.skipped ? 'default' : 'success' });
+      const invites = response.data.invites;
+      const invited = invites ? ` · invites: ${invites.sent} sent, ${invites.skipped} not sent` : '';
+      addToast({ title: `${response.data.imported} added, ${response.data.skipped} not added${invited}`, variant: response.data.skipped ? 'default' : 'success' });
     } catch (error) {
       const marked = applyRequestErrors(prepared.rows, prepared.sentKeys, error);
       if (marked) grid.setRows(marked);
@@ -84,6 +91,25 @@ export function AddUsersContent(): ReactNode {
           Add {ROWS_PER_BATCH} more rows
         </Button>
       </div>
+      {invitesOffered && (
+        <fieldset className="flex flex-wrap items-center gap-4 text-sm">
+          <legend className="sr-only">Invites</legend>
+          <label className="flex items-center gap-2">
+            <input type="radio" name="send-invites" checked={sendInvites} onChange={() => setSendInvites(true)} />
+            Also Send Invites
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="radio" name="send-invites" checked={!sendInvites} onChange={() => setSendInvites(false)} />
+            Do not Send Invites
+          </label>
+          <Link href="/units/add-users/invite-message" className="text-primary hover:underline">
+            Customize Invite Email
+          </Link>
+          {sendInvites && !residentSettings.data?.invite_email_enabled && (
+            <span className="text-xs text-muted-foreground">Invite e-mails are off: switch them on in Customize Invite Email.</span>
+          )}
+        </fieldset>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" disabled={!canCreate || !filled || importMembers.isPending} onClick={() => void createAccounts()}>
           {importMembers.isPending ? 'Creating…' : 'Create User Accounts'}

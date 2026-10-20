@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import {
   useBulkApprove,
@@ -54,6 +55,10 @@ function SelectionBar(props: {
       <Button type="button" size="sm" disabled={props.count === 0 || props.busy} onClick={props.onApprove}>
         {props.busy ? 'Approving…' : `Approve Selected Users${props.count > 0 ? ` (${props.count})` : ''}`}
       </Button>
+      {/* UNIT-21 — the message an approved resident receives. */}
+      <Link href="/units/unapproved/approval-message" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+        Customize Approval Email
+      </Link>
     </div>
   );
 }

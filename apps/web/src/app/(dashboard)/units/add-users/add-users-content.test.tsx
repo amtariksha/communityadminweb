@@ -14,7 +14,9 @@ vi.mock('next/link', () => ({
 }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 
-const state = vi.hoisted(() => ({ role: 'community_admin', importMembers: vi.fn() }));
+const state = vi.hoisted(() => ({ role: 'community_admin', importMembers: vi.fn(), residentSettings: null as unknown }));
+// UNIT-20 — the invite choice shows once the API has resident settings.
+vi.mock('@/hooks/use-resident-settings', () => ({ useResidentSettings: () => ({ data: state.residentSettings }) }));
 vi.mock('@/lib/current-role', () => ({ currentRole: () => state.role }));
 vi.mock('../../helpdesk/new/use-unit-choices', () => ({
   useUnitChoices: () => ({
@@ -107,5 +109,21 @@ describe('AddUsersContent', () => {
 
     expect(screen.getByText('Only the community admin and the accountant can create user accounts.')).toBeTruthy();
     expect((screen.getByLabelText('First Name, row 1') as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it('offers the invite choice once the API has it, and sends it (UNIT-20)', async () => {
+    state.residentSettings = { invite_email_enabled: true, invite_message: null, approval_message: null, approval_email_enabled: false };
+    state.importMembers.mockResolvedValue({ data: { imported: 1, skipped: 0, errors: [], results: [{ row: 1, status: 'imported' }], invites: { sent: 1, skipped: 0, failed: 0 } } });
+    render(<AddUsersContent />);
+    fillRow(1, { first: 'Test Invitee', unit: 'u-1', phone: '+910000000091', type: 'owner' });
+
+    expect((screen.getByLabelText('Do not Send Invites') as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByLabelText('Also Send Invites'));
+    fireEvent.click(screen.getByRole('button', { name: 'Create User Accounts' }));
+    await act(async () => {});
+
+    expect(state.importMembers.mock.calls[0][0].send_invites).toBe(true);
+    expect(screen.getByRole('link', { name: 'Customize Invite Email' }).getAttribute('href')).toBe('/units/add-users/invite-message');
+    state.residentSettings = null;
   });
 });

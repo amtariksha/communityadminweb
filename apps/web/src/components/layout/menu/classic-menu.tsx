@@ -108,7 +108,11 @@ export const classicMenu: MenuNode[] = [
         label: 'Unapproved Users',
         href: '/units/unapproved',
         logs: ['tenant_onboarding'],
-        forms: [{ label: 'Edit Unapproved User', path: '/units/unapproved/:onboardingId/edit' }],
+        forms: [
+          { label: 'Edit Unapproved User', path: '/units/unapproved/:onboardingId/edit' },
+          // UNIT-21
+          { label: 'Edit Welcome Message', path: '/units/unapproved/approval-message' },
+        ],
       },
       {
         id: 'units.add',
@@ -116,6 +120,8 @@ export const classicMenu: MenuNode[] = [
         href: '/units/add-users',
         aliases: ['/units/import'],
         logs: ['unit', 'member'],
+        // UNIT-20
+        forms: [{ label: 'Customize Invite Email', path: '/units/add-users/invite-message' }],
       },
       {
         id: 'units.approved',
