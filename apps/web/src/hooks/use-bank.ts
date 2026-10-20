@@ -62,6 +62,8 @@ export interface BRSSummary {
 interface TransferFilters {
   start_date?: string;
   end_date?: string;
+  // BANK-10: transfer no., instrument no., comment or account name.
+  q?: string;
   page?: number;
   limit?: number;
 }
@@ -147,6 +149,7 @@ function transferFiltersToParams(
   const params: Record<string, string> = {};
   if (filters.start_date) params.start_date = filters.start_date;
   if (filters.end_date) params.end_date = filters.end_date;
+  if (filters.q) params.q = filters.q;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);
   return params;
@@ -303,6 +306,20 @@ export function useCreateTransfer() {
       return api.post<{ data: BankTransfer }>('/bank/transfers', input);
     },
     onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.transfers() });
+      queryClient.invalidateQueries({ queryKey: bankKeys.accounts() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+    },
+  });
+}
+
+/** POST /bank/transfers/:id/cancel (BANK-10): the inverse journal today. */
+export function useCancelTransfer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; reason: string }) => api.post<{ data: unknown }>(`/bank/transfers/${input.id}/cancel`, { reason: input.reason }),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bankKeys.transfers() });
       queryClient.invalidateQueries({ queryKey: bankKeys.accounts() });
       queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });

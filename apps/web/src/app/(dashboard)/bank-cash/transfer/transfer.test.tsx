@@ -87,3 +87,35 @@ describe('Transfer page', () => {
     expect([...(within(row).getByLabelText('To') as HTMLSelectElement).options].map((option) => option.value)).toEqual(['', 'ba-2']);
   });
 });
+
+describe('Transfer parity (BANK-10)', () => {
+  const SOCIETY = '11111111-1111-4111-8111-111111111111';
+  beforeEach(() => {
+    localStorage.setItem('communityos_tenant', SOCIETY);
+    localStorage.setItem('communityos_user', JSON.stringify({ id: 'u1', name: 'A', phone: '+910000000010', isSuperAdmin: false, role: 'accountant', societies: [{ id: SOCIETY, name: 'S', role: 'accountant' }] }));
+    transfers = [
+      { ...OLD, transfer_number: 'TRF-00001', transferred_by_name: 'Ravi Treasurer', status: 'active' } as typeof OLD,
+      { ...NEW, transfer_number: 'TRF-00002', status: 'cancelled', cancel_reason: 'Duplicate' } as typeof OLD,
+    ];
+  });
+  afterEach(() => localStorage.clear());
+
+  it('shows the number and who transferred, Cancelled rows, and cancels with a reason', async () => {
+    renderPage();
+    const table = await screen.findByRole('table', { name: 'Bank & Cash Transfers' });
+    await within(table).findByText('TRF-00001');
+    const rows = within(table).getAllByRole('row');
+    expect(rows[1].textContent).toContain('TRF-00001');
+    expect(rows[1].textContent).toContain('Ravi Treasurer');
+    expect(rows[2].textContent).toContain('Cancelled');
+    expect(within(rows[2]).queryByRole('button', { name: 'Cancel' })).toBeNull();
+
+    fireEvent.click(within(rows[1]).getByRole('button', { name: 'Cancel' }));
+    const dialog = await screen.findByRole('dialog');
+    const confirm = within(dialog).getByRole('button', { name: 'Cancel transfer' }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    fireEvent.change(within(dialog).getByLabelText('Reason'), { target: { value: 'Wrong account' } });
+    fireEvent.click(confirm);
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/bank/transfers/t-1/cancel', { reason: 'Wrong account' }));
+  });
+});

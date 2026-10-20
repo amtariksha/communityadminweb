@@ -30,6 +30,11 @@ export interface BankTransferRow {
   // QA #293 — the column is `notes`; older callers read `narration`.
   notes?: string | null;
   narration?: string | null;
+  // BANK-10; absent from an older API.
+  transfer_number?: string | null;
+  transferred_by_name?: string | null;
+  status?: 'active' | 'cancelled';
+  cancel_reason?: string | null;
 }
 
 export interface FixedDepositRow {
