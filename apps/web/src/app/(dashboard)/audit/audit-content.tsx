@@ -74,6 +74,8 @@ const ENTITY_TYPES = [
   { value: 'inventory', label: 'Procurement' },
   // Role grants, removals and expiries (Settings › Access & Roles › Role expiry).
   { value: 'user_tenant_role', label: 'Role Assignment' },
+  // Units & Users › Access Control: admin people, their roles and module access.
+  { value: 'admin_access', label: 'Admin Access' },
 ];
 
 const ACTION_TYPES = [
