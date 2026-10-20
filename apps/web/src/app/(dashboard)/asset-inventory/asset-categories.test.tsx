@@ -42,15 +42,17 @@ const category = (id: string, name: string, extra: Partial<AssetCategory> = {}):
 });
 
 const row = (key: string, name: string, id?: string, inactive = false): GridRowState<AssetCategoryValues> =>
-  ({ key, id, values: { name }, inactive }) as GridRowState<AssetCategoryValues>;
+  ({ key, id, values: { name, method: '', rate: '', life: '', residual: '5' }, inactive }) as GridRowState<AssetCategoryValues>;
+
+const NO_DEPRECIATION = { depreciation_method: null, depreciation_rate: null, useful_life_years: null, residual_percent: 5 };
 
 describe('asset categories grid', () => {
   it('sends the whole list in order, a retired row as is_active false', () => {
     const change = { rows: [row('a', ' Lifts ', 'c-1'), row('b', 'Pumps', 'c-2', true), row('c', 'Gym Equipment')] } as unknown as GridChange<AssetCategoryValues>;
     expect(toAssetCategoryRows(change)).toEqual([
-      { id: 'c-1', name: 'Lifts', is_active: true },
-      { id: 'c-2', name: 'Pumps', is_active: false },
-      { name: 'Gym Equipment', is_active: true },
+      { id: 'c-1', name: 'Lifts', is_active: true, ...NO_DEPRECIATION },
+      { id: 'c-2', name: 'Pumps', is_active: false, ...NO_DEPRECIATION },
+      { name: 'Gym Equipment', is_active: true, ...NO_DEPRECIATION },
     ]);
   });
 

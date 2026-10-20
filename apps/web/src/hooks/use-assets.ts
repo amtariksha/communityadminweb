@@ -23,6 +23,12 @@ export interface Asset {
   /** ASSET-18 — the asset this one is a part of. */
   parent_asset_id?: string | null;
   parent_name?: string | null;
+  /** ASSET-19 — the asset's own depreciation inputs (null = its category's). */
+  depreciation_method?: 'slm' | 'wdv' | null;
+  depreciation_rate?: string | null;
+  useful_life_years?: number | null;
+  residual_percent?: string | null;
+  depreciation_start_date?: string | null;
   location: string;
   manufacturer: string;
   model: string;
@@ -251,6 +257,11 @@ interface CreateAssetInput {
   asset_type?: string;
   category_id?: string;
   parent_asset_id?: string | null;
+  depreciation_method?: 'slm' | 'wdv' | null;
+  depreciation_rate?: number | null;
+  useful_life_years?: number | null;
+  residual_percent?: number | null;
+  depreciation_start_date?: string | null;
   location: string;
   manufacturer?: string;
   model?: string;
@@ -267,6 +278,11 @@ interface UpdateAssetInput {
   asset_type?: string;
   category_id?: string;
   parent_asset_id?: string | null;
+  depreciation_method?: 'slm' | 'wdv' | null;
+  depreciation_rate?: number | null;
+  useful_life_years?: number | null;
+  residual_percent?: number | null;
+  depreciation_start_date?: string | null;
   location?: string;
   manufacturer?: string;
   model?: string;

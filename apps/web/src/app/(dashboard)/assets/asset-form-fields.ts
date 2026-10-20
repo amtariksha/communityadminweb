@@ -28,6 +28,12 @@ export interface AssetFormValues {
   floor: string;
   room: string;
   parent: ParentChoice | null;
+  /** ASSET-19 — blank = the category's input; start blank = the purchase date. */
+  depMethod: string;
+  depRate: string;
+  depLife: string;
+  depResidual: string;
+  depStart: string;
 }
 
 /** The detailed location parts (ASSET-S6) and their lengths. */
@@ -61,8 +67,19 @@ export function assetFormValues(asset?: Asset | null): AssetFormValues {
     floor: asset?.floor ?? '',
     room: asset?.room ?? '',
     parent: asset?.parent_asset_id ? { id: asset.parent_asset_id, name: asset.parent_name ?? 'Parent asset' } : null,
+    depMethod: asset?.depreciation_method ?? '',
+    depRate: plainNumber(asset?.depreciation_rate),
+    depLife: plainNumber(asset?.useful_life_years),
+    depResidual: plainNumber(asset?.residual_percent),
+    depStart: day(asset?.depreciation_start_date),
   };
 }
+
+function plainNumber(value: string | number | null | undefined): string {
+  return value === null || value === undefined || value === '' ? '' : String(Number(value));
+}
+
+const numberOrNull = (text: string): number | null => (text.trim() === '' ? null : Number(text));
 
 /** The same rules in the dialog and on the page (SB-07); null when valid. */
 export function assetFormError(values: AssetFormValues, byCategory = false): string | null {
@@ -71,6 +88,17 @@ export function assetFormError(values: AssetFormValues, byCategory = false): str
   if (!values.location.trim()) return 'Enter where the asset is.';
   if (values.purchaseCost && !(Number(values.purchaseCost) >= 0)) return 'The purchase cost must be zero or more.';
   if (values.assetCode.trim().length > 100) return 'An asset code is at most 100 characters.';
+  return depreciationError(values);
+}
+
+/** ASSET-19 — the asset's own depreciation inputs, when given. */
+function depreciationError(values: AssetFormValues): string | null {
+  const rate = numberOrNull(values.depRate);
+  const life = numberOrNull(values.depLife);
+  const residual = numberOrNull(values.depResidual);
+  if (rate !== null && !(rate > 0 && rate <= 100)) return 'The depreciation rate is more than 0 and at most 100%.';
+  if (life !== null && !(Number.isInteger(life) && life >= 1 && life <= 100)) return 'The useful life is 1 to 100 whole years.';
+  if (residual !== null && !(residual >= 0 && residual < 100)) return 'The residual value is 0 to 99.99% of cost.';
   return null;
 }
 
@@ -96,5 +124,11 @@ export function assetPayload(values: AssetFormValues, byCategory = false) {
     room: values.room.trim() || null,
     // ASSET-18: null stands the asset on its own.
     parent_asset_id: values.parent?.id ?? null,
+    // ASSET-19: null = the category's input (the start: the purchase date).
+    depreciation_method: (values.depMethod || null) as 'slm' | 'wdv' | null,
+    depreciation_rate: numberOrNull(values.depRate),
+    useful_life_years: numberOrNull(values.depLife),
+    residual_percent: numberOrNull(values.depResidual),
+    depreciation_start_date: values.depStart || null,
   };
 }

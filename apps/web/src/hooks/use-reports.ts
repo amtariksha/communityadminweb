@@ -27,6 +27,10 @@ export type ReportParamType =
   | 'amenity'
   /** One of the society's community forms (FORM-07). */
   | 'community_form'
+  /** One of the society's asset categories (ASSET-16). */
+  | 'asset_category'
+  /** One of the society's inventory categories (ASSET-17). */
+  | 'inventory_category'
   | 'select'
   | 'boolean'
   | 'number';

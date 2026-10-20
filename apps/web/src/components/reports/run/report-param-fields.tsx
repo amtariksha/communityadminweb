@@ -17,6 +17,7 @@ import { useAmenities } from '@/hooks/use-amenities';
 import type { UserSearchHit } from '@/hooks/use-user-search';
 import type { CatalogueParam } from '@/hooks/use-reports';
 import { useHelpdeskCategories } from '@/hooks/use-helpdesk';
+import { useAssetCategories } from '@/hooks/use-asset-categories';
 import { ANY, CUSTOM_RANGE, financialYearOptions, type ParamValue, type RangeValue } from './report-param-state';
 
 // The unit and vendor parameters offer every unit and vendor, not the first 100
@@ -183,6 +184,12 @@ function TicketCategoryField(props: FieldProps): ReactNode {
   return <ChoiceField {...props} options={options} param={{ ...props.param, type: 'select' }} />;
 }
 
+function AssetCategoryField(props: FieldProps): ReactNode {
+  const categories = useAssetCategories();
+  const options = (categories.data ?? []).map((category) => ({ value: category.id, label: category.name }));
+  return <ChoiceField {...props} options={options} param={{ ...props.param, type: 'select' }} />;
+}
+
 function Widget(props: FieldProps): ReactNode {
   const { param, value, onChange, today } = props;
   switch (param.type) {
@@ -217,6 +224,8 @@ function Widget(props: FieldProps): ReactNode {
       return <VendorField {...props} />;
     case 'ticket_category':
       return <TicketCategoryField {...props} />;
+    case 'asset_category':
+      return <AssetCategoryField {...props} />;
     case 'boolean':
       return <input id={fieldId(param)} type="checkbox" className="h-4 w-4" checked={value === true} onChange={(event) => onChange(event.target.checked)} />;
     case 'number':

@@ -86,6 +86,10 @@ export function AssetCategoriesContent(): ReactNode {
       <CardContent className="space-y-3 pt-6">
         <h3 className="font-semibold">Set up Asset Categories</h3>
         <p className="text-sm text-muted-foreground">Rename a category in place; retire one to stop offering it. A category active assets use stays until they move.</p>
+        <p className="text-sm text-muted-foreground">
+          Depreciation: straight line spreads cost less residual value over the useful life (or takes the rate of cost each year);
+          written-down value takes the rate of each year&apos;s opening value. The depreciation reports read these; nothing is posted to the books.
+        </p>
         {body()}
       </CardContent>
     </Card>

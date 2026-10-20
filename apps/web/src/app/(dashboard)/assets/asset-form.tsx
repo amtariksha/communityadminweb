@@ -10,6 +10,7 @@ import { categoryChoices, useAssetCategories, type CategoryChoice } from '@/hook
 import { useCreateAsset, useUpdateAsset, type Asset } from '@/hooks/use-assets';
 import { friendlyError } from '@/lib/api-error';
 import { LOCATION_PARTS, assetFormError, assetFormValues, assetPayload, type AssetFormValues } from './asset-form-fields';
+import { AssetDepreciationFields } from './asset-depreciation-fields';
 import { AssetSearchSelect } from './asset-search-select';
 import { ASSET_TYPES, CONDITIONS } from './asset-ui';
 
@@ -116,6 +117,7 @@ function AssetFields({ values, set, options, selfId }: { values: AssetFormValues
         </Select>
       </div>
       <ParentField values={values} set={set} selfId={selfId} />
+      <AssetDepreciationFields values={values} set={set} />
     </div>
   );
 }
