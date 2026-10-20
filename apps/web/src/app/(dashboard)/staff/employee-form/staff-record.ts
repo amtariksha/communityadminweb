@@ -21,6 +21,12 @@ export const VALIDITY_OPTIONS = [
   { value: '9', label: '9 months' },
 ] as const;
 
+/** The saved record the form opens: society staff or household help (STAFF-42). */
+export type StaffRecordSource = Pick<
+  Staff,
+  'badge_no' | 'badge_issued_on' | 'badge_valid_until' | 'gender' | 'qualification' | 'skills' | 'languages' | 'notes' | 'id_proof_number' | 'exit_date'
+>;
+
 export interface StaffRecordDraft {
   badgeNo: string;
   issuedOn: string;
@@ -56,7 +62,7 @@ function savedValidity(issuedOn: string, validUntil: string): string {
   return match?.value ?? '';
 }
 
-export function recordDraftFrom(employee?: Staff | null): StaffRecordDraft {
+export function recordDraftFrom(employee?: StaffRecordSource | null): StaffRecordDraft {
   const issuedOn = dayOf(employee?.badge_issued_on);
   return {
     badgeNo: employee?.badge_no ?? '',
@@ -88,7 +94,7 @@ export function recordDraftError(draft: StaffRecordDraft): string | null {
 }
 
 /** What Badge Valid Till will read after a save ('' = no expiry or unknown). */
-export function validTillPreview(draft: StaffRecordDraft, saved?: Staff | null): string {
+export function validTillPreview(draft: StaffRecordDraft, saved?: StaffRecordSource | null): string {
   if (draft.validity === '') return dayOf(saved?.badge_valid_until);
   return badgeValidUntil(issuedOrToday(draft), Number(draft.validity)) ?? '';
 }

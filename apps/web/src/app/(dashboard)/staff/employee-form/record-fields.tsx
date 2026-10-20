@@ -6,15 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type { Staff } from '@/hooks/use-staff';
 import { formatDate } from '@/lib/utils';
-import { GENDER_OPTIONS, VALIDITY_OPTIONS, validTillPreview, type StaffRecordDraft } from './staff-record';
+import { GENDER_OPTIONS, VALIDITY_OPTIONS, validTillPreview, type StaffRecordDraft, type StaffRecordSource } from './staff-record';
 
 interface RecordFieldsProps {
   draft: StaffRecordDraft;
   set: <K extends keyof StaffRecordDraft>(key: K, value: StaffRecordDraft[K]) => void;
   /** The saved employee on Edit. */
-  employee?: Staff | null;
+  employee?: StaffRecordSource | null;
   /** The last save's error, for the badge field's message. */
   error: unknown;
 }

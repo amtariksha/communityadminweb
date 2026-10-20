@@ -5,9 +5,10 @@ import { StaffStatusList } from './staff-status-list';
 
 /**
  * Staff Manager › Active, Temp, Retired and Blacklisted (STAFF-10, STAFF-40,
- * SB-05): the route names the status, the list asks the server for it with
- * the search, Edit opens the form page, Move to… changes the status (with a
- * reason for the blacklist), Reactivate and Remove from blacklist.
+ * STAFF-42, SB-05): the route names the status, the list asks the register
+ * for it with the search, Edit opens the form page, Move to… changes the
+ * status (with a reason for the blacklist), Reactivate and Remove from
+ * blacklist; household help sits in the same list with its flats.
  */
 
 const nav = vi.hoisted(() => ({ pathname: '/staff/active' }));
@@ -21,9 +22,15 @@ vi.mock('@/lib/api', () => ({ api: { download } }));
 vi.mock('@/lib/download', () => ({ saveBlob: vi.fn(), printHtml: vi.fn() }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 
-const mocks = vi.hoisted(() => ({ list: vi.fn(), deactivate: vi.fn(), reactivate: vi.fn(), change: vi.fn(), role: 'community_admin' }));
+const mocks = vi.hoisted(() => ({
+  list: vi.fn(),
+  deactivate: vi.fn(),
+  reactivate: vi.fn(),
+  change: vi.fn(),
+  changeDomestic: vi.fn(),
+  role: 'community_admin',
+}));
 vi.mock('@/hooks', () => ({
-  useStaffEmployees: (filters: Record<string, unknown>) => mocks.list(filters),
   useDeactivateEmployee: () => ({ mutate: mocks.deactivate, mutateAsync: mocks.deactivate }),
   useReactivateEmployee: () => ({ mutate: mocks.reactivate }),
 }));
@@ -31,37 +38,44 @@ vi.mock('@/hooks/use-staff', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/hooks/use-staff')>()),
   useChangeStaffStatus: () => ({ mutateAsync: mocks.change }),
 }));
+vi.mock('@/hooks/use-staff-register', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-staff-register')>()),
+  useStaffRegister: (filters: Record<string, unknown>) => mocks.list(filters),
+  useChangeDomesticStatus: () => ({ mutateAsync: mocks.changeDomestic, mutate: mocks.changeDomestic }),
+}));
 vi.mock('@/lib/current-role', () => ({ currentRole: () => mocks.role }));
 
 const employee = (overrides: Record<string, unknown> = {}) => ({
+  kind: 'official',
   id: 'staff-1',
-  tenant_id: 't',
+  badge_no: null,
   name: 'Test Gardener',
-  phone: '+910000000045',
-  staff_type: 'gardener',
+  category_id: null,
+  category_name: 'Gardener',
   designation: null,
-  id_proof_type: null,
-  id_proof_number: null,
-  address: null,
-  emergency_contact: null,
-  photo_url: null,
+  phone: '+910000000045',
+  status: 'active',
+  status_reason: null,
+  status_changed_at: null,
   join_date: '2026-09-01',
   exit_date: null,
-  salary: null,
-  is_active: true,
-  created_at: '2026-09-01T00:00:00Z',
-  updated_at: '2026-09-01T00:00:00Z',
+  badge_valid_until: null,
+  shift: null,
+  units: null,
+  unit_ids: [],
   ...overrides,
 });
+const page = (rows: unknown[], legacy = false) => ({ data: { data: rows, total: rows.length, counts: null, legacy }, isLoading: false });
 
 const lastFilters = (): Record<string, unknown> => mocks.list.mock.calls.at(-1)?.[0] ?? {};
 
 beforeEach(() => {
   nav.pathname = '/staff/active';
-  mocks.list.mockReset().mockReturnValue({ data: { data: [employee()], total: 1 }, isLoading: false });
+  mocks.list.mockReset().mockReturnValue(page([employee()]));
   mocks.deactivate.mockReset();
   mocks.reactivate.mockReset();
   mocks.change.mockReset().mockResolvedValue({});
+  mocks.changeDomestic.mockReset().mockResolvedValue({});
   mocks.role = 'community_admin';
   download.mockReset().mockResolvedValue(new Blob(['x']));
 });
@@ -95,10 +109,7 @@ describe('Staff Manager status lists', () => {
 
   it('Blacklisted shows Reason and Since, and Remove from blacklist for the community admin only', () => {
     nav.pathname = '/staff/blacklisted';
-    mocks.list.mockReturnValue({
-      data: { data: [employee({ is_active: false, status: 'blacklisted', status_reason: 'Theft', status_changed_at: '2026-10-10T05:00:00Z' })], total: 1 },
-      isLoading: false,
-    });
+    mocks.list.mockReturnValue(page([employee({ status: 'blacklisted', status_reason: 'Theft', status_changed_at: '2026-10-10T05:00:00Z' })]));
     const { unmount } = render(<StaffStatusList />);
     expect(lastFilters()).toEqual(expect.objectContaining({ status: 'blacklisted' }));
     expect(screen.getByText('Theft')).toBeTruthy();
@@ -123,7 +134,7 @@ describe('Staff Manager status lists', () => {
 
   it('Retired lists only retired staff with Since and Reactivate', () => {
     nav.pathname = '/staff/retired';
-    mocks.list.mockReturnValue({ data: { data: [employee({ is_active: false, exit_date: '2026-10-10' })], total: 1 }, isLoading: false });
+    mocks.list.mockReturnValue(page([employee({ status: 'retired', exit_date: '2026-10-10' })]));
     render(<StaffStatusList />);
 
     expect(lastFilters()).toEqual(expect.objectContaining({ status: 'retired' }));
@@ -132,9 +143,10 @@ describe('Staff Manager status lists', () => {
       'Badge No.',
       'Name',
       'Category',
-      'Designation',
+      'Type',
+      'Units',
       'Contact No.',
-      'Join Date',
+      'Shift',
       'Badge Valid Till',
       'Reason',
       'Since',
@@ -156,30 +168,27 @@ describe('Staff Manager status lists', () => {
       vi.advanceTimersByTime(300);
     });
     vi.useRealTimers();
-    expect(lastFilters()).toEqual(expect.objectContaining({ q: '0000000045', search_by: 'phone', page: 1 }));
+    expect(lastFilters()).toEqual(expect.objectContaining({ q: '0000000045', by: 'phone', page: 1 }));
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'CSV' }));
     });
-    expect(download).toHaveBeenCalledWith('/staff/employees/export', {
-      params: { status: 'active', q: '0000000045', search_by: 'phone', format: 'csv' },
+    expect(download).toHaveBeenCalledWith('/staff/register/export', {
+      params: { status: 'active', q: '0000000045', by: 'phone', format: 'csv' },
     });
   });
 
   // STAFF-20 / STAFF-21: the badge in the list, and Badge on the search-by row.
   it('shows the badge and searches by it', () => {
     vi.useFakeTimers();
-    mocks.list.mockReturnValue({
-      data: { data: [employee({ badge_no: '104', badge_valid_until: '2026-06-30' })], total: 1 },
-      isLoading: false,
-    });
+    mocks.list.mockReturnValue(page([employee({ badge_no: '104', badge_valid_until: '2026-06-30' })]));
     render(<StaffStatusList />);
     const row = screen.getByText('Test Gardener').closest('tr') as HTMLElement;
     expect(within(row).getByText('104')).toBeTruthy();
     expect(within(row).getByText('30 Jun 2026')).toBeTruthy();
 
     expect(Array.from(document.querySelectorAll('input[name="staff-search-by"]')).map((input) => (input as HTMLInputElement).value)).toEqual([
-      'badge', 'name', 'category', 'phone', 'any',
+      'badge', 'unit', 'name', 'category', 'phone', 'any',
     ]);
     fireEvent.click(screen.getByLabelText('Badge'));
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: '104' } });
@@ -187,6 +196,37 @@ describe('Staff Manager status lists', () => {
       vi.advanceTimersByTime(300);
     });
     vi.useRealTimers();
-    expect(lastFilters()).toEqual(expect.objectContaining({ q: '104', search_by: 'badge', page: 1 }));
+    expect(lastFilters()).toEqual(expect.objectContaining({ q: '104', by: 'badge', page: 1 }));
+  });
+
+  // STAFF-42: household help in the same list, edited and moved through /workers.
+  it('lists household help with Type and flats; Edit and Move to… go to the helper’s record', async () => {
+    mocks.list.mockReturnValue(
+      page([employee(), employee({ kind: 'domestic', id: 'worker-1', name: 'Test Maid', category_name: 'House Maids', units: 'A - 101, B - 202' })]),
+    );
+    render(<StaffStatusList />);
+    const row = screen.getByText('Test Maid').closest('tr') as HTMLElement;
+    expect(within(row).getByText('Domestic')).toBeTruthy();
+    expect(within(row).getByText('A - 101, B - 202')).toBeTruthy();
+    expect(within(row).getByRole('link', { name: 'Edit' }).getAttribute('href')).toBe('/staff/domestic/worker-1/edit');
+    expect(within(screen.getByText('Test Gardener').closest('tr') as HTMLElement).getByText('Official')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Add Household Help' }).getAttribute('href')).toBe('/staff/domestic/new');
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Move to…' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'New status' })).getByLabelText('Temp'));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    });
+    expect(mocks.changeDomestic).toHaveBeenCalledWith({ id: 'worker-1', status: 'temp', reason: undefined });
+    expect(mocks.change).not.toHaveBeenCalled();
+  });
+
+  it('an older API (society staff only) exports through /staff/employees', async () => {
+    mocks.list.mockReturnValue(page([employee()], true));
+    render(<StaffStatusList />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'CSV' }));
+    });
+    expect(download).toHaveBeenCalledWith('/staff/employees/export', { params: { status: 'active', format: 'csv' } });
   });
 });

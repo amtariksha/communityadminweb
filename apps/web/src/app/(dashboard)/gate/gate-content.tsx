@@ -41,6 +41,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
+import { useAdminLayout } from '@/lib/layout-context';
 import { ExportButton } from '@/components/ui/export-button';
 import { DataTablePager } from '@/components/data-table/data-table-pager';
 import { useToast } from '@/components/ui/toast';
@@ -1342,6 +1343,7 @@ export default function GateContent(): ReactNode {
 
 function RegisteredRegularsDirectory(): ReactNode {
   const { addToast } = useToast();
+  const layout = useAdminLayout();
   const [q, setQ] = useState('');
   const [visitorTypeFilter, setVisitorTypeFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState<'active' | 'inactive' | 'all'>('active');
@@ -1375,7 +1377,19 @@ function RegisteredRegularsDirectory(): ReactNode {
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Registered Regulars</CardTitle>
+          <div className="space-y-1">
+            <CardTitle>Registered Regulars</CardTitle>
+            {/* STAFF-42: classic keeps household help in Staff Manager's one register. */}
+            {layout === 'classic' && (
+              <p className="text-sm text-muted-foreground">
+                Household help is managed in{' '}
+                <a className="underline" href="/staff/active">
+                  Staff Manager › Active
+                </a>
+                .
+              </p>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="Search by name or phone"

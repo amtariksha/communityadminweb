@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { type ReactNode } from 'react';
 import { FormFrame, type FormMode } from '@/components/form-page';
 import { FormFieldError } from '@/components/ui/form-field-error';
@@ -163,7 +164,20 @@ export function EmployeeForm({ mode, open, employee, onClose, onSaved }: Employe
       mode={mode}
       open={open}
       title={editing ? (mode === 'page' ? 'Edit Staff' : 'Edit Employee') : mode === 'page' ? 'Add Staff' : 'Add Employee'}
-      description={editing ? 'Update employee details' : 'Add a new staff member'}
+      description={
+        editing ? (
+          'Update employee details'
+        ) : mode === 'page' ? (
+          <>
+            Society staff (paid by the society). Household help paid by the flats:{' '}
+            <Link className="underline" href="/staff/domestic/new">
+              Add Household Help
+            </Link>
+          </>
+        ) : (
+          'Add a new staff member'
+        )
+      }
       onClose={onClose}
       onSave={() => form.save(onSaved)}
       onSaveAndNew={mode === 'page' && !editing ? () => form.save(form.reset) : undefined}
