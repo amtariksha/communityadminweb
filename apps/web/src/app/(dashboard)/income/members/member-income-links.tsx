@@ -15,7 +15,7 @@ export const MEMBER_INCOME_LINKS: ReadonlyArray<{ label: string; href: string; s
   { label: 'Post-dated Cheques', href: CHEQUES_HREF, shipped: true },
   { label: 'Paid Intimations', href: INTIMATIONS_HREF, shipped: true },
   { label: 'Bulk Posting', href: `${MEMBER_INCOME_BASE}/bulk-posting`, shipped: true },
-  { label: 'Bulk Corrections', href: `${MEMBER_INCOME_BASE}/bulk-corrections`, shipped: false },
+  { label: 'Bulk Corrections', href: `${MEMBER_INCOME_BASE}/bulk-corrections`, shipped: true },
 ];
 
 export function MemberIncomeLinks({ current }: { current: string }): ReactNode {
