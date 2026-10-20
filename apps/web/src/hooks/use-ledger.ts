@@ -67,10 +67,12 @@ interface BalanceSheetReport {
   as_of_date: string;
 }
 
-interface IncomeExpenditureRow {
+export interface IncomeExpenditureRow {
   account_id: string;
   account_name: string;
   account_code: string;
+  /** The account's group; sent by the API since EXP-25 (absent from an older one). */
+  group_name?: string;
   amount: number;
 }
 
