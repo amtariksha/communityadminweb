@@ -14,6 +14,15 @@ describe('wordFor', () => {
     expect(wordFor('standard', 'Assigned To')).toBe('Assigned To');
   });
 
+  it('uses the Expense Tracker words in classic (EXP-20)', () => {
+    expect(wordFor('classic', 'Bill #')).toBe('Voucher');
+    expect(wordFor('classic', 'Reference')).toBe('Instrument No');
+    expect(wordFor('classic', 'Reference Number')).toBe('Instrument No');
+    expect(wordFor('classic', 'PR #')).toBe('Purchase Request No.');
+    expect(wordFor('classic', 'Create Bill')).toBe('Post Invoice');
+    expect(wordFor('standard', 'Bill #')).toBe('Bill #');
+  });
+
   it('leaves the standard layout exactly as written', () => {
     expect(wordFor('standard', 'Tickets')).toBe('Tickets');
   });

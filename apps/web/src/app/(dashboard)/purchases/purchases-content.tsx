@@ -74,6 +74,7 @@ import {
 } from '@/hooks';
 import type { TdsConfig, VendorPaymentRow } from '@/hooks';
 import { useOcrInvoice } from '@/hooks/use-ocr';
+import { useWord } from '@/lib/vocabulary';
 import Link from 'next/link';
 import { ConvertToInvoiceButton, CreatePurchaseRequestButton, ViewPurchaseRequestButton } from './create-request-button';
 import { useVendorInvoicesAvailable } from '@/hooks/use-vendor-bills';
@@ -215,6 +216,8 @@ function BillTableSkeleton(): ReactNode {
 
 export default function PurchasesContent(): ReactNode {
   const { addToast } = useToast();
+  // EXP-20: the classic words inside Expense Tracker (standard as written).
+  const word = useWord();
   // Clamp date inputs to prev FY start → next month end.
   const dateBounds = useMemo(() => financialDateBounds(), []);
   const [activeTab, setActiveTab] = useState<ActiveTab>('requests');
@@ -1042,7 +1045,7 @@ export default function PurchasesContent(): ReactNode {
           onClick={() => setActiveTab('bills')}
         >
           <FileText className="mr-2 inline-block h-4 w-4" />
-          Vendor Bills
+          {word('Vendor Bills')}
         </button>
         {/* New: standalone Vendor Payments tab. Lists every
             vendor_payment regardless of bill linkage — including
@@ -1216,7 +1219,7 @@ export default function PurchasesContent(): ReactNode {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>PR #</TableHead>
+                  <TableHead>{word('PR #')}</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Vendor</TableHead>
                   <TableHead className="text-right">Est. Amount</TableHead>
@@ -1440,7 +1443,7 @@ export default function PurchasesContent(): ReactNode {
                   <>
                     <Button onClick={() => setNewInvoiceOpen(true)}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Create Bill
+                      {word('Create Bill')}
                     </Button>
                     <VendorInvoiceForm
                       mode="dialog"
@@ -1725,7 +1728,7 @@ export default function PurchasesContent(): ReactNode {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Bill #</TableHead>
+                  <TableHead>{word('Bill #')}</TableHead>
                   <TableHead>Vendor</TableHead>
                   <TableHead>Bill Date</TableHead>
                   <TableHead className="text-right">Base Amount</TableHead>
@@ -2083,7 +2086,7 @@ export default function PurchasesContent(): ReactNode {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pay-ref">Reference Number</Label>
+                <Label htmlFor="pay-ref">{word('Reference Number')}</Label>
                 <Input
                   id="pay-ref"
                   placeholder="Cheque / UTR number"
@@ -2438,7 +2441,7 @@ export default function PurchasesContent(): ReactNode {
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="eb-number">Bill #</Label>
+                  <Label htmlFor="eb-number">{word('Bill #')}</Label>
                   <Input
                     id="eb-number"
                     value={editBillNumber}
@@ -2598,6 +2601,7 @@ interface VendorPaymentsTabProps {
 
 function VendorPaymentsTab({ vendors }: VendorPaymentsTabProps): ReactNode {
   const ITEMS_PER_PAGE = 25;
+  const word = useWord();
   const [page, setPage] = useState(1);
   const [vendorFilter, setVendorFilter] = useState('');
   const [modeFilter, setModeFilter] = useState('');
@@ -2719,10 +2723,10 @@ function VendorPaymentsTab({ vendors }: VendorPaymentsTabProps): ReactNode {
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Vendor</TableHead>
-                  <TableHead>Bill #</TableHead>
+                  <TableHead>{word('Bill #')}</TableHead>
                   <TableHead>Account</TableHead>
                   <TableHead>Mode</TableHead>
-                  <TableHead>Reference</TableHead>
+                  <TableHead>{word('Reference')}</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                 </TableRow>
               </TableHeader>

@@ -88,6 +88,9 @@ const PROFILE_LOGS = ['tenant_settings', 'tenant-setting', 'tenant', 'directory'
 // The stock book's log: items, movements and today's procurement writes.
 const INVENTORY_LOGS = ['material', 'stock_movement', 'inventory'];
 
+// Expense Tracker records (EXP-20); `purchase` is what was logged before them.
+const EXPENSE_LOGS = ['purchase_request', 'vendor_bill', 'vendor_payment', 'vendor_debit_note', 'purchase'];
+
 // "More" collects our extra screens; it is a group, not a module.
 export const MORE_GROUP_ID = 'more';
 
@@ -256,8 +259,10 @@ export const classicMenu: MenuNode[] = [
     id: 'expense',
     label: 'Expense Tracker',
     icon: icon(ShoppingCart),
-    // EXP-08 / EXP-09: Create Request is a page of its own; a request opens
-    // on its own page (view, or edit while it is a draft).
+    // EXP-20: the module's seven children in their order. Create Request is
+    // a page of its own on every page (EXP-08 / EXP-09); a request opens on
+    // its own page (view, or edit while it is a draft). Show Logs reads each
+    // screen's record types; `purchase` holds what was logged before EXP-20.
     create: { label: 'Create Request', href: '/expense-tracker/purchase-workflow/new' },
     forms: [{ label: 'Purchase Request', path: '/expense-tracker/purchase-workflow/:id' }],
     children: [
@@ -272,7 +277,12 @@ export const classicMenu: MenuNode[] = [
             href: '/expense-tracker/setup/purchase-request',
             logs: ['approvals', 'tenant'],
           },
-          { id: 'expense.setup.numbering', label: 'Numbering', href: '/expense-tracker/setup/numbering', logs: ['purchase'] },
+          {
+            id: 'expense.setup.numbering',
+            label: 'Numbering',
+            href: '/expense-tracker/setup/numbering',
+            logs: ['purchase_numbering', 'tenant_settings', 'purchase'],
+          },
         ],
       },
       {
@@ -280,9 +290,10 @@ export const classicMenu: MenuNode[] = [
         label: 'Purchase Workflow',
         // Today's /purchases (bills, payments) stays inside the module.
         aliases: ['/purchases'],
+        logs: EXPENSE_LOGS,
         tabs: [
-          { id: 'expense.purchase-workflow.open', label: 'Open Purchase Request', href: '/expense-tracker/purchase-workflow/open', logs: ['purchase'] },
-          { id: 'expense.purchase-workflow.closed', label: 'Closed Purchase Request', href: '/expense-tracker/purchase-workflow/closed', logs: ['purchase'] },
+          { id: 'expense.purchase-workflow.open', label: 'Open Purchase Request', href: '/expense-tracker/purchase-workflow/open', logs: ['purchase_request', 'purchase'] },
+          { id: 'expense.purchase-workflow.closed', label: 'Closed Purchase Request', href: '/expense-tracker/purchase-workflow/closed', logs: ['purchase_request', 'purchase'] },
         ],
       },
       {
@@ -291,18 +302,26 @@ export const classicMenu: MenuNode[] = [
         id: 'expense.by-vendors',
         label: 'By Vendors',
         aliases: ['/expense-tracker/by-vendors'],
+        logs: ['vendor_bill', 'vendor_payment', 'vendor_debit_note', 'purchase'],
         forms: [
           { label: 'Post Invoice', path: '/expense-tracker/by-vendors/:vendorId/invoice' },
           { label: 'Payment', path: '/expense-tracker/by-vendors/:vendorId/payment' },
         ],
         tabs: [
-          { id: 'expense.by-vendors.subledgers', label: 'SubLedgers', href: '/expense-tracker/by-vendors/subledgers', logs: ['purchase', 'vendor'] },
+          {
+            id: 'expense.by-vendors.subledgers',
+            label: 'SubLedgers',
+            href: '/expense-tracker/by-vendors/subledgers',
+            logs: ['vendor_bill', 'vendor_payment', 'vendor_debit_note', 'vendor_allocation', 'vendor', 'purchase'],
+          },
           planned('expense.by-vendors.bulk-posting', 'Bulk Posting', 'EXP-26'),
         ],
       },
-      { id: 'expense.by-date', label: 'By Date', href: '/expense-tracker/by-date', logs: ['purchase'] },
-      planned('expense.budget', 'Budget', 'EXP-20'),
-      planned('expense.comparison', 'Expenses Comparison', 'EXP-20'),
+      { id: 'expense.by-date', label: 'By Date', href: '/expense-tracker/by-date', logs: ['vendor_payment', 'purchase'] },
+      // EXP-22: the year's budget per head; its setup grid is a page under it.
+      { id: 'expense.budget', label: 'Budget', href: '/expense-tracker/budget', logs: ['expense_budget'] },
+      // EXP-25: expense by head for a period, as a pie and a table.
+      { id: 'expense.comparison', label: 'Expenses Comparison', href: '/expense-tracker/expenses-comparison' },
       reportsMenuNode('expense', 'REP-04'),
     ],
   },

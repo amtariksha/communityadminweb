@@ -28,6 +28,13 @@ const CLASSIC_WORDS: Readonly<Record<string, string>> = {
   'Expires On': 'Expiring On',
   Body: 'Brief Description',
   Expired: 'Retired',
+  // Expense Tracker (EXP-20): today's /purchases screen inside the module.
+  'PR #': 'Purchase Request No.',
+  'Bill #': 'Voucher',
+  'Vendor Bills': 'Vendor Invoices',
+  Reference: 'Instrument No',
+  'Reference Number': 'Instrument No',
+  'Create Bill': 'Post Invoice',
 };
 
 export function wordFor(layout: AdminLayout, standardWord: string): string {
