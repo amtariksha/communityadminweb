@@ -9,9 +9,12 @@ import { ApiError, friendlyError } from '@/lib/api-error';
 import { currentRole } from '@/lib/current-role';
 import { ShiftsGrid } from './shifts-grid';
 import { CategoriesBlock } from './categories-block';
+import { DeviceBlock, IdCardBlock } from './badge-blocks';
 
 // The roles PUT /staff/shifts/bulk accepts (staff writes).
 const SAVE_ROLES = new Set(['super_admin', 'community_admin', 'accountant']);
+// The roles PATCH /tenant-settings/staff accepts (STAFF-43).
+const BADGE_SAVE_ROLES = new Set(['super_admin', 'community_admin']);
 
 function saveError(error: unknown): string {
   // The admin web ships before the API: an older server has no bulk route.
@@ -20,9 +23,10 @@ function saveError(error: unknown): string {
 }
 
 /**
- * Staff Manager › Setup (STAFF-S1): the society's staff categories
- * (STAFF-41) and Staff Shift Management (STAFF-11), each an editable grid
- * with its own save. The ID card header and devices join with STAFF-43.
+ * Staff Manager › Setup (STAFF-S1), four blocks each with its own save: 1
+ * the society's staff categories (STAFF-41), 2 the ID card header image and
+ * badge back text (STAFF-43), 3 Staff Shift Management (STAFF-11) and 4
+ * Device Management (read-only).
  */
 export function SetupContent(): ReactNode {
   const { addToast } = useToast();
@@ -44,6 +48,7 @@ export function SetupContent(): ReactNode {
   return (
     <div className="space-y-4">
     <CategoriesBlock editable={editable} />
+    <IdCardBlock editable={role !== null && BADGE_SAVE_ROLES.has(role)} />
     <Card>
       <CardHeader>
         <CardTitle>Staff Shift Management</CardTitle>
@@ -67,6 +72,7 @@ export function SetupContent(): ReactNode {
         )}
       </CardContent>
     </Card>
+    <DeviceBlock />
     </div>
   );
 }

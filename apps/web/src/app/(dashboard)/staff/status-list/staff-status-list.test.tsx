@@ -19,7 +19,11 @@ vi.mock('next/link', () => ({
 
 const download = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/api', () => ({ api: { download } }));
-vi.mock('@/lib/download', () => ({ saveBlob: vi.fn(), printHtml: vi.fn() }));
+const printHtml = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/download', () => ({ saveBlob: vi.fn(), printHtml }));
+const badgeSettings = vi.hoisted(() => ({ value: null as null | { badge_header_image_url: string | null; badge_back_text: string } }));
+vi.mock('@/hooks/use-staff-settings', () => ({ useStaffSettings: () => ({ data: badgeSettings.value }) }));
+vi.mock('@/hooks/use-society-profile', () => ({ useSocietyProfile: () => ({ data: { name: 'Test Heights', display_name: null } }) }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 
 const mocks = vi.hoisted(() => ({
@@ -151,6 +155,7 @@ describe('Staff Manager status lists', () => {
       'Reason',
       'Since',
       'Edit',
+      'Badge',
       'Reactivate',
       'Move to…',
     ]);
@@ -219,6 +224,19 @@ describe('Staff Manager status lists', () => {
     });
     expect(mocks.changeDomestic).toHaveBeenCalledWith({ id: 'worker-1', status: 'temp', reason: undefined });
     expect(mocks.change).not.toHaveBeenCalled();
+  });
+
+  // STAFF-43: one badge with the ID card header and the back-side text.
+  it('Badge prints the person’s card with the society’s header image and back text', () => {
+    badgeSettings.value = { badge_header_image_url: 'https://files.example.test/meraghar/tenants/t/header.png', badge_back_text: 'Return to the office' };
+    mocks.list.mockReturnValue(page([employee({ badge_no: '104' })]));
+    render(<StaffStatusList />);
+    fireEvent.click(screen.getByRole('button', { name: 'Badge' }));
+    const html = printHtml.mock.calls.at(-1)?.[0] as string;
+    expect(html).toContain('src="https://files.example.test/meraghar/tenants/t/header.png"');
+    expect(html).toContain('104');
+    expect(html).toContain('Return to the office');
+    badgeSettings.value = null;
   });
 
   it('an older API (society staff only) exports through /staff/employees', async () => {
