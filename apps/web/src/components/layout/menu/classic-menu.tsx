@@ -130,7 +130,16 @@ export const classicMenu: MenuNode[] = [
         aliases: ['/units'],
         logs: ['unit', 'member'],
       },
-      planned('units.access', 'Access Control', 'UNIT-22'),
+      // UNIT-22 / UNIT-23: committee and office logins, their module switches.
+      {
+        id: 'units.access',
+        label: 'Access Control',
+        tabs: [
+          { id: 'units.access.committee', label: 'Management Committee', href: '/units/access-control/committee' },
+          { id: 'units.access.office', label: 'Office Staff', href: '/units/access-control/office-staff' },
+          planned('units.access.caretakers', 'Care Taker / Unit Manager', 'UNIT-30'),
+        ],
+      },
       { id: 'units.broadcast', label: 'Broadcast', href: '/units/broadcast', aliases: ['/notifications'] },
       planned('units.statistics', 'Statistics', 'UNIT-31'),
       // UNIT-18: past members; Edit opens the resident record (Re-activate).

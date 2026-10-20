@@ -77,6 +77,7 @@ describe('classic modules', () => {
       'Unapproved Users',
       'Add Users',
       'Approved Users',
+      'Access Control',
       'Broadcast',
       'De-Activated Users',
       'Reports',
@@ -88,10 +89,11 @@ describe('classic modules', () => {
   });
 
   it('each Units & Users child opens its own classic route', () => {
-    expect(find(menu, 'units')?.children?.slice(0, 4).map((child) => child.href)).toEqual([
+    expect(find(menu, 'units')?.children?.slice(0, 5).map((child) => child.href ?? child.tabs?.[0]?.href)).toEqual([
       '/units/unapproved',
       '/units/add-users',
       '/units/approved',
+      '/units/access-control/committee',
       '/units/broadcast',
     ]);
   });
