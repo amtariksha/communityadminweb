@@ -18,6 +18,7 @@ import { api } from '@/lib/api';
 import { ApiError, friendlyError } from '@/lib/api-error';
 import { saveBlob } from '@/lib/download';
 import { exportLabel } from './statement-actions';
+import { StatementEmailDialog } from './statement-email-dialog';
 
 type FileFormat = 'csv' | 'xlsx' | 'pdf';
 
@@ -40,13 +41,15 @@ interface StatementFooterProps {
 }
 
 /**
- * Export, Auto Allocate on FiFo Basis (a unit's only: a payer holds no
- * advance), Print and Close under the statement (INC-S17, INC-46).
+ * Export, Send Email (INC-22), Auto Allocate on FiFo Basis (a unit's only:
+ * a payer holds no advance), Print and Close under the statement (INC-S17,
+ * INC-46).
  */
 export function StatementFooter({ party, statement, filters, canWrite, closeHref }: StatementFooterProps): ReactNode {
   const { addToast } = useToast();
   const reallocate = useReallocateFifo();
   const [confirming, setConfirming] = useState(false);
+  const [emailing, setEmailing] = useState(false);
   const [busy, setBusy] = useState<FileFormat | null>(null);
 
   async function download(format: FileFormat): Promise<void> {
@@ -88,6 +91,11 @@ export function StatementFooter({ party, statement, filters, canWrite, closeHref
       <Button type="button" variant="outline" size="sm" disabled={busy !== null} onClick={() => void download('xlsx')}>
         Excel
       </Button>
+      {canWrite && (
+        <Button type="button" variant="outline" size="sm" onClick={() => setEmailing(true)}>
+          Send Email
+        </Button>
+      )}
       {canWrite && party.kind === 'unit' && (
         <Button type="button" variant="outline" size="sm" onClick={() => setConfirming(true)}>
           Auto Allocate on FiFo Basis
@@ -99,6 +107,7 @@ export function StatementFooter({ party, statement, filters, canWrite, closeHref
       <Link href={closeHref} className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
         Close
       </Link>
+      {emailing && <StatementEmailDialog party={party} statement={statement} scope={filters.scope} onClose={() => setEmailing(false)} />}
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>
           <DialogHeader>

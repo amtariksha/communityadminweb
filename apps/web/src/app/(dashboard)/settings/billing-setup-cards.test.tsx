@@ -45,7 +45,7 @@ describe('Setup › Notifications (INC-30)', () => {
   it('starts with every e-mail off, and saves the ticks, break-up and recipients whole', () => {
     render(<BillingNotificationsCard />);
     const boxes = screen.getAllByRole('checkbox', { name: /^E-mail on / }) as HTMLInputElement[];
-    expect(boxes).toHaveLength(9);
+    expect(boxes).toHaveLength(10);
     expect(boxes.every((box) => !box.checked)).toBe(true);
     fireEvent.click(screen.getByLabelText('E-mail on Receipt posted'));
     fireEvent.click(screen.getByLabelText('E-mail on Credit note posted'));
@@ -56,6 +56,15 @@ describe('Setup › Notifications (INC-30)', () => {
     expect(saved()).toEqual({
       billing_notifications: { email_events: ['receipt_posted', 'credit_note_posted', 'receipt_voided'], attach_breakup: false, recipients: 'owners_and_tenants' },
     });
+  });
+
+  it('turns on Send Email on a statement (INC-22) and keeps it when saved', () => {
+    mocks.settings = { billing_notifications: { email_events: ['statement_emailed'], attach_breakup: true, recipients: 'owners_only' } };
+    render(<BillingNotificationsCard />);
+    expect((screen.getByLabelText('E-mail on Account statements (Send Email on a statement)') as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByLabelText('E-mail on Invoice posted'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    expect(saved().billing_notifications.email_events).toEqual(['statement_emailed', 'invoice_posted']);
   });
 
   it('says when the server cannot send e-mail', () => {

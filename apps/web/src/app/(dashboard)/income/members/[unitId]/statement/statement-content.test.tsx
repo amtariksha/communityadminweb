@@ -196,6 +196,12 @@ describe('Account Statement screen', () => {
     );
   });
 
+  it('offers Send Email to a finance writer (INC-22)', () => {
+    renderPage();
+
+    expect(screen.getByRole('button', { name: 'Send Email' })).toBeTruthy();
+  });
+
   it('leaves a finance reader View Allocation only, and no Auto Allocate', () => {
     mocks.access = { canRead: true, canWrite: false };
     renderPage();
@@ -205,6 +211,7 @@ describe('Account Statement screen', () => {
     expect(screen.queryByText('Edit')).toBeNull();
     expect(screen.getByText('View Allocation')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Auto Allocate on FiFo Basis' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send Email' })).toBeNull();
   });
 
   it('exports every row and re-allocates after confirming', () => {

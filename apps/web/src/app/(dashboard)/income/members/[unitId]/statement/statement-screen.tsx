@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { AllocationDialog } from './allocation-dialog';
 import { EditDetailsDialog } from './edit-details-dialog';
 import { ReverseDialog } from './reverse-dialog';
-import { tabFrom, unitLabel, type StatementTab } from './statement-actions';
+import { statementName, tabFrom, type StatementTab } from './statement-actions';
 import { StatementFilterRow } from './statement-filters';
 import { StatementFooter } from './statement-footer';
 import { StatementTable } from './statement-table';
@@ -67,11 +67,6 @@ function ActionDialog({ pending, onClose }: { pending: PendingAction | null; onC
   if (pending.action === 'reverse') return <ReverseDialog row={pending.row} onClose={onClose} />;
   if (pending.action === 'edit') return <EditDetailsDialog row={pending.row} onClose={onClose} />;
   return <AllocationDialog row={pending.row} onClose={onClose} />;
-}
-
-/** "A-101" for a unit, the payer's name for a payer. */
-export function statementName(statement: UnitStatement): string {
-  return statement.payer?.name ?? unitLabel(statement.unit);
 }
 
 export interface StatementQueryLike {

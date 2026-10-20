@@ -79,3 +79,40 @@ export function useResendBillingEmail() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// INC-22 — Send Email on a statement (a unit's, or a payer's, INC-46)
+// ---------------------------------------------------------------------------
+
+export interface StatementEmailInput {
+  /** A unit's members to send to; left out = the unit's recipients per Setup › Notifications. A payer's goes to its e-mail. */
+  member_ids?: string[];
+  subject?: string;
+  /** Plain text, put above the attached-statement line. */
+  message?: string;
+  from?: string;
+  to?: string;
+  scope?: 'member' | 'utility' | 'all';
+}
+
+/** One billing_email_log row per recipient. */
+export interface StatementEmailResult {
+  id: string;
+  recipient_name: string | null;
+  recipient_email: string | null;
+  subject: string;
+  status: BillingEmailStatus;
+  error: string | null;
+}
+
+/** POST /unit-ledger/{units|customers}/:id/statement/email; off (409 statement_email_off) until Setup › Notifications ticks it. */
+export function useSendStatementEmail() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ path, body }: { path: string; body: StatementEmailInput }) =>
+      api.post<{ data: StatementEmailResult[] }>(`${path}/email`, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['billing-email-log'] });
+    },
+  });
+}

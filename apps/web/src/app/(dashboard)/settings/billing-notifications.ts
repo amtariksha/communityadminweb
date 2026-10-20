@@ -14,6 +14,8 @@ export const BILLING_EMAIL_EVENTS: ReadonlyArray<{ key: BillingEmailEvent; label
   { key: 'non_member_invoice_posted', label: 'Non-member invoice posted' },
   { key: 'non_member_receipt_posted', label: 'Non-member receipt posted' },
   { key: 'non_member_credit_note_posted', label: 'Non-member credit note posted' },
+  // INC-22 — read by the statement's Send Email (409 statement_email_off until ticked).
+  { key: 'statement_emailed', label: 'Account statements (Send Email on a statement)' },
 ];
 
 // Nothing is e-mailed until the community admin ticks it (as the API's default).

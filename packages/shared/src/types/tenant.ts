@@ -103,6 +103,8 @@ export interface TenantSettings {
       | 'non_member_invoice_posted'
       | 'non_member_receipt_posted'
       | 'non_member_credit_note_posted'
+      // INC-22 — the statement's Send Email; off until ticked, like the rest.
+      | 'statement_emailed'
     >;
     attach_breakup: boolean;
     recipients: 'owners_only' | 'owners_and_tenants';

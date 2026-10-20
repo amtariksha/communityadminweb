@@ -1,4 +1,4 @@
-import type { StatementAction, StatementRow } from '@/hooks/use-unit-statement';
+import type { StatementAction, StatementRow, UnitStatement } from '@/hooks/use-unit-statement';
 import type { FinanceAccess } from '@/lib/finance-roles';
 
 export type StatementTab = 'due' | 'advances' | 'deposit' | 'admin' | 'user';
@@ -61,4 +61,16 @@ export function exportLabel(documentRows: number): string {
 
 export function unitLabel(unit: { unit_number: string; block: string | null }): string {
   return unit.block ? `${unit.block}-${unit.unit_number}` : unit.unit_number;
+}
+
+/** "A-101" for a unit, the payer's name for a payer (INC-46). */
+export function statementName(statement: Pick<UnitStatement, 'unit' | 'payer'>): string {
+  return statement.payer?.name ?? unitLabel(statement.unit);
+}
+
+const ddmmyyyy = (iso: string): string => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
+
+/** Send Email's subject to start from (the server's default too): "Account Statement for A-101 – 01-04-2026 to 20-10-2026". */
+export function statementEmailSubject(statement: Pick<UnitStatement, 'unit' | 'payer' | 'from' | 'to'>): string {
+  return `Account Statement for ${statementName(statement)} – ${ddmmyyyy(statement.from)} to ${ddmmyyyy(statement.to)}`.slice(0, 255);
 }
