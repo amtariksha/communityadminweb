@@ -7,6 +7,7 @@ export type {
   AccountGroup,
   LedgerAccount,
   FinancialYear,
+  GstThresholdMethod,
   JournalEntry,
   JournalLine,
   InvoiceFrequency,

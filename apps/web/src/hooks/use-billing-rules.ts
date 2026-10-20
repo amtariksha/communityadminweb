@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { TenantSettings } from '@communityos/shared';
+import type { GstThresholdMethod, TenantSettings } from '@communityos/shared';
 import { api } from '@/lib/api';
 
 export type RuleLineStatus = 'active' | 'scheduled' | 'superseded' | 'ended';
@@ -156,6 +156,8 @@ export interface RuleLinePreview {
   gst_total: string;
   round_off: string;
   total: string;
+  /** The financial year's GST method above ₹7,500 (absent before the API has it). */
+  gst_threshold_method?: GstThresholdMethod;
   warnings: string[];
 }
 

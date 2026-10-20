@@ -7,6 +7,7 @@ import type {
   AccountGroup,
   LedgerAccount,
   FinancialYear,
+  GstThresholdMethod,
   JournalEntry,
   JournalLine,
 } from '@communityos/shared';
@@ -529,6 +530,23 @@ export function useUnfreezeYear() {
     mutationFn: function unfreezeYear(id: string) {
       return api.patch<{ data: FinancialYear }>(
         `/ledger/financial-years/${id}/unfreeze`,
+      );
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.financialYears() });
+    },
+  });
+}
+
+/** Income › Setup › GST: a year's ₹7,500 threshold method (new invoices only; a frozen year answers 403). */
+export function useSetGstThresholdMethod() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function setGstThresholdMethod(input: { id: string; method: GstThresholdMethod }) {
+      return api.patch<{ data: FinancialYear }>(
+        `/ledger/financial-years/${input.id}/gst-threshold-method`,
+        { method: input.method },
       );
     },
     onSuccess: function invalidate() {

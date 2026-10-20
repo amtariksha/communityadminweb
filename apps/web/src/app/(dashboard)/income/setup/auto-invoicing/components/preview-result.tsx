@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { RuleLinePreview } from '@/hooks/use-billing-rules';
+import { GST_METHOD_LABELS } from '@/lib/gst-threshold-method';
 import { formatCurrency } from '@/lib/utils';
 
 /** The computed invoice under the Preview form (INC-S4). */
@@ -50,7 +51,12 @@ export function PreviewResult({ preview }: { preview: RuleLinePreview }): ReactN
           </TableRow>
         </TableBody>
       </Table>
-      <p className="text-xs text-muted-foreground">Period: {preview.period.label}. Nothing has been saved.</p>
+      <p className="text-xs text-muted-foreground">
+        Period: {preview.period.label}.
+        {preview.gst_threshold_method &&
+          ` GST above ₹7,500 a month: ${GST_METHOD_LABELS[preview.gst_threshold_method].toLowerCase()} (this financial year's setting, Setup › GST).`}{' '}
+        Nothing has been saved.
+      </p>
     </div>
   );
 }

@@ -40,7 +40,15 @@ export interface FinancialYear {
   end_date: Date;
   is_current: boolean;
   is_frozen: boolean;
+  /**
+   * GST once a unit's monthly charge passes ₹7,500 (migration 261): only on
+   * the amount above it, or on the whole amount. Absent before the API has it.
+   */
+  gst_threshold_method?: GstThresholdMethod;
 }
+
+/** How a financial year charges GST above ₹7,500 a month (Income › Setup › GST). */
+export type GstThresholdMethod = 'excess_only' | 'whole_amount';
 
 export interface JournalEntry {
   id: string;

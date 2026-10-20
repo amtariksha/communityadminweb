@@ -70,6 +70,14 @@ describe('Preview Invoice (INC-18)', () => {
     expect(table.textContent).toContain('2026-11-11');
     expect(screen.getByRole('button', { name: 'Download PDF preview' })).toBeTruthy();
   });
+
+  it('says which GST method above ₹7,500 the financial year priced it by', () => {
+    mocks.preview = { ...PREVIEW, gst_threshold_method: 'whole_amount' };
+    render(<PreviewInvoiceForm mode="page" onClose={vi.fn()} category={{ id: 'general', name: 'General' }} defaultDate="2026-11-01" defaultGraceDays={10} />);
+    fireEvent.change(screen.getByLabelText('Unit'), { target: { value: 'u1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByText(/GST above ₹7,500 a month: on the whole amount \(this financial year's setting/)).toBeTruthy();
+  });
 });
 
 describe('Clone Rules (INC-18)', () => {

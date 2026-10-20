@@ -97,6 +97,7 @@ export {
   useFreezeYear,
   useUnfreezeYear,
   useCloseFinancialYear,
+  useSetGstThresholdMethod,
   useCreateJournalEntry,
   useTrialBalance,
   useBalanceSheet,

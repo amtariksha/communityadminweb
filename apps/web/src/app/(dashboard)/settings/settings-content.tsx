@@ -32,6 +32,7 @@ import { InterestCard } from './interest-card';
 import { TaxRegistrationCard } from './tax-registration-card';
 import { GatewayChargeCard } from './gateway-charge-card';
 import { BillingGstCard } from './billing-gst-card';
+import { GstThresholdYearsCard } from './gst-threshold-years-card';
 import { BillingRulesCard } from './billing-rules-card';
 import { UnitTypesCard } from './unit-types-card';
 import { TdsConfigCard } from './tds-config-card';
@@ -473,6 +474,7 @@ export default function SettingsContent(): ReactNode {
       {/* ------------------------------------------------------------------- */}
       <GatewayChargeCard />
       <BillingGstCard />
+      <GstThresholdYearsCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Notification Policy — urgent allowlist + default quiet hours        */}
