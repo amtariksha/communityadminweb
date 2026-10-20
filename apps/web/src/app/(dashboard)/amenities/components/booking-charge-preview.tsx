@@ -58,6 +58,14 @@ export function BookingChargePreview({ amenityId, request }: BookingChargePrevie
           <span>{formatCurrency(Number(deposit))}</span>
         </div>
       )}
+      {(quote.data.addons ?? []).map((addon) => (
+        <div key={addon.addon_id} className="flex items-center justify-between">
+          <span className="text-muted-foreground">
+            {addon.name} × {addon.quantity}
+          </span>
+          <span>{formatCurrency(Number(addon.amount))}</span>
+        </div>
+      ))}
       <div className="mt-1 flex items-center justify-between font-medium">
         <span>{Number(total) > 0 ? 'Invoiced to the resident' : 'No charge'}</span>
         <span>{formatCurrency(Number(total))}</span>

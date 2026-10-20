@@ -7,6 +7,7 @@ import { friendlyError } from '@/lib/api-error';
 import { useCreateBooking } from '@/hooks';
 import type { Amenity } from '@/hooks';
 import { BookingChargePreview } from './booking-charge-preview';
+import { BookingAddonsField, chosenAddons } from './booking-addons-field';
 import {
   AmenityField,
   BookingSlotField,
@@ -90,6 +91,7 @@ export function bookingInput(form: BookingFormValues, amenity?: Amenity) {
     ...(severalDays(form) ? { end_date: form.endDate } : {}),
     ...(amenity?.terms_enabled ? { accept_terms: form.acceptTerms } : {}),
     ...(form.slotId ? { slot_id: form.slotId } : {}),
+    ...(chosenAddons(form.addons).length > 0 ? { addons: chosenAddons(form.addons) } : {}),
   };
 }
 
@@ -136,10 +138,11 @@ export function BookingForm({ mode, open, onClose, onSaved, amenities, defaultDa
       savingLabel="Reserving…"
       dialogClassName="max-w-lg"
     >
-      <AmenityField amenities={amenities} value={form.amenityId} onChange={(amenityId) => set({ amenityId, endDate: '', acceptTerms: false, slotId: '' })} />
+      <AmenityField amenities={amenities} value={form.amenityId} onChange={(amenityId) => set({ amenityId, endDate: '', acceptTerms: false, slotId: '', addons: {} })} />
       <UnitMemberFields form={form} set={set} />
       <BookingWhenFields form={form} set={set} amenity={amenity} />
       <BookingSlotField form={form} set={set} amenity={amenity} />
+      <BookingAddonsField amenity={amenity} value={form.addons} onChange={(addons) => set({ addons })} />
       <BookingTermsField form={form} set={set} amenity={amenity} />
       <BookingChargePreview
         amenityId={form.amenityId}
@@ -149,6 +152,7 @@ export function BookingForm({ mode, open, onClose, onSaved, amenities, defaultDa
           date: form.bookingDate,
           endDate: severalDays(form) ? form.endDate : undefined,
           slotId: form.slotId || undefined,
+          addons: chosenAddons(form.addons).map((addon) => ({ addonId: addon.addon_id, quantity: addon.quantity })),
         }}
       />
     </FormFrame>

@@ -166,6 +166,8 @@ interface CreateBookingInput {
   accept_terms?: boolean;
   /** AMEN-20 — the slot booked (its times are the booking's). */
   slot_id?: string;
+  /** AMEN-42 — add-ons and how many of each. */
+  addons?: Array<{ addon_id: string; quantity: number }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -261,6 +263,9 @@ export interface AmenityQuote {
   unit: 'hour' | 'day' | 'slot' | null;
   amount: string;
   deposit_amount: string;
+  /** AMEN-42 — absent on an older API. */
+  addons?: Array<{ addon_id: string; name: string; quantity: number; unit_cost: string; amount: string }>;
+  addons_amount?: string;
   total: string;
 }
 
@@ -274,6 +279,8 @@ export interface QuoteRequest {
   endDate?: string;
   /** AMEN-20 — a slot is charged its own cost. */
   slotId?: string;
+  /** AMEN-42 — add-ons and how many of each. */
+  addons?: Array<{ addonId: string; quantity: number }>;
 }
 
 function quoteParams(request: QuoteRequest): Record<string, string> {
@@ -281,6 +288,9 @@ function quoteParams(request: QuoteRequest): Record<string, string> {
   if (request.date) params.date = request.date;
   if (request.endDate) params.end_date = request.endDate;
   if (request.slotId) params.slot_id = request.slotId;
+  if (request.addons && request.addons.length > 0) {
+    params.addons = request.addons.map((addon) => `${addon.addonId}:${addon.quantity}`).join(',');
+  }
   return params;
 }
 

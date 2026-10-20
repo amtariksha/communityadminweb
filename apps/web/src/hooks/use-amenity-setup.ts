@@ -6,8 +6,8 @@ import { amenityKeys } from './use-amenities';
 
 /**
  * Amenity & Event › Setup grids saved whole (SB-08): an amenity's named,
- * priced slots (AMEN-20). An API from before them answers 404; the screens
- * then say "not available yet".
+ * priced slots (AMEN-20) and its add-ons (AMEN-42). An API from before them
+ * answers 404; the screens then say "not available yet" or hide them.
  */
 
 export interface AmenitySlotSetting {
@@ -51,6 +51,62 @@ export function useSaveAmenitySlots(amenityId: string) {
   return useMutation({
     mutationFn: (rows: AmenitySlotRowInput[]) =>
       api.put<{ data: AmenitySlotSetting[] }>(`/amenities/${amenityId}/slots/bulk`, { rows }).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: amenityKeys.all });
+    },
+  });
+}
+
+/** AMEN-42 — an add-on a paid amenity sells with a booking. */
+export interface AmenityAddon {
+  id: string;
+  amenity_id: string;
+  name: string;
+  max_units: number;
+  /** Decimal string. */
+  unit_cost: string;
+  is_active: boolean;
+  display_order: number | null;
+}
+
+export interface AmenityAddonRowInput {
+  id?: string;
+  name: string;
+  max_units: number;
+  unit_cost: number;
+  is_active: boolean;
+}
+
+const addonKeys = {
+  all: (amenityId: string) => [...amenityKeys.all, 'addon-setup', amenityId] as const,
+  offered: (amenityId: string) => [...amenityKeys.all, 'addons', amenityId] as const,
+};
+
+/** Every add-on of the amenity, retired ones included (the Setup grid). */
+export function useAmenityAddonSettings(amenityId: string) {
+  return useQuery({
+    queryKey: addonKeys.all(amenityId),
+    queryFn: () => api.get<{ data: AmenityAddon[] }>(`/amenities/${amenityId}/addons/all`).then((res) => res.data),
+    enabled: amenityId !== '',
+    retry: false,
+  });
+}
+
+/** The add-ons on offer (the booking form); empty on an older API. */
+export function useAmenityAddons(amenityId: string) {
+  return useQuery({
+    queryKey: addonKeys.offered(amenityId),
+    queryFn: () => api.get<{ data: AmenityAddon[] }>(`/amenities/${amenityId}/addons`).then((res) => res.data),
+    enabled: amenityId !== '',
+    retry: false,
+  });
+}
+
+export function useSaveAmenityAddons(amenityId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rows: AmenityAddonRowInput[]) =>
+      api.put<{ data: AmenityAddon[] }>(`/amenities/${amenityId}/addons`, { rows }).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: amenityKeys.all });
     },

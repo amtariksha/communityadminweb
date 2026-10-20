@@ -50,6 +50,11 @@ vi.mock('@/hooks', () => {
   };
 });
 
+// AMEN-42 — the add-ons of the picked amenity (none here).
+vi.mock('@/hooks/use-amenity-setup', () => ({
+  useAmenityAddons: () => ({ data: [], isLoading: false }),
+}));
+
 vi.mock('../helpdesk/new/use-unit-choices', () => ({
   useUnitChoices: () => ({ data: [{ id: 'unit-1', unit_number: 'A-101', block: 'A' }] }),
 }));

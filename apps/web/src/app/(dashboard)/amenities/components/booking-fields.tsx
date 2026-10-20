@@ -26,13 +26,15 @@ export interface BookingFormValues {
   acceptTerms: boolean;
   /** AMEN-20 — the slot picked ('' = times typed in). */
   slotId: string;
+  /** AMEN-42 — add-on id → quantity typed. */
+  addons: Record<string, string>;
 }
 
 export function emptyBookingForm(date: string): BookingFormValues {
   return {
     amenityId: '', unitId: '', memberId: '', bookingDate: date,
     startTime: '09:00', endTime: '10:00', purpose: '', guestsCount: '0',
-    endDate: '', acceptTerms: false, slotId: '',
+    endDate: '', acceptTerms: false, slotId: '', addons: {},
   };
 }
 
