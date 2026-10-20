@@ -12,6 +12,8 @@ export interface GateSwitches {
   auto_checkout_hours: number | null;
   /** GATE-43; absent from an API that predates the lock. */
   investigator_lock?: boolean;
+  /** GATE-46: an image of ours under every visitor pass; absent from an older API. */
+  pass_footer_image_url?: string | null;
 }
 
 /**

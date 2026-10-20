@@ -47,12 +47,19 @@ function postedMessage(row: Announcement | undefined): string {
  * ways to save — Save as Draft and Post (Post goes through the approval
  * gate: live and sent, or Awaiting Approval).
  */
-export function useNoticeEditor(opts: { notice?: Announcement; classic: boolean; onSaved: () => void }) {
+export function useNoticeEditor(opts: {
+  notice?: Announcement;
+  classic: boolean;
+  onSaved: () => void;
+  starter?: { title: string; body: string };
+}) {
   const { addToast } = useToast();
   const setup = useAnnouncementChannels();
   const channels = useNotificationChannels();
   const defaults = setup.data?.default_channels ?? FALLBACK_CHANNELS;
-  const [draft, setDraft] = useState<NoticeDraft>(() => (opts.notice ? draftFrom(opts.notice) : blankDraft(defaults)));
+  const [draft, setDraft] = useState<NoticeDraft>(() =>
+    opts.notice ? draftFrom(opts.notice) : { ...blankDraft(defaults), ...(opts.starter ?? {}) },
+  );
   const [errors, setErrors] = useState<NoticeErrors>({});
   const files = useNoticeFiles(storedFiles(opts.notice?.attachment_urls, opts.notice?.attachment_names));
   const blocks = useBlockNames();

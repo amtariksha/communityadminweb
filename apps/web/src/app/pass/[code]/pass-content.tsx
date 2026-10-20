@@ -17,6 +17,14 @@ interface PassData {
   // Party/Group (#2): a host pass whose link self-registers each guest.
   invite_type?: string;
   unit_number?: string;
+  // GATE-46: the society's footer image (one of its own uploads), or null.
+  pass_footer_image_url?: string | null;
+}
+
+/** The footer image to show: an https address only (the API keeps it to our storage). */
+export function footerImageOf(pass: Pick<PassData, 'pass_footer_image_url'>): string | null {
+  const url = pass.pass_footer_image_url;
+  return typeof url === 'string' && url.startsWith('https://') ? url : null;
 }
 
 // Party/Group register response — ONLY the registering guest's own code/window.
@@ -157,6 +165,18 @@ export default function PassContent({ code }: { code: string }): ReactNode {
               Valid until: {formatDate(data.valid_until)}
             </p>
           </div>
+
+          {footerImageOf(data) && (
+            <div className="flex justify-center border-t border-gray-800 px-6 py-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={footerImageOf(data) ?? ''}
+                alt={`${data.tenant_name} pass footer`}
+                style={{ maxWidth: 286, maxHeight: 81 }}
+                className="object-contain"
+              />
+            </div>
+          )}
 
           {/* Status Overlay */}
           {overlayLabel !== null && (

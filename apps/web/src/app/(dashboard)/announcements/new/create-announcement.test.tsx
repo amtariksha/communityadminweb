@@ -4,9 +4,12 @@ import Page from './page';
 
 /** ANN-10 / ANN-11 — Create Announcement as a page: Preview · Post, no channel choice, Classification required. */
 
-const calls = vi.hoisted(() => ({ create: vi.fn(), push: vi.fn() }));
+const calls = vi.hoisted(() => ({ create: vi.fn(), push: vi.fn(), search: '' as string | undefined }));
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: calls.push }) }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: calls.push }),
+  useSearchParams: () => new URLSearchParams(calls.search ?? ''),
+}));
 vi.mock('@/lib/layout-context', () => ({ useAdminLayout: () => 'classic' }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('@/hooks', async (importOriginal) => {
@@ -25,7 +28,10 @@ vi.mock('@/hooks', async (importOriginal) => {
   };
 });
 
-beforeEach(() => calls.create.mockClear());
+beforeEach(() => {
+  calls.create.mockClear();
+  calls.search = '';
+});
 
 describe('Create Announcement (classic page)', () => {
   it('has Preview and Post, and no Send by choice (the Setup defaults apply)', () => {
@@ -54,6 +60,17 @@ describe('Create Announcement (classic page)', () => {
     const sent = calls.create.mock.calls[0][0];
     expect(sent).toMatchObject({ title: 'AGM', classification: 'official', publish_now: true, target_audience: 'all' });
     expect(sent).not.toHaveProperty('channels');
+  });
+
+  it('opens with a known starter draft, never text from the link (GATE-44 Inform Residents)', () => {
+    calls.search = 'draft=gate-preapprove';
+    const { unmount } = render(<Page />);
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Pre-approve your visitors');
+    unmount();
+
+    calls.search = 'draft=<b>anything</b>';
+    render(<Page />);
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('');
   });
 
   it('previews without saving', () => {

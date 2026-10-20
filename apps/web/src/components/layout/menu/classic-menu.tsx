@@ -471,8 +471,8 @@ export const classicMenu: MenuNode[] = [
     close: '/gate/investigator/visitors',
     children: [
       { id: 'gate.setup', label: 'Setup', href: '/gate/setup', logs: ['gate'] },
-      planned('gate.move', 'Move In/Out', 'GATE-45'),
-      planned('gate.usage', 'Usage Summary', 'GATE-44'),
+      { id: 'gate.move', label: 'Move In/Out', href: '/gate/move-in-out' },
+      { id: 'gate.usage', label: 'Usage Summary', href: '/gate/usage' },
       {
         id: 'gate.investigator',
         label: 'Incident Investigator',

@@ -15,6 +15,8 @@ export interface NoticeEditorProps {
   open?: boolean;
   onClose: () => void;
   onSaved: () => void;
+  /** A new notice's starting title and text (e.g. Gate › Usage Summary's Inform Residents). */
+  starter?: { title: string; body: string };
 }
 
 /**
@@ -25,7 +27,7 @@ export interface NoticeEditorProps {
  */
 export function NoticeEditor(props: NoticeEditorProps): ReactNode {
   const classic = props.mode === 'page';
-  const editor = useNoticeEditor({ notice: props.notice, classic, onSaved: props.onSaved });
+  const editor = useNoticeEditor({ notice: props.notice, classic, onSaved: props.onSaved, starter: props.starter });
   const [previewing, setPreviewing] = useState(false);
   const posted = props.notice !== undefined && announcementState(props.notice) !== 'draft';
   const isDraftEdit = props.notice !== undefined && !posted;
