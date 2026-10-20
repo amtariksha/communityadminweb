@@ -91,6 +91,8 @@ export interface RegisterRow {
   instrument_date: string | null;
   bank_ledger: string | null;
   notes: string | null;
+  /** The Comment written beside each invoice paid, "INV-1: text; …" (EXP-S9; absent from an older API). */
+  invoice_comments?: string | null;
   is_reversed: boolean;
   is_reversal: boolean;
   reversal_of: string | null;

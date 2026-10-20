@@ -25,7 +25,8 @@ const COLUMNS: DataTableColumn<RegisterRow>[] = [
   { key: 'instrument', header: 'Instrument No', cell: (r) => r.reference_number ?? '' },
   { key: 'instrument_date', header: 'Instrument Date', cell: (r) => (r.instrument_date ? formatDate(r.instrument_date) : '') },
   { key: 'bank', header: 'Bank A/c GL', cell: (r) => r.bank_ledger ?? '' },
-  { key: 'comments', header: 'Comments', cell: (r) => r.notes ?? '' },
+  // The payment's comments, then the comment written beside each invoice it paid.
+  { key: 'comments', header: 'Comments', cell: (r) => [r.notes, r.invoice_comments].filter(Boolean).join(' · ') },
 ];
 
 /** "Reverse" holds the button on a live payment, "Reversed" on a reversed one, "Reversal of PV-…" on a reversal. */

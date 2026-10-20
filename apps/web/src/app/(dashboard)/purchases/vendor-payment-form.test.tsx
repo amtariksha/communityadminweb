@@ -27,6 +27,7 @@ const bills = vi.hoisted(() => [
 
 vi.mock('@/hooks', () => ({
   useVendor: () => ({ data: { id: 'vendor-1', name: 'Skyline Lifts' } }),
+  useTdsConfig: () => ({ data: { config: { sections: [{ code: '393(1)', label: 'Contractors' }, { code: '194J', label: 'Professional fees' }] } } }),
   useLedgerAccounts: (filters: { account_type: string[] }) => ({
     data: {
       data: filters.account_type[0] === 'asset'
@@ -117,6 +118,34 @@ describe('Pay a vendor', () => {
       write_off_account_id: 'discount',
       allocations: [{ bill_id: 'b1', amount: 5000 }, { bill_id: 'b2', amount: 3000 }],
     });
+  });
+
+  it('keeps the Comment written beside an invoice and sends it with that invoice (EXP-S9)', async () => {
+    renderForm();
+    expect(field('Comment for SL-1').disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText('Pay SL-1'));
+    type('Comment for SL-1', 'Lift AMC, first quarter');
+    fireEvent.click(screen.getByLabelText('Select All'));
+    expect(field('Comment for SL-1').value).toBe('Lift AMC, first quarter');
+    type('Paid from *', 'bank-ledger');
+    type('Instrument No *', 'UTR0042');
+    await post();
+    expect(mocks.create.mock.calls[0][0].allocations).toEqual([
+      { bill_id: 'b1', amount: 5000, comment: 'Lift AMC, first quarter' },
+      { bill_id: 'b2', amount: 3000 },
+    ]);
+  });
+
+  it('offers the TDS section once TDS is deducted, and sends the one chosen', async () => {
+    renderForm();
+    fireEvent.click(screen.getByLabelText('Pay SL-1'));
+    type('Paid from *', 'bank-ledger');
+    type('Instrument No *', 'UTR0043');
+    expect(screen.queryByLabelText('TDS section')).toBeNull();
+    type('TDS at payment', '100');
+    type('TDS section', '194J');
+    await post();
+    expect(mocks.create.mock.calls[0][0]).toMatchObject({ tds_amount: 100, tds_section: '194J', amount: 4900 });
   });
 });
 

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FormFrame, type FormMode } from '@/components/form-page';
 import { useToast } from '@/components/ui/toast';
-import { useLedgerAccounts, useVendor } from '@/hooks';
+import { useLedgerAccounts, useTdsConfig, useVendor } from '@/hooks';
 import { useInvoiceHeads } from '@/hooks/use-vendor-bills';
 import { useCreateVendorPayment, useVendorOpenItems, type PostedVendorPayment } from '@/hooks/use-vendor-payments';
 import { friendlyError } from '@/lib/api-error';
@@ -29,7 +29,7 @@ function blankDetails(): PaymentDetails {
   const today = todayIST();
   return {
     paymentDate: today, bankLedgerId: '', paymentMode: 'bank_transfer', instrumentNo: '', instrumentDate: today,
-    writeOff: '', writeOffAccountId: '', tds: '', notes: '', amount: '', expenseHead: '',
+    writeOff: '', writeOffAccountId: '', tds: '', tdsSection: '', notes: '', amount: '', expenseHead: '',
   };
 }
 
@@ -66,6 +66,7 @@ export function VendorPaymentForm(props: VendorPaymentFormProps): ReactNode {
   const openItems = useVendorOpenItems(props.vendorId);
   const heads = useInvoiceHeads().data?.data ?? [];
   const choices = useLedgerChoices();
+  const tdsSections = (useTdsConfig().data?.config.sections ?? []).map((section) => ({ id: section.code, label: `${section.code} — ${section.label}` }));
   const create = useCreateVendorPayment();
   const bills = useMemo(() => openItems.data?.bills ?? [], [openItems.data]);
 
@@ -100,7 +101,7 @@ export function VendorPaymentForm(props: VendorPaymentFormProps): ReactNode {
       ) : (
         <>
           {payMode === 'invoices' && <OpenInvoicesTable bills={bills} rows={rows} onChange={setRows} />}
-          <PaymentDetailsFields mode={payMode} details={details} onChange={patch} paidFrom={choices.paidFrom} writeOffAccounts={choices.writeOff} expenseHeads={heads.map((h) => ({ id: h.ledger_account_id, label: h.code ? `${h.code} ${h.name}` : h.name }))} />
+          <PaymentDetailsFields mode={payMode} details={details} onChange={patch} paidFrom={choices.paidFrom} writeOffAccounts={choices.writeOff} expenseHeads={heads.map((h) => ({ id: h.ledger_account_id, label: h.code ? `${h.code} ${h.name}` : h.name }))} tdsSections={tdsSections} />
           {payMode === 'invoices' && <p className="text-sm font-medium" data-testid="amount-paid">Amount paid: {formatCurrency(amountPaid(bills, rows, details.tds) / 100)}</p>}
           <nav className="flex flex-wrap gap-4 text-sm" aria-label="Other kinds of payment">
             <Link className="text-primary underline" href={`/expense-tracker/by-vendors/${props.vendorId}/invoice`}>Enter an invoice here</Link>

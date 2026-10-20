@@ -20,6 +20,8 @@ interface PaymentDetailsFieldsProps {
   paidFrom: readonly LedgerChoice[];
   writeOffAccounts: readonly LedgerChoice[];
   expenseHeads: readonly LedgerChoice[];
+  /** The society's TDS sections (code and label). */
+  tdsSections?: readonly LedgerChoice[];
 }
 
 function Field({ id, label, children }: { id: string; label: string; children: ReactNode }): ReactNode {
@@ -41,7 +43,7 @@ function ChoiceSelect(props: { id: string; value: string; choices: readonly Ledg
 }
 
 /** EXP-S9 payment details; write-off and TDS only against invoices, the amount only for the other kinds. */
-export function PaymentDetailsFields({ mode, details, onChange, paidFrom, writeOffAccounts, expenseHeads }: PaymentDetailsFieldsProps): ReactNode {
+export function PaymentDetailsFields({ mode, details, onChange, paidFrom, writeOffAccounts, expenseHeads, tdsSections = [] }: PaymentDetailsFieldsProps): ReactNode {
   const againstInvoices = mode === 'invoices';
   return (
     <div className="grid gap-3 sm:grid-cols-3">
@@ -83,6 +85,11 @@ export function PaymentDetailsFields({ mode, details, onChange, paidFrom, writeO
           <Field id="pay-tds" label="TDS at payment">
             <Input id="pay-tds" type="number" min="0" step="0.01" value={details.tds} onChange={(e) => onChange({ tds: e.target.value })} />
           </Field>
+          {Number(details.tds) > 0 && (
+            <Field id="pay-tds-section" label="TDS section">
+              <ChoiceSelect id="pay-tds-section" value={details.tdsSection} choices={tdsSections} empty="The vendor's section" onChange={(v) => onChange({ tdsSection: v })} />
+            </Field>
+          )}
         </>
       )}
       <div className="sm:col-span-3">

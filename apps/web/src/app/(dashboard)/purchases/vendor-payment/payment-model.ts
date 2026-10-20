@@ -14,7 +14,11 @@ export interface PayRow {
   ticked: boolean;
   /** Edit Amount as typed. */
   amount: string;
+  /** The Comment beside the invoice, kept with what is set against it. */
+  comment?: string;
 }
+
+export const COMMENT_MAX = 500;
 
 export interface PaymentDetails {
   paymentDate: string;
@@ -25,6 +29,8 @@ export interface PaymentDetails {
   writeOff: string;
   writeOffAccountId: string;
   tds: string;
+  /** The section the TDS at payment is deducted under ('' = the vendor's). */
+  tdsSection: string;
   notes: string;
   /** Advance / without invoice: the amount paid. */
   amount: string;
@@ -38,12 +44,13 @@ export const paise = (value: string | number | null | undefined): number => {
 };
 export const rupees = (p: number): string => (p / 100).toFixed(2);
 
-export function tickRow(bill: OpenBill, ticked: boolean): PayRow {
-  return { ticked, amount: ticked ? bill.remaining : '' };
+/** Ticking a row sets Edit Amount to what remains; a comment already written stays. */
+export function tickRow(bill: OpenBill, ticked: boolean, comment = ''): PayRow {
+  return { ticked, amount: ticked ? bill.remaining : '', comment };
 }
 
-export function tickAll(bills: readonly OpenBill[], ticked: boolean): Record<string, PayRow> {
-  return Object.fromEntries(bills.map((bill) => [bill.id, tickRow(bill, ticked)]));
+export function tickAll(bills: readonly OpenBill[], ticked: boolean, current: Record<string, PayRow> = {}): Record<string, PayRow> {
+  return Object.fromEntries(bills.map((bill) => [bill.id, tickRow(bill, ticked, current[bill.id]?.comment ?? '')]));
 }
 
 /** An edited amount is never more than what remains. */
@@ -76,7 +83,8 @@ export function allocations(bills: readonly OpenBill[], rows: Record<string, Pay
       const edited = paise(rows[bill.id].amount);
       const share = Math.min(left, paise(bill.remaining) - edited);
       left -= share;
-      return { bill_id: bill.id, amount: (edited + share) / 100 };
+      const comment = rows[bill.id].comment?.trim().slice(0, COMMENT_MAX) ?? '';
+      return { bill_id: bill.id, amount: (edited + share) / 100, ...(comment ? { comment } : {}) };
     })
     .filter((allocation) => allocation.amount > 0);
 }
@@ -115,6 +123,7 @@ export function toPaymentInput(vendorId: string, mode: PayMode, bills: readonly 
     write_off_amount: againstInvoices ? paise(d.writeOff) / 100 : 0,
     write_off_account_id: againstInvoices && paise(d.writeOff) > 0 ? d.writeOffAccountId : null,
     tds_amount: againstInvoices ? paise(d.tds) / 100 : 0,
+    tds_section: againstInvoices && paise(d.tds) > 0 && d.tdsSection ? d.tdsSection : null,
     expense_account_id: mode === 'without_invoice' ? d.expenseHead : null,
     notes: d.notes.trim() || null,
   };

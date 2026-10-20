@@ -34,7 +34,7 @@ vi.mock('@/hooks/use-vendor-ledger', () => ({
       data: enabled
         ? {
             data: [
-              row({ id: 'p2', voucher_number: 'PV-00002' }),
+              row({ id: 'p2', voucher_number: 'PV-00002', notes: 'Quarterly AMC', invoice_comments: 'OL-1: first quarter' }),
               row({ id: 'p1', voucher_number: 'REV-PV-00001', is_reversed: true, is_reversal: true, reversal_of: 'PV-00001' }),
               row({ id: 'p1', is_reversed: true }),
             ],
@@ -56,6 +56,7 @@ describe('Expenses By Date', () => {
     expect(screen.getAllByRole('button', { name: 'Reverse' })).toHaveLength(1);
     expect(screen.getByText('Reversal of PV-00001')).toBeTruthy();
     expect(screen.getByText('Reversed')).toBeTruthy();
+    expect(screen.getByText('Quarterly AMC · OL-1: first quarter')).toBeTruthy();
   });
 
   it('sends Suppress Reversals to the API', () => {

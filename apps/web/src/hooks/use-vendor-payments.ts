@@ -53,10 +53,13 @@ export interface VendorPaymentInput {
   amount: number;
   instrument_number?: string | null;
   instrument_date?: string | null;
-  allocations: Array<{ bill_id: string; amount: number }>;
+  /** `comment`: the Comment written beside the invoice (EXP-S9). */
+  allocations: Array<{ bill_id: string; amount: number; comment?: string | null }>;
   write_off_amount?: number;
   write_off_account_id?: string | null;
   tds_amount?: number;
+  /** The section TDS at payment is deducted under; the vendor's when left out. */
+  tds_section?: string | null;
   expense_account_id?: string | null;
   notes?: string | null;
 }
