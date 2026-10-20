@@ -155,7 +155,9 @@ describe('Asset & Inventory (ASSET-07)', () => {
 
 describe('Vendor Master (VEND-06, VEND-07)', () => {
   it('shows both lists with Active and In-Active sub-tabs', () => {
-    expect(children('vendors')?.map(([label]) => label)).toEqual(['Vendors For Expense', 'Vendors for Non Member Income']);
+    // VEND-09 adds Bulk Posting after the two lists.
+    expect(children('vendors')?.map(([label]) => label)).toEqual(['Vendors For Expense', 'Vendors for Non Member Income', 'Bulk Posting']);
+    expect(locate('/vendor-master/bulk-posting/expense', menu)?.child?.label).toBe('Vendors For Expense');
     expect(tabs('vendors.expense')).toEqual([
       ['Active', '/vendor-master/expense'],
       ['In-Active', '/vendor-master/expense/inactive'],

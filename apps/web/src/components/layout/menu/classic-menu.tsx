@@ -894,7 +894,17 @@ export const classicMenu: MenuNode[] = [
           },
         ],
       },
-      planned('vendors.bulk', 'Bulk Posting', 'VEND-09'),
+      {
+        // VEND-09: Add Vendors in Bulk, one upload per list.
+        id: 'vendors.bulk',
+        label: 'Bulk Posting',
+        href: '/vendor-master/bulk-posting',
+        logs: ['import_batch'],
+        forms: [
+          { label: 'Vendors For Expense', path: '/vendor-master/bulk-posting/expense' },
+          { label: 'Vendors For Non Member Income', path: '/vendor-master/bulk-posting/non-member-income' },
+        ],
+      },
       planned('vendors.amcs', 'AMCs', 'VEND-11'),
     ],
   },
