@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { FormFrame, type FormMode } from '@/components/form-page';
+import { AccountSearchSelect } from '@/components/ui/account-search-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
@@ -81,6 +82,17 @@ function ChargeFields({ values, set, page }: FieldsProps): ReactNode {
           <Label htmlFor="amenity-deposit">Deposit</Label>
           <Input id="amenity-deposit" type="number" value={values.deposit} onChange={(e) => set({ deposit: e.target.value })} placeholder="0" />
         </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="amenity-income-account">Amenity Income Account</Label>
+        <AccountSearchSelect
+          value={values.incomeAccountId}
+          onChange={(incomeAccountId) => set({ incomeAccountId })}
+          accountType={['income']}
+          incomeScope="member"
+          placeholder="Search income account…"
+        />
+        <p className="text-xs text-muted-foreground">Booking invoices credit this account (Other Income when none is picked).</p>
       </div>
       <div className="space-y-2">
         {/* The committee's word for the same column is Notes (AMEN-S2). */}

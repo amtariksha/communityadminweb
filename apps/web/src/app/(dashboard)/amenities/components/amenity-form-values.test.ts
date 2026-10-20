@@ -16,13 +16,21 @@ describe('amenityPayload', () => {
       deposit_amount: undefined,
       rules: null,
     });
-    expect(amenityPayload({ ...values, isActive: false }, true).payload?.is_active).toBe(false);
+    expect(amenityPayload({ ...values, isActive: false, incomeAccountId: 'acc-1' }, true).payload?.is_active).toBe(false);
   });
 
   it('refuses a blank name, a capacity of 0 and a negative price', () => {
     expect(amenityPayload({ ...values, name: ' ' }, false).error).toBe('Name is required');
     expect(amenityPayload({ ...values, capacity: '0' }, false).error).toMatch(/Capacity/);
     expect(amenityPayload({ ...values, price: '-1' }, false).error).toMatch(/amounts/);
+  });
+
+  it('makes the page name the income account of a paid amenity, and sends it (AMEN-21)', () => {
+    expect(amenityPayload(values, true).error).toBe('Pick the amenity income account');
+    expect(amenityPayload({ ...values, pricingType: 'free', price: '' }, true).error).toBeUndefined();
+    expect(amenityPayload({ ...values, incomeAccountId: 'acc-1' }, true).payload?.income_account_id).toBe('acc-1');
+    // The standard dialog has no picker: the API keeps crediting Other Income.
+    expect(amenityPayload(values, false).payload).not.toHaveProperty('income_account_id');
   });
 
   it("starts an edit from the amenity's values", () => {

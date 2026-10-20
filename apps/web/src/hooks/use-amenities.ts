@@ -33,6 +33,9 @@ export interface Amenity {
   // `undefined` at runtime today.
   time_slots?: string | null;
   is_active: boolean;
+  /** AMEN-21 — the income account its invoices credit; absent on an older API. */
+  income_account_id?: string | null;
+  income_account_name?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -104,6 +107,7 @@ interface CreateAmenityInput {
   deposit_amount?: number;
   rules?: string | null;
   description?: string | null;
+  income_account_id?: string | null;
 }
 
 interface UpdateAmenityInput {
@@ -118,6 +122,7 @@ interface UpdateAmenityInput {
   rules?: string | null;
   description?: string | null;
   is_active?: boolean;
+  income_account_id?: string | null;
 }
 
 // Backend Zod (amenity.controller.ts:43–52) requires:

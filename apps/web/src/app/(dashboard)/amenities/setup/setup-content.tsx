@@ -21,6 +21,8 @@ const COLUMNS: DataTableColumn<Amenity>[] = [
     cell: (row) =>
       row.pricing_type === 'free' ? 'Free' : `${formatPricingType(row.pricing_type)} · ${formatCurrency(Number(row.price_per_unit ?? 0))}`,
   },
+  // AMEN-21 — an amenity without an account (or an older API) credits Other Income.
+  { key: 'income', header: 'Income Account', cell: (row) => row.income_account_name ?? 'Other Income' },
   { key: 'notes', header: 'Notes', cell: (row) => row.rules ?? '', className: 'max-w-[320px] whitespace-pre-line text-muted-foreground' },
 ];
 
@@ -78,8 +80,7 @@ function AmenitySection({ status, amenities, loading }: { status: SetupStatus; a
 /**
  * Amenity & Event › Setup › Amenity (AMEN-10, screen AMEN-S1): active and
  * inactive amenities in their own sections; Add Amenity and Edit open the
- * amenity form as a page. Income Account and Auto Cancel arrive with
- * AMEN-21 and AMEN-40; Setup Notifications with AMEN-45.
+ * amenity form as a page, with the account its invoices credit (AMEN-21).
  */
 export function SetupContent(): ReactNode {
   const amenitiesQuery = useAmenities();

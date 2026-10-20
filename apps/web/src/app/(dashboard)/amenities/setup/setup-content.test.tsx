@@ -18,7 +18,7 @@ vi.mock('@/hooks', () => ({
     isLoading: false,
     data: {
       data: [
-        { id: 'am-1', name: 'Party Hall', amenity_type: 'party_hall', pricing_type: 'hourly', price_per_unit: 500, rules: 'No music after 10 pm', is_active: true },
+        { id: 'am-1', name: 'Party Hall', amenity_type: 'party_hall', pricing_type: 'hourly', price_per_unit: 500, rules: 'No music after 10 pm', is_active: true, income_account_name: 'Clubhouse Charges' },
         { id: 'am-2', name: 'Guest Room', amenity_type: 'guest_room', pricing_type: 'free', price_per_unit: 0, rules: null, is_active: true },
         { id: 'am-3', name: 'Old Gym', amenity_type: 'gym', pricing_type: 'free', price_per_unit: 0, rules: null, is_active: false },
       ],
@@ -47,6 +47,13 @@ describe('SetupContent', () => {
     expect(hall.textContent).toContain('Hourly');
     expect(hall.textContent).toContain('No music after 10 pm');
     expect(rowsOf('Active Amenities')[1].textContent).toContain('Free');
+  });
+
+  it('shows the income account, Other Income when none is set (AMEN-21)', () => {
+    render(<SetupContent />);
+
+    expect(rowsOf('Active Amenities')[0].textContent).toContain('Clubhouse Charges');
+    expect(rowsOf('Active Amenities')[1].textContent).toContain('Other Income');
   });
 
   it('opens Add Amenity and Edit as pages', () => {
