@@ -188,6 +188,8 @@ describe('classic modules', () => {
 
   it('Move In/Out Tracker shows its built children, each a route (MOVE-05)', () => {
     expect(find(menu, 'move')?.children?.map((child) => [child.label, child.href ?? child.tabs?.[0]?.href])).toEqual([
+      // MOVE-12: Setup opens on its first built tab.
+      ['Setup', '/move-in-out/setup/verifiers'],
       ['Verify Move Ins', '/move-in-out/verify'],
       ['Approved Move Ins', '/move-in-out/approved-move-ins'],
       ['Approved Owners', '/move-in-out/owners'],

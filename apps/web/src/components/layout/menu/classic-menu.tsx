@@ -468,7 +468,7 @@ export const classicMenu: MenuNode[] = [
         id: 'move.setup',
         label: 'Setup',
         tabs: [
-          planned('move.setup.verifiers', 'Verifiers', 'MOVE-12'),
+          { id: 'move.setup.verifiers', label: 'Verifiers', href: '/move-in-out/setup/verifiers', logs: ['tenant_settings'] },
           planned('move.setup.move-in-checklist', 'Move In CheckList', 'MOVE-13'),
           planned('move.setup.move-out-checklist', 'Move Out CheckList', 'MOVE-13'),
           planned('move.setup.move-in-fields', 'Custom Fields For Move-in', 'MOVE-14'),

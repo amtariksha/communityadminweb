@@ -9,11 +9,13 @@ import { ApiError } from '@/lib/api-error';
  * side, No Access / Level 1 / 2 / 3 across, a minimum per level. `null`
  * when the API does not have the route yet (404).
  */
-export type ApproverGridType = 'purchase_request' | 'announcement';
+export type ApproverGridType = 'purchase_request' | 'announcement' | 'move_in';
 
 export interface ApproverGridPerson {
   user_id: string;
   name: string | null;
+  // UNIT-22 — title on the Access Control roster; absent from an older API.
+  designation?: string | null;
   roles: string[];
   /** 0 = No Access. */
   level: number;

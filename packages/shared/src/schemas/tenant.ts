@@ -35,9 +35,21 @@ export const announcementSettingsSchema = z.object({
 
 export type AnnouncementSettings = z.infer<typeof announcementSettingsSchema>;
 
+/**
+ * MOVE-12 — Move In/Out › Setup › Verifiers: `settings_json.move_in`. Saved
+ * by PUT /tenant-lifecycle/move-in-flow with the verifier grid; read by the
+ * API's onboarding and self-signup step builders.
+ */
+export const moveInSettingsSchema = z.object({
+  flow_enabled: z.boolean(),
+});
+
+export type MoveInSettings = z.infer<typeof moveInSettingsSchema>;
+
 const tenantSettingsSchema = z.object({
   scheduled_reports: scheduledReportsSchema.optional(),
   announcements: announcementSettingsSchema.optional(),
+  move_in: moveInSettingsSchema.optional(),
 });
 
 export const createTenantSchema = z.object({

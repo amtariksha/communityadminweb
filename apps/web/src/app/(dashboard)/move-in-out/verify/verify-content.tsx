@@ -19,6 +19,10 @@ const COLUMNS: DataTableColumn<MoveIn>[] = [
   { key: 'by', header: 'Requested By', cell: (row) => row.requested_by_name ?? '—' },
 ];
 
+// MOVE-12 — only the people allowed at the row's level (named on it, or
+// holding its role) see Approve / Reject.
+const notMine = (row: MoveIn): boolean => row.can_act === false;
+
 interface QueueProps {
   level: 1 | 2;
   onView: (moveIn: MoveIn) => void;
@@ -46,8 +50,8 @@ function MoveInQueue({ level, onView, onDecide }: QueueProps): ReactNode {
         columns={COLUMNS}
         actions={[
           { key: 'view', header: 'Action', label: 'View', onClick: onView },
-          { key: 'approve', header: '', label: 'Approve', onClick: (row) => onDecide({ kind: 'approve', moveIn: row }) },
-          { key: 'reject', header: '', label: 'Reject', onClick: (row) => onDecide({ kind: 'reject', moveIn: row }) },
+          { key: 'approve', header: '', label: 'Approve', hidden: notMine, onClick: (row) => onDecide({ kind: 'approve', moveIn: row }) },
+          { key: 'reject', header: '', label: 'Reject', hidden: notMine, onClick: (row) => onDecide({ kind: 'reject', moveIn: row }) },
         ]}
         rows={query.data?.data ?? []}
         rowKey={(row) => row.approval_id}
@@ -74,7 +78,8 @@ function MoveInQueue({ level, onView, onDecide }: QueueProps): ReactNode {
  * Move In/Out Tracker › Verify Move Ins (MOVE-06, screen MOVE-S6): the
  * society's verification queues, Level 1 then Level 2. A self-signup still
  * waiting for its unit owner is not listed. With the move-in flow off
- * (until MOVE-12) every move-in waits in Level 1.
+ * every move-in waits in Level 1; with it on (MOVE-12) the named verifiers
+ * of each level see Approve / Reject on that level's rows.
  */
 export function VerifyContent(): ReactNode {
   const [viewing, setViewing] = useState<MoveIn | null>(null);

@@ -21,6 +21,8 @@ export interface MoveIn {
   approved_at: string | null;
   approved_by_name: string | null;
   account_created: boolean;
+  // MOVE-12 — the viewer may decide the current level; absent from an older API.
+  can_act?: boolean;
 }
 
 export type MoveInFilters =

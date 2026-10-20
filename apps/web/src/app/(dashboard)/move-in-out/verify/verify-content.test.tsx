@@ -106,6 +106,18 @@ describe('Verify Move Ins', () => {
     expect(mocks.approve).toHaveBeenCalledWith({ id: 'ar-1', comments: undefined }, expect.anything());
   });
 
+  it('shows Approve and Reject only to the people allowed at the row’s level (MOVE-12)', () => {
+    mocks.moveIns.mockImplementation((filters: { level?: number }) => ({
+      data: filters.level === 1 ? { data: [{ ...MOVE_IN, can_act: false }], total: 1 } : { data: [], total: 0 },
+      isLoading: false,
+    }));
+    render(<VerifyContent />);
+
+    expect(screen.getByRole('button', { name: 'View' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
+  });
+
   it('searches its own queue on the server', () => {
     vi.useFakeTimers();
     render(<VerifyContent />);
