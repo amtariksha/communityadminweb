@@ -6,6 +6,7 @@ import { useAdminLayout } from '@/lib/layout-context';
 import { DuesWorkbench } from './dues-workbench';
 import { invoiceMoreActions, MEMBER_INCOME_BASE } from './member-row-actions';
 import { MemberIncomeLinks } from './member-income-links';
+import { IntimationsWaiting } from './intimations-waiting';
 
 /**
  * The treasurer's daily screen: every unit with what it owes and the
@@ -19,7 +20,8 @@ export function MemberIncomeContent(): ReactNode {
       {!classic && (
         <PageHeader title="Member Dues" description="What each unit owes, and its account and postings from its row." />
       )}
-      {classic && <MemberIncomeLinks current={MEMBER_INCOME_BASE} />}
+      <MemberIncomeLinks current={MEMBER_INCOME_BASE} />
+      <IntimationsWaiting />
       <DuesWorkbench
         scope="member"
         base={MEMBER_INCOME_BASE}

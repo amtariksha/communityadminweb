@@ -16,6 +16,9 @@ export const DASHBOARD_ROUTES = {
   // Create Request as a page (HELP-13, SB-07).
   newRequest: '/helpdesk/new',
   defaulters: '/invoices?filter=defaulters',
+  // DASH-13 — the paid-intimation queue (INC-65), maintenance or utility.
+  paidIntimations: '/income/members/intimations',
+  utilityIntimations: '/income/members/intimations?scope=utility',
   purchases: '/purchases',
   invoices: '/invoices',
   bank: '/bank',

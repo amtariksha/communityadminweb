@@ -15,6 +15,9 @@ export const collectionHref = (unitId: string, billId?: string, base = MEMBER_IN
   `${base}/${unitId}/collection${billId ? `?bill=${billId}` : ''}`;
 /** INC-48 — Member Income › Unidentified Collection. */
 export const UNIDENTIFIED_HREF = `${MEMBER_INCOME_BASE}/unidentified`;
+// INC-64 / INC-65 — received post-dated cheques and the paid-intimation queue.
+export const CHEQUES_HREF = `${MEMBER_INCOME_BASE}/cheques`;
+export const INTIMATIONS_HREF = `${MEMBER_INCOME_BASE}/intimations`;
 /** INC-47 — Post a Refundable Deposit for the unit. */
 export const depositHref = (unitId: string): string => `${MEMBER_INCOME_BASE}/${unitId}/deposit`;
 

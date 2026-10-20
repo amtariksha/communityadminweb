@@ -109,7 +109,8 @@ export interface DashboardSummary {
     accounts: Array<{ id: string; name: string; balance: string }>;
     more: number;
   } | null;
-  utility: { pending_bills: number; billed_amount: string | null } | null;
+  // DASH-13 — paid_intimations: absent / null on an API before INC-65.
+  utility: { pending_bills: number; billed_amount: string | null; paid_intimations?: number | null } | null;
   gate: { visitors_today: number; staff_today: number; open_overstays: number } | null;
 }
 

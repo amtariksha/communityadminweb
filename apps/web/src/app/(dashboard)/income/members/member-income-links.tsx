@@ -1,16 +1,19 @@
 import Link from 'next/link';
 import { type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { MEMBER_INCOME_BASE } from './member-row-actions';
+import { CHEQUES_HREF, INTIMATIONS_HREF, MEMBER_INCOME_BASE } from './member-row-actions';
 
 /**
  * Member Income's sub-links (INC-S16, INC-35): SubLedgers · Unidentified
- * Collection · Bulk Posting · Bulk Corrections. A link whose screen has not
- * shipped is left out (`shipped: false`).
+ * Collection · Bulk Posting · Bulk Corrections, and Post-dated Cheques
+ * (INC-64) · Paid Intimations (INC-65). A link whose screen has not shipped
+ * is left out (`shipped: false`).
  */
 export const MEMBER_INCOME_LINKS: ReadonlyArray<{ label: string; href: string; shipped: boolean }> = [
   { label: 'SubLedgers', href: MEMBER_INCOME_BASE, shipped: true },
   { label: 'Unidentified Collection', href: `${MEMBER_INCOME_BASE}/unidentified`, shipped: true },
+  { label: 'Post-dated Cheques', href: CHEQUES_HREF, shipped: true },
+  { label: 'Paid Intimations', href: INTIMATIONS_HREF, shipped: true },
   { label: 'Bulk Posting', href: `${MEMBER_INCOME_BASE}/bulk-posting`, shipped: false },
   { label: 'Bulk Corrections', href: `${MEMBER_INCOME_BASE}/bulk-corrections`, shipped: false },
 ];

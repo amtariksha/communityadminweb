@@ -49,6 +49,9 @@ export function IncomeCard({ status, summary }: BandProps): ReactNode {
         </div>
         {income && (
           <div className="flex flex-wrap gap-2">
+            {typeof income.paid_intimations === 'number' && (
+              <ActionLink href={DASHBOARD_ROUTES.paidIntimations}>{`${income.paid_intimations} Paid Intimations`}</ActionLink>
+            )}
             <ActionLink href={DASHBOARD_ROUTES.defaulters}>{income.defaulters} Defaulters</ActionLink>
           </div>
         )}

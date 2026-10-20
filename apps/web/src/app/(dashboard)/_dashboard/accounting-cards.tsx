@@ -66,6 +66,11 @@ export function UtilityCard({ status, summary }: BandProps): ReactNode {
       <CardState status={status}>
         <p>{`${utility ? utility.pending_bills : DASH} bills pending`}</p>
         <p>{`Billed: ${money(utility?.billed_amount)}`}</p>
+        {typeof utility?.paid_intimations === 'number' && (
+          <div className="flex flex-wrap gap-2">
+            <ActionLink href={DASHBOARD_ROUTES.utilityIntimations}>{`${utility.paid_intimations} Paid Intimations`}</ActionLink>
+          </div>
+        )}
       </CardState>
     </DashCard>
   );
