@@ -137,9 +137,21 @@ function StatusList({ status }: { status: StaffStatusRoute }): ReactNode {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-base font-semibold">{status.heading}</h3>
         {status.slug === 'active' && (
-          <Link className="text-sm underline" href={`${STAFF_BASE}/domestic/new`}>
-            Add Household Help
-          </Link>
+          <div className="flex flex-wrap gap-3 text-sm">
+            <Link className="underline" href={`${STAFF_BASE}/domestic/new`}>
+              Add Household Help
+            </Link>
+            {/* STAFF-35 (STAFF-S7): the three bulk uploads. */}
+            <Link className="underline" href={`${STAFF_BASE}/import/essential`}>
+              Bulk Upload Essential
+            </Link>
+            <Link className="underline" href={`${STAFF_BASE}/import/advanced`}>
+              Bulk Upload Advanced
+            </Link>
+            <Link className="underline" href={`${STAFF_BASE}/import/attendance`}>
+              Upload Attendance
+            </Link>
+          </div>
         )}
       </div>
       <DataTable<Row>

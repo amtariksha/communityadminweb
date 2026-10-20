@@ -589,6 +589,8 @@ export const classicMenu: MenuNode[] = [
     // (SB-07). Today's /staff stays inside the module.
     create: { label: 'Add Staff', href: '/staff/new' },
     close: '/staff/active',
+    // STAFF-35: the three bulk uploads are pages of the module.
+    forms: [{ label: 'Bulk Upload', path: '/staff/import/:kind' }],
     aliases: ['/staff'],
     logs: ['staff'],
     children: [
