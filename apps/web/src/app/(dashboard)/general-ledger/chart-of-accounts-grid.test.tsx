@@ -47,6 +47,7 @@ beforeEach(() => {
   signIn('accountant');
   get.mockImplementation(async (path: string, options?: { params?: Record<string, string> }) => {
     if (path === '/ledger/account-groups') return { data: GROUPS };
+    if (path === '/ledger/settings') return { data: { accounting_start_date: '2024-04-01', earliest_financial_year_start: '2024-04-01', earliest_entry_date: null } };
     if (options?.params?.is_active === 'false') return { data: RETIRED, total: RETIRED.length };
     return { data: ASSETS, total: ASSETS.length };
   });
@@ -94,9 +95,9 @@ describe('Chart of Accounts grid', () => {
     expect(put).toHaveBeenCalledWith('/ledger/accounts/bulk', {
       type: 'asset',
       rows: [
-        { id: 'a-dep', group_id: 'g-ca', code: 'A-100', name: 'Sinking Fund FD', opening_balance: 1000 },
-        { id: 'a-lift', group_id: 'g-ca', code: 'A-101', name: 'Elevator Deposit', opening_balance: 0 },
-        { group_id: 'g-ca', code: 'A-102', name: 'Water Deposit', opening_balance: 0 },
+        { id: 'a-dep', group_id: 'g-ca', code: 'A-100', name: 'Sinking Fund FD', opening_balance: 1000, opening_balance_date: null },
+        { id: 'a-lift', group_id: 'g-ca', code: 'A-101', name: 'Elevator Deposit', opening_balance: 0, opening_balance_date: null },
+        { group_id: 'g-ca', code: 'A-102', name: 'Water Deposit', opening_balance: 0, opening_balance_date: null },
       ],
     });
   });
@@ -110,7 +111,25 @@ describe('Chart of Accounts grid', () => {
     await waitFor(() => expect(put).toHaveBeenCalled());
     expect(put.mock.calls[0][1]).toEqual({
       type: 'asset',
-      rows: [{ id: 'a-dep', group_id: 'g-ca', code: 'A-100', name: 'Sinking Fund Deposit', opening_balance: 1500 }],
+      rows: [{ id: 'a-dep', group_id: 'g-ca', code: 'A-100', name: 'Sinking Fund Deposit', opening_balance: 1500, opening_balance_date: null }],
+    });
+  });
+
+  it('shows the accounting start date and sends an opening balance date (GL-19)', async () => {
+    renderTab();
+    await screen.findByDisplayValue('Sinking Fund Deposit');
+    expect(await screen.findByText(/Accounting Start Date: 01 Apr 2024/)).toBeTruthy();
+    fireEvent.change(field('Opening Balance Date', 3), { target: { value: '2024-03-01' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    expect(await screen.findByText('The Opening Balance Date is before the accounting start date.')).toBeTruthy();
+    expect(put).not.toHaveBeenCalled();
+
+    fireEvent.change(field('Opening Balance Date', 3), { target: { value: '2024-05-01' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    await waitFor(() => expect(put).toHaveBeenCalled());
+    expect(put.mock.calls[0][1]).toEqual({
+      type: 'asset',
+      rows: [{ id: 'a-lift', group_id: 'g-ca', code: 'A-101', name: 'Lift Deposit', opening_balance: 0, opening_balance_date: '2024-05-01' }],
     });
   });
 

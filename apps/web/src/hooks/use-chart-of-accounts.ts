@@ -15,6 +15,8 @@ export interface ChartAccount extends LedgerAccount {
   // GL-14: who deactivated the account and when (null while active).
   deactivated_by_name?: string | null;
   deactivated_at?: string | null;
+  // GL-19: the day its opening balance is posted on.
+  opening_balance_date?: string | null;
 }
 
 async function fetchAllAccounts(types: readonly AccountType[], inactive = false): Promise<ChartAccount[]> {
@@ -82,6 +84,7 @@ export interface AccountBulkRow {
   code: string;
   name: string;
   opening_balance?: number;
+  opening_balance_date?: string | null;
 }
 
 export interface AccountBulkResult {

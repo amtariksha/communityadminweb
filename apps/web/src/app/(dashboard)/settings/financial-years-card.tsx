@@ -19,6 +19,7 @@ import { formatDate } from '@/lib/utils';
 import { useFinancialYears, useSetCurrentYear, useUnfreezeYear } from '@/hooks';
 import { canChangeSettings } from './settings-access';
 import { CreateFinancialYearDialog, FreezeYearDialog, YearEndDialog } from './financial-year-dialogs';
+import { AccountingStartField } from './accounting-start-field';
 
 interface RowProps {
   year: FinancialYear;
@@ -114,7 +115,8 @@ export function FinancialYearsCard(): ReactNode {
           <CreateFinancialYearDialog />
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        <AccountingStartField canChange={mayCloseYear} />
         {fyQuery.isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-12 w-full" />

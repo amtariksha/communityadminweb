@@ -17,6 +17,8 @@ import {
   type ChartAccount,
 } from '@/hooks/use-chart-of-accounts';
 import { DeactivatedAccounts } from '@/components/ledger-accounts/deactivated-accounts';
+import { useLedgerSettings } from '@/hooks/use-ledger-settings';
+import { formatDate } from '@/lib/utils';
 import { ApiError, friendlyError } from '@/lib/api-error';
 import { currentRole } from '@/lib/current-role';
 import { AccountGrid } from './account-grid';
@@ -46,10 +48,10 @@ function savedText(result: AccountBulkResult): string {
   return `${parts.join(', ')}, ${result.entries_posted} opening-balance entries posted.`;
 }
 
-function AssetNotes(): ReactNode {
+function AssetNotes({ start }: { start: string | null | undefined }): ReactNode {
   return (
     <div className="space-y-1 text-sm text-muted-foreground">
-      <p>Accounting Start Date: Not set</p>
+      <p>Accounting Start Date: {start ? formatDate(start) : 'Not set'}</p>
       <p>
         Bank and petty-cash accounts are set up in{' '}
         <Link href="/bank" className="text-primary underline">
@@ -74,6 +76,7 @@ export function ChartTabPage({ slug }: { slug: ChartTab['slug'] }): ReactNode {
   const groupsQuery = useAccountGroups();
   const accountsQuery = useAllLedgerAccounts(tab.groupTypes);
   const saveMutation = useSaveAccountsBulk();
+  const settingsQuery = useLedgerSettings();
   const canSave = useMemo(() => WRITE_ROLES.has(currentRole() ?? ''), []);
   // Deactivated accounts have their own table (an API older than GL-14 lists them too).
   const accounts = (accountsQuery.data ?? []).filter((account) => account.is_active !== false);
@@ -100,7 +103,7 @@ export function ChartTabPage({ slug }: { slug: ChartTab['slug'] }): ReactNode {
     <Card>
       <CardContent className="space-y-4 pt-6">
         <h3 className="font-semibold">{tab.heading}</h3>
-        {slug === 'assets' && <AssetNotes />}
+        {slug === 'assets' && <AssetNotes start={settingsQuery.data?.accounting_start_date} />}
         {!canSave && <p role="note" className="text-sm text-muted-foreground">Only the community admin and the accountant can change accounts.</p>}
         {canSave && (
           // GL-24: many accounts at once from a sheet.
@@ -127,6 +130,7 @@ export function ChartTabPage({ slug }: { slug: ChartTab['slug'] }): ReactNode {
             accounts={accounts}
             readOnly={!canSave}
             isSaving={saveMutation.isPending}
+            accountingStart={settingsQuery.data?.accounting_start_date ?? null}
             save={save}
             onNothingToSave={() => addToast({ title: 'No changes to save' })}
           />

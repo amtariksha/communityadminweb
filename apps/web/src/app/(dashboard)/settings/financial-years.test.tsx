@@ -10,6 +10,13 @@ const mocks = vi.hoisted(() => ({
   freezeYear: vi.fn(),
   mayChangeSettings: true,
   years: [] as unknown[],
+  saveStart: vi.fn(),
+  ledgerSettings: { accounting_start_date: null, earliest_financial_year_start: '2025-04-01', earliest_entry_date: null } as unknown,
+}));
+
+vi.mock('@/hooks/use-ledger-settings', () => ({
+  useLedgerSettings: () => ({ data: mocks.ledgerSettings, isLoading: false }),
+  useSaveAccountingStartDate: () => ({ mutate: mocks.saveStart, isPending: false }),
 }));
 
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: mocks.addToast }) }));
@@ -42,6 +49,7 @@ const FROZEN = year({ id: 'fy-0', label: 'FY 2025-26', is_current: false, is_fro
 beforeEach(() => {
   mocks.mayChangeSettings = true;
   mocks.years = [OPEN, FROZEN];
+  mocks.ledgerSettings = { accounting_start_date: null, earliest_financial_year_start: '2025-04-01', earliest_entry_date: null };
 });
 afterEach(() => vi.clearAllMocks());
 
@@ -108,5 +116,29 @@ describe('yearEndSummary', () => {
     expect(yearEndSummary({ financial_year: OPEN, closing_entry_id: 'je-3', surplus: 100 })).toBe(
       'Surplus ₹100 moved to Retained Earnings (Current).',
     );
+  });
+});
+
+describe('FinancialYearsCard — Accounting start date (GL-19)', () => {
+  it('lets a community admin set it', () => {
+    render(<FinancialYearsCard />);
+    const input = screen.getByLabelText('Accounting start date') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '2025-04-01' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(mocks.saveStart).toHaveBeenCalledWith('2025-04-01', expect.anything());
+  });
+
+  it('shows it read-only to anyone else', () => {
+    mocks.mayChangeSettings = false;
+    mocks.ledgerSettings = { accounting_start_date: '2025-04-01', earliest_financial_year_start: '2025-04-01', earliest_entry_date: null };
+    render(<FinancialYearsCard />);
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+    expect(screen.getByText('01 Apr 2025')).toBeTruthy();
+  });
+
+  it('says when the server does not have it yet', () => {
+    mocks.ledgerSettings = null;
+    render(<FinancialYearsCard />);
+    expect(screen.getByText(/not available yet/)).toBeTruthy();
   });
 });
