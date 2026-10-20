@@ -245,7 +245,8 @@ describe('visibleMenu', () => {
     const menu = visibleMenu(classicMenu, EVERYONE);
     expect(find(menu, 'gate.move')).toBeUndefined();
     expect(find(menu, 'gate.reports')?.href).toBe('/gate/reports');
-    expect(find(menu, 'rules')).toBeUndefined();
+    expect(find(menu, 'rules.open')).toBeUndefined();
+    expect(find(menu, 'rules.setup.categories')?.href).toBe('/violations/setup/categories');
     expect(find(menu, 'forms')).toBeUndefined();
     expect(find(menu, 'helpdesk.open')?.href).toBe('/helpdesk/open');
   });

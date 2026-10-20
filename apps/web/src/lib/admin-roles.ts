@@ -132,6 +132,8 @@ export const SUPERVISOR_SIDEBAR_ALLOWLIST: Record<string, Set<string>> = {
     'Member Directory',
     'Tickets',
     'Announcements',
+    // RULE-* — office holders read the violations and approve when named.
+    'Rules & Violations',
     'CCTV',
     'Documents',
     'Approvals',
@@ -148,6 +150,7 @@ export const SUPERVISOR_SIDEBAR_ALLOWLIST: Record<string, Set<string>> = {
     'Amenities',
     'Tickets',
     'Announcements',
+    'Rules & Violations',
     // No 'Assets': no asset route admits a facility supervisor (ASSET-04).
     'Documents',
     'Gate',

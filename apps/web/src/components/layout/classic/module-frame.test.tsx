@@ -117,7 +117,12 @@ describe('screen finder', () => {
   });
 
   it('never offers a planned screen', () => {
-    expect(matchScreens(entries, 'violations')).toEqual([]);
+    const planned = (nodes: typeof classicMenu): string[] =>
+      nodes.flatMap((node) => [...(node.planned ? [node.id] : []), ...planned([...(node.children ?? []), ...(node.tabs ?? [])])]);
+    const plannedIds = new Set(planned(classicMenu));
+
+    expect(plannedIds.size).toBeGreaterThan(0);
+    expect(entries.filter((entry) => plannedIds.has(entry.id))).toEqual([]);
   });
 
   it('returns nothing for an empty query', () => {

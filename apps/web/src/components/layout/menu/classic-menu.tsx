@@ -629,10 +629,22 @@ export const classicMenu: MenuNode[] = [
     id: 'rules',
     label: 'Community Rules & Violations',
     icon: icon(Gavel),
+    // RULE-02: the category form is a page (SB-07).
+    forms: [
+      { label: 'Create Category', path: '/violations/setup/categories/new' },
+      { label: 'Edit Category', path: '/violations/setup/categories/:id' },
+    ],
     children: [
-      planned('rules.setup', 'Rules & Violations Set Up', 'RULE-02'),
-      planned('rules.open', 'Open Violations', 'RULE-03'),
-      planned('rules.closed', 'Closed Violations', 'RULE-03'),
+      {
+        id: 'rules.setup',
+        label: 'Rules & Violations Set Up',
+        tabs: [
+          planned('rules.setup.approvers', 'Approvers Set Up', 'RULE-05'),
+          { id: 'rules.setup.categories', label: 'Category Set Up', href: '/violations/setup/categories', logs: ['violation_category'] },
+        ],
+      },
+      planned('rules.open', 'Open Violations', 'RULE-05'),
+      planned('rules.closed', 'Closed Violations', 'RULE-05'),
     ],
   },
   {
