@@ -2,7 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ShowLogsButton } from '@/components/show-logs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import { memberFormValues, memberTags } from '../../units/components/member-form
 import { unitLabel } from '../components/register-presets';
 import { AgreementBlock } from './agreement-block';
 import { SocietyFieldsBlock } from './society-fields-block';
+import { StartMoveOutDialog } from '../noc/start-move-out-dialog';
 
 const TYPES: Record<string, string> = { owner: 'Owner', tenant: 'Tenant', owner_family: 'Owner Family', tenant_family: 'Tenant Family' };
 const STATUS: Record<string, string> = { active: 'Active', never: 'Never logged in', no_account: 'No account' };
@@ -77,6 +78,9 @@ function RecordBody({ record, readOnly }: { record: ResidentRecord; readOnly: bo
   const { member } = record;
   const locked = readOnly || !member.is_current;
   const close = () => router.back();
+  // MOVE-16 — a current owner or tenant can be moved out with the NOC steps.
+  const [startingMoveOut, setStartingMoveOut] = useState(false);
+  const leaving = member.member_type === 'owner' || member.member_type === 'tenant' ? member.member_type : null;
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -85,6 +89,11 @@ function RecordBody({ record, readOnly }: { record: ResidentRecord; readOnly: bo
         </h2>
         <div className="flex flex-wrap gap-2">
           <ShowLogsButton recordTypes={['member']} recordId={member.id} />
+          {member.is_current && !readOnly && leaving && (
+            <Button type="button" variant="outline" onClick={() => setStartingMoveOut(true)}>
+              Start Move-Out
+            </Button>
+          )}
           {member.is_current && !readOnly && (
             <Button type="button" variant="outline" onClick={() => window.confirm('Deactivate (move out) this resident today?') && actions.deactivate()}>
               Deactivate
@@ -110,6 +119,13 @@ function RecordBody({ record, readOnly }: { record: ResidentRecord; readOnly: bo
         <MemberForm mode="page" initial={memberFormValues(member)} saving={actions.saving} onClose={close} onSave={actions.save} />
       )}
       <SocietyFieldsBlock memberId={member.id} readOnly={locked} />
+      {leaving && (
+        <StartMoveOutDialog
+          open={startingMoveOut}
+          onClose={() => setStartingMoveOut(false)}
+          preset={{ unitId: record.unit.id, unitLabel: unitLabel(record.unit), memberId: member.id, memberName: member.name ?? 'Resident', memberType: leaving }}
+        />
+      )}
       {member.member_type === 'tenant' && (
         <Card>
           <CardContent className="space-y-2 pt-6">

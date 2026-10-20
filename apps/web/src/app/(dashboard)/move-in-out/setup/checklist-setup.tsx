@@ -10,6 +10,7 @@ import { friendlyError } from '@/lib/api-error';
 import { currentRole } from '@/lib/current-role';
 import { NOT_AVAILABLE } from '../shared/move-in-cells';
 import { ChecklistGrid, checklistLabelError } from './checklist-grid';
+import { NocEmailSwitch } from './noc-email-switch';
 
 // PUT /tenant-lifecycle/checklists/:phase.
 const SAVE_ROLES = new Set(['super_admin', 'community_admin', 'committee_member']);
@@ -90,6 +91,7 @@ export function ChecklistSetup({ phase }: { phase: ChecklistPhase }): ReactNode 
       {canEdit && <AddEntry phaseLabel={phaseLabel} labels={items.map((item) => item.label)} busy={save.isPending} onAdd={add} />}
       {!canEdit && items.length === 0 && <p className="text-sm text-muted-foreground">No checklist items yet.</p>}
       <ChecklistGrid key={query.dataUpdatedAt} phaseLabel={phaseLabel} items={items} readOnly={!canEdit} isSaving={save.isPending} save={saveRows} />
+      {phase === 'out' && <NocEmailSwitch canEdit={role === 'community_admin' || role === 'super_admin'} />}
     </div>
   );
 }

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({ items: [] as unknown, save: vi.fn(), role: 'co
 
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('@/lib/current-role', () => ({ currentRole: () => mocks.role }));
+vi.mock('./noc-email-switch', () => ({ NocEmailSwitch: () => <p>NOC e-mail switch</p> }));
 vi.mock('@/hooks/use-move-checklists', () => ({
   useChecklistItems: () => ({ data: mocks.items, isLoading: false, isError: false, dataUpdatedAt: 1 }),
   useSaveChecklistItems: () => ({ mutateAsync: mocks.save, isPending: false }),
@@ -89,5 +90,14 @@ describe('Setup › Move In / Move Out CheckList', () => {
     const row = (key: string, label: string, id?: string) => ({ key, id, values: { label, is_enabled: true }, inactive: false });
     expect(validateChecklist([row('a', 'Keys', 'i-1'), row('b', 'KEYS', 'i-2'), row('c', '')])).toEqual({ b: '"KEYS" is already in the list.' });
     expect(validateChecklist([row('a', ' ', 'i-1')])).toEqual({ a: 'A checklist item is 1 to 200 characters.' });
+  });
+
+  it('offers the NOC e-mail switch on the move-out list only (MOVE-17)', () => {
+    mocks.items = ITEMS;
+    const { unmount } = render(<ChecklistSetup phase="out" />);
+    expect(screen.getByText('NOC e-mail switch')).toBeTruthy();
+    unmount();
+    render(<ChecklistSetup phase="in" />);
+    expect(screen.queryByText('NOC e-mail switch')).toBeNull();
   });
 });

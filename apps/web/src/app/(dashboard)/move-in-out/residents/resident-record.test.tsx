@@ -33,6 +33,10 @@ vi.mock('@/hooks/use-unit-members', () => ({
   useReactivateMember: () => ({ mutate: mocks.reactivate }),
 }));
 vi.mock('@/hooks/use-units', () => ({ useRemoveMember: () => ({ mutate: mocks.remove }) }));
+vi.mock('../noc/start-move-out-dialog', () => ({
+  StartMoveOutDialog: ({ open, preset }: { open: boolean; preset?: { memberId: string; memberType: string } }): ReactNode =>
+    open ? <p>Start Move-Out form for {preset?.memberId} ({preset?.memberType})</p> : null,
+}));
 vi.mock('@/hooks/use-resident-fields', () => ({
   useMemberFields: () => ({ isLoading: false, data: mocks.fields, dataUpdatedAt: 1 }),
   useSaveMemberFields: () => ({ mutate: mocks.saveFields, isPending: false }),
@@ -139,5 +143,22 @@ describe('ResidentRecordContent', () => {
     mocks.record = record();
     render(<ResidentRecordContent memberId="m-5" readOnly={false} />);
     expect(screen.queryByRole('heading', { name: 'Society fields' })).toBeNull();
+  });
+
+  it('Start Move-Out opens the move-out form for a current tenant (MOVE-16)', () => {
+    mocks.record = record();
+    render(<ResidentRecordContent memberId="m-5" readOnly={false} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start Move-Out' }));
+    expect(screen.getByText('Start Move-Out form for m-5 (tenant)')).toBeTruthy();
+  });
+
+  it('offers no Start Move-Out on View or for a family member', () => {
+    mocks.record = record({ ...tenant, member_type: 'tenant_family' });
+    const { unmount } = render(<ResidentRecordContent memberId="m-5" readOnly={false} />);
+    expect(screen.queryByRole('button', { name: 'Start Move-Out' })).toBeNull();
+    unmount();
+    mocks.record = record();
+    render(<ResidentRecordContent memberId="m-5" readOnly />);
+    expect(screen.queryByRole('button', { name: 'Start Move-Out' })).toBeNull();
   });
 });
