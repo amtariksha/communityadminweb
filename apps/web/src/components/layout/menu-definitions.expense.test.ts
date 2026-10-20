@@ -45,7 +45,8 @@ describe('classic menu — Expense Tracker', () => {
       '/expense-tracker/purchase-workflow/open',
       '/expense-tracker/purchase-workflow/closed',
     ]);
-    expect(child('expense.by-vendors')?.tabs?.map((tab) => tab.href)).toEqual(['/expense-tracker/by-vendors/subledgers']);
+    // EXP-26 adds Bulk Posting beside SubLedgers.
+    expect(child('expense.by-vendors')?.tabs?.map((tab) => tab.href)).toEqual(['/expense-tracker/by-vendors/subledgers', '/expense-tracker/by-vendors/bulk-posting']);
     expect(child('expense.budget')?.href).toBe('/expense-tracker/budget');
     expect(child('expense.comparison')?.href).toBe('/expense-tracker/expenses-comparison');
   });

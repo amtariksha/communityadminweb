@@ -109,6 +109,9 @@ function BudgetToolbar({ years, shownYear, list, onYearChange, onClone }: Toolba
           <Link href={`/expense-tracker/budget/setup?fy=${shownYear}`} className={buttonVariants()} data-slot="button" data-size="default">
             Setup
           </Link>
+          <Link href={`/expense-tracker/budget/upload?fy=${shownYear}`} className={buttonVariants({ variant: 'outline' })}>
+            Setup via Excel Upload
+          </Link>
           <Button
             type="button"
             variant="outline"

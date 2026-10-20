@@ -314,12 +314,26 @@ export const classicMenu: MenuNode[] = [
             href: '/expense-tracker/by-vendors/subledgers',
             logs: ['vendor_bill', 'vendor_payment', 'vendor_debit_note', 'vendor_allocation', 'vendor', 'purchase'],
           },
-          planned('expense.by-vendors.bulk-posting', 'Bulk Posting', 'EXP-26'),
+          {
+            // EXP-26: the vendor bulk postings (SB-13); each job is a page under it.
+            id: 'expense.by-vendors.bulk-posting',
+            label: 'Bulk Posting',
+            href: '/expense-tracker/by-vendors/bulk-posting',
+            logs: ['import_batch'],
+            forms: [{ label: 'Bulk Posting', path: '/expense-tracker/by-vendors/bulk-posting/:type' }],
+          },
         ],
       },
       { id: 'expense.by-date', label: 'By Date', href: '/expense-tracker/by-date', logs: ['vendor_payment', 'purchase'] },
       // EXP-22: the year's budget per head; its setup grid is a page under it.
-      { id: 'expense.budget', label: 'Budget', href: '/expense-tracker/budget', logs: ['expense_budget'] },
+      {
+        id: 'expense.budget',
+        label: 'Budget',
+        href: '/expense-tracker/budget',
+        logs: ['expense_budget'],
+        // EXP-26
+        forms: [{ label: 'Setup via Excel Upload', path: '/expense-tracker/budget/upload' }],
+      },
       // EXP-25: expense by head for a period, as a pie and a table.
       { id: 'expense.comparison', label: 'Expenses Comparison', href: '/expense-tracker/expenses-comparison' },
       reportsMenuNode('expense', 'REP-04'),
