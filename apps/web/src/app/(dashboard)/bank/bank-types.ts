@@ -4,8 +4,10 @@ export interface BankAccountRow {
   id: string;
   account_name?: string | null;
   bank_name: string;
-  account_number: string;
-  ifsc_code: string;
+  // BANK-14: null on a petty-cash account.
+  account_number: string | null;
+  ifsc_code: string | null;
+  account_kind?: 'bank' | 'petty_cash';
   account_type: string;
   branch: string;
   opening_balance: number;
@@ -53,10 +55,16 @@ export interface FixedDepositRow {
   archive_reason?: string | null;
 }
 
-/** "<bank name> (<last 4 of the account number>)", as Bank & Cash labels a bank (BANK-S2). */
-export function accountLabel(account: Pick<BankAccountRow, 'bank_name' | 'account_number'>): string {
-  const last4 = account.account_number.slice(-4);
+/** "<bank name> (<last 4 of the account number>)" for a bank, its name for petty cash (BANK-S2, BANK-14). */
+export function accountLabel(account: Pick<BankAccountRow, 'bank_name' | 'account_number'> & Partial<Pick<BankAccountRow, 'account_kind' | 'account_name'>>): string {
+  if (account.account_kind === 'petty_cash') return account.account_name ?? 'Petty Cash';
+  const last4 = (account.account_number ?? '').slice(-4);
   return last4 ? `${account.bank_name} (${last4})` : account.bank_name;
+}
+
+/** A bank or cash ledger in an account list: what "Paid from" / receiving pickers offer (BANK-14). */
+export function isMoneyLedgerAccount(account: { is_bank_account?: boolean; code?: string | null; group_name?: string | null }): boolean {
+  return account.is_bank_account === true || account.code === 'cash' || account.group_name === 'Cash-in-Hand';
 }
 
 export function computeDaysToMaturity(maturityDate: string): number {

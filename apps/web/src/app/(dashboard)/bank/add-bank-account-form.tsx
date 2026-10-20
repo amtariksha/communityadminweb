@@ -10,7 +10,10 @@ import { useCreateBankAccount } from '@/hooks';
 import { friendlyError } from '@/lib/api-error';
 
 const IFSC = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-const EMPTY = { bank_name: '', account_number: '', ifsc_code: '', account_type: 'savings', branch: '', opening_balance: '' };
+const EMPTY = {
+  kind: 'bank' as 'bank' | 'petty_cash', account_name: '', bank_name: '', account_number: '', ifsc_code: '', account_type: 'savings', branch: '', opening_balance: '',
+};
+type Draft = typeof EMPTY;
 
 interface AddBankAccountFormProps {
   mode: FormMode;
@@ -21,17 +24,19 @@ interface AddBankAccountFormProps {
 
 /**
  * Add Bank Account (SB-07): the standard dialog, or Bank & Cash Accounts ›
- * Add account as a page in classic (BANK-S11; petty cash is BANK-14). The
- * opening balance is posted as an opening-balance entry (BANK-03).
+ * Add account as a page in classic (BANK-S11). The first field chooses Bank
+ * or Petty Cash (BANK-14): petty cash needs only a name. The opening balance
+ * is posted as an opening-balance entry (BANK-03).
  */
 export function AddBankAccountForm({ mode, open, onClose, onSaved }: AddBankAccountFormProps): ReactNode {
   const { addToast } = useToast();
   const createAccount = useCreateBankAccount();
   const [draft, setDraft] = useState(EMPTY);
   const [error, setError] = useState<string | null>(null);
-  const set = (patch: Partial<typeof EMPTY>) => setDraft((current) => ({ ...current, ...patch }));
+  const set = (patch: Partial<Draft>) => setDraft((current) => ({ ...current, ...patch }));
 
   function save(): void {
+    if (draft.kind === 'petty_cash') return savePettyCash();
     if (!draft.bank_name.trim() || !draft.account_number.trim() || !draft.branch.trim()) {
       setError('Enter the bank name, account number and branch.');
       return;
@@ -63,6 +68,27 @@ export function AddBankAccountForm({ mode, open, onClose, onSaved }: AddBankAcco
     );
   }
 
+  function savePettyCash(): void {
+    if (!draft.account_name.trim()) {
+      setError('Enter the account name.');
+      return;
+    }
+    setError(null);
+    createAccount.mutate(
+      { account_kind: 'petty_cash', account_name: draft.account_name.trim(), opening_balance: draft.opening_balance ? Number(draft.opening_balance) : undefined },
+      {
+        onSuccess() {
+          setDraft(EMPTY);
+          addToast({ title: 'Petty cash account added', variant: 'success' });
+          onSaved();
+        },
+        onError(failure) {
+          setError(friendlyError(failure));
+        },
+      },
+    );
+  }
+
   return (
     <FormFrame
       mode={mode}
@@ -76,6 +102,48 @@ export function AddBankAccountForm({ mode, open, onClose, onSaved }: AddBankAcco
       savingLabel="Adding…"
     >
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      <KindChoice kind={draft.kind} onChange={(kind) => set({ kind })} />
+      {draft.kind === 'petty_cash' ? (
+        <div className="space-y-2">
+          <Label htmlFor="acct-name">Account name</Label>
+          <Input id="acct-name" required maxLength={255} placeholder="e.g., Office Petty Cash" value={draft.account_name} onChange={(e) => set({ account_name: e.target.value })} />
+        </div>
+      ) : (
+        <BankFields draft={draft} set={set} />
+      )}
+      <div className="space-y-2">
+        <Label htmlFor="acct-opening-balance">Opening Balance</Label>
+        <Input
+          id="acct-opening-balance"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0.00"
+          value={draft.opening_balance}
+          onChange={(e) => set({ opening_balance: e.target.value })}
+        />
+      </div>
+    </FormFrame>
+  );
+}
+
+function KindChoice({ kind, onChange }: { kind: Draft['kind']; onChange: (kind: Draft['kind']) => void }): ReactNode {
+  return (
+    <fieldset className="flex gap-4 text-sm">
+      <legend className="mb-1 font-medium">Kind</legend>
+      <label className="flex items-center gap-2">
+        <input type="radio" name="acct-kind" checked={kind === 'bank'} onChange={() => onChange('bank')} /> Bank
+      </label>
+      <label className="flex items-center gap-2">
+        <input type="radio" name="acct-kind" checked={kind === 'petty_cash'} onChange={() => onChange('petty_cash')} /> Petty Cash
+      </label>
+    </fieldset>
+  );
+}
+
+function BankFields({ draft, set }: { draft: Draft; set: (patch: Partial<Draft>) => void }): ReactNode {
+  return (
+    <>
       <div className="space-y-2">
         <Label htmlFor="acct-bank-name">Bank Name</Label>
         <Input id="acct-bank-name" required placeholder="e.g., State Bank of India" value={draft.bank_name} onChange={(e) => set({ bank_name: e.target.value })} />
@@ -111,18 +179,6 @@ export function AddBankAccountForm({ mode, open, onClose, onSaved }: AddBankAcco
           <Input id="acct-branch" required placeholder="Branch name" value={draft.branch} onChange={(e) => set({ branch: e.target.value })} />
         </div>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="acct-opening-balance">Opening Balance</Label>
-        <Input
-          id="acct-opening-balance"
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="0.00"
-          value={draft.opening_balance}
-          onChange={(e) => set({ opening_balance: e.target.value })}
-        />
-      </div>
-    </FormFrame>
+    </>
   );
 }

@@ -26,11 +26,14 @@ function Tile({ account, onEdit }: { account: BankAccountRow; onEdit?: () => voi
             <dt className="text-muted-foreground">Book</dt>
             <dd className="font-semibold">{formatCurrency(book)}</dd>
           </div>
-          <div>
-            <dt className="text-muted-foreground">Bank</dt>
-            {/* An API older than BANK-08 sends no bank balance. */}
-            <dd className="font-semibold">{account.bank_balance === undefined ? '—' : formatCurrency(account.bank_balance)}</dd>
-          </div>
+          {/* BANK-14: petty cash has no bank statement, so Book only. */}
+          {account.account_kind !== 'petty_cash' && (
+            <div>
+              <dt className="text-muted-foreground">Bank</dt>
+              {/* An API older than BANK-08 sends no bank balance. */}
+              <dd className="font-semibold">{account.bank_balance === undefined ? '—' : formatCurrency(account.bank_balance)}</dd>
+            </div>
+          )}
         </dl>
       </CardContent>
     </Card>

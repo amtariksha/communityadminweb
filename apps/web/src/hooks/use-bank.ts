@@ -82,6 +82,13 @@ interface CreateBankAccountInput {
   is_primary?: boolean;
 }
 
+/** BANK-14: a petty-cash account has a name and no numbers. */
+export interface CreatePettyCashInput {
+  account_kind: 'petty_cash';
+  account_name: string;
+  opening_balance?: number;
+}
+
 interface UpdateBankAccountInput extends Partial<CreateBankAccountInput> {
   is_active?: boolean;
 }
@@ -196,7 +203,7 @@ export function useCreateBankAccount() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: function createBankAccount(input: CreateBankAccountInput) {
+    mutationFn: function createBankAccount(input: CreateBankAccountInput | CreatePettyCashInput) {
       return api.post<{ data: BankAccount }>('/bank/accounts', input);
     },
     onSuccess: function invalidate() {

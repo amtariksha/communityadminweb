@@ -143,7 +143,8 @@ function InstrumentFields({ form, set, errors, instrumentDate }: { form: Collect
 /** The active bank and cash ledgers; empty = the default ledger for the mode. */
 export function BankAccountSelect({ id, value, onChange }: { id: string; value: string; onChange: (accountId: string) => void }): ReactNode {
   const accounts = (useLedgerAccounts({ account_type: 'asset', limit: 100 }).data?.data ?? []).filter(
-    (account) => account.is_bank_account || account.code === 'cash',
+    // Banks, Cash in Hand and petty-cash accounts (BANK-14: under Cash-in-Hand).
+    (account) => account.is_bank_account || account.code === 'cash' || (account as { group_name?: string }).group_name === 'Cash-in-Hand',
   );
   return (
     <Select id={id} value={value} onChange={(e) => onChange(e.target.value)}>

@@ -27,7 +27,7 @@ export function EditBankAccountDialog({ account, onClose }: { account: BankAccou
   const [shown, setShown] = useState<string | null>(null);
   if (account && shown !== account.id) {
     setShown(account.id);
-    setDraft({ bank_name: account.bank_name, branch: account.branch ?? '', ifsc_code: account.ifsc_code });
+    setDraft({ bank_name: account.bank_name, branch: account.branch ?? '', ifsc_code: account.ifsc_code ?? '' });
   }
 
   function submit(event: FormEvent): void {

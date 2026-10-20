@@ -41,7 +41,10 @@ function useLedgerChoices(): { paidFrom: LedgerChoice[]; writeOff: LedgerChoice[
     const label = (a: { code: string; name: string }): string => (a.code ? `${a.code} ${a.name}` : a.name);
     const discountFirst = [...income].sort((a, b) => Number(/discount received/i.test(b.name)) - Number(/discount received/i.test(a.name)));
     return {
-      paidFrom: assets.filter((a) => a.is_bank_account || a.code === 'cash').map((a) => ({ id: a.id, label: label(a) })),
+      // Banks, Cash in Hand and petty-cash accounts (BANK-14: under Cash-in-Hand).
+      paidFrom: assets
+        .filter((a) => a.is_bank_account || a.code === 'cash' || (a as { group_name?: string }).group_name === 'Cash-in-Hand')
+        .map((a) => ({ id: a.id, label: label(a) })),
       writeOff: discountFirst.map((a) => ({ id: a.id, label: label(a) })),
     };
   }, [assets, income]);

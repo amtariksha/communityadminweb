@@ -124,7 +124,9 @@ export function InlineTransferRow({ accounts, onDone }: { accounts: readonly Ban
 export function TransferDialog({ open, onOpenChange, accounts }: { open: boolean; onOpenChange: (open: boolean) => void; accounts: readonly BankAccountRow[] }): ReactNode {
   // Today's dialog: no date until one is picked, accounts named in full.
   const { draft, set, submit, pending } = useTransferDraft(() => onOpenChange(false), '');
-  const fullName = (account: BankAccountRow) => `${account.bank_name} - ${account.account_number}`;
+  // BANK-14: a petty-cash account has no number; it shows by its name.
+  const fullName = (account: BankAccountRow) =>
+    account.account_kind === 'petty_cash' ? accountLabel(account) : `${account.bank_name} - ${account.account_number}`;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>

@@ -30,7 +30,7 @@ import { todayIST } from '@/lib/date';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 interface ReconciliationTabProps {
-  accounts: ReadonlyArray<{ id: string; bank_name: string; account_number: string }>;
+  accounts: ReadonlyArray<{ id: string; bank_name: string; account_number: string | null }>;
 }
 
 type LineFilter = 'all' | 'unreconciled' | 'reconciled';
