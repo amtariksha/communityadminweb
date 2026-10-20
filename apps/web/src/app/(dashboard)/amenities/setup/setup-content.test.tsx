@@ -26,6 +26,8 @@ vi.mock('@/hooks', () => ({
   }),
 }));
 
+vi.mock('./notifications-card', () => ({ NotificationsCard: () => <p>Notification switches</p> }));
+
 const rowsOf = (name: string) => within(screen.getByRole('table', { name })).getAllByRole('row').slice(1);
 
 describe('SetupContent', () => {

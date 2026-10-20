@@ -8,6 +8,7 @@ import { useAmenities, type Amenity } from '@/hooks';
 import { formatCurrency } from '@/lib/utils';
 import { formatAmenityType, formatPricingType } from '../amenity-labels';
 import { plainText } from '../amenity-text';
+import { NotificationsCard } from './notifications-card';
 
 type SetupStatus = 'active' | 'inactive';
 
@@ -83,7 +84,8 @@ function AmenitySection({ status, amenities, loading }: { status: SetupStatus; a
 /**
  * Amenity & Event › Setup › Amenity (AMEN-10, screen AMEN-S1): active and
  * inactive amenities in their own sections; Add Amenity and Edit open the
- * amenity form as a page, with the account its invoices credit (AMEN-21).
+ * amenity form as a page, with the account its invoices credit (AMEN-21);
+ * then Setup Notifications (AMEN-45).
  */
 export function SetupContent(): ReactNode {
   const amenitiesQuery = useAmenities();
@@ -97,6 +99,10 @@ export function SetupContent(): ReactNode {
       </div>
       <AmenitySection status="active" amenities={amenities} loading={amenitiesQuery.isLoading} />
       <AmenitySection status="inactive" amenities={amenities} loading={amenitiesQuery.isLoading} />
+      <section aria-label="Setup Notifications" className="space-y-2">
+        <h3 className="text-base font-semibold">Setup Notifications</h3>
+        <NotificationsCard />
+      </section>
     </div>
   );
 }
