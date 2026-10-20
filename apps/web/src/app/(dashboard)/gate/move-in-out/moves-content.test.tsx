@@ -7,7 +7,10 @@ import { MovesContent, defaultMoveWindow } from './moves-content';
 vi.mock('@/components/ui/select', () => ({
   Select: ({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) => <select {...props}>{children}</select>,
 }));
-vi.mock('@/lib/date', () => ({ todayIST: () => '2026-10-20' }));
+vi.mock('@/lib/date', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/date')>()),
+  todayIST: () => '2026-10-20',
+}));
 vi.mock('@/lib/api', () => ({ api: { download: vi.fn() } }));
 vi.mock('@/hooks/use-unit-blocks', () => ({ useUnitBlocks: () => ({ data: undefined }) }));
 const moves = vi.hoisted(() => ({ hook: vi.fn() }));

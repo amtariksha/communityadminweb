@@ -61,6 +61,7 @@ import {
 } from '@/hooks';
 import { formatDate } from '@/lib/utils';
 import { EmergencyContactDialog } from './emergency-contact-dialog';
+import { addDays, todayIST } from '@/lib/date';
 
 type DirectoryTab = 'businesses' | 'emergency' | 'offers' | 'club';
 
@@ -127,7 +128,7 @@ export function DirectoryContent() {
     merchant_name: '',
     promo_code: '',
     discount_description: '',
-    valid_until: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+    valid_until: addDays(todayIST(), 30),
     terms: '',
   });
 

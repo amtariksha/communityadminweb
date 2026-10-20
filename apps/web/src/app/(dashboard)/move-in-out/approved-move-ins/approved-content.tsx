@@ -3,7 +3,7 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { moveInParams, useMoveIns, type MoveIn, type MoveInFilters } from '@/hooks/use-move-ins';
-import { todayIST } from '@/lib/date';
+import { addDays, todayIST } from '@/lib/date';
 import { indiaDate } from '@/lib/india-time';
 import { DayRangeFilter, type DayRange } from '@/components/day-range-filter';
 import { MOVE_IN_PAGE_SIZES, NOT_AVAILABLE, memberTypeLabel } from '../shared/move-in-cells';
@@ -21,9 +21,7 @@ const COLUMNS: DataTableColumn<MoveIn>[] = [
 
 /** The last 90 days, India days (MOVE-S7's default). */
 export function last90Days(today: string = todayIST()): DayRange {
-  const from = new Date(`${today}T00:00:00Z`);
-  from.setUTCDate(from.getUTCDate() - 90);
-  return { from: from.toISOString().slice(0, 10), to: today };
+  return { from: addDays(today, -90), to: today };
 }
 
 /**

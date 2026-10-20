@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Droplets, Flame, Zap } from 'lucide-react';
+import { todayIST } from '@/lib/date';
 
 export const METER_TYPES = ['water', 'electricity', 'gas'] as const;
 
@@ -34,5 +35,5 @@ export function billStatusVariant(status: string): 'warning' | 'success' | 'seco
 }
 
 export function today(): string {
-  return new Date().toISOString().split('T')[0];
+  return todayIST();
 }

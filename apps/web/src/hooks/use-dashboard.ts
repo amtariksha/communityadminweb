@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { currentFinancialYear } from '@/lib/date';
+import { currentFinancialYear, todayIST } from '@/lib/date';
 
 // ---------------------------------------------------------------------------
 // Response types
@@ -96,7 +96,7 @@ export function useDashboardData() {
     queryKey: dashboardKeys.data(),
     queryFn: async function fetchDashboardData(): Promise<DashboardData> {
       const { start_date, end_date } = currentFinancialYear();
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayIST();
 
       // QA #58 / #59 / #244 — the dashboard KPIs used to read:
       //   Total Income  = receipt_summary.total_collected (an object key

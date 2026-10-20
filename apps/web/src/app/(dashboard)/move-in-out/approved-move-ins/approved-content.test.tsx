@@ -8,7 +8,10 @@ import { ApprovedContent, last90Days } from './approved-content';
 vi.mock('next/link', () => ({
   default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
 }));
-vi.mock('@/lib/date', () => ({ todayIST: () => '2026-10-19' }));
+vi.mock('@/lib/date', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/date')>()),
+  todayIST: () => '2026-10-19',
+}));
 const download = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/api', () => ({ api: { download } }));
 vi.mock('@/lib/download', () => ({ saveBlob: vi.fn(), printHtml: vi.fn() }));

@@ -101,6 +101,7 @@ import { useAdminLayout } from '@/lib/layout-context';
 import { UnitBlockLinks } from '@/components/block-links';
 import { useOpenUnitParam } from './use-unit-param';
 import type { UserSearchHit } from '@/hooks/use-user-search';
+import { addDays, addMonths, todayIST } from '@/lib/date';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -920,10 +921,8 @@ export default function UnitsContent(): ReactNode {
       });
       return;
     }
-    const proposed = new Date(activeOnboarding.lease_end_date);
-    proposed.setDate(proposed.getDate() + 90);
     setExtendOnboardingId(activeOnboarding.id);
-    setExtendNewEndDate(proposed.toISOString().slice(0, 10));
+    setExtendNewEndDate(addDays(activeOnboarding.lease_end_date, 90));
     setExtendReason('');
     setExtendLeaseOpen(true);
   }
@@ -990,11 +989,9 @@ export default function UnitsContent(): ReactNode {
     setOnboardEmail('');
     // Sensible defaults: lease starts today, 11-month term (the
     // standard Indian rental tenancy length).
-    const today = new Date();
-    const elevenMonths = new Date(today);
-    elevenMonths.setMonth(elevenMonths.getMonth() + 11);
-    setOnboardLeaseStart(today.toISOString().slice(0, 10));
-    setOnboardLeaseEnd(elevenMonths.toISOString().slice(0, 10));
+    const today = todayIST();
+    setOnboardLeaseStart(today);
+    setOnboardLeaseEnd(addMonths(today, 11));
     setOnboardMonthlyRent('');
     setOnboardSecurityDeposit('');
     // FeatPlan #OW-1 — defaults match the backend CHECK + DEFAULT
@@ -1329,7 +1326,7 @@ export default function UnitsContent(): ReactNode {
           <>
             <ExportButton
               data={units as unknown as Record<string, unknown>[]}
-              filename={`units-${new Date().toISOString().split('T')[0]}`}
+              filename={`units-${todayIST()}`}
               columns={[
                 { key: 'unit_number', label: 'Unit #' },
                 { key: 'block', label: 'Block' },

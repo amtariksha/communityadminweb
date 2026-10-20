@@ -52,6 +52,7 @@ import type { ApprovalRequest } from '@/hooks';
 import { REQUEST_TYPE_OPTIONS, formatRequestType } from './request-types';
 import { MoveChecklist } from './move-checklist';
 import { incompleteChecklistMessage } from '@/components/move-checklist';
+import { todayIST } from '@/lib/date';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -263,7 +264,7 @@ export default function ApprovalsContent(): ReactNode {
         actions={
           <ExportButton
             data={approvals as unknown as Record<string, unknown>[]}
-            filename={`approvals-${new Date().toISOString().split('T')[0]}`}
+            filename={`approvals-${todayIST()}`}
             columns={[
               { key: 'request_type', label: 'Type' },
               { key: 'title', label: 'Title' },

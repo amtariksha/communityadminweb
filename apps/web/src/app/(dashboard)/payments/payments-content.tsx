@@ -52,6 +52,7 @@ import {
 } from '@/hooks';
 import type { Payment } from '@/hooks';
 import { AutopayTab } from './autopay-tab';
+import { todayIST } from '@/lib/date';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -75,10 +76,8 @@ function getStatusBadgeVariant(
 }
 
 function getDateRange(): { startDate: string; endDate: string } {
-  const now = new Date();
-  const endDate = now.toISOString().split('T')[0];
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startDate = start.toISOString().split('T')[0];
+  const endDate = todayIST();
+  const startDate = `${endDate.slice(0, 8)}01`;
   return { startDate, endDate };
 }
 
@@ -235,7 +234,7 @@ export default function PaymentsContent(): ReactNode {
               </Button>
               <ExportButton
                 data={payments as unknown as Record<string, unknown>[]}
-                filename={`payments-${new Date().toISOString().split('T')[0]}`}
+                filename={`payments-${todayIST()}`}
                 columns={[
                   { key: 'order_id', label: 'Order ID' },
                   { key: 'unit_number', label: 'Unit' },

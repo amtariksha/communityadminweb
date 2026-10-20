@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { utcDay } from './date';
 
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
@@ -100,8 +101,7 @@ export function financialDateBounds(now = new Date()): {
   const min = `${prevFyStartYear}-04-01`;
 
   // Last day of next month.
-  const nextMonthEnd = new Date(year, month + 2, 0);
-  const max = nextMonthEnd.toISOString().slice(0, 10);
+  const max = utcDay(new Date(Date.UTC(year, month + 2, 0)));
 
   return { min, max };
 }

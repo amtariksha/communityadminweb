@@ -14,6 +14,7 @@ import type { EscalationRow, EscalationRowInput } from '@/hooks';
 import { EXPORT_COLUMNS, EscalationMatrix, toExportRows } from './escalation-matrix';
 import { EscalationRowEditor } from './escalation-row-editor';
 import { SetupLinks } from '../setup/setup-links';
+import { todayIST } from '@/lib/date';
 
 // Roles the API lets save a row; everyone else who can open the page views it.
 const SAVE_ROLES = new Set(['super_admin', 'community_admin']);
@@ -53,7 +54,7 @@ export default function EscalationContent(): ReactNode {
           <ExportButton
             label="Export Escalation Matrix to Excel"
             data={toExportRows(rows)}
-            filename={`escalation-matrix-${new Date().toISOString().split('T')[0]}`}
+            filename={`escalation-matrix-${todayIST()}`}
             columns={[...EXPORT_COLUMNS]}
           />
         }

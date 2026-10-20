@@ -70,6 +70,7 @@ import {
   NOTIFICATION_CATEGORIES,
   type NotificationCategory,
 } from '@communityos/shared';
+import { todayIST } from '@/lib/date';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -377,7 +378,7 @@ export default function NotificationsContent(): ReactNode {
           activeTab === 'compose' ? (
             <ExportButton
               data={templates as unknown as Record<string, unknown>[]}
-              filename={`notifications-${new Date().toISOString().split('T')[0]}`}
+              filename={`notifications-${todayIST()}`}
               columns={[
                 { key: 'title', label: 'Title' },
                 { key: 'channel', label: 'Channel' },

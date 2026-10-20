@@ -56,6 +56,7 @@ import { formatDate } from '@/lib/utils';
 import { MeetingForm } from './meetings/meeting-form';
 import { MeetingMinutesForm } from './meetings/meeting-minutes-form';
 import { AddTaskDialog } from './tasks/add-task-dialog';
+import { addDays, todayIST } from '@/lib/date';
 
 export function GovernanceContent() {
   const { addToast: toast } = useToast();
@@ -88,7 +89,7 @@ export function GovernanceContent() {
   const [taskForm, setTaskForm] = useState({
     title: '',
     description: '',
-    due_date: new Date().toISOString().split('T')[0],
+    due_date: todayIST(),
     status: 'pending' as 'pending' | 'in_progress' | 'completed',
   });
   // mom_tasks.assignee_id is a FK to users(id), so the assignee is picked
@@ -133,7 +134,7 @@ export function GovernanceContent() {
     setTaskForm({
       title: '',
       description: '',
-      due_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+      due_date: addDays(todayIST(), 7),
       status: 'pending',
     });
     setTaskAssignee(null);

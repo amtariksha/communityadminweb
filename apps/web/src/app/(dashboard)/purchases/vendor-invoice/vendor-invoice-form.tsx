@@ -31,6 +31,7 @@ import { useInvoiceScan } from './use-invoice-scan';
 import { InvoiceEntriesPanel, InvoiceTdsBlock } from './invoice-side-panels';
 import { useConvertRequestToInvoice, useRequestPrefill } from './from-request';
 import { useBillPrefill, useEditVendorInvoice } from './edit-bill';
+import { todayIST } from '@/lib/date';
 
 export interface VendorInvoiceFormProps {
   mode: FormMode;
@@ -45,7 +46,7 @@ export interface VendorInvoiceFormProps {
   onSaved: (bill: PostedVendorInvoice) => void;
 }
 
-const today = (): string => new Date().toISOString().slice(0, 10);
+const today = (): string => todayIST();
 
 function blankHeader(vendorId = '', creditDays: number): InvoiceHeader {
   const date = today();

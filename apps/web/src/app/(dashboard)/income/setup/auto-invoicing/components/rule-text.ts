@@ -1,4 +1,5 @@
 import type { RuleLine } from '@/hooks/use-billing-rules';
+import { addDays } from '@/lib/date';
 
 const rupees = (value: number, minDecimals: number, maxDecimals: number): string =>
   `₹${value.toLocaleString('en-IN', { minimumFractionDigits: minDecimals, maximumFractionDigits: maxDecimals })}`;
@@ -32,7 +33,5 @@ export function gstRatesFor(effectiveFrom: string): number[] {
 
 /** The day before a date (YYYY-MM-DD), as the API closes a revised version. */
 export function dayBefore(iso: string): string {
-  const date = new Date(`${iso}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() - 1);
-  return date.toISOString().slice(0, 10);
+  return addDays(iso, -1);
 }

@@ -1,18 +1,34 @@
 /**
- * Date helpers for financial posting-date defaults.
+ * Date helpers for date inputs and their defaults.
  *
- * `new Date().toISOString().slice(0, 10)` yields a UTC date, which for a
- * Bangalore user after ~18:30 IST rolls forward to *tomorrow* (or, before
- * 05:30 IST, could resolve to yesterday relative to their wall clock). For
- * financial documents (journal entries, receipts, debit notes, invoices) the
- * default posting date must match the operator's local (IST) calendar day.
+ * A Date's ISO text is UTC: its first ten characters on `new Date()` are the
+ * UTC day — yesterday in India from 00:00 to 05:30 — and on a Date built at
+ * local midnight (`new Date(y, m, d)`) the day before in India. Days come from
+ * here; `utc-day-guard.test.ts` refuses the pattern anywhere else.
  *
  * `en-CA` formats as `YYYY-MM-DD`, matching the shape of `<input type="date">`.
  */
-export function todayIST(): string {
+export function todayIST(now: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Kolkata',
-  }).format(new Date());
+  }).format(now);
+}
+
+/** `YYYY-MM-DD` of a Date built at UTC midnight (`Date.UTC`): the one place ISO text becomes a day. */
+export function utcDay(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** The day `days` after `day` (before it when negative), both `YYYY-MM-DD`. */
+export function addDays(day: string, days: number): string {
+  const [year, month, date] = day.slice(0, 10).split('-').map(Number);
+  return utcDay(new Date(Date.UTC(year, month - 1, date + days)));
+}
+
+/** The same date `months` later (a short month overflows, as Date#setMonth does). */
+export function addMonths(day: string, months: number): string {
+  const [year, month, date] = day.slice(0, 10).split('-').map(Number);
+  return utcDay(new Date(Date.UTC(year, month - 1 + months, date)));
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calendarDateIST, currentFinancialYear, lastMonthRanges, yearContaining } from './date';
+import { addDays, addMonths, calendarDateIST, currentFinancialYear, lastMonthRanges, todayIST, utcDay, yearContaining } from './date';
 
 describe('lastMonthRanges', () => {
   it('lists whole calendar months, oldest first, ending with the month of today', () => {
@@ -50,5 +50,20 @@ describe('calendarDateIST and yearContaining (GL-09)', () => {
     expect(yearContaining(years, '2026-03-31')?.id).toBe('a');
     expect(yearContaining(years, '2026-04-01')?.id).toBe('b');
     expect(yearContaining(years, '2027-04-01')).toBeUndefined();
+  });
+});
+
+describe('todayIST / utcDay / addDays / addMonths', () => {
+  it('is the India day at 01:00 IST, while UTC is still on the day before', () => {
+    const oneAm = new Date('2026-10-20T01:00:00+05:30');
+    expect(oneAm.toISOString().startsWith('2026-10-19')).toBe(true);
+    expect(todayIST(oneAm)).toBe('2026-10-20');
+  });
+
+  it('adds days and months across month and year ends', () => {
+    expect(addDays('2026-10-20', 30)).toBe('2026-11-19');
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28');
+    expect(addMonths('2026-10-20', 11)).toBe('2027-09-20');
+    expect(utcDay(new Date(Date.UTC(2026, 11, 32)))).toBe('2027-01-01');
   });
 });

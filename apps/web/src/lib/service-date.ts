@@ -1,16 +1,10 @@
-import { todayIST } from './date';
+import { addDays, todayIST } from './date';
 
 /**
  * Preferred Service Date (HELP-16): a calendar day (YYYY-MM-DD) from today
  * in India up to a year ahead, as the API checks it.
  */
 export const MAX_SERVICE_DATE_DAYS = 365;
-
-function addDays(day: string, days: number): string {
-  const date = new Date(`${day}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
 
 /** The `min` / `max` of the date input. */
 export function serviceDateRange(today: string = todayIST()): { min: string; max: string } {

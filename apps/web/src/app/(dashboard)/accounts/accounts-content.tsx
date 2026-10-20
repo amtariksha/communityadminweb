@@ -42,6 +42,7 @@ import {
 } from '@/hooks';
 import type { AccountGroup, LedgerAccount } from '@communityos/shared';
 import { HsnSacField } from './hsn-sac-field';
+import { todayIST } from '@/lib/date';
 
 // ---------------------------------------------------------------------------
 // Main page
@@ -279,7 +280,7 @@ export default function AccountsContent(): ReactNode {
             </Button>
             <ExportButton
               data={accounts as unknown as Record<string, unknown>[]}
-              filename={`accounts-${new Date().toISOString().split('T')[0]}`}
+              filename={`accounts-${todayIST()}`}
               // QA #260 — adds the parent column the Tally / audit
               // committee expect on a COA dump. The backend now ships
               // `parent_group_name` + `parent_group_code` alongside
@@ -305,7 +306,7 @@ export default function AccountsContent(): ReactNode {
               size="sm"
               onClick={() => {
                 downloadHierarchicalCoa(tree, {
-                  filename: `chart-of-accounts-${new Date().toISOString().split('T')[0]}`,
+                  filename: `chart-of-accounts-${todayIST()}`,
                   societyLabel: currentFY?.label
                     ? `Financial Year: ${currentFY.label}`
                     : undefined,

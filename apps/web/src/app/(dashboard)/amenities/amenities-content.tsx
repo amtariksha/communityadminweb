@@ -8,6 +8,7 @@ import { ExportButton } from '@/components/ui/export-button';
 import { useAmenities } from '@/hooks';
 import { AmenitiesTab } from './amenities-tab';
 import { BookingsCalendar } from './calendar/bookings-calendar';
+import { todayIST } from '@/lib/date';
 
 // Kept here for the callers that import it with the page.
 export { AMENITY_TYPES } from './amenity-labels';
@@ -48,7 +49,7 @@ export default function AmenitiesContent(): ReactNode {
           <>
             <ExportButton
               data={allAmenities as unknown as Record<string, unknown>[]}
-              filename={`amenities-${new Date().toISOString().split('T')[0]}`}
+              filename={`amenities-${todayIST()}`}
               columns={EXPORT_COLUMNS}
             />
             {activeTab === 'amenities' && (

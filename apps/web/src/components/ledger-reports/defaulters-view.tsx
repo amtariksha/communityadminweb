@@ -6,6 +6,7 @@ import { ExportButton } from '@/components/ui/export-button';
 import { useDefaulters } from '@/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ReportSkeleton } from './report-skeleton';
+import { todayIST } from '@/lib/date';
 
 export function DefaultersView(): ReactNode {
   const { data, isLoading } = useDefaulters();
@@ -37,7 +38,7 @@ export function DefaultersView(): ReactNode {
           </p>
           <ExportButton
             data={data as unknown as Record<string, unknown>[]}
-            filename={`defaulters-${new Date().toISOString().split('T')[0]}`}
+            filename={`defaulters-${todayIST()}`}
             columns={[
               { key: 'unit_number', label: 'Unit' },
               { key: 'block', label: 'Block' },

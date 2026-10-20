@@ -16,6 +16,7 @@ import { useManualMatchRow, useReconciliation } from '@/hooks';
 import type { ReconciliationRow } from '@/hooks/use-bank';
 import { friendlyError } from '@/lib/api-error';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { utcDay } from '@/lib/date';
 
 /** How far either side of the statement row's date to look for the book entry. */
 const SEARCH_DAYS = 10;
@@ -31,7 +32,7 @@ interface StatementRowForMatch {
 const DAY_MS = 86_400_000;
 
 function shiftDate(isoDate: string, days: number): string {
-  return new Date(Date.parse(`${isoDate}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+  return utcDay(new Date(Date.parse(`${isoDate}T00:00:00Z`) + days * DAY_MS));
 }
 
 const dayGap = (a: string, b: string): number =>

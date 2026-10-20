@@ -86,6 +86,7 @@ import { CreditDaysCard } from './vendor-ledger/credit-days-card';
 import { PaymentRegisterContent } from './vendor-ledger/payment-register-content';
 import { VendorPayablesContent } from './vendor-ledger/vendor-payables-content';
 import { BudgetTab } from '@/app/(dashboard)/expense-tracker/budget/budget-view';
+import { todayIST } from '@/lib/date';
 
 // API responses may include joined fields beyond the base shared types
 interface PRRow {
@@ -831,14 +832,14 @@ export default function PurchasesContent(): ReactNode {
       typeof billDateRaw === 'string'
         ? billDateRaw.slice(0, 10)
         : billDateRaw instanceof Date
-          ? billDateRaw.toISOString().slice(0, 10)
+          ? todayIST(billDateRaw)
           : '',
     );
     setEditBillDueDate(
       typeof dueDateRaw === 'string'
         ? dueDateRaw.slice(0, 10)
         : dueDateRaw instanceof Date
-          ? dueDateRaw.toISOString().slice(0, 10)
+          ? todayIST(dueDateRaw)
           : '',
     );
     // Reverse-derive base + rates from the stored amounts. The
@@ -1007,7 +1008,7 @@ export default function PurchasesContent(): ReactNode {
             </Button>
             <ExportButton
               data={[...purchaseRequests, ...bills] as unknown as Record<string, unknown>[]}
-              filename={`purchases-${new Date().toISOString().split('T')[0]}`}
+              filename={`purchases-${todayIST()}`}
               columns={[
                 { key: 'pr_number', label: 'PR #' },
                 { key: 'bill_number', label: 'Bill #' },

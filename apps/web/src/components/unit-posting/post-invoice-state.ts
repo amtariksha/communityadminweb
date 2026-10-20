@@ -1,4 +1,5 @@
 import type { AdhocInvoiceInput, PostingOptions, PostingScope } from '@/hooks/use-unit-posting';
+import { addDays } from '@/lib/date';
 
 /** The Post Invoice form (INC-S18) as typed. */
 export interface PostInvoiceForm {
@@ -37,9 +38,7 @@ export function emptyPostInvoiceForm(today: string): PostInvoiceForm {
 /** Invoice date + `days`, the due date the server uses when none is given. */
 export function defaultDueDate(invoiceDate: string, days: number): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(invoiceDate)) return '';
-  const date = new Date(`${invoiceDate}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
+  return addDays(invoiceDate, days);
 }
 
 const MONEY = /^\d+(\.\d{1,2})?$/;

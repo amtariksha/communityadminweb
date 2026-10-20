@@ -1,5 +1,5 @@
 import type { Staff, StaffGender } from '@/hooks/use-staff';
-import { dateIST, todayIST } from '@/lib/date';
+import { dateIST, todayIST, utcDay } from '@/lib/date';
 
 /**
  * The badge and profile part of Add / Edit Staff (STAFF-20, screen
@@ -46,7 +46,7 @@ export function badgeValidUntil(issuedOn: string, months: number): string | null
   const lastOfTarget = new Date(Date.UTC(year, target + 1, 0)).getUTCDate();
   const end = date > lastOfTarget ? new Date(Date.UTC(year, target + 1, 1)) : new Date(Date.UTC(year, target, date));
   end.setUTCDate(end.getUTCDate() - 1);
-  return end.toISOString().slice(0, 10);
+  return utcDay(end);
 }
 
 /** The validity choice that gives the saved Valid Till, else '' (left alone). */

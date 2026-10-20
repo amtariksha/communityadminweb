@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useVendors } from '@/hooks';
 import { tdsText } from './vendor-form';
+import { todayIST } from '@/lib/date';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -156,7 +157,7 @@ export function VendorList(props: VendorListProps): ReactNode {
               <SearchBar onSearch={(value) => { setSearch(value); setPage(1); }} />
               <ExportButton
                 data={vendors as unknown as Record<string, unknown>[]}
-                filename={`vendors-${new Date().toISOString().split('T')[0]}`}
+                filename={`vendors-${todayIST()}`}
                 columns={[
                   { key: 'name', label: 'Vendor Name' },
                   { key: 'contact_person', label: 'Contact Name' },

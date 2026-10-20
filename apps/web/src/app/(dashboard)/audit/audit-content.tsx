@@ -26,6 +26,7 @@ import { EntityHistoryModal } from './entity-history-modal';
 // QA #358 — human-readable side-by-side diff replaces the raw
 // JSON `<pre>` blocks below.
 import { DiffTable } from './diff-table';
+import { todayIST } from '@/lib/date';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -271,7 +272,7 @@ export default function AuditContent(): ReactNode {
         actions={
           <ExportButton
             data={entries as unknown as Record<string, unknown>[]}
-            filename={`audit-log-${new Date().toISOString().split('T')[0]}`}
+            filename={`audit-log-${todayIST()}`}
             columns={[
               { key: 'created_at', label: 'Timestamp' },
               { key: 'user_name', label: 'User' },

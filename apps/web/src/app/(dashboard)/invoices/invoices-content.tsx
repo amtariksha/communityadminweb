@@ -75,6 +75,7 @@ import {
 } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
 import type { InvoiceStatus, Invoice } from '@communityos/shared';
+import { todayIST } from '@/lib/date';
 
 const INVOICE_SORTS = [
   'invoice_date',
@@ -587,7 +588,7 @@ export default function InvoicesContent(): ReactNode {
             </Button>
             <ExportButton
               data={invoices as unknown as Record<string, unknown>[]}
-              filename={`invoices-${new Date().toISOString().split('T')[0]}`}
+              filename={`invoices-${todayIST()}`}
               columns={[
                 { key: 'invoice_number', label: 'Invoice #' },
                 { key: 'unit_number', label: 'Unit' },

@@ -5,7 +5,7 @@ import { UnitBlockLinks } from '@/components/block-links';
 import { CountedSelect, DataTable, type DataTableColumn } from '@/components/data-table';
 import { DayRangeFilter, type DayRange } from '@/components/day-range-filter';
 import { gateMoveParams, useGateMoves, type GateMove, type GateMoveFilters } from '@/hooks/use-gate-desk';
-import { todayIST } from '@/lib/date';
+import { addDays, todayIST } from '@/lib/date';
 
 const TYPE_OPTIONS = [
   { value: 'move_in', label: 'Move-in' },
@@ -24,9 +24,7 @@ const COLUMNS: DataTableColumn<GateMove>[] = [
 
 /** Today and the next seven days, as `YYYY-MM-DD` India days. */
 export function defaultMoveWindow(today: string = todayIST()): DayRange {
-  const end = new Date(`${today}T00:00:00Z`);
-  end.setUTCDate(end.getUTCDate() + 7);
-  return { from: today, to: end.toISOString().slice(0, 10) };
+  return { from: today, to: addDays(today, 7) };
 }
 
 /**

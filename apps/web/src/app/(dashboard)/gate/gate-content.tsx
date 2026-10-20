@@ -86,6 +86,7 @@ import {
   canMarkCollected,
 } from './gate-lists';
 import { VehiclesTab } from './vehicles-tab';
+import { todayIST } from '@/lib/date';
 
 type TabKey = 'visitors' | 'staff' | 'regulars' | 'parcels' | 'vehicles';
 
@@ -1227,7 +1228,7 @@ export default function GateContent(): ReactNode {
         actions={
           <ExportButton
             data={visitors as unknown as Record<string, unknown>[]}
-            filename={`gate-visitors-${new Date().toISOString().split('T')[0]}`}
+            filename={`gate-visitors-${todayIST()}`}
             columns={[...VISITOR_EXPORT_COLUMNS]}
           />
         }

@@ -6,6 +6,7 @@ import { ExportButton } from '@/components/ui/export-button';
 import { useVendorAging } from '@/hooks';
 import { formatCurrency } from '@/lib/utils';
 import { ReportSkeleton } from './report-skeleton';
+import { todayIST } from '@/lib/date';
 
 export function VendorAgingView(): ReactNode {
   const { data, isLoading } = useVendorAging();
@@ -32,7 +33,7 @@ export function VendorAgingView(): ReactNode {
       <div className="mb-4 flex items-center justify-end">
         <ExportButton
           data={data as unknown as Record<string, unknown>[]}
-          filename={`vendor-aging-${new Date().toISOString().split('T')[0]}`}
+          filename={`vendor-aging-${todayIST()}`}
           columns={[
             { key: 'vendor_name', label: 'Vendor' },
             { key: 'current', label: 'Current' },

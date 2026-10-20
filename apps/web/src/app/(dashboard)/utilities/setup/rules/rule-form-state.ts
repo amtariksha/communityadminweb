@@ -1,4 +1,5 @@
 import type { MeterRule, MeterRuleInput, MeterType } from '@/hooks/use-meter-rules';
+import { addDays } from '@/lib/date';
 
 /** The ten-slab rule form (UTIL-S2) as typed. Blank rows are ignored. */
 export const SLAB_ROWS = 10;
@@ -98,9 +99,7 @@ export function slabRange(slab: { slab_from: string; slab_to: string | null }): 
 
 /** The day after `iso` (YYYY-MM-DD). */
 export function nextDay(iso: string): string {
-  const date = new Date(`${iso}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10);
+  return addDays(iso, 1);
 }
 
 /** A revision starts today, or the day after the version it replaces when that starts later. */

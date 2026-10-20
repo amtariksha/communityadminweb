@@ -82,6 +82,7 @@ import {
 } from './staff-fields';
 import { ShiftTemplatesCard } from './shift-templates-card';
 import { EmployeeForm } from './employee-form/employee-form';
+import { todayIST } from '@/lib/date';
 
 type TabKey = 'employees' | 'shifts' | 'attendance' | 'leaves';
 
@@ -140,7 +141,7 @@ export default function StaffContent(): ReactNode {
 
   // Attendance filters
   const [attendanceDate, setAttendanceDate] = useState(
-    new Date().toISOString().split('T')[0],
+    todayIST(),
   );
 
   // Clock in dialog
@@ -184,7 +185,7 @@ export default function StaffContent(): ReactNode {
   // already clocked in (or out) today. attendanceRecords above is
   // filtered by `attendanceDate` which the admin can scroll back —
   // so for the dialog we run a parallel query bound to today only.
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => todayIST(), []);
   const todaysAttendanceQuery = useStaffAttendance({ date: todayStr, limit: 500 });
   const staffIdsLoggedToday = useMemo(() => {
     const set = new Set<string>();
@@ -382,7 +383,7 @@ export default function StaffContent(): ReactNode {
         actions={
           <ExportButton
             data={employeeExportRows(employees)}
-            filename={`staff-${new Date().toISOString().split('T')[0]}`}
+            filename={`staff-${todayIST()}`}
             columns={[...EMPLOYEE_EXPORT_COLUMNS]}
           />
         }

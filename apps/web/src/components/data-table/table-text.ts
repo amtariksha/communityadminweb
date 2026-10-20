@@ -1,3 +1,4 @@
+import { todayIST } from '@/lib/date';
 /**
  * Plain-text helpers of the shared data table (SB-04): serial numbers,
  * the pager line, Copy (tab-separated) and Print (a bare HTML table).
@@ -80,11 +81,8 @@ export function printableTable<Row>(
     `<body><h1>${escapeHtml(title)}</h1><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></body></html>`;
 }
 
-// India is UTC+05:30 all year.
-const IST_OFFSET_MS = 330 * 60 * 1000;
-
 /** "open-requests-2026-10-18.xlsx", dated in India. */
 export function exportFileName(base: string, extension: string, now: Date = new Date()): string {
-  const day = new Date(now.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
+  const day = todayIST(now);
   return `${base}-${day}.${extension}`;
 }

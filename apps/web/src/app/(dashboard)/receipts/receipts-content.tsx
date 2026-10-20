@@ -62,6 +62,7 @@ import { Download } from 'lucide-react';
 import { useUnits } from '@/hooks';
 import { useListUrlState } from '@/hooks/use-list-url-state';
 import type { ReceiptMode } from '@communityos/shared';
+import { todayIST } from '@/lib/date';
 
 const RECEIPT_SORTS = [
   'receipt_date',
@@ -346,7 +347,7 @@ export default function ReceiptsContent(): ReactNode {
           <>
             <ExportButton
               data={receipts as unknown as Record<string, unknown>[]}
-              filename={`receipts-${new Date().toISOString().split('T')[0]}`}
+              filename={`receipts-${todayIST()}`}
               columns={[
                 { key: 'receipt_number', label: 'Receipt #' },
                 { key: 'unit_number', label: 'Unit' },

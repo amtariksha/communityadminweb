@@ -8,11 +8,12 @@ import { useVendors } from '@/hooks/use-vendors';
 import { getUser } from '@/lib/auth';
 import { defaultGstType, ratesFor } from '@/lib/gst-lines';
 import { emptyLine, levelChoices, valuesFromDetail, type LevelChoice, type LineValues, type RequestValues } from './request-state';
+import { todayIST } from '@/lib/date';
 
 export type VendorFacts = Vendor & { state_code?: string | null };
 
 export function todayIst(): string {
-  return new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+  return todayIST();
 }
 
 const BLANK: RequestValues = { title: '', vendor_id: '', request_date: '', details: '', lines: [], levels: [] };

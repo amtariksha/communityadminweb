@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/select';
 import { useUtilitySettings } from '@/hooks/use-utility-settings';
 import type { BatchMeterType } from '@/hooks/use-utility-batch-post';
 import { METER_TYPES, meterTypeLabel, today } from '../utility-ui';
+import { todayIST, utcDay } from '@/lib/date';
 
 /** What a readings batch posts with (UTIL-15 grid, UTIL-16 upload). */
 export interface BatchSettings {
@@ -21,9 +22,8 @@ export interface BatchSettings {
 
 /** Last month, the usual billing period. */
 function lastMonth(now = new Date()): { from: string; to: string } {
-  const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
-  const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0));
-  return { from: first.toISOString().slice(0, 10), to: last.toISOString().slice(0, 10) };
+  const [year, month] = todayIST(now).split('-').map(Number);
+  return { from: utcDay(new Date(Date.UTC(year, month - 2, 1))), to: utcDay(new Date(Date.UTC(year, month - 1, 0))) };
 }
 
 export function useBatchSettings(initialType: string | null): [BatchSettings, (patch: Partial<BatchSettings>) => void] {

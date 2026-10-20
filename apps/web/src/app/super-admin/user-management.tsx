@@ -60,6 +60,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import AddMemberDialog from './add-member-dialog';
 import { ASSIGNABLE_ROLES } from '@/lib/role-catalogue';
+import { todayIST } from '@/lib/date';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -676,7 +677,7 @@ export default function UserManagement(): ReactNode {
                   value={newRoleExpiresAt}
                   onChange={(e) => setNewRoleExpiresAt(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  min={new Date().toISOString().slice(0, 10)}
+                  min={todayIST()}
                 />
                 <p className="text-xs text-muted-foreground">
                   Leave blank for no expiry. On expiry the role auto-suspends when the tenant&apos;s enforcement mode is hybrid or filter-only.

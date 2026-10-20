@@ -8,6 +8,7 @@ import { currentRole } from '@/lib/current-role';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { registerParams, usePaymentRegister, type RegisterFilters, type RegisterRow } from '@/hooks/use-vendor-ledger';
 import { ReverseDialog, type ReverseTarget } from './reverse-dialog';
+import { todayIST } from '@/lib/date';
 
 const WRITE_ROLES = new Set(['super_admin', 'community_admin', 'accountant']);
 
@@ -51,7 +52,7 @@ function societyName(): string {
 }
 
 function monthStart(): string {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIST();
   return `${today.slice(0, 8)}01`;
 }
 

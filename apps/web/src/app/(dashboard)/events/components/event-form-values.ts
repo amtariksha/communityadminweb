@@ -1,4 +1,5 @@
 import type { CreateEventInput, EventItem } from '@/hooks';
+import { todayIST } from '@/lib/date';
 
 /** The fields of the event form (AMEN-S4, today's set plus the cover image) and what is sent. */
 
@@ -34,7 +35,7 @@ export const STATUS_OPTIONS: ReadonlyArray<{ value: EventStatus; label: string }
 
 const hhmm = (value: string): string => value.slice(0, 5);
 
-export function eventFormValues(event?: EventItem | null, today = new Date().toISOString().split('T')[0]): EventFormValues {
+export function eventFormValues(event?: EventItem | null, today = todayIST()): EventFormValues {
   if (!event) {
     return {
       title: '', coverImageUrl: '', eventDate: today, startTime: '18:00', endTime: '20:00',

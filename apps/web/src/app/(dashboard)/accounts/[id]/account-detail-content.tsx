@@ -29,6 +29,7 @@ import {
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { Landmark } from 'lucide-react';
+import { currentFinancialYear, todayIST } from '@/lib/date';
 
 // Map of API entry_type values → human label + tone. Anything not
 // in the map falls through to a neutral "Journal" badge so we never
@@ -71,12 +72,8 @@ function EntryTypeBadge({ entryType }: { entryType?: string }): ReactNode {
 }
 
 function getDefaultDateRange(): { startDate: string; endDate: string } {
-  const now = new Date();
-  const fyStartMonth = 3; // April (0-indexed)
-  const fyStartYear = now.getMonth() >= fyStartMonth ? now.getFullYear() : now.getFullYear() - 1;
-  const startDate = new Date(fyStartYear, fyStartMonth, 1).toISOString().split('T')[0];
-  const endDate = now.toISOString().split('T')[0];
-  return { startDate, endDate };
+  const endDate = todayIST();
+  return { startDate: currentFinancialYear(endDate).start_date, endDate };
 }
 
 function InfoCardSkeleton(): ReactNode {

@@ -20,6 +20,7 @@ import { NoticeDetailOf } from './_parts/notice-detail';
 import { NoticeEditor } from './_parts/notice-editor';
 import { NoticeTable } from './_parts/notice-table';
 import { StateTabs } from './_parts/state-tabs';
+import { todayIST } from '@/lib/date';
 
 const PAGE_SIZE = 20;
 
@@ -82,7 +83,7 @@ export default function AnnouncementsContent(): ReactNode {
           <>
             <ExportButton
               data={exportRows(rows)}
-              filename={`announcements-${new Date().toISOString().split('T')[0]}`}
+              filename={`announcements-${todayIST()}`}
               columns={[
                 { key: 'title', label: 'Title' },
                 { key: 'type', label: 'Type' },

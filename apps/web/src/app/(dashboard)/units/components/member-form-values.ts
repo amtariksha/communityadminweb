@@ -1,5 +1,6 @@
 import { normalizePhone, validateName } from '@/lib/validation';
 import type { UpdateMemberInput } from '@/hooks/use-unit-members';
+import { todayIST } from '@/lib/date';
 
 /**
  * Edit Member (UNIT-S7): the form's values, what an edit sends (only the
@@ -70,7 +71,7 @@ function checkPhone(values: MemberFormValues): string | undefined {
   return needsPhone && !phone.value ? 'Phone is required for an owner or a tenant.' : undefined;
 }
 
-export function memberFormErrors(values: MemberFormValues, today = new Date().toISOString().slice(0, 10)): MemberFormErrors {
+export function memberFormErrors(values: MemberFormValues, today = todayIST()): MemberFormErrors {
   const errors: MemberFormErrors = {};
   const name = validateName(values.name);
   if (!name.ok) errors.name = name.error;

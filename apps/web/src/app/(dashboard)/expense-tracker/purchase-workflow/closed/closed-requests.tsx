@@ -7,14 +7,14 @@ import { usePurchaseRequestList } from '@/hooks/use-purchase-requests';
 import { useAdminLayout } from '@/lib/layout-context';
 import { BucketTable } from '../bucket-table';
 import { CLOSED_COLUMNS } from '../request-columns';
+import { utcDay } from '@/lib/date';
 
 /** The current month in India, as the default From / To (EXP-S5). */
 export function currentMonthRange(now = new Date()): { from: string; to: string } {
   const india = new Date(now.getTime() + 330 * 60_000);
   const year = india.getUTCFullYear();
   const month = india.getUTCMonth();
-  const iso = (date: Date) => date.toISOString().slice(0, 10);
-  return { from: iso(new Date(Date.UTC(year, month, 1))), to: iso(new Date(Date.UTC(year, month + 1, 0))) };
+  return { from: utcDay(new Date(Date.UTC(year, month, 1))), to: utcDay(new Date(Date.UTC(year, month + 1, 0))) };
 }
 
 /**

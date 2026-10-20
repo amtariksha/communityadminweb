@@ -14,6 +14,7 @@ import { EndLineControl } from './end-line-control';
 import { PreviewInvoiceForm } from './preview-invoice-form';
 import { RuleLineForm } from './rule-line-form';
 import { RuleTypeTable } from './rule-type-table';
+import { todayIST, utcDay } from '@/lib/date';
 
 export const AUTO_INVOICING_HREF = '/income/setup/auto-invoicing';
 export const addLineHref = (categoryId: string): string => `${AUTO_INVOICING_HREF}/${categoryId}/lines/new`;
@@ -28,8 +29,8 @@ type Editing =
 
 /** The 1st of next month, the preview's date when no run is scheduled. */
 export function firstOfNextMonth(today = new Date()): string {
-  const next = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
-  return next.toISOString().slice(0, 10);
+  const [year, month] = todayIST(today).split('-').map(Number);
+  return utcDay(new Date(Date.UTC(year, month, 1)));
 }
 
 /** Preview defaults: the next scheduled run and the society's due days. */

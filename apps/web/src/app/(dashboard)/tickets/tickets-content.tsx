@@ -69,6 +69,7 @@ import { BulkReassignDialog } from './bulk-reassign-dialog';
 import { BulkServicedBy } from './bulk-serviced-by';
 import { readsHelpdeskOnly } from '../helpdesk/read-only-roles';
 import { QueueTabs, type QueueTab } from './queue-tabs';
+import { todayIST } from '@/lib/date';
 
 const CREATE_REQUEST_PAGE = '/helpdesk/new';
 
@@ -285,7 +286,7 @@ export default function TicketsContent(): ReactNode {
           <div className="flex flex-wrap items-center gap-2">
             <ExportButton
               data={tickets.map((t) => ({ ...t, is_overdue: t.is_overdue ? 'Yes' : 'No' })) as unknown as Record<string, unknown>[]}
-              filename={`tickets-${new Date().toISOString().split('T')[0]}`}
+              filename={`tickets-${todayIST()}`}
               columns={[
                 { key: 'ticket_number', label: 'Ticket #' },
                 { key: 'subject', label: 'Title' },

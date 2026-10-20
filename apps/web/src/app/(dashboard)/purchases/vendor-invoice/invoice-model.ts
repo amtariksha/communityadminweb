@@ -1,5 +1,6 @@
 import type { Vendor } from '@communityos/shared';
 import type { InvoiceHead, TdsBasis, VendorInvoiceInput, VendorInvoiceLineInput } from '@/hooks/use-vendor-bills';
+import { utcDay } from '@/lib/date';
 
 /**
  * The Post vendor invoice form (EXP-12, screen EXP-S8) as plain data: seven
@@ -61,8 +62,7 @@ export function rowIssue(row: InvoiceRow): string | null {
 export function addDays(isoDate: string, days: number): string {
   const [y, m, d] = isoDate.split('-').map(Number);
   if (!y || !m || !d) return '';
-  const date = new Date(Date.UTC(y, m - 1, d + days));
-  return date.toISOString().slice(0, 10);
+  return utcDay(new Date(Date.UTC(y, m - 1, d + days)));
 }
 
 function lineOf(row: InvoiceRow): VendorInvoiceLineInput {

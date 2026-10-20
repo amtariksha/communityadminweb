@@ -11,6 +11,7 @@ import { friendlyError } from '@/lib/api-error';
 import { normalizePhone } from '@/lib/validation';
 import { dateOnly, salaryFromInput } from '../staff-fields';
 import { recordDraftError, recordDraftFrom, recordPayload, type StaffRecordDraft } from './staff-record';
+import { addDays, todayIST } from '@/lib/date';
 
 /** What the Add / Edit Employee form holds while it is open. */
 export interface EmployeeDraft {
@@ -42,9 +43,7 @@ export function draftFrom(employee?: Staff | null): EmployeeDraft {
 
 /** QA #89 — a join date at most 30 days ahead (the API refuses later ones). */
 function joinDateCeiling(): string {
-  const day = new Date();
-  day.setDate(day.getDate() + 30);
-  return day.toISOString().split('T')[0];
+  return addDays(todayIST(), 30);
 }
 
 type Checked<T> = { ok: true; value: T } | { ok: false; title: string; description: string };

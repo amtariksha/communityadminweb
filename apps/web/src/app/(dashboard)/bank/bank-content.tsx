@@ -13,6 +13,7 @@ import { FixedDepositsTab } from './fixed-deposits-tab';
 import { ReconciliationTab } from './reconciliation-tab';
 import { StatementImportTab } from './statement-import-tab';
 import { TransfersTab } from './transfers-tab';
+import { todayIST } from '@/lib/date';
 
 type ActiveTab = 'accounts' | 'transfers' | 'reconciliation' | 'statement-import' | 'fixed-deposits' | 'cheques';
 
@@ -53,7 +54,7 @@ export default function BankContent(): ReactNode {
         actions={
           <ExportButton
             data={accounts as unknown as Record<string, unknown>[]}
-            filename={`bank-accounts-${new Date().toISOString().split('T')[0]}`}
+            filename={`bank-accounts-${todayIST()}`}
             columns={EXPORT_COLUMNS}
           />
         }

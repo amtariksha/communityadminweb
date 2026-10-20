@@ -31,6 +31,7 @@ import {
 import { reportFromParam, type ReportId } from './report-param';
 import { useReportDates } from './use-report-dates';
 import { useLedgerAccounts } from '@/hooks';
+import { todayIST } from '@/lib/date';
 
 interface ReportCardInfo {
   id: ReportId;
@@ -154,7 +155,7 @@ export default function ReportsContent(): ReactNode {
         actions={
           <ExportButton
             data={accounts as unknown as Record<string, unknown>[]}
-            filename={`ledger-accounts-${new Date().toISOString().split('T')[0]}`}
+            filename={`ledger-accounts-${todayIST()}`}
             columns={[
               { key: 'code', label: 'Code' },
               { key: 'name', label: 'Account Name' },
