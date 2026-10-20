@@ -20,7 +20,11 @@ import { useCreateFD, useRenewFD } from '@/hooks';
 import { friendlyError } from '@/lib/api-error';
 import type { BankAccountRow } from './bank-types';
 
-const EMPTY_FD = { bank_account_id: '', fd_number: '', principal: '', rate: '', start: '', maturity: '', maturity_amount: '', fd_account_id: '' };
+const EMPTY_FD = {
+  bank_account_id: '', fd_number: '', principal: '', rate: '', start: '', maturity: '', maturity_amount: '', fd_account_id: '',
+  // BANK-11 (BANK-S9 form B): a new FD ledger made with the FD.
+  ledger_mode: 'existing' as 'existing' | 'new', ledger_code: '', ledger_name: '', ledger_group: 'INV' as 'INV' | 'CA.DEP',
+};
 
 function NumberField({ id, label, value, onChange, max }: { id: string; label: string; value: string; onChange: (v: string) => void; max?: string }): ReactNode {
   return (
@@ -36,6 +40,56 @@ function DateField({ id, label, value, onChange }: { id: string; label: string; 
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       <Input id={id} type="date" required value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+type FdDraft = typeof EMPTY_FD;
+
+/** BANK-S9's two alternatives: choose an existing asset account, or create the FD's own account. */
+function FdLedgerChoice({ fd, set, ledgerAccounts }: { fd: FdDraft; set: (patch: Partial<FdDraft>) => void; ledgerAccounts: readonly LedgerAccount[] }): ReactNode {
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <div className="flex flex-wrap gap-4 text-sm">
+        <label className="flex items-center gap-2">
+          <input type="radio" name="fd-ledger-mode" checked={fd.ledger_mode === 'existing'} onChange={() => set({ ledger_mode: 'existing' })} />
+          Choose from existing asset account
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="radio" name="fd-ledger-mode" checked={fd.ledger_mode === 'new'} onChange={() => set({ ledger_mode: 'new' })} />
+          Create new fixed deposit account
+        </label>
+      </div>
+      {fd.ledger_mode === 'existing' ? (
+        <div className="space-y-2">
+          <Label htmlFor="fd-ledger-account">FD Ledger Account</Label>
+          <Select id="fd-ledger-account" required value={fd.fd_account_id} onChange={(e) => set({ fd_account_id: e.target.value })}>
+            <option value="">Select FD ledger account</option>
+            {ledgerAccounts.map((account) => (
+              <option key={account.id} value={account.id}>{account.code ? `${account.code} ${account.name}` : account.name}</option>
+            ))}
+          </Select>
+          <p className="text-xs text-muted-foreground">The asset account where the FD principal will be booked (e.g. Fixed Deposit — SBI).</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="fd-ledger-code">GL Account No.</Label>
+            <Input id="fd-ledger-code" required maxLength={20} value={fd.ledger_code} onChange={(e) => set({ ledger_code: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="fd-ledger-name">Account Name</Label>
+            <Input id="fd-ledger-name" required maxLength={255} value={fd.ledger_name} onChange={(e) => set({ ledger_name: e.target.value })} />
+          </div>
+          <div className="col-span-2 space-y-1">
+            <Label htmlFor="fd-ledger-group">Under</Label>
+            <Select id="fd-ledger-group" value={fd.ledger_group} onChange={(e) => set({ ledger_group: e.target.value as FdDraft['ledger_group'] })}>
+              <option value="INV">Investments</option>
+              <option value="CA.DEP">Deposits (Asset)</option>
+            </Select>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -65,8 +119,10 @@ export function CreateFdDialog({ open, onOpenChange, accounts, ledgerAccounts }:
         start_date: fd.start,
         maturity_date: fd.maturity,
         maturity_amount: Number(fd.maturity_amount),
-        // QA #102 — the API requires the FD ledger account.
-        fd_account_id: fd.fd_account_id,
+        // QA #102 / BANK-11: the FD ledger account, or a new one made with it.
+        ...(fd.ledger_mode === 'existing'
+          ? { fd_account_id: fd.fd_account_id }
+          : { new_ledger: { code: fd.ledger_code.trim(), name: fd.ledger_name.trim(), group: fd.ledger_group } }),
       },
       {
         onSuccess() {
@@ -112,16 +168,7 @@ export function CreateFdDialog({ open, onOpenChange, accounts, ledgerAccounts }:
               <DateField id="fd-maturity" label="Maturity Date" value={fd.maturity} onChange={(maturity) => set({ maturity })} />
             </div>
             <NumberField id="fd-maturity-amount" label="Maturity Amount" value={fd.maturity_amount} onChange={(v) => set({ maturity_amount: v })} />
-            <div className="space-y-2">
-              <Label htmlFor="fd-ledger-account">FD Ledger Account</Label>
-              <Select id="fd-ledger-account" required value={fd.fd_account_id} onChange={(e) => set({ fd_account_id: e.target.value })}>
-                <option value="">Select FD ledger account</option>
-                {ledgerAccounts.map((account) => (
-                  <option key={account.id} value={account.id}>{account.name}</option>
-                ))}
-              </Select>
-              <p className="text-xs text-muted-foreground">The asset account where the FD principal will be booked (e.g. Fixed Deposit — SBI).</p>
-            </div>
+            <FdLedgerChoice fd={fd} set={set} ledgerAccounts={ledgerAccounts} />
           </div>
           <DialogFooter>
             <DialogClose>

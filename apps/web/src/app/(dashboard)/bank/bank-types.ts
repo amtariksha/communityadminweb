@@ -48,6 +48,9 @@ export interface FixedDepositRow {
   maturity_date: string | Date;
   maturity_amount: number;
   status: string;
+  // BANK-11; absent from an older API.
+  archived_at?: string | null;
+  archive_reason?: string | null;
 }
 
 /** "<bank name> (<last 4 of the account number>)", as Bank & Cash labels a bank (BANK-S2). */

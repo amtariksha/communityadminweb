@@ -105,7 +105,9 @@ interface CreateFDInput {
   // QA #102 — `fd_account_id` is the only key the backend accepts (Zod
   // strips the rest). Was previously typed as either `fd_account_id` OR
   // `ledger_account_id`; the latter never worked.
-  fd_account_id: string;
+  // BANK-11: an existing asset ledger, or new_ledger to make one with the FD.
+  fd_account_id?: string;
+  new_ledger?: { code: string; name: string; group: 'INV' | 'CA.DEP' };
   fd_number: string;
   principal_amount: number;
   interest_rate: number;
@@ -472,6 +474,23 @@ export function useMatureFD() {
       return api.post<{ data: FixedDeposit }>(`/bank/fixed-deposits/${id}/mature`);
     },
     onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: bankKeys.fixedDeposits() });
+      queryClient.invalidateQueries({ queryKey: bankKeys.accounts() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
+      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+    },
+  });
+}
+
+/** POST /bank/fixed-deposits/:id/archive (BANK-11): a flag, or the early withdrawal of an active FD. */
+export function useArchiveFD() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; reason: string; withdraw_early?: boolean; amount_received?: number }) => {
+      const { id, ...body } = input;
+      return api.post<{ data: FixedDeposit }>(`/bank/fixed-deposits/${id}/archive`, body);
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bankKeys.fixedDeposits() });
       queryClient.invalidateQueries({ queryKey: bankKeys.accounts() });
       queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
