@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/layout-context', () => ({ useAdminLayout: () => 'classic' }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('../../../settings/tax-registration-card', () => ({ TaxRegistrationCard: () => <section>Tax registration card</section> }));
+// The range tables have their own tests (ranges/ranges.test.tsx).
+vi.mock('./range-sections', () => ({ RangeSections: () => <section>Range sections</section> }));
 vi.mock('@/hooks/use-billing-documents', () => ({
   useDocumentSettings: () => mocks.settings,
   useSaveDocumentSettings: () => ({ mutateAsync: mocks.save, isPending: false }),
@@ -52,6 +54,7 @@ describe('Customize Invoice › Document titles & issuer (INC-39)', () => {
     expect((screen.getByLabelText('Association Name') as HTMLInputElement).value).toBe('Green Acres Owners Association');
     expect((screen.getByLabelText('Show Last Receipts in Invoice') as HTMLInputElement).value).toBe('0');
     expect(screen.getByText('Tax registration card')).toBeTruthy();
+    expect(screen.getByText('Range sections')).toBeTruthy();
     expect(saveButton().disabled).toBe(true);
   });
 

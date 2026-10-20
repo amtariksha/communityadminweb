@@ -50,8 +50,51 @@ export type DocumentSettingsInput = Omit<BillingDocumentsSettings, 'letterhead_o
 
 export type SampleType = 'invoice' | 'receipt' | 'credit_note';
 
+/** Number-range series and what a range sets (INC-40). */
+export type RangeSeries = 'member_invoice' | 'member_receipt' | 'utility_invoice' | 'non_member_invoice' | 'non_member_receipt';
+export type RangeKind = 'footer' | 'prefix' | 'header_title' | 'period';
+export type RangeFrequency = 'monthly' | 'quarterly' | 'half_yearly' | 'yearly';
+
+export interface DocumentRange {
+  id: string;
+  series: RangeSeries;
+  kind: RangeKind;
+  from_number: number;
+  to_number: number | null;
+  footer_html: string | null;
+  prefix: string | null;
+  header_title: string | null;
+  frequency: RangeFrequency | null;
+  period_wording: string | null;
+}
+
+/** The ranges of one series and kind, and the last number the series issued. */
+export interface DocumentRangeList {
+  data: DocumentRange[];
+  current_number: number;
+}
+
+/** One row of PUT /billing-document-ranges; kept rows carry their id. */
+export interface RangeRowInput {
+  id?: string;
+  from_number: number;
+  to_number: number | null;
+  footer_html?: string | null;
+  prefix?: string | null;
+  header_title?: string | null;
+  frequency?: RangeFrequency | null;
+  period_wording?: string | null;
+}
+
+export interface SaveRangesInput {
+  series: RangeSeries;
+  kind: RangeKind;
+  rows: RangeRowInput[];
+}
+
 export const billingDocumentKeys = {
   settings: ['billing-documents', 'settings'] as const,
+  ranges: (series: RangeSeries, kind: RangeKind) => ['billing-document-ranges', series, kind] as const,
 };
 
 export function useDocumentSettings() {
@@ -86,6 +129,30 @@ export function useDownloadSample() {
     mutationFn: async (type: SampleType) => {
       const blob = await api.download('/billing-documents/sample', { params: { type } });
       saveBlob(blob, `sample-${type.replace('_', '-')}.pdf`);
+    },
+  });
+}
+
+export function useDocumentRanges(series: RangeSeries, kind: RangeKind) {
+  return useQuery({
+    queryKey: billingDocumentKeys.ranges(series, kind),
+    meta: { suppressToast: true },
+    retry: false,
+    queryFn: () => api.get<DocumentRangeList>('/billing-document-ranges', { params: { series, kind } }),
+  });
+}
+
+/** Replaces the series' ranges of the kind with the rows sent. */
+export function useSaveDocumentRanges() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SaveRangesInput) =>
+      api.put<{ data: DocumentRange[] }>('/billing-document-ranges', input).then((res) => res.data),
+    onSuccess: (ranges, input) => {
+      queryClient.setQueryData<DocumentRangeList>(billingDocumentKeys.ranges(input.series, input.kind), (old) => ({
+        data: ranges,
+        current_number: old?.current_number ?? 0,
+      }));
     },
   });
 }
