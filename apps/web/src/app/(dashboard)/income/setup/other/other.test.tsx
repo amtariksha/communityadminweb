@@ -23,6 +23,8 @@ vi.mock('@/hooks/use-billing-documents', () => ({
   useUploadLetterhead: () => ({ mutateAsync: mocks.upload, isPending: false }),
   useRemoveLetterhead: () => ({ mutateAsync: mocks.remove, isPending: false }),
 }));
+// Numbering has its own tests (numbering.test.tsx).
+vi.mock('./numbering-card', () => ({ NumberingCard: () => <section>Numbering card</section> }));
 vi.mock('@/hooks/use-bank', () => ({
   useBankAccounts: () => ({
     data: [
@@ -120,6 +122,7 @@ describe('Setup › Other document options (INC-42)', () => {
     render(<OtherSetupPage />);
 
     expect(screen.getByText('Document options are not available yet on this server.')).toBeTruthy();
+    expect(screen.getByText('Numbering card')).toBeTruthy();
   });
 });
 

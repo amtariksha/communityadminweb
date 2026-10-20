@@ -2,12 +2,13 @@ import { type ReactNode } from 'react';
 import { IncomeSetupPage } from '../setup-page';
 import { OtherContent } from './other-content';
 
-// Income Tracker › Setup › Other (INC-S9, INC-42).
+// Income Tracker › Setup › Other (INC-S9): document options and letter head
+// (INC-42) and the numbering of each series (INC-41).
 export default function OtherSetupPage(): ReactNode {
   return (
     <IncomeSetupPage
       title="Other"
-      description="Names, payment instructions and letter head printed on invoices and receipts."
+      description="Names, payment instructions, letter head and numbering of invoices, receipts and notes."
     >
       <OtherContent />
     </IncomeSetupPage>

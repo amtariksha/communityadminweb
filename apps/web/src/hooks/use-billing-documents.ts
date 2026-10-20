@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { BillingDocumentsSettings } from '@communityos/shared';
+import type { BillingDocumentsSettings, BillingNumberSeries } from '@communityos/shared';
 import { api } from '@/lib/api';
 import { saveBlob } from '@/lib/download';
 
@@ -92,8 +92,30 @@ export interface SaveRangesInput {
   rows: RangeRowInput[];
 }
 
+/** One numbering series as GET /billing-numbering reports it (INC-41). */
+export interface NumberingRow {
+  series: BillingNumberSeries;
+  label: string;
+  prefix: string;
+  pad: number;
+  last_issued: number;
+  next: number;
+  /** A non-member series not set up numbers on this member series. */
+  shares_with: BillingNumberSeries | null;
+}
+
+export interface NumberingSeriesUpdate {
+  prefix: string;
+  pad: number;
+  next_number?: number;
+}
+
+/** PUT /billing-numbering: the series to change; null puts a non-member series back on its member series. */
+export type SaveNumberingInput = Partial<Record<BillingNumberSeries, NumberingSeriesUpdate | null>>;
+
 export const billingDocumentKeys = {
   settings: ['billing-documents', 'settings'] as const,
+  numbering: ['billing-numbering'] as const,
   ranges: (series: RangeSeries, kind: RangeKind) => ['billing-document-ranges', series, kind] as const,
 };
 
@@ -177,5 +199,22 @@ export function useRemoveLetterhead() {
   return useMutation({
     mutationFn: () => api.delete<{ data: Omit<DocumentSettings, 'letterhead_url'> }>('/billing-documents/letterhead').then((res) => res.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: billingDocumentKeys.settings }),
+  });
+}
+
+export function useNumbering() {
+  return useQuery({
+    queryKey: billingDocumentKeys.numbering,
+    meta: { suppressToast: true },
+    retry: false,
+    queryFn: () => api.get<{ data: NumberingRow[] }>('/billing-numbering').then((res) => res.data),
+  });
+}
+
+export function useSaveNumbering() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SaveNumberingInput) => api.put<{ data: NumberingRow[] }>('/billing-numbering', input).then((res) => res.data),
+    onSuccess: (rows) => queryClient.setQueryData(billingDocumentKeys.numbering, rows),
   });
 }
