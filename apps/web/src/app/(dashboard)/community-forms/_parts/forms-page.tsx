@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
  */
 export const FORM_TABS: ReadonlyArray<{ href: string; label: string }> = [
   { href: '/community-forms/setup/forms', label: 'Setup Community Form' },
+  { href: '/community-forms/setup/approvers', label: 'Approvers Setup' },
 ];
 
 const TAB = '-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors';

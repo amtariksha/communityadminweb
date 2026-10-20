@@ -135,3 +135,29 @@ export function useDeleteCommunityForm() {
     },
   });
 }
+
+/** FORM-04 — whether members are told of new forms and of their decided responses (off until switched on). */
+export interface FormNotifications {
+  notify_residents: boolean;
+}
+
+const formNotificationsKey = [...communityFormKeys.all, 'notifications'] as const;
+
+export function useFormNotifications() {
+  return useQuery({
+    queryKey: formNotificationsKey,
+    queryFn: () => api.get<{ data: FormNotifications }>('/community-forms/setup/notifications').then((res) => res.data),
+    retry: false,
+  });
+}
+
+export function useSaveFormNotifications() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: FormNotifications) =>
+      api.put<{ data: FormNotifications }>('/community-forms/setup/notifications', input).then((res) => res.data),
+    onSuccess(saved) {
+      queryClient.setQueryData(formNotificationsKey, saved);
+    },
+  });
+}

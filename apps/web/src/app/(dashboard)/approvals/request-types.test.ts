@@ -6,4 +6,8 @@ describe('approval request types', () => {
     expect(formatRequestType('violation')).toBe('Violation');
     expect(REQUEST_TYPE_OPTIONS).toContainEqual({ value: 'violation', label: 'Violation' });
   });
+
+  it('names form responses (FORM-05)', () => {
+    expect(formatRequestType('community_form_response')).toBe('Form Response');
+  });
 });

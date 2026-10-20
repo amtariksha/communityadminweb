@@ -14,6 +14,8 @@ export const REQUEST_TYPE_LABELS: Record<string, string> = {
   document: 'Document',
   // RULE-04 — violations raised in Community Rules & Violations.
   violation: 'Violation',
+  // FORM-05 — responses to community forms that need approval.
+  community_form_response: 'Form Response',
 };
 
 export const REQUEST_TYPE_OPTIONS: ReadonlyArray<{ value: string; label: string }> =

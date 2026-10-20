@@ -746,7 +746,7 @@ export const classicMenu: MenuNode[] = [
         label: 'Setup',
         create: { label: 'Create Form', href: '/community-forms/new' },
         tabs: [
-          planned('forms.setup.approvers', 'Approvers Setup', 'FORM-05'),
+          { id: 'forms.setup.approvers', label: 'Approvers Setup', href: '/community-forms/setup/approvers', logs: ['community_form_approvers', 'tenant_settings'] },
           { id: 'forms.setup.forms', label: 'Setup Community Form', href: '/community-forms/setup/forms', logs: ['community_form'] },
         ],
       },
