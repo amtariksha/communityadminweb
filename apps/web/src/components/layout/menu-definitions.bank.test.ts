@@ -19,8 +19,9 @@ describe('classic Bank & Cash', () => {
       'Fixed Deposits',
       'Reports',
     ]);
-    // Setup stays hidden until BANK-17 builds it; Reports is the module's report page.
+    // BANK-17 built Setup; Reports is the module's report page.
     expect(visible.find((node) => node.id === 'bank')?.children?.map((child) => child.label)).toEqual([
+      'Setup',
       'Transfer',
       'Bank & Cash Accounts',
       'Taxes',
@@ -36,6 +37,13 @@ describe('classic Bank & Cash', () => {
       ['Cheques', '/bank-cash/accounts/cheques'],
       ['Statement Import', '/bank-cash/accounts/statement-import'],
       ['Add account', '/bank-cash/accounts/new'],
+    ]);
+    // BANK-15: the four tax registers.
+    expect(tabs('bank.taxes')).toEqual([
+      ['TDS', '/bank-cash/taxes/tds'],
+      ['State GST', '/bank-cash/taxes/state-gst'],
+      ['Central GST', '/bank-cash/taxes/central-gst'],
+      ['Integrated GST', '/bank-cash/taxes/integrated-gst'],
     ]);
     expect(tabs('bank.fixed-deposits')).toEqual([
       ['Active Fixed Deposits', '/bank-cash/fixed-deposits/active'],

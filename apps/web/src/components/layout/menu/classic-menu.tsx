@@ -385,11 +385,11 @@ export const classicMenu: MenuNode[] = [
     label: 'Bank & Cash',
     icon: icon(Landmark),
     // BANK-06. Today's /bank (all tabs) stays inside the module; Close goes
-    // to the accounts register, where the desk works (Setup is BANK-17).
+    // to the accounts register, where the desk works.
     aliases: ['/bank'],
     close: '/bank-cash/accounts',
     children: [
-      planned('bank.setup', 'Setup', 'BANK-17'),
+      { id: 'bank.setup', label: 'Setup', href: '/bank-cash/setup', logs: ['bank_setup'] },
       { id: 'bank.transfer', label: 'Transfer', href: '/bank-cash/transfer', logs: ['bank_transfer'] },
       {
         id: 'bank.accounts',
