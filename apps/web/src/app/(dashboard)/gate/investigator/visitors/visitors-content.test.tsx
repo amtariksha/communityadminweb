@@ -24,13 +24,14 @@ const download = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/api', () => ({ api: { download } }));
 vi.mock('@/lib/download', () => ({ saveBlob: vi.fn(), printHtml: vi.fn() }));
 
-const mocks = vi.hoisted(() => ({ useVisitors: vi.fn(), useGateSettings: vi.fn(), useUnitBlocks: vi.fn() }));
+const mocks = vi.hoisted(() => ({ useVisitors: vi.fn(), useGateSettings: vi.fn(), useUnitBlocks: vi.fn(), useEntryReasons: vi.fn() }));
 vi.mock('@/hooks/use-gate', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/hooks/use-gate')>()),
   useVisitors: (filters: Record<string, unknown>) => mocks.useVisitors(filters),
 }));
 vi.mock('@/hooks/use-gate-settings', () => ({ useGateSettings: () => mocks.useGateSettings() }));
 vi.mock('@/hooks/use-unit-blocks', () => ({ useUnitBlocks: () => mocks.useUnitBlocks() }));
+vi.mock('@/hooks/use-gate-lists', () => ({ useEntryReasons: () => mocks.useEntryReasons() }));
 
 const NOW = new Date('2026-10-19T08:00:00.000Z').getTime();
 const minutesAgo = (minutes: number) => new Date(NOW - minutes * 60_000).toISOString();
@@ -70,6 +71,12 @@ beforeEach(() => {
   mocks.useGateSettings.mockReset().mockReturnValue({ data: { overstay_threshold_minutes: 60 } });
   mocks.useUnitBlocks.mockReset().mockReturnValue({
     data: { data: [{ id: 'b', name: 'A', unit_count: 4, position: 0 }], total_units: 4 },
+  });
+  mocks.useEntryReasons.mockReset().mockReturnValue({
+    data: [
+      { id: 'r-courier', name: 'Courier', expected_minutes: 20, is_active: true, sort_order: 1 },
+      { id: 'r-guest', name: 'Guest', expected_minutes: null, is_active: true, sort_order: 2 },
+    ],
   });
   download.mockReset().mockResolvedValue(new Blob(['x']));
 });
@@ -132,6 +139,26 @@ describe('Incident Investigator › Visitors', () => {
 
     expect((screen.getByText('Test Guest 2').closest('tr') as HTMLElement).className).toContain('text-destructive');
     expect((screen.getByText('Test Guest 1').closest('tr') as HTMLElement).className).not.toContain('text-destructive');
+  });
+
+  it('shows the entry reason, filters by it, and holds a visitor to the reason’s stay (GATE-41)', () => {
+    mocks.useVisitors.mockReturnValue({
+      data: {
+        data: [
+          visitor('3', { entry_reason: 'Courier', entry_reason_id: 'r-courier', expected_minutes: 20, checked_in_at: minutesAgo(21) }),
+          visitor('4', { entry_reason: 'Guest', entry_reason_id: 'r-guest', expected_minutes: null, checked_in_at: minutesAgo(21) }),
+        ],
+        total: 2,
+      },
+      isLoading: false,
+    });
+    const { container } = render(<VisitorsContent />);
+
+    expect(screen.getByRole('cell', { name: 'Courier' })).toBeTruthy();
+    expect((screen.getByText('Test Guest 3').closest('tr') as HTMLElement).className).toContain('text-destructive');
+    expect((screen.getByText('Test Guest 4').closest('tr') as HTMLElement).className).not.toContain('text-destructive');
+    fireEvent.change(container.querySelector('select#visitor-reason') as HTMLSelectElement, { target: { value: 'r-courier' } });
+    expect(lastFilters()).toEqual(expect.objectContaining({ entry_reason_id: 'r-courier', page: 1 }));
   });
 
   it('opens View with what the gate recorded', () => {

@@ -13,14 +13,15 @@ import { canWriteGateSetup, NotAvailableYet, SetupBlock } from './blocks/setup-b
 import { GuardAppBlock } from './blocks/guard-app-block';
 import { CheckinAlertBlock } from './blocks/checkin-alert-block';
 import { GatesBlock } from './blocks/gates-block';
+import { EntryReasonsBlock } from './blocks/entry-reasons-block';
 import { EmergencyNumbersBlock, ResidentCategoriesBlock } from './blocks/link-blocks';
 import { OverstayBlock } from './blocks/overstay-block';
 
 /**
  * Gate & Visitors › Setup (GATE-S1): one page of independent blocks, each
- * with its own Save; saving one block never touches another. Entry reasons,
- * the pass footer, incident categories and the guard roster join with their
- * tickets (GATE-41, 46, 42, 47).
+ * with its own Save; saving one block never touches another. The pass
+ * footer, incident categories and the guard roster join with their tickets
+ * (GATE-46, 42, 47).
  */
 export function GateSetupContent(): ReactNode {
   const { addToast } = useToast();
@@ -56,6 +57,7 @@ export function GateSetupContent(): ReactNode {
         </>
       ) : null}
       <GatesBlock editable={editable} />
+      <EntryReasonsBlock editable={editable} />
       <ResidentCategoriesBlock />
       <EmergencyNumbersBlock />
       {settings ? <OverstayBlock key={`stay-${version}`} settings={settings} editable={editable} save={saveSettings} /> : null}

@@ -34,6 +34,13 @@ export interface Visitor {
   block?: string | null;
   gate_name?: string | null;
   gate_id?: string | null;
+  // GATE-41: the entry reason and its expected stay (null = society default);
+  // an older API sends neither.
+  entry_reason_id?: string | null;
+  entry_reason?: string | null;
+  expected_minutes?: number | null;
+  // GATE-20: the gate the visitor left by.
+  checked_out_gate_name?: string | null;
 }
 
 export interface StaffLog {
@@ -122,6 +129,7 @@ export interface GateRegisterFilters {
 export interface VisitorFilters extends GateRegisterFilters {
   status?: string;
   unit_id?: string;
+  entry_reason_id?: string;
   date?: string;
   page?: number;
   limit?: number;
@@ -250,6 +258,7 @@ export function visitorFiltersToParams(
   const params: Record<string, string> = registerParams(filters);
   if (filters.status) params.status = filters.status;
   if (filters.unit_id) params.unit_id = filters.unit_id;
+  if (filters.entry_reason_id) params.entry_reason_id = filters.entry_reason_id;
   if (filters.date) params.date = filters.date;
   if (filters.page !== undefined) params.page = String(filters.page);
   if (filters.limit !== undefined) params.limit = String(filters.limit);

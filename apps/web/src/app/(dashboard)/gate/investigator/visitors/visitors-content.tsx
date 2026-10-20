@@ -5,6 +5,7 @@ import { UnitBlockLinks } from '@/components/block-links';
 import { CountedSelect, DataTable, type DataTableColumn } from '@/components/data-table';
 import { useVisitors, visitorFiltersToParams, type Visitor, type VisitorFilters } from '@/hooks/use-gate';
 import { useGateSettings } from '@/hooks/use-gate-settings';
+import { useEntryReasons } from '@/hooks/use-gate-lists';
 import {
   DayRangeFilter,
   REGISTER_PAGE_SIZES,
@@ -18,7 +19,8 @@ import { VISITOR_STATUS_LABELS, isOverrun } from './visitor-rows';
 
 const STATUS_OPTIONS = Object.entries(VISITOR_STATUS_LABELS).map(([value, label]) => ({ value, label }));
 
-// The society default until entry reasons carry their own stay (GATE-41).
+// The society default when the gate settings cannot be read; a visitor's
+// entry reason may carry its own stay (GATE-41).
 const DEFAULT_STAY_MINUTES = 240;
 
 const COLUMNS: DataTableColumn<Visitor>[] = [
@@ -27,7 +29,7 @@ const COLUMNS: DataTableColumn<Visitor>[] = [
   { key: 'phone', header: 'Phone', cell: (row) => row.visitor_phone ?? '—', className: 'whitespace-nowrap' },
   { key: 'block', header: 'Block', cell: (row) => row.block ?? '—' },
   { key: 'unit', header: 'Unit', cell: (row) => row.unit_number ?? '—', className: 'whitespace-nowrap' },
-  { key: 'reason', header: 'Entry Reason', cell: (row) => row.purpose ?? '—' },
+  { key: 'reason', header: 'Entry Reason', cell: (row) => row.entry_reason ?? row.purpose ?? '—' },
   { key: 'gate', header: 'Gate', cell: (row) => row.gate_name ?? '—' },
   { key: 'in', header: 'In Time', cell: (row) => indiaTime(row.checked_in_at), className: 'whitespace-nowrap' },
   { key: 'out', header: 'Out Time', cell: (row) => indiaTime(row.checked_out_at), className: 'whitespace-nowrap' },
@@ -43,11 +45,17 @@ const COLUMNS: DataTableColumn<Visitor>[] = [
 export function VisitorsContent(): ReactNode {
   const state = useRegisterState('today');
   const [status, setStatus] = useState('');
+  const [reason, setReason] = useState('');
+  const reasons = useEntryReasons(true);
   const [viewing, setViewing] = useState<Visitor | null>(null);
   const settings = useGateSettings();
   const stayMinutes = settings.data?.overstay_threshold_minutes ?? DEFAULT_STAY_MINUTES;
 
-  const filters: VisitorFilters = { ...registerFilters(state), status: status || undefined };
+  const filters: VisitorFilters = {
+    ...registerFilters(state),
+    status: status || undefined,
+    entry_reason_id: reason || undefined,
+  };
   const query = useVisitors({ ...filters, page: state.page, limit: state.pageSize });
 
   return (
@@ -81,6 +89,19 @@ export function VisitorsContent(): ReactNode {
                 state.setPage(1);
               }}
             />
+            {reasons.data && reasons.data.length > 0 ? (
+              <CountedSelect
+                id="visitor-reason"
+                label="Entry Reason"
+                value={reason}
+                allLabel="All"
+                options={reasons.data.map((item) => ({ value: item.id, label: item.name }))}
+                onChange={(value) => {
+                  setReason(value);
+                  state.setPage(1);
+                }}
+              />
+            ) : null}
           </>
         }
         export={{ path: '/gate/visitors/export', params: visitorFiltersToParams(filters) ?? {}, filename: 'visitors' }}
