@@ -69,14 +69,17 @@ describe('useOpenStoredFile', () => {
     mocks.toast.mockReset();
   });
 
-  it('tells the person when the file is not available', async () => {
-    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+  it('tells the person when the file is not available, and closes the tab it opened', async () => {
+    const tab = { opener: window, location: { replace: vi.fn() }, close: vi.fn() };
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
     mocks.post.mockRejectedValueOnce(notFound);
     render(<OpenButton url={RAW} />);
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     });
-    expect(open).not.toHaveBeenCalled();
+    expect(open).toHaveBeenCalledWith('', '_blank');
+    expect(tab.close).toHaveBeenCalled();
+    expect(tab.location.replace).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'This file is not available' }));
     open.mockRestore();
   });

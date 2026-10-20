@@ -47,7 +47,11 @@ export function useStoredFileUrl(rawUrl: string | null | undefined, options: Sto
   return current;
 }
 
-/** Opens a stored file in a new tab, and tells the person when it is not available. */
+/**
+ * Opens a stored file in a new tab, and tells the person when it is not
+ * available. Call the returned function straight from the click handler,
+ * before any await (lib/stored-file.ts openStoredFile: Safari's popup blocker).
+ */
 export function useOpenStoredFile(): (source: StoredFileSource, options?: StoredFileOptions) => Promise<void> {
   const { addToast } = useToast();
   return useCallback(

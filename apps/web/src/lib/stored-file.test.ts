@@ -173,33 +173,82 @@ describe('storedFileLinkByKey', () => {
   });
 });
 
+interface FakeTab {
+  opener: unknown;
+  location: { replace: ReturnType<typeof vi.fn> };
+  close: ReturnType<typeof vi.fn>;
+}
+
+function fakeTab(): FakeTab {
+  return { opener: window, location: { replace: vi.fn() }, close: vi.fn() };
+}
+
 describe('openStoredFile', () => {
   beforeEach(() => {
     forgetStoredFileLinks();
     mocks.post.mockReset();
   });
 
-  it('opens the signed link in a new tab', async () => {
-    const open = vi.spyOn(window, 'open').mockReturnValue(null);
-    signs();
-    await expect(openStoredFile(RAW, { fileName: 'Plan.pdf' })).resolves.toBe(true);
-    expect(open).toHaveBeenCalledWith(SIGNED, '_blank', 'noopener,noreferrer');
-    open.mockRestore();
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it('opens nothing and says so when the file is not available', async () => {
+  it('opens the tab inside the click, before the link arrives, then sends it to the signed link', async () => {
+    const tab = fakeTab();
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
+    signs();
+    const opening = openStoredFile(RAW, { fileName: 'Plan.pdf' });
+    expect(open).toHaveBeenCalledWith('', '_blank');
+    expect(tab.opener).toBeNull();
+    expect(tab.location.replace).not.toHaveBeenCalled();
+    await expect(opening).resolves.toBe(true);
+    expect(tab.location.replace).toHaveBeenCalledWith(SIGNED);
+  });
+
+  it('opens a link it already holds at once', async () => {
+    signs(SIGNED, new Date(Date.now() + 3_600_000).toISOString());
+    await storedFileLink(RAW);
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    await expect(openStoredFile(RAW)).resolves.toBe(true);
+    expect(open).toHaveBeenCalledWith(SIGNED, '_blank', 'noopener,noreferrer');
+  });
+
+  it('closes the tab and says so when the file is not available', async () => {
+    const tab = fakeTab();
+    vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
     mocks.post.mockRejectedValueOnce(apiError(404, 'file_not_found'));
     await expect(openStoredFile(RAW)).resolves.toBe(false);
-    expect(open).not.toHaveBeenCalled();
-    open.mockRestore();
+    expect(tab.close).toHaveBeenCalled();
+    expect(tab.location.replace).not.toHaveBeenCalled();
+  });
+
+  it('closes the tab when the link cannot be had', async () => {
+    const tab = fakeTab();
+    vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
+    mocks.post.mockRejectedValueOnce(apiError(500));
+    await expect(openStoredFile({ key: 'tenants/t/documents/f1.pdf' })).rejects.toBeInstanceOf(ApiError);
+    expect(tab.close).toHaveBeenCalled();
   });
 
   it('opens a file known by its key', async () => {
-    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const tab = fakeTab();
+    vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
     signs();
     await expect(openStoredFile({ key: 'tenants/t/documents/f1.pdf' })).resolves.toBe(true);
-    expect(open).toHaveBeenCalledWith(SIGNED, '_blank', 'noopener,noreferrer');
-    open.mockRestore();
+    expect(tab.location.replace).toHaveBeenCalledWith(SIGNED);
+  });
+
+  it('opens the file in this tab when even the empty tab is blocked', async () => {
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    const assign = vi.fn();
+    const realLocation = window.location;
+    Object.defineProperty(window, 'location', { configurable: true, value: { ...realLocation, assign } });
+    try {
+      signs();
+      await expect(openStoredFile(RAW)).resolves.toBe(true);
+      expect(assign).toHaveBeenCalledWith(SIGNED);
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: realLocation });
+    }
   });
 });

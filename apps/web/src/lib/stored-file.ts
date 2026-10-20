@@ -159,13 +159,43 @@ function linkFor(source: StoredFileSource, options: StoredFileOptions): Promise<
 /**
  * Opens a stored file in a new tab. Resolves false when the file is not
  * available, so the caller can say so (useOpenStoredFile does).
+ *
+ * Call it straight from the click, before any await: the tab is opened at
+ * once, inside the click (Safari's popup blocker refuses a window opened
+ * after an await), and sent to the file when its link arrives — or closed
+ * again when the file is not available. When even that tab is blocked, the
+ * file opens in this tab.
  */
 export async function openStoredFile(source: StoredFileSource, options: StoredFileOptions = {}): Promise<boolean> {
   const held = typeof source === 'string' ? peekStoredFileLink(source, options) : undefined;
-  const link = held ?? (await linkFor(source, options));
-  if (!link) return false;
-  window.open(link, '_blank', 'noopener,noreferrer');
+  if (held) {
+    window.open(held, '_blank', 'noopener,noreferrer');
+    return true;
+  }
+  const tab = openWaitingTab();
+  let link: string | null;
+  try {
+    link = await linkFor(source, options);
+  } catch (error) {
+    tab?.close();
+    throw error;
+  }
+  if (!link) {
+    tab?.close();
+    return false;
+  }
+  if (tab) tab.location.replace(link);
+  else window.location.assign(link);
   return true;
+}
+
+/** An empty tab, opened inside the click, that the file's page gets no handle back from. */
+function openWaitingTab(): Window | null {
+  const tab = window.open('', '_blank');
+  if (!tab) return null;
+  // What 'noopener' does for a tab opened at its address (a record may link to another site).
+  tab.opener = null;
+  return tab;
 }
 
 /** Forgets every link held (tests). */
