@@ -46,6 +46,11 @@ const asCurrency: ValueFormatter = (v) =>
 const asDate: ValueFormatter = (v) =>
   v == null || v === '' ? '—' : formatDate(String(v));
 const asBool: ValueFormatter = (v) => (v ? 'Yes' : 'No');
+const asTextStart: ValueFormatter = (v) => {
+  if (v == null || v === '') return '—';
+  const text = String(v).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return text.length > 80 ? `${text.slice(0, 80)}…` : text;
+};
 const asCapital: ValueFormatter = (v) => {
   if (v == null || v === '') return '—';
   const s = String(v).replace(/_/g, ' ');
@@ -156,6 +161,13 @@ const FIELD_MAPS: Record<string, EntityFieldMap> = {
     occupancy_type: { label: 'Occupancy', format: asCapital },
     maintenance_payer: { label: 'Maintenance Payer', format: asCapital },
     status: { label: 'Status', format: asCapital },
+  },
+  // PROF-40: the agreement's text is long HTML; the log shows its start as plain text.
+  'society-agreement': {
+    version: { label: 'Version' },
+    status: { label: 'Status', format: asCapital },
+    published_at: { label: 'Published On', format: asDate },
+    body_html: { label: 'Agreement Text', format: asTextStart },
   },
 };
 

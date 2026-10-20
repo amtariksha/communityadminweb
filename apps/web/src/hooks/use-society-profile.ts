@@ -22,6 +22,8 @@ export interface SocietyProfile {
   welcome_message_html: string | null;
   /** Six slots in order; null = empty. */
   images: Array<string | null>;
+  /** PROF-40: residents are asked to accept the society's agreement (absent before that API). */
+  agreement_enabled?: boolean;
 }
 
 /** PATCH /tenant-settings/profile: the keys sent are written; null clears. */

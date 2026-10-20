@@ -69,6 +69,9 @@ const ENTITY_TYPES = [
   { value: 'tenant_settings', label: 'Society Settings' },
   { value: 'tenant-setting', label: 'Society Help & Contact' },
   { value: 'directory', label: 'Directory & Emergency Numbers' },
+  // PROF-40 / PROF-41: the society's user agreement and residents' acceptances.
+  { value: 'society-agreement', label: 'Society User Agreement' },
+  { value: 'society_agreement_acceptance', label: 'Agreement Acceptance' },
   { value: 'meeting', label: 'Meeting' },
   { value: 'meeting_task', label: 'Meeting Task' },
   { value: 'material', label: 'Inventory Item' },

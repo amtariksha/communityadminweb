@@ -83,7 +83,7 @@ const planned = (id: string, label: string, ticket: string): MenuNode => ({
 
 // Society Profile's activity log: society settings, help and contact,
 // emergency numbers and the downloadable files (PROF-S8).
-const PROFILE_LOGS = ['tenant_settings', 'tenant-setting', 'tenant', 'directory', 'document'];
+const PROFILE_LOGS = ['tenant_settings', 'tenant-setting', 'tenant', 'directory', 'document', 'society-agreement'];
 
 // The stock book's log: items, movements and today's procurement writes.
 const INVENTORY_LOGS = ['material', 'stock_movement', 'inventory'];
@@ -961,7 +961,13 @@ export const classicMenu: MenuNode[] = [
       { id: 'profile.home', label: 'Home', href: '/society-profile/home', logs: PROFILE_LOGS },
       { id: 'profile.images', label: 'Images', href: '/society-profile/images', logs: PROFILE_LOGS },
       { id: 'profile.location', label: 'Location', href: '/society-profile/location', logs: PROFILE_LOGS },
-      planned('profile.agreement', 'User Agreement', 'PROF-40'),
+      {
+        id: 'profile.agreement',
+        label: 'User Agreement',
+        href: '/society-profile/agreement',
+        logs: PROFILE_LOGS,
+        forms: [{ label: 'Read/Edit Default Agreement', path: '/society-profile/agreement/edit' }],
+      },
       { id: 'profile.downloads', label: 'Downloadable Files', href: '/society-profile/files', logs: PROFILE_LOGS },
       // Today's /directory (Emergency Desk and local listings) stays inside.
       {

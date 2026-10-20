@@ -96,23 +96,27 @@ describe('Projects & Meetings (PROJ-10 to PROJ-12)', () => {
   });
 });
 
-describe('Society Profile (PROF-10, PROF-21, PROF-22)', () => {
-  it('shows Home, Images, Location, Downloadable Files and Emergency Contacts, each with the module’s log', () => {
+describe('Society Profile (PROF-10, PROF-21, PROF-22, PROF-40)', () => {
+  it('shows Home, Images, Location, User Agreement, Downloadable Files and Emergency Contacts, each with the module’s log', () => {
     expect(children('profile')).toEqual([
       ['Home', '/society-profile/home'],
       ['Images', '/society-profile/images'],
       ['Location', '/society-profile/location'],
+      ['User Agreement', '/society-profile/agreement'],
       ['Downloadable Files', '/society-profile/files'],
       ['Emergency Contacts', '/society-profile/emergency'],
     ]);
     expect(find(menu, 'profile.files')?.logs ?? find(menu, 'profile.downloads')?.logs).toContain('directory');
+    expect(find(menu, 'profile.agreement')?.logs).toContain('society-agreement');
+    expect(locate('/society-profile/agreement/edit', menu)?.form).toBe(true);
+    expect(locate('/society-profile/agreement/edit', menu)?.child?.id).toMatch(/^profile\.agreement/);
   });
 
   it('gates its files with Documents and the rest with the directory page', () => {
     expect(governingItem('/society-profile/files')?.href).toBe('/documents');
     expect(governingItem('/society-profile/location')?.href).toBe('/directory');
     const noDocuments = visibleMenu(classicMenu, { roleAllowlist: null, enabledFeatures: ['units'] });
-    expect(find(noDocuments, 'profile')?.children?.map((child) => child.label)).toEqual(['Home', 'Images', 'Location', 'Emergency Contacts']);
+    expect(find(noDocuments, 'profile')?.children?.map((child) => child.label)).toEqual(['Home', 'Images', 'Location', 'User Agreement', 'Emergency Contacts']);
     expect(locate('/directory', menu)?.child?.id).toBe('profile.emergency');
   });
 });
