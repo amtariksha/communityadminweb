@@ -93,11 +93,13 @@ const receiptAllocationSchema = z.object({
 
 // Mirrors communityos packages/shared/src/schemas/finance.ts (INC-26: dd mode,
 // payer, payment bank, instrument date; number for cheque / DD / transfer,
-// bank for cheque / DD).
+// bank for cheque / DD. INC-45: from a unit or a non-member payer).
 export const createReceiptSchema = z
   .object({
-    financial_year_id: z.string().uuid('Financial year ID must be a valid UUID'),
-    unit_id: z.string().uuid('Unit ID must be a valid UUID'),
+    financial_year_id: z.string().uuid('Financial year ID must be a valid UUID').optional().or(z.literal('')),
+    // INC-45 — a collection is from a unit or from a non-member payer (exactly one).
+    unit_id: z.string().uuid('Unit ID must be a valid UUID').optional(),
+    customer_id: z.string().uuid('Payer ID must be a valid UUID').optional(),
     receipt_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
     amount: z.number().positive('Amount must be positive'),
     mode: z.enum(['cash', 'cheque', 'bank_transfer', 'upi', 'online', 'dd']),
@@ -105,11 +107,16 @@ export const createReceiptSchema = z
     bank_account_id: z.string().uuid().nullable().default(null),
     narration: z.string().max(1000).default(''),
     allocations: z.array(receiptAllocationSchema).default([]),
+    // 'fifo' with no allocations settles the oldest posted invoices first.
+    allocation_mode: z.enum(['selected', 'fifo']).optional(),
     payer_member_id: z.string().uuid().optional(),
     payment_bank: z.string().trim().max(100).nullable().optional(),
     instrument_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   })
   .superRefine((body, ctx) => {
+    if (Boolean(body.unit_id) === Boolean(body.customer_id)) {
+      ctx.addIssue({ code: 'custom', path: ['unit_id'], message: 'Give the unit or the payer the collection is from, not both' });
+    }
     if (['cheque', 'dd', 'bank_transfer'].includes(body.mode) && !body.reference_number?.trim()) {
       ctx.addIssue({ code: 'custom', path: ['reference_number'], message: 'Give the payment number' });
     }

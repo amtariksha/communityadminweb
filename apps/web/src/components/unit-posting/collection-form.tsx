@@ -6,28 +6,15 @@ import { FormFieldError } from '@/components/ui/form-field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
-import { useLedgerAccounts } from '@/hooks/use-ledger';
 import { useCreateReceipt, type CreatedReceipt } from '@/hooks/use-receipts';
-import { useOpenBills, type OpenBill } from '@/hooks/use-unit-statement';
+import { useOpenBills } from '@/hooks/use-unit-statement';
 import { useUnitMembers } from '@/hooks/use-units';
 import { friendlyError } from '@/lib/api-error';
 import { isNotDeployed } from '@/lib/not-deployed';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import {
-  COLLECTION_MODES,
-  collectionErrors,
-  collectionTotal,
-  emptyCollectionForm,
-  needsBank,
-  needsNumber,
-  toCollectionPayload,
-  type BillEntry,
-  type CollectionForm,
-  type CollectionMode,
-} from './collection-state';
+import { formatCurrency } from '@/lib/utils';
+import { BillsTable, PaymentFields, type SetCollectionForm } from './collection-fields';
+import { collectionErrors, collectionTotal, emptyCollectionForm, toCollectionPayload, type CollectionForm } from './collection-state';
 import { UnitPostingHeader } from './unit-posting-header';
 
 export interface CollectionFormProps {
@@ -44,133 +31,7 @@ export interface CollectionFormProps {
   scope?: 'member' | 'utility';
 }
 
-type SetForm = (patch: Partial<CollectionForm>) => void;
-type Errors = Record<string, string>;
-
-function BillsTable({ bills, form, set, errors }: { bills: OpenBill[]; form: CollectionForm; set: SetForm; errors: Errors }): ReactNode {
-  const entry = (id: string): BillEntry => form.bills[id] ?? { selected: false, amount: '', tds: '' };
-  const update = (id: string, patch: Partial<BillEntry>): void => set({ bills: { ...form.bills, [id]: { ...entry(id), ...patch } } });
-  const allTicked = bills.length > 0 && bills.every((bill) => entry(bill.id).selected);
-  const tickAll = (selected: boolean): void =>
-    set({ bills: Object.fromEntries(bills.map((bill) => [bill.id, { ...entry(bill.id), selected, amount: entry(bill.id).amount || bill.remaining }])) });
-  return (
-    <Table aria-label="Open bills">
-      <TableHeader>
-        <TableRow>
-          <TableHead>Bill No</TableHead>
-          <TableHead>Bill Date</TableHead>
-          <TableHead>Bill Due Date</TableHead>
-          <TableHead>Account</TableHead>
-          <TableHead>Bill Details</TableHead>
-          <TableHead className="text-right">Bill Amount</TableHead>
-          <TableHead className="text-right">Remaining Amount</TableHead>
-          <TableHead>
-            <label className="flex items-center gap-1">
-              <input type="checkbox" aria-label="Select All" disabled={form.fifo} checked={allTicked} onChange={(e) => tickAll(e.target.checked)} />
-              Select All
-            </label>
-          </TableHead>
-          <TableHead>Edit Amount</TableHead>
-          <TableHead>TDS</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {bills.map((bill) => {
-          const row = entry(bill.id);
-          const off = form.fifo || !row.selected;
-          return (
-            <TableRow key={bill.id}>
-              <TableCell className="font-mono text-xs">{bill.invoice_number}</TableCell>
-              <TableCell>{formatDate(bill.bill_date)}</TableCell>
-              <TableCell>{formatDate(bill.due_date)}</TableCell>
-              <TableCell>{bill.account}</TableCell>
-              <TableCell>{bill.details}</TableCell>
-              <TableCell className="text-right">{formatCurrency(Number(bill.bill_amount))}</TableCell>
-              <TableCell className="text-right">{formatCurrency(Number(bill.remaining))}</TableCell>
-              <TableCell>
-                <input
-                  type="checkbox"
-                  aria-label={`Select ${bill.invoice_number}`}
-                  disabled={form.fifo}
-                  checked={row.selected}
-                  onChange={(e) => update(bill.id, { selected: e.target.checked, amount: row.amount || bill.remaining })}
-                />
-              </TableCell>
-              <TableCell className="w-32">
-                <Input aria-label={`Amount for ${bill.invoice_number}`} inputMode="decimal" disabled={off} value={row.amount} onChange={(e) => update(bill.id, { amount: e.target.value })} />
-                <FormFieldError message={errors[`bill.${bill.id}`]} />
-              </TableCell>
-              <TableCell className="w-28">
-                <Input aria-label={`TDS for ${bill.invoice_number}`} inputMode="decimal" disabled={off} value={row.tds} onChange={(e) => update(bill.id, { tds: e.target.value })} />
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  );
-}
-
-function PaymentFields({ form, set, errors }: { form: CollectionForm; set: SetForm; errors: Errors }): ReactNode {
-  const accounts = (useLedgerAccounts({ account_type: 'asset', limit: 100 }).data?.data ?? []).filter(
-    (account) => account.is_bank_account || account.code === 'cash',
-  );
-  return (
-    <div className="space-y-3">
-      <fieldset className="flex flex-wrap items-center gap-3 text-sm">
-        <legend className="mb-1 font-medium">Payment mode</legend>
-        {COLLECTION_MODES.map((option) => (
-          <label key={option.value} className="flex items-center gap-1">
-            <input type="radio" name="collection-mode" value={option.value} checked={form.mode === option.value} onChange={() => set({ mode: option.value as CollectionMode })} />
-            {option.label}
-          </label>
-        ))}
-      </fieldset>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {needsNumber(form.mode) && (
-          <div className="space-y-1">
-            <Label htmlFor="col-reference">Payment Number</Label>
-            <Input id="col-reference" maxLength={100} value={form.reference} onChange={(e) => set({ reference: e.target.value })} />
-            <FormFieldError message={errors.reference} />
-          </div>
-        )}
-        {needsBank(form.mode) && (
-          <>
-            <div className="space-y-1">
-              <Label htmlFor="col-bank">Payment Bank</Label>
-              <Input id="col-bank" maxLength={100} value={form.bank} onChange={(e) => set({ bank: e.target.value })} />
-              <FormFieldError message={errors.bank} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="col-instrument-date">Instrument date</Label>
-              <Input id="col-instrument-date" type="date" value={form.instrumentDate} onChange={(e) => set({ instrumentDate: e.target.value })} />
-            </div>
-          </>
-        )}
-        <div className="space-y-1">
-          <Label htmlFor="col-account">Bank & Cash Account</Label>
-          <Select id="col-account" value={form.bankAccountId} onChange={(e) => set({ bankAccountId: e.target.value })}>
-            <option value="">Default for the mode</option>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="col-date">Date</Label>
-          <Input id="col-date" type="date" value={form.date} onChange={(e) => set({ date: e.target.value })} />
-          <FormFieldError message={errors.date} />
-        </div>
-      </div>
-      <div className="space-y-1">
-        <Label htmlFor="col-comments">Comments</Label>
-        <Textarea id="col-comments" maxLength={1000} value={form.comments} onChange={(e) => set({ comments: e.target.value })} />
-      </div>
-    </div>
-  );
-}
+type SetForm = SetCollectionForm;
 
 function PayerField({ unitId, form, set, error }: { unitId: string; form: CollectionForm; set: SetForm; error?: string }): ReactNode {
   const members = (useUnitMembers(unitId).data ?? []).filter((member) => member.member_type === 'owner' || member.member_type === 'tenant');

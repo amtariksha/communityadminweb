@@ -106,7 +106,9 @@ interface ReceiptFilters {
 export interface CreateReceiptInput {
   /** Empty = the current financial year. */
   financial_year_id: string;
-  unit_id: string;
+  /** INC-45 — the unit the collection is from, or (customer_id) the non-member payer; exactly one. */
+  unit_id?: string;
+  customer_id?: string;
   receipt_date: string;
   amount: number;
   mode: string;
