@@ -76,11 +76,16 @@ describe('Admin Files (FILE-10)', () => {
 describe('Projects & Meetings (PROJ-10 to PROJ-12, PROJ-41)', () => {
   it('shows SetUp (PROJ-22), Projects (PROJ-41), Meetings with Open and Closed as sub-tabs, then Tasks', () => {
     expect(children('projects')).toEqual([
-      ['SetUp', '/governance/setup'],
+      ['SetUp', undefined],
       ['Projects', undefined],
       ['Meetings', undefined],
       ['Tasks', '/governance/tasks'],
       ['Reports', '/governance/reports'],
+    ]);
+    // PROJ-47: SetUp › SetUp · Access Control.
+    expect(tabs('projects.setup')).toEqual([
+      ['SetUp', '/governance/setup'],
+      ['Access Control', '/governance/setup/access'],
     ]);
     // PROJ-41: List View, then the three status boards.
     expect(tabs('projects.projects')).toEqual([

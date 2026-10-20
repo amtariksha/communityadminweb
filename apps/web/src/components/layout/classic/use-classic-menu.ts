@@ -7,6 +7,8 @@ import { applyTicketScope, getSidebarAllowlist, isDelegatedTicketRole } from '@/
 import { classicMenu, type MenuNode } from '../menu/classic-menu';
 import { visibleMenu } from '../menu/menu-access';
 import { blockedMenuIds, useBlockedModules } from '../module-access';
+import { withoutBlockedAreas } from '../module-areas';
+import { useMyModuleAreas } from '@/hooks/use-module-areas';
 
 /**
  * The role that shapes the menu, resolved for the selected society the
@@ -28,11 +30,14 @@ export function useClassicMenu(): MenuNode[] {
   const { data: ticketScope } = useTicketScope(isDelegatedTicketRole(role));
   // UNIT-24 — modules switched off for this person are left out.
   const blocked = useBlockedModules();
+  // PROJ-47 — areas of a module switched off for this person are left out too.
+  const { data: areas } = useMyModuleAreas();
   return useMemo(() => {
     const hidden = blockedMenuIds(blocked);
-    return visibleMenu(classicMenu, {
+    const visible = visibleMenu(classicMenu, {
       enabledFeatures,
       roleAllowlist: applyTicketScope(getSidebarAllowlist(role), role, ticketScope),
     }).filter((node) => !hidden.has(node.id));
-  }, [enabledFeatures, role, ticketScope, blocked]);
+    return withoutBlockedAreas(visible, areas);
+  }, [enabledFeatures, role, ticketScope, blocked, areas]);
 }

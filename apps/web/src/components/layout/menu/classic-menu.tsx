@@ -792,8 +792,16 @@ export const classicMenu: MenuNode[] = [
       { label: 'Meeting Minutes', path: '/governance/meetings/:id/minutes' },
     ],
     children: [
-      // PROJ-22: Setup Task Categories; Access Control comes with PROJ-47.
-      { id: 'projects.setup', label: 'SetUp', href: '/governance/setup', logs: ['meeting'] },
+      // PROJ-22: Setup Task Categories (and the meeting notification switches);
+      // PROJ-47: Access Control, one tick per person per area.
+      {
+        id: 'projects.setup',
+        label: 'SetUp',
+        tabs: [
+          { id: 'projects.setup.setup', label: 'SetUp', href: '/governance/setup', logs: ['meeting'] },
+          { id: 'projects.setup.access', label: 'Access Control', href: '/governance/setup/access', logs: ['admin_access', 'rbac'] },
+        ],
+      },
       {
         // PROJ-41: List View, then the Open / In Progress / Closed boards (SB-05).
         id: 'projects.projects',
