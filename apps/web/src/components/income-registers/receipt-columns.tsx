@@ -86,6 +86,8 @@ const KIND_LABELS: Record<string, string> = {
   account_specific: 'Account specific',
   interest_waiver: 'Interest waiver',
   cancellation: 'Cancellation',
+  // INC-56: a unit's opening advance (Bulk Posting › Upload Opening Balances).
+  opening_balance: 'Opening advance',
 };
 
 /** Columns of the Credit Notes register (INC-S26). */
