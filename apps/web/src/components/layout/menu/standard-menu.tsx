@@ -93,6 +93,8 @@ export const standardMenu: NavGroup[] = [
       { label: 'Move-Outs', href: '/move-in-out/noc', icon: <DoorOpen className="h-4 w-4" />, feature: 'units' },
       { label: 'Member Categories', href: '/setup/categories', icon: <Users className="h-4 w-4" />, feature: 'units' },
       { label: 'KYC Verification', href: '/setup/kyc', icon: <ShieldCheck className="h-4 w-4" />, feature: 'units' },
+      // UNIT-33 — surveys share the polls' grid resource and module switch (voting).
+      { label: 'Surveys', href: '/units/surveys', icon: <ClipboardList className="h-4 w-4" />, feature: 'voting' },
       { label: 'Gate', href: '/gate', icon: <ShieldCheck className="h-4 w-4" />, feature: 'gate' },
       { label: 'Guard Patrol', href: '/patrol', icon: <Footprints className="h-4 w-4" />, feature: 'gate' },
       { label: 'SOS & Safety', href: '/sos', icon: <Siren className="h-4 w-4" /> },

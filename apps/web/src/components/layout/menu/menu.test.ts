@@ -81,6 +81,7 @@ describe('classic modules', () => {
       'Broadcast',
       'Statistics',
       'De-Activated Users',
+      'Survey',
       'Pet Setup',
       'Consent Activity',
       'Reports',
@@ -267,7 +268,8 @@ describe('menus point only at screens that exist', () => {
 describe('visibleMenu', () => {
   it('hides planned entries and modules with nothing built yet', () => {
     const menu = visibleMenu(classicMenu, EVERYONE);
-    expect(find(menu, 'units.survey')).toBeUndefined();
+    expect(find(menu, 'income.non-member.bulk-posting')).toBeUndefined();
+    expect(find(menu, 'units.survey')?.href).toBe('/units/surveys');
     expect(find(menu, 'gate.move')?.href).toBe('/gate/move-in-out');
     expect(find(menu, 'gate.reports')?.href).toBe('/gate/reports');
     expect(find(menu, 'rules.setup.categories')?.href).toBe('/violations/setup/categories');

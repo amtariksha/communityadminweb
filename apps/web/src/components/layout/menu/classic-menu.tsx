@@ -149,7 +149,19 @@ export const classicMenu: MenuNode[] = [
       { id: 'units.statistics', label: 'Statistics', href: '/units/statistics' },
       // UNIT-18: past members; Edit opens the resident record (Re-activate).
       { id: 'units.deactivated', label: 'De-Activated Users', href: '/units/deactivated', logs: ['member'] },
-      planned('units.survey', 'Survey', 'P9'),
+      // UNIT-33: the committee's surveys; Create / Edit Survey and the results are pages (SB-07).
+      {
+        id: 'units.survey',
+        label: 'Survey',
+        href: '/units/surveys',
+        logs: ['survey'],
+        create: { label: 'Create Survey', href: '/units/surveys/new' },
+        forms: [
+          { label: 'Create Survey', path: '/units/surveys/new' },
+          { label: 'Edit Survey', path: '/units/surveys/:id/edit' },
+          { label: 'Survey Results', path: '/units/surveys/:id/results' },
+        ],
+      },
       // UNIT-35 / UNIT-37
       { id: 'units.pets', label: 'Pet Setup', href: '/units/pet-setup', logs: ['pet_settings', 'pet'] },
       { id: 'units.consent', label: 'Consent Activity', href: '/units/consent' },
