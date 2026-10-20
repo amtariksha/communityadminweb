@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
 import { UserSearchSelect } from '@/components/ui/user-search-select';
 import { useMeetings } from '@/hooks';
-import { useCreateStandaloneTask, type CreateStandaloneTaskInput } from '@/hooks/use-meetings';
+import { useCreateStandaloneTask, type CreateStandaloneTaskInput, type TaskRecurrence } from '@/hooks/use-meetings';
 import { useTaskCategories } from '@/hooks/use-task-categories';
 import type { UserSearchHit } from '@/hooks/use-user-search';
 import { friendlyError } from '@/lib/api-error';
@@ -21,9 +21,18 @@ export interface AddTaskValues {
   category_id: string;
   due_date: string;
   meeting_id: string;
+  /** PROJ-46 */
+  recurrence: TaskRecurrence;
 }
 
-const EMPTY: AddTaskValues = { title: '', description: '', category_id: '', due_date: '', meeting_id: '' };
+const EMPTY: AddTaskValues = { title: '', description: '', category_id: '', due_date: '', meeting_id: '', recurrence: 'none' };
+
+export const RECURRENCES: ReadonlyArray<{ value: TaskRecurrence; label: string }> = [
+  { value: 'none', label: 'None' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+];
 
 /** The same rules as the API; null when valid. */
 export function addTaskError(values: AddTaskValues): string | null {
@@ -42,6 +51,8 @@ export function addTaskPayload(values: AddTaskValues, assignee: UserSearchHit | 
     assignee_id: assignee?.id ?? null,
     due_date: values.due_date || null,
     meeting_id: values.meeting_id || null,
+    // An API older than PROJ-46 drops it.
+    ...(values.recurrence !== 'none' ? { recurrence: values.recurrence } : {}),
   };
 }
 
@@ -129,6 +140,15 @@ export function AddTaskDialog({ open, onClose }: { open: boolean; onClose: () =>
             <Input id="task-due" type="date" value={values.due_date} onChange={(e) => set({ due_date: e.target.value })} />
           </Field>
         </div>
+        <Field id="task-recurrence" label="Recurrence">
+          <Select id="task-recurrence" value={values.recurrence} onChange={(e) => set({ recurrence: e.target.value as TaskRecurrence })}>
+            {RECURRENCES.map((choice) => (
+              <option key={choice.value} value={choice.value}>
+                {choice.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
       </div>
     </FormFrame>
   );

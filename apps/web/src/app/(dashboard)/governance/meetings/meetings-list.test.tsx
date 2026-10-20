@@ -52,6 +52,9 @@ describe('MeetingsList', () => {
     fireEvent.click(screen.getByLabelText('Minutes'));
     fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'lift' } });
     expect(mocks.list).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'lift', scope: 'minutes', page: 1 }));
+    // PROJ-48 — the resolutions linked to a meeting.
+    fireEvent.click(screen.getByLabelText('Resolution'));
+    expect(mocks.list).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'lift', scope: 'resolution' }));
   });
 
   it('shows closed meetings as View only', () => {

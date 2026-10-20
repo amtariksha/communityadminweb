@@ -8,7 +8,7 @@ import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { UserSearchSelect } from '@/components/ui/user-search-select';
 import { useUpdateMomTask } from '@/hooks';
-import { taskListParams, useMomTaskList, type MeetingState, type MomTaskRow } from '@/hooks/use-meeting-lists';
+import { taskListParams, useMomTaskList, type MomTaskRow, type TaskState } from '@/hooks/use-meeting-lists';
 import type { UserSearchHit } from '@/hooks/use-user-search';
 import { friendlyError } from '@/lib/api-error';
 import { useTaskCategories } from '@/hooks/use-task-categories';
@@ -19,15 +19,17 @@ import { taskColumns } from './task-columns';
 // governance-meetings.controller.ts MEETING_WRITE_ROLES; the accountant reads.
 const TASK_WRITE_ROLES = new Set(['super_admin', 'community_admin', 'committee_member']);
 
-function StateSelect(props: { value: MeetingState; counts?: { open: number; closed: number }; onChange: (state: MeetingState) => void }): ReactNode {
+function StateSelect(props: { value: TaskState; counts?: { open: number; closed: number; recurred?: number }; onChange: (state: TaskState) => void }): ReactNode {
   return (
     <div className="space-y-1">
       <Label htmlFor="task-state" className="text-xs text-muted-foreground">
         Status
       </Label>
-      <Select id="task-state" value={props.value} onChange={(event) => props.onChange(event.target.value as MeetingState)}>
+      <Select id="task-state" value={props.value} onChange={(event) => props.onChange(event.target.value as TaskState)}>
         <option value="open">{withCount('Open', props.counts?.open)}</option>
         <option value="closed">{withCount('Closed', props.counts?.closed)}</option>
+        {/* PROJ-46 — shown once the API counts it. */}
+        {props.counts?.recurred !== undefined && <option value="recurred">{withCount('Recurred', props.counts.recurred)}</option>}
       </Select>
     </div>
   );
@@ -63,7 +65,7 @@ function CategorySelect({ value, onChange }: { value: string; onChange: (id: str
 export function TasksContent(): ReactNode {
   const { addToast } = useToast();
   const update = useUpdateMomTask();
-  const [state, setState] = useState<MeetingState>('open');
+  const [state, setState] = useState<TaskState>('open');
   const [assignee, setAssignee] = useState<UserSearchHit | null>(null);
   const [categoryId, setCategoryId] = useState('');
   const [adding, setAdding] = useState(false);
@@ -134,7 +136,7 @@ export function TasksContent(): ReactNode {
       loading={query.isLoading}
       error={query.error}
       onRetry={() => void query.refetch()}
-      emptyText={state === 'open' ? 'There are no open tasks.' : 'There are no closed tasks.'}
+      emptyText={`There are no ${state} tasks.`}
     />
     </>
   );

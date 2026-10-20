@@ -14,6 +14,8 @@ const SCOPES: ReadonlyArray<{ value: MeetingSearchScope; label: string }> = [
   { value: 'topic', label: 'Topic' },
   { value: 'agenda', label: 'Agenda' },
   { value: 'minutes', label: 'Minutes' },
+  // PROJ-48 — the resolutions linked to the meeting.
+  { value: 'resolution', label: 'Resolution' },
   { value: 'all', label: 'All' },
 ];
 

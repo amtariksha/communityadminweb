@@ -62,7 +62,13 @@ describe('AddTaskDialog', () => {
   });
 
   it('files the task under a chosen meeting', () => {
-    const body = addTaskPayload({ title: 'Paint', description: '', category_id: '', due_date: '2026-11-30', meeting_id: 'm-1' }, null);
+    const body = addTaskPayload({ title: 'Paint', description: '', category_id: '', due_date: '2026-11-30', meeting_id: 'm-1', recurrence: 'none' }, null);
     expect(body).toMatchObject({ meeting_id: 'm-1', due_date: '2026-11-30', category_id: null });
+    expect(body).not.toHaveProperty('recurrence');
+  });
+
+  it('sends a recurrence when one is chosen (PROJ-46)', () => {
+    const body = addTaskPayload({ title: 'Check the fire panel', description: '', category_id: '', due_date: '2026-10-26', meeting_id: '', recurrence: 'weekly' }, null);
+    expect(body).toMatchObject({ recurrence: 'weekly', due_date: '2026-10-26' });
   });
 });

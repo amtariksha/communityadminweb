@@ -57,6 +57,18 @@ describe('TasksContent', () => {
     expect(mocks.list).toHaveBeenLastCalledWith(expect.objectContaining({ state: 'closed' }));
   });
 
+  it('adds Recurred(n) once the API counts recurring instances, and asks for that state (PROJ-46)', () => {
+    mocks.list.mockReturnValue({ isLoading: false, data: { data: [{ ...TASK, status: 'recurred', recurrence: 'weekly' }], total: 1, counts: { open: 3, closed: 2, recurred: 1 } } });
+    render(<TasksContent />);
+
+    const options = [...(screen.getByLabelText('Status') as HTMLSelectElement).options].map((option) => option.textContent);
+    expect(options).toEqual(['Open (3)', 'Closed (2)', 'Recurred (1)']);
+    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'recurred' } });
+    expect(mocks.list).toHaveBeenLastCalledWith(expect.objectContaining({ state: 'recurred' }));
+    expect(screen.getByText('Weekly')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Close Task' })).toBeTruthy();
+  });
+
   it('Close Task sends status completed for that task, with the remark when one is typed (PROJ-21)', () => {
     const prompt = vi.spyOn(window, 'prompt').mockReturnValue('');
     render(<TasksContent />);

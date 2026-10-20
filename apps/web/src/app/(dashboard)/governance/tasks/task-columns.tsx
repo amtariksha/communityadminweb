@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import type { MomTaskRow } from '@/hooks/use-meeting-lists';
 import { formatDate } from '@/lib/utils';
 
+const RECURRENCE_WORDS: Readonly<Record<string, string>> = { none: '', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
+
 /**
- * Tasks columns (PROJ-S11; Recurrence waits for PROJ-46): Close Task first,
- * then Task ID (PROJ-20), Date, Category (PROJ-21), Created By, Assigned To,
- * Description and Due Date.
+ * Tasks columns (PROJ-S11): Close Task first, then Task ID (PROJ-20), Date,
+ * Category (PROJ-21), Created By, Assigned To, Description, Recurrence
+ * (PROJ-46) and Due Date.
  */
 export function taskColumns(onClose: ((task: MomTaskRow) => void) | null, busyId: string | null): DataTableColumn<MomTaskRow>[] {
   const closeCell = (task: MomTaskRow): ReactNode => {
@@ -41,6 +43,8 @@ export function taskColumns(onClose: ((task: MomTaskRow) => void) | null, busyId
         </div>
       ),
     },
+    // PROJ-46 — None shows blank, as an empty cell.
+    { key: 'recurrence', header: 'Recurrence', cell: (task) => RECURRENCE_WORDS[task.recurrence ?? 'none'] ?? '' },
     { key: 'due', header: 'Due Date', cell: (task) => (task.due_date ? formatDate(task.due_date) : '—') },
   ];
 }

@@ -5,11 +5,16 @@ import { api } from '@/lib/api';
 import { meetingKeys, type MeetingItem, type MomTask } from './use-meetings';
 
 export type MeetingState = 'open' | 'closed';
-export type MeetingSearchScope = 'topic' | 'agenda' | 'minutes' | 'all';
+/** PROJ-46 — Recurred: instances made by closing a recurring task. */
+export type TaskState = MeetingState | 'recurred';
+/** PROJ-48 — Resolution searches the resolutions linked to a meeting. */
+export type MeetingSearchScope = 'topic' | 'agenda' | 'minutes' | 'resolution' | 'all';
 
 export interface StateCounts {
   open: number;
   closed: number;
+  /** Tasks, on an API with PROJ-46. */
+  recurred?: number;
 }
 
 export interface ListPage<Row> {
@@ -28,7 +33,7 @@ export interface MeetingListFilters {
 }
 
 export interface TaskListFilters {
-  state: MeetingState;
+  state: TaskState;
   q?: string;
   assignee_id?: string;
   /** PROJ-21 */

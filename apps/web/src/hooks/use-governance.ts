@@ -22,6 +22,8 @@ export interface Resolution {
   meeting_type: string;
   minutes: string;
   poll_id: string | null;
+  /** PROJ-48 — the meeting it belongs to; absent from an older API. */
+  meeting_id?: string | null;
   created_at: string;
 }
 
