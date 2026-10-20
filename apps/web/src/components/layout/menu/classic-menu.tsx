@@ -807,7 +807,8 @@ export const classicMenu: MenuNode[] = [
         aliases: ['/asset-inventory/assets'],
         tabs: [
           ...statusMenuChildren('assets.assets', ASSETS_BASE, ASSET_STATUS_ROUTES, { logs: ['asset', 'amc_contract'] }),
-          planned('assets.assets.bulk', 'Bulk Upload', 'ASSET-15'),
+          // ASSET-15
+          { id: 'assets.assets.bulk', label: 'Bulk Upload', href: '/asset-inventory/assets/bulk-upload', logs: ['import_batch'] },
           { id: 'assets.assets.edits', label: 'View User Edits', href: '/asset-inventory/assets/edits' },
         ],
       },
@@ -817,7 +818,8 @@ export const classicMenu: MenuNode[] = [
         aliases: ['/asset-inventory/inventory'],
         tabs: [
           { id: 'assets.inventory.active', label: 'Active', href: '/asset-inventory/inventory/active', logs: INVENTORY_LOGS },
-          planned('assets.inventory.bulk', 'Bulk Upload', 'ASSET-15'),
+          // ASSET-15
+          { id: 'assets.inventory.bulk', label: 'Bulk Upload', href: '/asset-inventory/inventory/bulk-upload', logs: ['import_batch'] },
           { id: 'assets.inventory.expired', label: 'Expired', href: '/asset-inventory/inventory/expired', logs: INVENTORY_LOGS },
           {
             id: 'assets.inventory.procurement',

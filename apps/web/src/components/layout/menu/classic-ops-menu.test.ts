@@ -124,10 +124,12 @@ describe('Asset & Inventory (ASSET-07)', () => {
       ['Active Assets', '/asset-inventory/assets/active'],
       ['Under Service Assets', '/asset-inventory/assets/under-service'],
       ['Expired Assets', '/asset-inventory/assets/expired'],
+      ['Bulk Upload', '/asset-inventory/assets/bulk-upload'],
       ['View User Edits', '/asset-inventory/assets/edits'],
     ]);
     expect(tabs('assets.inventory')).toEqual([
       ['Active', '/asset-inventory/inventory/active'],
+      ['Bulk Upload', '/asset-inventory/inventory/bulk-upload'],
       ['Expired', '/asset-inventory/inventory/expired'],
       ['Procurement', '/asset-inventory/inventory/procurement'],
       ['Movement Log', '/asset-inventory/inventory/movements'],
