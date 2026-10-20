@@ -111,7 +111,7 @@ function ModeRadios({ form, set }: { form: CollectionForm; set: SetCollectionFor
   );
 }
 
-function InstrumentFields({ form, set, errors }: { form: CollectionForm; set: SetCollectionForm; errors: Errors }): ReactNode {
+function InstrumentFields({ form, set, errors, instrumentDate }: { form: CollectionForm; set: SetCollectionForm; errors: Errors; instrumentDate: boolean }): ReactNode {
   return (
     <>
       {needsNumber(form.mode) && (
@@ -128,10 +128,12 @@ function InstrumentFields({ form, set, errors }: { form: CollectionForm; set: Se
             <Input id="col-bank" maxLength={100} value={form.bank} onChange={(e) => set({ bank: e.target.value })} />
             <FormFieldError message={errors.bank} />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="col-instrument-date">Instrument date</Label>
-            <Input id="col-instrument-date" type="date" value={form.instrumentDate} onChange={(e) => set({ instrumentDate: e.target.value })} />
-          </div>
+          {instrumentDate && (
+            <div className="space-y-1">
+              <Label htmlFor="col-instrument-date">Instrument date</Label>
+              <Input id="col-instrument-date" type="date" value={form.instrumentDate} onChange={(e) => set({ instrumentDate: e.target.value })} />
+            </div>
+          )}
         </>
       )}
     </>
@@ -181,17 +183,19 @@ export function MemberPayerField({ unitId, form, set, error, optional = false }:
 }
 
 /** Payment mode, number, bank, the Bank & Cash ledger, the date and comments. */
-export function PaymentFields({ form, set, errors, commentsLabel = 'Comments' }: {
+export function PaymentFields({ form, set, errors, commentsLabel = 'Comments', instrumentDate = true }: {
   form: CollectionForm;
   set: SetCollectionForm;
   errors: Errors;
   commentsLabel?: string;
+  /** The cheque / DD date; off where the route does not keep it. */
+  instrumentDate?: boolean;
 }): ReactNode {
   return (
     <div className="space-y-3">
       <ModeRadios form={form} set={set} />
       <div className="grid gap-3 sm:grid-cols-3">
-        <InstrumentFields form={form} set={set} errors={errors} />
+        <InstrumentFields form={form} set={set} errors={errors} instrumentDate={instrumentDate} />
         <div className="space-y-1">
           <Label htmlFor="col-account">Bank & Cash Account</Label>
           <BankAccountSelect id="col-account" value={form.bankAccountId} onChange={(bankAccountId) => set({ bankAccountId })} />

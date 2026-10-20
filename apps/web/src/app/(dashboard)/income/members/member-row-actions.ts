@@ -13,6 +13,8 @@ export const statementHref = (unitId: string, base = MEMBER_INCOME_BASE): string
 export const invoiceHref = (unitId: string, base = MEMBER_INCOME_BASE): string => `${base}/${unitId}/invoice`;
 export const collectionHref = (unitId: string, billId?: string, base = MEMBER_INCOME_BASE): string =>
   `${base}/${unitId}/collection${billId ? `?bill=${billId}` : ''}`;
+/** INC-48 — Member Income › Unidentified Collection. */
+export const UNIDENTIFIED_HREF = `${MEMBER_INCOME_BASE}/unidentified`;
 /** INC-47 — Post a Refundable Deposit for the unit. */
 export const depositHref = (unitId: string): string => `${MEMBER_INCOME_BASE}/${unitId}/deposit`;
 

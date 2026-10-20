@@ -10,7 +10,7 @@ import { MEMBER_INCOME_BASE } from './member-row-actions';
  */
 export const MEMBER_INCOME_LINKS: ReadonlyArray<{ label: string; href: string; shipped: boolean }> = [
   { label: 'SubLedgers', href: MEMBER_INCOME_BASE, shipped: true },
-  { label: 'Unidentified Collection', href: `${MEMBER_INCOME_BASE}/unidentified`, shipped: false },
+  { label: 'Unidentified Collection', href: `${MEMBER_INCOME_BASE}/unidentified`, shipped: true },
   { label: 'Bulk Posting', href: `${MEMBER_INCOME_BASE}/bulk-posting`, shipped: false },
   { label: 'Bulk Corrections', href: `${MEMBER_INCOME_BASE}/bulk-corrections`, shipped: false },
 ];
