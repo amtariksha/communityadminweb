@@ -39,6 +39,7 @@ import { TdsConfigCard } from './tds-config-card';
 import { NotificationPolicyCard } from './notification-policy-card';
 import { HelpContactCard } from './help-contact-card';
 import { AdminLayoutCard } from './admin-layout-card';
+import { AssistantCard } from './assistant-card';
 import { OwnerDirectOnboardCard } from './owner-direct-onboard-card';
 import { FinancialYearsCard } from './financial-years-card';
 import { ModulesCard } from './modules-card';
@@ -421,6 +422,8 @@ export default function SettingsContent(): ReactNode {
       {/* Admin layout — standard or classic, society-wide (SB-01)            */}
       {/* ------------------------------------------------------------------- */}
       <AdminLayoutCard />
+
+      <AssistantCard />
 
       {/* ------------------------------------------------------------------- */}
       {/* Access & Roles — supervisor toggles + expiry enforcement             */}

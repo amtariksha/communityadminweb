@@ -19,6 +19,7 @@ import type { MenuNode } from '../menu/classic-menu';
 import { formatRoleLabel, resolveDisplayName } from '../sidebar';
 import { SocietySwitcher } from '../society-switcher';
 import { ScreenFinder } from './screen-finder';
+import { AssistantButton } from '@/components/assistant/assistant-button';
 
 interface ClassicTopBarProps {
   menu: readonly MenuNode[];
@@ -76,6 +77,7 @@ export function ClassicTopBar({ menu, onMenuClick }: ClassicTopBarProps): ReactN
       </div>
       <ScreenFinder menu={menu} />
       <div className="ml-auto flex items-center gap-2">
+        <AssistantButton className="hover:bg-classic-topbar-foreground/10" />
         <SocietySwitcher triggerClassName="border-classic-topbar-foreground/30 hover:bg-classic-topbar-foreground/10" />
         <button
           type="button"

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useHelpMode } from '@/lib/help-mode-context';
 import { Tooltip } from '@/components/ui/tooltip';
 import { SocietySwitcher } from './society-switcher';
+import { AssistantButton } from '@/components/assistant/assistant-button';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -101,6 +102,7 @@ export function Header({ onMenuClick }: HeaderProps): ReactNode {
       </nav>
 
       <div className="ml-auto flex items-center gap-2">
+        <AssistantButton />
         <SocietySwitcher />
 
         <Tooltip content="Toggle Help Mode" side="bottom">
