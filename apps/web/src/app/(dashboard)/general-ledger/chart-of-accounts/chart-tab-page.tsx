@@ -84,6 +84,12 @@ export function ChartTabPage({ slug }: { slug: ChartTab['slug'] }): ReactNode {
         <h3 className="font-semibold">{tab.heading}</h3>
         {slug === 'assets' && <AssetNotes />}
         {!canSave && <p role="note" className="text-sm text-muted-foreground">Only the community admin and the accountant can change accounts.</p>}
+        {canSave && (
+          // GL-24: many accounts at once from a sheet.
+          <Link href="/general-ledger/chart-of-accounts/upload" className="text-sm text-primary underline">
+            Upload accounts from Excel
+          </Link>
+        )}
         <ExportStrip
           config={{ path: '/ledger/accounts/export', params: { account_type: tab.groupTypes.join(',') }, filename: `chart-of-accounts-${slug}` }}
           rowCount={accounts.length}

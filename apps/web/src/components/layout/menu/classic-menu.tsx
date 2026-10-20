@@ -386,6 +386,8 @@ export const classicMenu: MenuNode[] = [
         id: 'ledger.chart',
         label: 'Chart of Accounts',
         aliases: ['/accounts'],
+        // GL-24
+        forms: [{ label: 'Upload Accounts', path: '/general-ledger/chart-of-accounts/upload' }],
         tabs: [
           { id: 'ledger.chart.assets', label: 'Assets', href: '/general-ledger/chart-of-accounts/assets', logs: ['ledger_account'] },
           { id: 'ledger.chart.liabilities', label: 'Liabilities', href: '/general-ledger/chart-of-accounts/liabilities', logs: ['ledger_account'] },
@@ -406,7 +408,12 @@ export const classicMenu: MenuNode[] = [
             id: 'ledger.journal.bulk-posting',
             label: 'Bulk Posting',
             href: '/general-ledger/journal-entries/bulk-posting',
-            logs: ['ledger_account', 'journal_entry', 'financial_year'],
+            logs: ['ledger_account', 'journal_entry', 'financial_year', 'import_batch'],
+            // GL-24: the two uploads.
+            forms: [
+              { label: 'Batch Upload Opening Balances', path: '/general-ledger/journal-entries/bulk-posting/opening-balances' },
+              { label: 'Batch Upload Journal Entries', path: '/general-ledger/journal-entries/bulk-posting/journal-entries' },
+            ],
           },
           planned('ledger.journal.bulk-corrections', 'Bulk Corrections', 'GL-25'),
         ],
