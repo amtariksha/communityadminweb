@@ -1,10 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useRef, useState, type ReactNode } from 'react';
 import { Plus, Zap, Calculator, FileText, Upload, Camera } from 'lucide-react';
 import { useOcrMeterReading } from '@/hooks/use-ocr';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
@@ -419,9 +420,15 @@ export function ReadingsTab(): ReactNode {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Submit Reading</CardTitle>
-            <Button variant="outline" onClick={() => setBulkOpen(true)}>
-              <Upload className="mr-2 h-4 w-4" /> Bulk CSV Upload
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {/* UTIL-16: the readings upload (SB-13). The paste dialog stays until the API with it is live. */}
+              <Link href="/utilities/bulk-posting/excel" className={buttonVariants({ variant: 'outline' })}>
+                <Upload className="mr-2 h-4 w-4" /> Upload readings (Excel)
+              </Link>
+              <Button variant="ghost" onClick={() => setBulkOpen(true)}>
+                Paste CSV
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

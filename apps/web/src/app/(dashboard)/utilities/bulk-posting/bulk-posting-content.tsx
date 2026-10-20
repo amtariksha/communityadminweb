@@ -19,13 +19,25 @@ export interface BulkPostingRow {
 const withBlock = (path: string, block: string | null): string =>
   block ? `${path}?block=${encodeURIComponent(block)}` : path;
 
+const withType = (path: string, meterType: string, block: string | null): string =>
+  `${path}?meter_type=${meterType}${block ? `&block=${encodeURIComponent(block)}` : ''}`;
+
+const readingsRow = (meterType: string, label: string): BulkPostingRow => ({
+  type: `${label} readings to invoices`,
+  direct: { label: 'Invoices in Batch', href: (block) => withType('/utilities/bulk-posting/batch', meterType, block) },
+  excel: { label: 'Invoices using Excel', href: (block) => withType('/utilities/bulk-posting/excel', meterType, block) },
+});
+
 /**
  * The rows whose ticket has shipped (UTIL-S7: "a row whose ticket has not
- * shipped is hidden"). Readings to invoices per meter type (UTIL-15),
- * readings from Excel (UTIL-16) and the GSTIN / PAN upload (INC-60) join
- * when they are built.
+ * shipped is hidden"): readings to invoices per meter type (UTIL-15 grid,
+ * UTIL-16 upload) and calculated bills to invoices (UTIL-07). The GSTIN /
+ * PAN upload (INC-60) joins when it is built.
  */
 export const BULK_POSTING_ROWS: readonly BulkPostingRow[] = [
+  readingsRow('water', 'Water'),
+  readingsRow('electricity', 'Electricity'),
+  readingsRow('gas', 'Gas'),
   {
     type: 'Calculated bills to invoices',
     direct: { label: 'Invoices in Batch', href: (block) => withBlock('/utilities/bulk-posting/bills', block) },

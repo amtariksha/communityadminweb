@@ -10,10 +10,24 @@ describe('Utility Tracker › Bulk Posting (UTIL-12)', () => {
   it('offers only the rows whose ticket has shipped, for the chosen block', () => {
     render(<BulkPostingContent />);
 
-    expect(screen.getAllByRole('row')).toHaveLength(2);
+    // Header + water, electricity, gas readings (UTIL-15 / UTIL-16) + calculated bills (UTIL-07).
+    expect(screen.getAllByRole('row')).toHaveLength(5);
     expect(screen.getByText('Calculated bills to invoices')).toBeTruthy();
-    expect(screen.queryByText(/readings to invoices/i)).toBeNull();
     expect(screen.queryByText(/GSTIN/)).toBeNull();
-    expect(screen.getByRole('link', { name: 'Invoices in Batch' }).getAttribute('href')).toBe('/utilities/bulk-posting/bills?block=A');
+    const batches = screen.getAllByRole('link', { name: 'Invoices in Batch' }).map((link) => link.getAttribute('href'));
+    expect(batches).toEqual([
+      '/utilities/bulk-posting/batch?meter_type=water&block=A',
+      '/utilities/bulk-posting/batch?meter_type=electricity&block=A',
+      '/utilities/bulk-posting/batch?meter_type=gas&block=A',
+      '/utilities/bulk-posting/bills?block=A',
+    ]);
+  });
+
+  it('opens the readings upload per meter type (UTIL-16)', () => {
+    render(<BulkPostingContent />);
+    expect(screen.getByText('Water readings to invoices')).toBeTruthy();
+    const uploads = screen.getAllByRole('link', { name: 'Invoices using Excel' }).map((link) => link.getAttribute('href'));
+    expect(uploads[0]).toBe('/utilities/bulk-posting/excel?meter_type=water&block=A');
+    expect(uploads).toHaveLength(3);
   });
 });

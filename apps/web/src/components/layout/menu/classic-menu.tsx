@@ -446,7 +446,12 @@ export const classicMenu: MenuNode[] = [
         id: 'utility.bulk',
         label: 'Bulk Posting',
         href: '/utilities/bulk-posting',
-        forms: [{ label: 'Invoices in Batch', path: '/utilities/bulk-posting/bills' }],
+        forms: [
+          { label: 'Invoices in Batch', path: '/utilities/bulk-posting/bills' },
+          // UTIL-15 / UTIL-16: readings to invoices, typed or from a sheet.
+          { label: 'Invoices in Batch', path: '/utilities/bulk-posting/batch' },
+          { label: 'Invoices using Excel', path: '/utilities/bulk-posting/excel' },
+        ],
       },
       {
         id: 'utility.registers',
