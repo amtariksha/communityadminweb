@@ -2,13 +2,28 @@ import type { Customer } from '@communityos/shared';
 
 /**
  * Add / Edit a non-member-income party (VEND-S2 opened from Vendors for
- * Non Member Income, VEND-07): the vendor form without Account Head, GST
- * rates and Vendor type, saved to `customers`. Pure, tested on its own.
+ * Non Member Income, VEND-07; Add Payer, INC-S33): saved to `customers`.
+ * INC-46 adds the alternate e-mails, the Account Head and GST rate a new
+ * invoice starts with, and the payer type. Pure, tested on its own.
  */
+export type PayerType = 'company' | 'non_company' | 'professional';
+
+export const PAYER_TYPES: ReadonlyArray<{ value: PayerType; label: string }> = [
+  { value: 'company', label: 'Company' },
+  { value: 'non_company', label: 'Non Company' },
+  { value: 'professional', label: 'Professional' },
+];
+
 export type Party = Customer & {
   party_code?: string | null;
   tds_rate?: string | number | null;
   tds_section?: string | null;
+  alternate_emails?: string | null;
+  default_income_account_id?: string | null;
+  payer_type?: PayerType | null;
+  default_gst_rate?: string | number | null;
+  /** INC-46 — what the payer owes on its open invoices (list rows only). */
+  outstanding?: string | null;
 };
 
 export interface PartyFormValues {
@@ -28,6 +43,10 @@ export interface PartyFormValues {
   bank_account_number: string;
   bank_ifsc: string;
   is_active: boolean;
+  alternate_emails: string;
+  default_income_account_id: string;
+  payer_type: PayerType | '';
+  default_gst_rate: string;
 }
 
 export type PartyPayload = Partial<{
@@ -47,20 +66,24 @@ export type PartyPayload = Partial<{
   bank_account_number: string | null;
   bank_ifsc: string | null;
   is_active: boolean;
+  alternate_emails: string | null;
+  default_income_account_id: string | null;
+  payer_type: PayerType | null;
+  default_gst_rate: number | null;
 }>;
 
-type TextField = Exclude<keyof PartyFormValues, 'name' | 'tds_rate' | 'is_active'>;
+type TextField = Exclude<keyof PartyFormValues, 'name' | 'tds_rate' | 'is_active' | 'payer_type' | 'default_gst_rate'>;
 
 const TEXT_FIELDS: readonly TextField[] = [
   'party_code', 'contact_person', 'phone', 'email', 'address', 'gstin', 'pan', 'tds_section', 'notes',
-  'bank_name', 'bank_branch', 'bank_account_number', 'bank_ifsc',
+  'bank_name', 'bank_branch', 'bank_account_number', 'bank_ifsc', 'alternate_emails', 'default_income_account_id',
 ];
 
 export function emptyPartyForm(): PartyFormValues {
   return {
     party_code: '', name: '', contact_person: '', phone: '', email: '', address: '', gstin: '', pan: '',
     tds_section: '', tds_rate: '', notes: '', bank_name: '', bank_branch: '', bank_account_number: '', bank_ifsc: '',
-    is_active: true,
+    is_active: true, alternate_emails: '', default_income_account_id: '', payer_type: '', default_gst_rate: '',
   };
 }
 
@@ -83,6 +106,10 @@ export function partyFormFromParty(party: Party): PartyFormValues {
     bank_account_number: text(party.bank_account_number),
     bank_ifsc: text(party.bank_ifsc),
     is_active: party.is_active,
+    alternate_emails: text(party.alternate_emails),
+    default_income_account_id: text(party.default_income_account_id),
+    payer_type: party.payer_type ?? '',
+    default_gst_rate: party.default_gst_rate == null ? '' : String(Number(party.default_gst_rate)),
   };
 }
 
@@ -98,12 +125,27 @@ export function partyFormError(values: PartyFormValues): string | null {
   }
   const tds = rate(values.tds_rate);
   if (tds !== null && !(tds >= 0 && tds <= 100)) return 'The TDS rate is a percent from 0 to 100.';
-  return null;
+  return alternateEmailsError(values.alternate_emails);
+}
+
+const EMAIL = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
+
+/** Alternate e-mails: comma-separated, each an address, at most five (the API's rule). */
+export function alternateEmailsError(typed: string): string | null {
+  const emails = typed.split(',').map((part) => part.trim()).filter(Boolean);
+  if (emails.length > 5) return 'At most five alternate e-mails.';
+  const bad = emails.find((email) => !EMAIL.test(email));
+  return bad ? `${bad} is not an e-mail address.` : null;
 }
 
 /** Add: every field, blanks as null. */
 export function createPartyPayload(values: PartyFormValues): PartyPayload {
-  const payload: PartyPayload = { name: values.name.trim(), tds_rate: rate(values.tds_rate) };
+  const payload: PartyPayload = {
+    name: values.name.trim(),
+    tds_rate: rate(values.tds_rate),
+    payer_type: values.payer_type || null,
+    default_gst_rate: rate(values.default_gst_rate),
+  };
   for (const field of TEXT_FIELDS) payload[field] = values[field].trim() || null;
   return payload;
 }
@@ -116,6 +158,8 @@ export function updatePartyPayload(initial: PartyFormValues, values: PartyFormVa
     if (values[field].trim() !== initial[field].trim()) payload[field] = values[field].trim() || null;
   }
   if (rate(values.tds_rate) !== rate(initial.tds_rate)) payload.tds_rate = rate(values.tds_rate);
+  if (rate(values.default_gst_rate) !== rate(initial.default_gst_rate)) payload.default_gst_rate = rate(values.default_gst_rate);
+  if (values.payer_type !== initial.payer_type) payload.payer_type = values.payer_type || null;
   if (values.is_active !== initial.is_active) payload.is_active = values.is_active;
   return payload;
 }

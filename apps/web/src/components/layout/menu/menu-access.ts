@@ -27,6 +27,8 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   ['/income/registers/credit-notes', '/receipts'],
   // Track Units is billing configuration of the units: shown with Invoices (INC-37).
   ['/income/units', '/invoices'],
+  // Non Member Income works the non-member payers: shown with Customers (INC-46).
+  ['/income/non-member', '/customers'],
   // Panic Alerts reads the SOS list, so it is shown with SOS & Safety (GATE-11).
   ['/gate/investigator/panic-alerts', '/sos'],
   // The registers and the resident record are the member directory (MOVE-08..11).

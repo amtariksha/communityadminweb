@@ -39,6 +39,16 @@ export interface UnitStatement {
   opening: number;
   rows: StatementRow[];
   totals: { due: number; paid: number; net: number };
+  /** INC-46 — set on a non-member payer's statement (`unit` then carries the payer's name). */
+  payer?: { id: string; name: string };
+}
+
+/** Whose statement a screen shows: a unit's (INC-22) or a non-member payer's (INC-46). */
+export type StatementParty = { kind: 'unit'; id: string } | { kind: 'payer'; id: string };
+
+/** GET path of a party's statement (json, or a file with `format`). */
+export function statementPath(party: StatementParty): string {
+  return party.kind === 'unit' ? `/unit-ledger/units/${party.id}/statement` : `/unit-ledger/customers/${party.id}/statement`;
 }
 
 export interface StatementFilters {

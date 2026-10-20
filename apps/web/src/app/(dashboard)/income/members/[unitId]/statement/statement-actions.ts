@@ -5,8 +5,11 @@ export type StatementTab = 'due' | 'advances' | 'deposit' | 'admin' | 'user';
 
 export const STATEMENT_TABS: readonly StatementTab[] = ['due', 'advances', 'deposit', 'admin', 'user'];
 
-export function tabFrom(value: string | null): StatementTab {
-  return STATEMENT_TABS.includes(value as StatementTab) ? (value as StatementTab) : 'admin';
+/** A payer holds no advance or deposit (INC-46): its statement has these tabs. */
+export const PAYER_STATEMENT_TABS: readonly StatementTab[] = ['due', 'admin', 'user'];
+
+export function tabFrom(value: string | null, tabs: readonly StatementTab[] = STATEMENT_TABS): StatementTab {
+  return tabs.includes(value as StatementTab) ? (value as StatementTab) : 'admin';
 }
 
 export interface RowMenuItem {

@@ -4,7 +4,7 @@ import { type ReactNode } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAdvances } from '@/hooks/use-receipts';
 import type { UnitLedgerScope } from '@/hooks/use-unit-ledger';
-import { useOpenBills } from '@/hooks/use-unit-statement';
+import { useOpenBills, type OpenBill } from '@/hooks/use-unit-statement';
 import { isNotDeployed } from '@/lib/not-deployed';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
@@ -18,11 +18,14 @@ function EmptyRow({ span, text }: { span: number; text: string }): ReactNode {
   );
 }
 
-/** Current Due: the unit's open bills in the ledger, oldest due first. */
-export function CurrentDueTab({ unitId, scope }: { unitId: string; scope: UnitLedgerScope }): ReactNode {
-  const bills = useOpenBills(unitId, scope);
-  if (isNotDeployed(bills.error)) return <p className="text-sm text-muted-foreground">Open bills are not available yet on this server.</p>;
-  const rows = bills.data ?? [];
+interface DueTableProps {
+  rows: readonly OpenBill[];
+  loading: boolean;
+  emptyText: string;
+}
+
+/** Open bills, oldest due first: Bill No · Bill Date · Due Date · Account · Bill Amount · Amount Paid · Remaining. */
+export function DueTable({ rows, loading, emptyText }: DueTableProps): ReactNode {
   return (
     <Table aria-label="Current due">
       <TableHeader>
@@ -37,7 +40,7 @@ export function CurrentDueTab({ unitId, scope }: { unitId: string; scope: UnitLe
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.length === 0 && <EmptyRow span={7} text={bills.isLoading ? 'Loading…' : 'This unit has no open bills.'} />}
+        {rows.length === 0 && <EmptyRow span={7} text={loading ? 'Loading…' : emptyText} />}
         {rows.map((bill) => (
           <TableRow key={bill.id}>
             <TableCell className="font-mono text-xs">{bill.invoice_number}</TableCell>
@@ -52,6 +55,13 @@ export function CurrentDueTab({ unitId, scope }: { unitId: string; scope: UnitLe
       </TableBody>
     </Table>
   );
+}
+
+/** Current Due: the unit's open bills in the ledger, oldest due first. */
+export function CurrentDueTab({ unitId, scope }: { unitId: string; scope: UnitLedgerScope }): ReactNode {
+  const bills = useOpenBills(unitId, scope);
+  if (isNotDeployed(bills.error)) return <p className="text-sm text-muted-foreground">Open bills are not available yet on this server.</p>;
+  return <DueTable rows={bills.data ?? []} loading={bills.isLoading} emptyText="This unit has no open bills." />;
 }
 
 /** Current Advances: what the unit has paid beyond its bills, receipt by receipt. */

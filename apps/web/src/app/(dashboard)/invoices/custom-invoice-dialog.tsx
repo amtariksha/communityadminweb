@@ -24,6 +24,7 @@ import { formatCurrency } from '@/lib/utils';
 import { todayIST } from '@/lib/date';
 import { api } from '@/lib/api';
 import { invoiceKeys } from '@/hooks/use-invoices';
+import { linesWithPayerGst, orDefault, payerInvoiceDefaults, type PayerDefaultsSource } from './payer-defaults';
 
 // ---------------------------------------------------------------------------
 // Custom (non-unit) invoice dialog — Phase D.6 parity with vendor bills
@@ -39,9 +40,13 @@ import { invoiceKeys } from '@/hooks/use-invoices';
 // (`lines: [...]`). This dialog always sends `lines`.
 // ---------------------------------------------------------------------------
 
+type PickedPayer = PayerDefaultsSource & { id: string; name: string };
+
 interface CustomInvoiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** INC-46 — the payer the invoice is for, when opened from its row (Non Member Income). */
+  initialCustomer?: PickedPayer;
 }
 
 interface InvoiceLine {
@@ -63,6 +68,7 @@ const newLine = (): InvoiceLine => ({
 export function CustomInvoiceDialog({
   open,
   onOpenChange,
+  initialCustomer,
 }: CustomInvoiceDialogProps): ReactNode {
   const { addToast } = useToast();
   const queryClient = useQueryClient();
@@ -70,6 +76,8 @@ export function CustomInvoiceDialog({
   // Customer selection — search-as-you-type with inline create.
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerId, setCustomerId] = useState('');
+  // The picked payer's name, shown when it is not in the search results.
+  const [pickedName, setPickedName] = useState('');
   const [showInlineCustomer, setShowInlineCustomer] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerEmail, setNewCustomerEmail] = useState('');
@@ -101,11 +109,22 @@ export function CustomInvoiceDialog({
     [customers, customerId],
   );
 
+  // INC-46 — the payer's Account Head, GST and TDS rates fill what is not chosen yet.
+  function pickPayer(payer: PickedPayer): void {
+    const defaults = payerInvoiceDefaults(payer);
+    setCustomerId(payer.id);
+    setPickedName(payer.name);
+    setDefaultIncomeAccountId((current) => orDefault(current, defaults.incomeAccountId));
+    setTdsRate((current) => orDefault(current, defaults.tdsRate));
+    setLines((current) => linesWithPayerGst(current, defaults.gstRate));
+  }
+
   // Reset everything every time the dialog opens.
   useEffect(() => {
     if (!open) return;
     setCustomerSearch('');
     setCustomerId('');
+    setPickedName('');
     setShowInlineCustomer(false);
     setNewCustomerName('');
     setNewCustomerEmail('');
@@ -115,7 +134,8 @@ export function CustomInvoiceDialog({
     setTdsRate('');
     setDefaultIncomeAccountId('');
     setLines([newLine()]);
-  }, [open]);
+    if (initialCustomer) pickPayer(initialCustomer);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Live totals — drives the totals strip + submit validation.
   const subtotal = useMemo(
@@ -207,6 +227,7 @@ export function CustomInvoiceDialog({
             variant: 'success',
           });
           setCustomerId(res.data.id);
+          setPickedName(res.data.name);
           setCustomerSearch(res.data.name);
           setShowInlineCustomer(false);
         },
@@ -301,8 +322,8 @@ export function CustomInvoiceDialog({
                   <Input
                     placeholder="Search customer by name…"
                     value={
-                      selectedCustomer && !customerSearch
-                        ? selectedCustomer.name
+                      customerId && !customerSearch
+                        ? selectedCustomer?.name ?? pickedName
                         : customerSearch
                     }
                     onChange={(e) => {
@@ -318,7 +339,7 @@ export function CustomInvoiceDialog({
                           key={c.id}
                           className="block w-full px-3 py-2 text-left text-sm hover:bg-accent"
                           onClick={() => {
-                            setCustomerId(c.id);
+                            pickPayer(c as PickedPayer);
                             setCustomerSearch('');
                           }}
                         >

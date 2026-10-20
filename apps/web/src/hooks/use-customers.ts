@@ -15,6 +15,11 @@ interface PaginatedResponse<T> {
   total: number;
 }
 
+/** GET /customers — INC-46 adds `total_due` (and `outstanding` on each row). */
+export interface CustomerListResponse extends PaginatedResponse<Customer> {
+  total_due?: number;
+}
+
 interface CustomerFilters {
   search?: string;
   is_active?: boolean;
@@ -41,6 +46,12 @@ interface CreateCustomerInput {
   party_code?: string | null;
   tds_rate?: number | null;
   tds_section?: string | null;
+  // INC-46 — alternate e-mails, the account and GST rate a new invoice
+  // starts with, and the payer type (migration 234).
+  alternate_emails?: string | null;
+  default_income_account_id?: string | null;
+  payer_type?: 'company' | 'non_company' | 'professional' | null;
+  default_gst_rate?: number | null;
 }
 
 interface UpdateCustomerInput extends Partial<CreateCustomerInput> {
@@ -74,7 +85,7 @@ export function useCustomers(filters?: CustomerFilters) {
   return useQuery({
     queryKey: customerKeys.list(filters),
     queryFn: function fetchCustomers() {
-      return api.get<PaginatedResponse<Customer>>('/customers', {
+      return api.get<CustomerListResponse>('/customers', {
         params: filtersToParams(filters),
       });
     },

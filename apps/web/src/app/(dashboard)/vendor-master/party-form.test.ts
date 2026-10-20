@@ -37,3 +37,36 @@ describe('party form', () => {
     expect(partyFormError({ ...emptyPartyForm(), name: 'X', party_code: 'NM-01/A' })).toBeNull();
   });
 });
+
+describe('payer fields (INC-46)', () => {
+  it('sends the alternate e-mails, Account Head, GST rate and payer type on Add', () => {
+    const payload = createPartyPayload({
+      ...emptyPartyForm(),
+      name: 'Sunrise Events',
+      alternate_emails: 'a@example.com, b@example.com',
+      default_income_account_id: 'acc-hall',
+      payer_type: 'company',
+      default_gst_rate: '18',
+    });
+    expect(payload).toMatchObject({
+      alternate_emails: 'a@example.com, b@example.com',
+      default_income_account_id: 'acc-hall',
+      payer_type: 'company',
+      default_gst_rate: 18,
+    });
+    expect(createPartyPayload({ ...emptyPartyForm(), name: 'X' })).toMatchObject({ payer_type: null, default_gst_rate: null, default_income_account_id: null });
+  });
+
+  it('reads them back and sends only what changed', () => {
+    const party = { ...PARTY, default_gst_rate: '18.00', payer_type: 'professional', default_income_account_id: 'acc-hall' } as Party;
+    const initial = partyFormFromParty(party);
+    expect(initial).toMatchObject({ default_gst_rate: '18', payer_type: 'professional', default_income_account_id: 'acc-hall' });
+    expect(updatePartyPayload(initial, { ...initial, payer_type: '', default_gst_rate: '5' })).toEqual({ payer_type: null, default_gst_rate: 5 });
+  });
+
+  it('checks each alternate e-mail, at most five', () => {
+    expect(partyFormError({ ...emptyPartyForm(), name: 'X', alternate_emails: 'a@example.com, nope' })).toBe('nope is not an e-mail address.');
+    expect(partyFormError({ ...emptyPartyForm(), name: 'X', alternate_emails: 'a@x.in,b@x.in,c@x.in,d@x.in,e@x.in,f@x.in' })).toMatch(/five/);
+    expect(partyFormError({ ...emptyPartyForm(), name: 'X', alternate_emails: ' a@example.com ,b@example.com' })).toBeNull();
+  });
+});

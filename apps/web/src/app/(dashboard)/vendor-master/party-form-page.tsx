@@ -24,6 +24,8 @@ interface PartyFormPageProps {
   partyId?: string;
   onClose: () => void;
   onSaved: () => void;
+  /** "Vendor" in Vendor Master (default), "Payer" in Income Tracker › Non Member Income. */
+  noun?: 'Vendor' | 'Payer';
 }
 
 function withPhone(payload: PartyPayload): { payload: PartyPayload } | { error: string } {
@@ -33,6 +35,7 @@ function withPhone(payload: PartyPayload): { payload: PartyPayload } | { error: 
 }
 
 function PartyFormBody(props: PartyFormPageProps & { party?: Party }): ReactNode {
+  const noun = props.noun ?? 'Vendor';
   const { addToast } = useToast();
   const create = useCreateCustomer();
   const update = useUpdateCustomer();
@@ -51,17 +54,17 @@ function PartyFormBody(props: PartyFormPageProps & { party?: Party }): ReactNode
       } else {
         await create.mutateAsync(built.payload as PartyPayload & { name: string });
       }
-      addToast({ title: props.party ? 'Vendor updated' : 'Vendor added', variant: 'success' });
+      addToast({ title: props.party ? `${noun} updated` : `${noun} added`, variant: 'success' });
       props.onSaved();
     } catch (error) {
-      addToast({ title: 'Could not save the vendor', description: friendlyError(error), variant: 'destructive' });
+      addToast({ title: `Could not save the ${noun.toLowerCase()}`, description: friendlyError(error), variant: 'destructive' });
     }
   }
 
   return (
     <FormFrame
       mode="page"
-      title={props.party ? `Edit Vendor — ${props.party.name}` : 'Add Vendor'}
+      title={props.party ? `Edit ${noun} — ${props.party.name}` : `Add ${noun}`}
       description={
         props.party ? <ShowLogsButton recordTypes={['customer']} recordId={props.party.id} /> : 'A party the society bills for non-member income.'
       }
@@ -69,7 +72,7 @@ function PartyFormBody(props: PartyFormPageProps & { party?: Party }): ReactNode
       onSave={() => void save()}
       saving={create.isPending || update.isPending}
     >
-      <PartyFormFields values={values} set={set} showActive={Boolean(props.party)} />
+      <PartyFormFields values={values} set={set} showActive={Boolean(props.party)} noun={noun} />
     </FormFrame>
   );
 }
@@ -78,7 +81,7 @@ function PartyFormBody(props: PartyFormPageProps & { party?: Party }): ReactNode
 export function PartyFormPage(props: PartyFormPageProps): ReactNode {
   const query = useCustomer(props.partyId ?? '');
   if (!props.partyId) return <PartyFormBody {...props} />;
-  if (query.error) return <p className="text-sm text-destructive">Could not load the vendor: {friendlyError(query.error)}</p>;
+  if (query.error) return <p className="text-sm text-destructive">Could not load the {(props.noun ?? 'Vendor').toLowerCase()}: {friendlyError(query.error)}</p>;
   if (!query.data) return <Skeleton className="h-64 w-full" />;
   return <PartyFormBody key={query.dataUpdatedAt} {...props} party={query.data as Party} />;
 }

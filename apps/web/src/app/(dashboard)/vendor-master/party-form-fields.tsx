@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { AccountSearchSelect } from '@/components/ui/account-search-select';
+import { GstRateSelect } from '@/components/ui/gst-rate-select';
 import { useTdsConfig } from '@/hooks';
 import { sectionRate } from '../vendors/vendor-form';
-import type { PartyFormValues } from './party-form';
+import { PAYER_TYPES, type PartyFormValues } from './party-form';
 
 type Set = (patch: Partial<PartyFormValues>) => void;
 
@@ -50,21 +52,65 @@ function TdsFields({ values, set }: { values: PartyFormValues; set: Set }): Reac
   );
 }
 
+/** INC-46 — the Account Head and GST rate a new invoice for the party starts with, and its type. */
+function InvoiceDefaults({ values, set, noun }: { values: PartyFormValues; set: Set; noun: string }): ReactNode {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Account Head</Label>
+          <AccountSearchSelect
+            value={values.default_income_account_id}
+            onChange={(default_income_account_id) => set({ default_income_account_id })}
+            accountType={['income']}
+            incomeScope="non_member"
+            placeholder="Non-member income account…"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="party-gst-rate">GST Rate</Label>
+          <GstRateSelect
+            id="party-gst-rate"
+            value={values.default_gst_rate === '' ? null : Number(values.default_gst_rate)}
+            onChange={(rate) => set({ default_gst_rate: rate == null ? '' : String(rate) })}
+          />
+          <p className="text-xs text-muted-foreground">Split CGST + SGST in the society&apos;s state, IGST for a {noun.toLowerCase()} in another state.</p>
+        </div>
+      </div>
+      <fieldset className="flex flex-wrap items-center gap-3 text-sm">
+        <legend className="mb-1 font-medium">{noun} Type</legend>
+        {PAYER_TYPES.map((option) => (
+          <label key={option.value} className="flex items-center gap-1">
+            <input type="radio" name="party-payer-type" checked={values.payer_type === option.value} onChange={() => set({ payer_type: option.value })} />
+            {option.label}
+          </label>
+        ))}
+        {values.payer_type && (
+          <button type="button" className="text-xs text-primary underline" onClick={() => set({ payer_type: '' })}>
+            Clear
+          </button>
+        )}
+      </fieldset>
+    </>
+  );
+}
+
 /**
- * The non-member-income party form (VEND-07): the vendor form without
- * Account Head, GST rates and Vendor type. TDS is what the party deducts
- * from what it pays the society.
+ * The non-member-income party form (VEND-07, INC-S33). TDS is what the
+ * party deducts from what it pays the society. `noun` is "Vendor" in Vendor
+ * Master and "Payer" in Income Tracker.
  */
-export function PartyFormFields({ values, set, showActive }: { values: PartyFormValues; set: Set; showActive: boolean }): ReactNode {
+export function PartyFormFields({ values, set, showActive, noun = 'Vendor' }: { values: PartyFormValues; set: Set; showActive: boolean; noun?: string }): ReactNode {
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold">Vendor Details</h3>
+      <h3 className="text-sm font-semibold">{noun} Details</h3>
       <div className="grid grid-cols-2 gap-4">
-        <Text id="party-code" label="Vendor ID" maxLength={30} value={values.party_code} onChange={(party_code) => set({ party_code })} />
-        <Text id="party-name" label="Vendor Name *" maxLength={255} value={values.name} onChange={(name) => set({ name })} />
-        <Text id="party-contact" label="Vendor Contact Name" maxLength={255} value={values.contact_person} onChange={(contact_person) => set({ contact_person })} />
-        <Text id="party-phone" label="Vendor Phone" value={values.phone} onChange={(phone) => set({ phone })} />
-        <Text id="party-email" label="Vendor Email" value={values.email} onChange={(email) => set({ email })} />
+        <Text id="party-code" label={`${noun} ID`} maxLength={30} value={values.party_code} onChange={(party_code) => set({ party_code })} />
+        <Text id="party-name" label={`${noun} Name *`} maxLength={255} value={values.name} onChange={(name) => set({ name })} />
+        <Text id="party-contact" label={`${noun} Contact Name`} maxLength={255} value={values.contact_person} onChange={(contact_person) => set({ contact_person })} />
+        <Text id="party-phone" label={`${noun} Phone`} value={values.phone} onChange={(phone) => set({ phone })} />
+        <Text id="party-email" label={`${noun} Email`} value={values.email} onChange={(email) => set({ email })} />
+        <Text id="party-alt-emails" label="Alternate Email(s)" maxLength={1000} value={values.alternate_emails} onChange={(alternate_emails) => set({ alternate_emails })} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="party-notes">Notes</Label>
@@ -72,10 +118,11 @@ export function PartyFormFields({ values, set, showActive }: { values: PartyForm
       </div>
       {showActive && (
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={values.is_active} onChange={(e) => set({ is_active: e.target.checked })} /> Is Vendor Active?
+          <input type="checkbox" checked={values.is_active} onChange={(e) => set({ is_active: e.target.checked })} /> Is {noun} Active?
         </label>
       )}
-      <h3 className="text-sm font-semibold">Vendor Payment Information</h3>
+      <h3 className="text-sm font-semibold">{noun} Payment Information</h3>
+      <InvoiceDefaults values={values} set={set} noun={noun} />
       <TdsFields values={values} set={set} />
       <div className="grid grid-cols-2 gap-4">
         <Text id="party-gstin" label="GSTIN" maxLength={15} value={values.gstin} onChange={(gstin) => set({ gstin })} />
@@ -85,7 +132,7 @@ export function PartyFormFields({ values, set, showActive }: { values: PartyForm
         <Label htmlFor="party-address">Billing Address</Label>
         <Textarea id="party-address" rows={2} maxLength={1000} value={values.address} onChange={(e) => set({ address: e.target.value })} />
       </div>
-      <h3 className="text-sm font-semibold">Vendor Bank Details</h3>
+      <h3 className="text-sm font-semibold">{noun} Bank Details</h3>
       <div className="grid grid-cols-2 gap-4">
         <Text id="party-account" label="Bank Account No." value={values.bank_account_number} onChange={(bank_account_number) => set({ bank_account_number })} />
         <Text id="party-bank" label="Bank Name" value={values.bank_name} onChange={(bank_name) => set({ bank_name })} />

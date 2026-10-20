@@ -5,7 +5,15 @@ import Link from 'next/link';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
-import { statementParams, useReallocateFifo, type ReallocationResult, type StatementFilters } from '@/hooks/use-unit-statement';
+import {
+  statementParams,
+  statementPath,
+  useReallocateFifo,
+  type ReallocationResult,
+  type StatementFilters,
+  type StatementParty,
+  type UnitStatement,
+} from '@/hooks/use-unit-statement';
 import { api } from '@/lib/api';
 import { ApiError, friendlyError } from '@/lib/api-error';
 import { saveBlob } from '@/lib/download';
@@ -24,15 +32,18 @@ function describeReallocation(result: ReallocationResult): string {
 }
 
 interface StatementFooterProps {
-  unitId: string;
+  party: StatementParty;
+  statement: UnitStatement;
   filters: StatementFilters;
-  documentRows: number;
   canWrite: boolean;
   closeHref: string;
 }
 
-/** Export, Auto Allocate on FiFo Basis, Print and Close under the statement (INC-S17). */
-export function StatementFooter({ unitId, filters, documentRows, canWrite, closeHref }: StatementFooterProps): ReactNode {
+/**
+ * Export, Auto Allocate on FiFo Basis (a unit's only: a payer holds no
+ * advance), Print and Close under the statement (INC-S17, INC-46).
+ */
+export function StatementFooter({ party, statement, filters, canWrite, closeHref }: StatementFooterProps): ReactNode {
   const { addToast } = useToast();
   const reallocate = useReallocateFifo();
   const [confirming, setConfirming] = useState(false);
@@ -41,7 +52,7 @@ export function StatementFooter({ unitId, filters, documentRows, canWrite, close
   async function download(format: FileFormat): Promise<void> {
     setBusy(format);
     try {
-      const blob = await api.download(`/unit-ledger/units/${unitId}/statement`, { params: statementParams(filters, format) });
+      const blob = await api.download(statementPath(party), { params: statementParams(filters, format) });
       saveBlob(blob, `statement.${format}`);
     } catch (error) {
       const description = notAvailable(error) ? 'The statement file is not available yet on this server.' : friendlyError(error);
@@ -52,8 +63,9 @@ export function StatementFooter({ unitId, filters, documentRows, canWrite, close
   }
 
   function runReallocation(): void {
+    if (party.kind !== 'unit') return;
     reallocate.mutate(
-      { unitId, scope: filters.scope },
+      { unitId: party.id, scope: filters.scope },
       {
         onSuccess: (response) => {
           setConfirming(false);
@@ -69,14 +81,14 @@ export function StatementFooter({ unitId, filters, documentRows, canWrite, close
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-sm text-muted-foreground">{exportLabel(documentRows)}:</span>
+      <span className="text-sm text-muted-foreground">{exportLabel(statement.rows.length)}:</span>
       <Button type="button" variant="outline" size="sm" disabled={busy !== null} onClick={() => void download('csv')}>
         CSV
       </Button>
       <Button type="button" variant="outline" size="sm" disabled={busy !== null} onClick={() => void download('xlsx')}>
         Excel
       </Button>
-      {canWrite && (
+      {canWrite && party.kind === 'unit' && (
         <Button type="button" variant="outline" size="sm" onClick={() => setConfirming(true)}>
           Auto Allocate on FiFo Basis
         </Button>

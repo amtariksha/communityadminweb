@@ -99,7 +99,13 @@ describe('classic modules', () => {
   });
 
   it('Income Tracker shows Setup and Receipts & Invoices with their sub-tabs', () => {
-    expect(labels('income')).toEqual(['Setup', 'Track Units', 'Member Income', 'Receipts & Invoices', 'Defaulters', 'Reports']);
+    expect(labels('income')).toEqual(['Setup', 'Track Units', 'Member Income', 'Receipts & Invoices', 'Defaulters', 'Non Member Income', 'Reports']);
+    // INC-46: Non Member Income's By Vendors and By Date, shown with Customers; Bulk Posting stays planned.
+    expect(find(menu, 'income.non-member')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
+      ['By Vendors', '/income/non-member'],
+      ['By Date', '/income/non-member/by-date'],
+    ]);
+    expect(governingItem('/income/non-member/payers/p-1/statement')?.href).toBe('/customers');
     // INC-37: Track Units has the grid and the unit types, gated with Invoices.
     expect(find(menu, 'income.track-units')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Unit', '/income/units'],

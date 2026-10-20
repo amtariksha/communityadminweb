@@ -251,7 +251,21 @@ export const classicMenu: MenuNode[] = [
       },
       // INC-29 — filter, pick and remind units with dues past due.
       { id: 'income.defaulters', label: 'Defaulters', href: '/income/defaulters', logs: ['invoice'] },
-      planned('income.non-member', 'Non Member Income', 'INC-46'),
+      {
+        // INC-46 — the payers with what each owes (View, Invoice, Collection)
+        // and everything posted for non-member income by date.
+        id: 'income.non-member',
+        label: 'Non Member Income',
+        forms: [
+          { label: 'Add Payer', path: '/income/non-member/payers/new' },
+          { label: 'Edit Payer', path: '/income/non-member/payers/:customerId/edit' },
+        ],
+        tabs: [
+          { id: 'income.non-member.by-vendors', label: 'By Vendors', href: '/income/non-member', logs: ['customer', 'invoice', 'receipt'] },
+          { id: 'income.non-member.by-date', label: 'By Date', href: '/income/non-member/by-date', logs: ['invoice', 'receipt'] },
+          planned('income.non-member.bulk-posting', 'Bulk Posting', 'INC-62'),
+        ],
+      },
       reportsMenuNode('income', 'REP-04'),
     ],
   },
