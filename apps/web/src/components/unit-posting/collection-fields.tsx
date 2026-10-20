@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useLedgerAccounts } from '@/hooks/use-ledger';
+import { useUnitMembers } from '@/hooks/use-units';
 import type { OpenBill } from '@/hooks/use-unit-statement';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { COLLECTION_MODES, needsBank, needsNumber, type BillEntry, type CollectionForm, type CollectionMode } from './collection-state';
@@ -137,11 +138,55 @@ function InstrumentFields({ form, set, errors }: { form: CollectionForm; set: Se
   );
 }
 
-/** Payment mode, number, bank, the Bank & Cash ledger, the date and comments. */
-export function PaymentFields({ form, set, errors }: { form: CollectionForm; set: SetCollectionForm; errors: Errors }): ReactNode {
+/** The active bank and cash ledgers; empty = the default ledger for the mode. */
+export function BankAccountSelect({ id, value, onChange }: { id: string; value: string; onChange: (accountId: string) => void }): ReactNode {
   const accounts = (useLedgerAccounts({ account_type: 'asset', limit: 100 }).data?.data ?? []).filter(
     (account) => account.is_bank_account || account.code === 'cash',
   );
+  return (
+    <Select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">Default for the mode</option>
+      {accounts.map((account) => (
+        <option key={account.id} value={account.id}>
+          {account.name}
+        </option>
+      ))}
+    </Select>
+  );
+}
+
+/** Who paid: a current owner or tenant of the unit. */
+export function MemberPayerField({ unitId, form, set, error, optional = false }: {
+  unitId: string;
+  form: CollectionForm;
+  set: SetCollectionForm;
+  error?: string;
+  optional?: boolean;
+}): ReactNode {
+  const members = (useUnitMembers(unitId).data ?? []).filter((member) => member.member_type === 'owner' || member.member_type === 'tenant');
+  return (
+    <div className="max-w-sm space-y-1">
+      <Label htmlFor="col-payer">Payer</Label>
+      <Select id="col-payer" value={form.payerMemberId} onChange={(e) => set({ payerMemberId: e.target.value })}>
+        <option value="">{optional ? 'Not given' : 'Pick the payer'}</option>
+        {members.map((member) => (
+          <option key={member.id} value={member.id}>
+            {(member.name ?? (member as { user_name?: string }).user_name ?? 'Member') + ` (${member.member_type})`}
+          </option>
+        ))}
+      </Select>
+      <FormFieldError message={error} />
+    </div>
+  );
+}
+
+/** Payment mode, number, bank, the Bank & Cash ledger, the date and comments. */
+export function PaymentFields({ form, set, errors, commentsLabel = 'Comments' }: {
+  form: CollectionForm;
+  set: SetCollectionForm;
+  errors: Errors;
+  commentsLabel?: string;
+}): ReactNode {
   return (
     <div className="space-y-3">
       <ModeRadios form={form} set={set} />
@@ -149,14 +194,7 @@ export function PaymentFields({ form, set, errors }: { form: CollectionForm; set
         <InstrumentFields form={form} set={set} errors={errors} />
         <div className="space-y-1">
           <Label htmlFor="col-account">Bank & Cash Account</Label>
-          <Select id="col-account" value={form.bankAccountId} onChange={(e) => set({ bankAccountId: e.target.value })}>
-            <option value="">Default for the mode</option>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </Select>
+          <BankAccountSelect id="col-account" value={form.bankAccountId} onChange={(bankAccountId) => set({ bankAccountId })} />
         </div>
         <div className="space-y-1">
           <Label htmlFor="col-date">Date</Label>
@@ -165,7 +203,7 @@ export function PaymentFields({ form, set, errors }: { form: CollectionForm; set
         </div>
       </div>
       <div className="space-y-1">
-        <Label htmlFor="col-comments">Comments</Label>
+        <Label htmlFor="col-comments">{commentsLabel}</Label>
         <Textarea id="col-comments" maxLength={1000} value={form.comments} onChange={(e) => set({ comments: e.target.value })} />
       </div>
     </div>

@@ -96,6 +96,12 @@ describe('CollectionFormView', () => {
     expect((screen.getByLabelText('Amount for INV-0002') as HTMLInputElement).value).toBe('10000.00');
   });
 
+  it('offers Post a Refundable Deposit for the unit (INC-47)', () => {
+    render(<CollectionFormView unitId="u-1" mode="page" today="2026-10-15" depositHref="/income/members/u-1/deposit" onClose={vi.fn()} onPosted={vi.fn()} />);
+
+    expect(screen.getByRole('link', { name: 'Post a Refundable Deposit' }).getAttribute('href')).toBe('/income/members/u-1/deposit');
+  });
+
   it('holds the amount as an advance when nothing is open', () => {
     mocks.bills = [];
     renderForm();

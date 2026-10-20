@@ -14,7 +14,7 @@ import { friendlyError } from '@/lib/api-error';
 import { todayIST } from '@/lib/date';
 import { saveBlob } from '@/lib/download';
 import { isNotDeployed } from '@/lib/not-deployed';
-import { collectionHref, invoiceHref, memberRowActions, printReceipt } from './member-row-actions';
+import { collectionHref, depositHref, invoiceHref, memberRowActions, printReceipt } from './member-row-actions';
 
 export interface DuesWorkbenchProps {
   /** Member Income: maintenance dues; Utility Income: utility dues (UTIL-08). */
@@ -98,6 +98,7 @@ export function DuesWorkbench(props: DuesWorkbenchProps): ReactNode {
           open
           today={todayIST()}
           preselectBillId={collectFor.billId}
+          depositHref={scope === 'member' ? depositHref(collectFor.unitId) : undefined}
           onClose={() => setCollectFor(null)}
           onPosted={(receipt, printIt) => {
             setCollectFor(null);

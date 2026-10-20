@@ -1,19 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { FormFrame, type FormMode } from '@/components/form-page';
 import { FormFieldError } from '@/components/ui/form-field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { useCreateReceipt, type CreatedReceipt } from '@/hooks/use-receipts';
 import { useOpenBills } from '@/hooks/use-unit-statement';
-import { useUnitMembers } from '@/hooks/use-units';
 import { friendlyError } from '@/lib/api-error';
 import { isNotDeployed } from '@/lib/not-deployed';
 import { formatCurrency } from '@/lib/utils';
-import { BillsTable, PaymentFields, type SetCollectionForm } from './collection-fields';
+import { BillsTable, MemberPayerField, PaymentFields, type SetCollectionForm } from './collection-fields';
 import { collectionErrors, collectionTotal, emptyCollectionForm, toCollectionPayload, type CollectionForm } from './collection-state';
 import { UnitPostingHeader } from './unit-posting-header';
 
@@ -29,37 +28,19 @@ export interface CollectionFormProps {
   onPosted: (receipt: CreatedReceipt, print: boolean) => void;
   /** Member dues (default) or the unit's utility bills only (Utility Income, UTIL-08). */
   scope?: 'member' | 'utility';
-}
-
-type SetForm = SetCollectionForm;
-
-function PayerField({ unitId, form, set, error }: { unitId: string; form: CollectionForm; set: SetForm; error?: string }): ReactNode {
-  const members = (useUnitMembers(unitId).data ?? []).filter((member) => member.member_type === 'owner' || member.member_type === 'tenant');
-  return (
-    <div className="max-w-sm space-y-1">
-      <Label htmlFor="col-payer">Payer</Label>
-      <Select id="col-payer" value={form.payerMemberId} onChange={(e) => set({ payerMemberId: e.target.value })}>
-        <option value="">Pick the payer</option>
-        {members.map((member) => (
-          <option key={member.id} value={member.id}>
-            {(member.name ?? (member as { user_name?: string }).user_name ?? 'Member') + ` (${member.member_type})`}
-          </option>
-        ))}
-      </Select>
-      <FormFieldError message={error} />
-    </div>
-  );
+  /** INC-47 — "Post a Refundable Deposit" for the unit instead (INC-S21's page action). */
+  depositHref?: string;
 }
 
 /** INC-26 — Post Collection for a unit (INC-S21): against the bills it pays, with cheque / DD details and TDS. */
 export function CollectionFormView(props: CollectionFormProps): ReactNode {
-  const { unitId, mode, open, today, preselectBillId = null, onClose, onPosted, scope = 'member' } = props;
+  const { unitId, mode, open, today, preselectBillId = null, onClose, onPosted, scope = 'member', depositHref } = props;
   const { addToast } = useToast();
   const [form, setForm] = useState<CollectionForm>(() => emptyCollectionForm(today, preselectBillId));
   const [submitted, setSubmitted] = useState(false);
   const bills = useOpenBills(unitId, scope).data ?? [];
   const create = useCreateReceipt();
-  const set: SetForm = (patch) => setForm((current) => ({ ...current, ...patch }));
+  const set: SetCollectionForm = (patch) => setForm((current) => ({ ...current, ...patch }));
   const errors = useMemo(() => collectionErrors(form, bills), [form, bills]);
   const shown = submitted ? errors : {};
   const preselected = bills.find((bill) => bill.id === preselectBillId);
@@ -93,6 +74,13 @@ export function CollectionFormView(props: CollectionFormProps): ReactNode {
       mode={mode}
       open={open}
       title="Post Collection"
+      description={
+        depositHref ? (
+          <Link href={depositHref} className="text-primary hover:underline">
+            Post a Refundable Deposit
+          </Link>
+        ) : undefined
+      }
       onClose={onClose}
       onSave={() => post(false)}
       secondaryAction={{ label: 'Post and Print Receipt', onClick: () => post(true) }}
@@ -102,7 +90,7 @@ export function CollectionFormView(props: CollectionFormProps): ReactNode {
       dialogClassName="max-w-5xl"
     >
       <UnitPostingHeader unitId={unitId} scope={scope} />
-      <PayerField unitId={unitId} form={form} set={set} error={shown.payerMemberId} />
+      <MemberPayerField unitId={unitId} form={form} set={set} error={shown.payerMemberId} />
       {bills.length > 0 ? (
         <>
           <label className="flex items-center gap-2 text-sm">

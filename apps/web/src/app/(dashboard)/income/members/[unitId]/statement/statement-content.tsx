@@ -6,7 +6,8 @@ import { formatCurrency } from '@/lib/utils';
 import { MEMBER_INCOME_BASE } from '../../member-row-actions';
 import type { StatementTab } from './statement-actions';
 import { StatementScreen, useStatementState } from './statement-screen';
-import { CurrentAdvancesTab, CurrentDueTab, RefundableDepositTab } from './summary-tabs';
+import { RefundableDepositTab } from './deposit-tab';
+import { CurrentAdvancesTab, CurrentDueTab } from './summary-tabs';
 
 const figure = (value: number | undefined): string => (value === undefined ? '' : ` (${formatCurrency(value)})`);
 
@@ -42,7 +43,7 @@ export function StatementContent({ unitId, scope = 'member', closeHref = MEMBER_
     ) : state.tab === 'advances' ? (
       <CurrentAdvancesTab unitId={unitId} />
     ) : (
-      <RefundableDepositTab />
+      <RefundableDepositTab unitId={unitId} />
     );
   return (
     <StatementScreen

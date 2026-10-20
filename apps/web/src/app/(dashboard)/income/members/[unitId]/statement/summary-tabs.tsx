@@ -8,7 +8,7 @@ import { useOpenBills, type OpenBill } from '@/hooks/use-unit-statement';
 import { isNotDeployed } from '@/lib/not-deployed';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
-function EmptyRow({ span, text }: { span: number; text: string }): ReactNode {
+export function EmptyRow({ span, text }: { span: number; text: string }): ReactNode {
   return (
     <TableRow>
       <TableCell colSpan={span} className="py-6 text-center text-muted-foreground">
@@ -93,9 +93,4 @@ export function CurrentAdvancesTab({ unitId }: { unitId: string }): ReactNode {
       </TableBody>
     </Table>
   );
-}
-
-/** Refundable Deposit: held deposits come with INC-47. */
-export function RefundableDepositTab(): ReactNode {
-  return <p className="py-6 text-center text-sm text-muted-foreground">No refundable deposit is recorded for this unit.</p>;
 }

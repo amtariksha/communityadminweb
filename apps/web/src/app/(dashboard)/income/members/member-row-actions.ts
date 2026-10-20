@@ -13,6 +13,8 @@ export const statementHref = (unitId: string, base = MEMBER_INCOME_BASE): string
 export const invoiceHref = (unitId: string, base = MEMBER_INCOME_BASE): string => `${base}/${unitId}/invoice`;
 export const collectionHref = (unitId: string, billId?: string, base = MEMBER_INCOME_BASE): string =>
   `${base}/${unitId}/collection${billId ? `?bill=${billId}` : ''}`;
+/** INC-47 — Post a Refundable Deposit for the unit. */
+export const depositHref = (unitId: string): string => `${MEMBER_INCOME_BASE}/${unitId}/deposit`;
 
 /** "Post and Print Receipt": the receipt PDF (GET /receipts/:id/pdf). */
 export async function printReceipt(receiptId: string, receiptNumber: string): Promise<void> {

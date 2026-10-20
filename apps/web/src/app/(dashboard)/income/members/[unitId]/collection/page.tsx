@@ -6,7 +6,7 @@ import { CollectionFormView } from '@/components/unit-posting/collection-form';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { todayIST } from '@/lib/date';
-import { MEMBER_INCOME_BASE, printReceipt, statementHref } from '../../member-row-actions';
+import { depositHref, MEMBER_INCOME_BASE, printReceipt, statementHref } from '../../member-row-actions';
 
 function CollectionRoute(): ReactNode {
   const { unitId } = useParams<{ unitId: string }>();
@@ -19,6 +19,7 @@ function CollectionRoute(): ReactNode {
       mode="page"
       today={todayIST()}
       preselectBillId={bill}
+      depositHref={depositHref(unitId)}
       onClose={() => router.push(MEMBER_INCOME_BASE)}
       onPosted={(receipt, print) => {
         if (print) {
