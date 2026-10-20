@@ -25,7 +25,7 @@ import {
   Ellipsis,
 } from 'lucide-react';
 import { HELPDESK_BASE, HELPDESK_SCOPES } from '@/lib/helpdesk-scopes';
-import { STAFF_ACTIVE, STAFF_BASE, STAFF_RETIRED } from '@/lib/staff-statuses';
+import { STAFF_ACTIVE, STAFF_BASE, STAFF_BLACKLISTED, STAFF_RETIRED, STAFF_TEMP } from '@/lib/staff-statuses';
 import { ASSET_STATUS_ROUTES, ASSETS_BASE } from '@/lib/asset-statuses';
 import { MEETING_STATES, MEETINGS_BASE } from '@/lib/meeting-states';
 import { reportsMenuNode } from '@/components/reports/module-reports';
@@ -515,9 +515,7 @@ export const classicMenu: MenuNode[] = [
       { id: 'staff.setup', label: 'Setup', href: '/staff/setup', logs: ['staff'] },
       ...statusMenuChildren('staff', STAFF_BASE, [STAFF_ACTIVE], { logs: ['staff'] }),
       { id: 'staff.attendance', label: 'Attendance', href: '/staff/attendance', logs: ['staff'] },
-      planned('staff.temp', 'Temp', 'STAFF-40'),
-      ...statusMenuChildren('staff', STAFF_BASE, [STAFF_RETIRED], { logs: ['staff'] }),
-      planned('staff.blacklisted', 'Blacklisted', 'STAFF-40'),
+      ...statusMenuChildren('staff', STAFF_BASE, [STAFF_TEMP, STAFF_RETIRED, STAFF_BLACKLISTED], { logs: ['staff'] }),
       reportsMenuNode('staff', 'STAFF-30'),
     ],
   },

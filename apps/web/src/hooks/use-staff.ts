@@ -47,9 +47,16 @@ export interface Staff {
   languages?: string | null;
   notes?: string | null;
   is_active: boolean;
+  // STAFF-40 (migration 240); absent from an older API (read is_active there).
+  status?: StaffStatus;
+  status_reason?: string | null;
+  status_changed_at?: string | null;
   created_at: string;
   updated_at: string;
 }
+
+/** STAFF-40: Active · Temp · Retired · Blacklisted. */
+export type StaffStatus = 'active' | 'temp' | 'retired' | 'blacklisted';
 
 export type StaffGender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
@@ -164,7 +171,7 @@ export interface StaffFilters {
   staff_type?: string;
   is_active?: boolean;
   // STAFF-10: the classic status lists and their search.
-  status?: 'active' | 'retired';
+  status?: StaffStatus;
   q?: string;
   search_by?: StaffSearchKey;
   page?: number;
@@ -573,6 +580,26 @@ export function useReactivateEmployee() {
   return useMutation({
     mutationFn: function reactivateEmployee(id: string) {
       return api.post<{ data: Staff }>(`/staff/employees/${id}/reactivate`);
+    },
+    onSuccess: function invalidate() {
+      queryClient.invalidateQueries({ queryKey: staffKeys.employees() });
+    },
+  });
+}
+
+/**
+ * STAFF-40 — Move to… / Reactivate / Remove from blacklist through PATCH
+ * /staff/employees/:id/status { status, reason }; the API checks the move.
+ */
+export function useChangeStaffStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: function changeStaffStatus(input: { id: string; status: StaffStatus; reason?: string }) {
+      return api.patch<{ data: Staff }>(`/staff/employees/${input.id}/status`, {
+        status: input.status,
+        ...(input.reason ? { reason: input.reason } : {}),
+      });
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: staffKeys.employees() });

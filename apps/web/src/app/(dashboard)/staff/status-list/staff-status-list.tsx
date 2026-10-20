@@ -5,12 +5,14 @@ import { DataTable, type DataTableAction, type DataTableColumn } from '@/compone
 import { useRouteStatus } from '@/components/layout/menu/use-route-status';
 import { useToast } from '@/components/ui/toast';
 import { useDeactivateEmployee, useReactivateEmployee, useStaffEmployees } from '@/hooks';
-import { staffFiltersToParams, type Staff, type StaffFilters, type StaffSearchKey } from '@/hooks/use-staff';
-import { friendlyError } from '@/lib/api-error';
+import { staffFiltersToParams, useChangeStaffStatus, type Staff, type StaffFilters, type StaffSearchKey } from '@/hooks/use-staff';
+import { currentRole } from '@/lib/current-role';
+import { ApiError, friendlyError } from '@/lib/api-error';
 import { STAFF_BASE, STAFF_STATUSES, type StaffStatusRoute } from '@/lib/staff-statuses';
 import { formatDate } from '@/lib/utils';
 import { staffTypeLabel } from '../staff-fields';
 import { StaffSearchBy } from '../staff-search';
+import { MoveStaffDialog, type StaffMove } from './move-staff-dialog';
 
 const PAGE_SIZES = [25, 50, 100] as const;
 
@@ -25,32 +27,36 @@ function columnsFor(status: StaffStatusRoute): DataTableColumn<Staff>[] {
     // STAFF-20: blank when the badge has no expiry (or none yet).
     { key: 'valid-till', header: 'Badge Valid Till', cell: (row) => (row.badge_valid_until ? formatDate(row.badge_valid_until) : '—'), className: 'whitespace-nowrap' },
   ];
-  if (status.slug === 'retired') {
-    columns.push({ key: 'since', header: 'Since', cell: (row) => formatDate(row.exit_date), className: 'whitespace-nowrap' });
+  if (status.slug === 'retired' || status.slug === 'blacklisted') {
+    columns.push(
+      { key: 'reason', header: 'Reason', cell: (row) => row.status_reason ?? '—' },
+      {
+        key: 'since',
+        header: 'Since',
+        cell: (row) => formatDate(row.status_changed_at ?? row.exit_date),
+        className: 'whitespace-nowrap',
+      },
+    );
   }
   return columns;
 }
 
-/** Retire on Active (today's Deactivate), Reactivate on Retired. */
-function useStatusAction(status: StaffStatusRoute): DataTableAction<Staff> {
-  const { addToast } = useToast();
-  const deactivate = useDeactivateEmployee();
-  const reactivate = useReactivateEmployee();
-  const done = (title: string) => ({
-    onSuccess: () => addToast({ title, variant: 'success' as const }),
-    onError: (error: unknown) => addToast({ title: 'Could not change the status', description: friendlyError(error), variant: 'destructive' as const }),
-  });
-  if (status.slug === 'active') {
-    return {
-      key: 'retire',
-      header: 'Retire',
-      label: 'Retire',
-      onClick: (row) => {
-        if (window.confirm(`Move ${row.name} to Retired?`)) deactivate.mutate(row.id, done('Moved to Retired'));
-      },
-    };
+/**
+ * STAFF-40 row actions: Move to… (the statuses this one may go to, asking
+ * for a reason), Reactivate on Temp and Retired, and Remove from blacklist
+ * for the community admin.
+ */
+function statusActions(status: StaffStatusRoute, open: (move: StaffMove) => void, reactivate: (row: Staff) => void): DataTableAction<Staff>[] {
+  const of = (row: Staff, to?: StaffMove['to']): StaffMove => ({ id: row.id, name: row.name, from: status.slug, to });
+  if (status.slug === 'blacklisted') {
+    if (currentRole() !== 'community_admin' && currentRole() !== 'super_admin') return [];
+    return [{ key: 'unblacklist', header: 'Remove from blacklist', label: 'Remove', onClick: (row) => open(of(row, 'active')) }];
   }
-  return { key: 'reactivate', header: 'Reactivate', label: 'Reactivate', onClick: (row) => reactivate.mutate(row.id, done('Reactivated')) };
+  const actions: DataTableAction<Staff>[] = [];
+  if (status.slug === 'temp') actions.push({ key: 'reactivate', header: 'Reactivate', label: 'Reactivate', onClick: (row) => open(of(row, 'active')) });
+  if (status.slug === 'retired') actions.push({ key: 'reactivate', header: 'Reactivate', label: 'Reactivate', onClick: reactivate });
+  actions.push({ key: 'move', header: 'Move to…', label: 'Move to…', onClick: (row) => open(of(row)) });
+  return actions;
 }
 
 function StatusList({ status }: { status: StaffStatusRoute }): ReactNode {
@@ -60,7 +66,26 @@ function StatusList({ status }: { status: StaffStatusRoute }): ReactNode {
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[0]);
   const filters: StaffFilters = { status: status.slug, q: q || undefined, search_by: searchBy };
   const query = useStaffEmployees({ ...filters, page, limit: pageSize });
-  const statusAction = useStatusAction(status);
+  const [move, setMove] = useState<StaffMove | null>(null);
+  const change = useChangeStaffStatus();
+  const reactivate = useReactivateEmployee();
+  const deactivate = useDeactivateEmployee();
+  const { addToast } = useToast();
+  const onReactivate = (row: Staff) =>
+    reactivate.mutate(row.id, {
+      onSuccess: () => addToast({ title: 'Reactivated', variant: 'success' }),
+      onError: (error) => addToast({ title: 'Could not change the status', description: friendlyError(error), variant: 'destructive' }),
+    });
+  async function changeStatus(input: { id: string; status: StaffStatusRoute['slug']; reason?: string }): Promise<void> {
+    try {
+      await change.mutateAsync(input);
+    } catch (error) {
+      // An API without the status route still retires through Deactivate (no reason kept).
+      if (!(error instanceof ApiError && error.status === 404 && input.status === 'retired')) throw error;
+      await deactivate.mutateAsync(input.id);
+    }
+    addToast({ title: 'Status changed', variant: 'success' });
+  }
   const onSearch = useCallback((value: string) => {
     setQ(value);
     setPage(1);
@@ -72,7 +97,10 @@ function StatusList({ status }: { status: StaffStatusRoute }): ReactNode {
       <DataTable<Staff>
         title={status.heading}
         columns={columnsFor(status)}
-        actions={[{ key: 'edit', header: 'Edit', label: 'Edit', href: (row) => `${STAFF_BASE}/${row.id}/edit` }, statusAction]}
+        actions={[
+          { key: 'edit', header: 'Edit', label: 'Edit', href: (row) => `${STAFF_BASE}/${row.id}/edit` },
+          ...statusActions(status, setMove, onReactivate),
+        ]}
         rows={query.data?.data ?? []}
         rowKey={(row) => row.id}
         total={query.data?.total ?? 0}
@@ -92,11 +120,12 @@ function StatusList({ status }: { status: StaffStatusRoute }): ReactNode {
         onRetry={() => void query.refetch()}
         emptyText={status.emptyText}
       />
+      <MoveStaffDialog move={move} onClose={() => setMove(null)} change={changeStatus} />
     </div>
   );
 }
 
-/** Staff Manager › Active or › Retired, whichever the route names (SB-05, STAFF-S2 / S5). */
+/** Staff Manager › Active, Temp, Retired or Blacklisted, whichever the route names (SB-05, STAFF-S2 / S5). */
 export function StaffStatusList(): ReactNode {
   const status = useRouteStatus(STAFF_BASE, STAFF_STATUSES);
   if (!status) return null;

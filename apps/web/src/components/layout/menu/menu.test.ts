@@ -168,7 +168,9 @@ describe('classic modules', () => {
       ['Setup', '/staff/setup'],
       ['Active', '/staff/active'],
       ['Attendance', '/staff/attendance'],
+      ['Temp', '/staff/temp'],
       ['Retired', '/staff/retired'],
+      ['Blacklisted', '/staff/blacklisted'],
       ['Reports', '/staff/reports'],
     ]);
     expect(find(menu, 'staff')?.create).toEqual({ label: 'Add Staff', href: '/staff/new' });
