@@ -6,7 +6,9 @@ import { CreateJournalEntryPage } from './journal-entries/create/create-journal-
 
 // Create Journal Entry as a page (GL-11, GL-S6) and the same form as the standard dialog.
 
-const mocks = vi.hoisted(() => ({ mutate: vi.fn(), push: vi.fn() }));
+const mocks = vi.hoisted(() => ({ mutate: vi.fn(), push: vi.fn(), upload: vi.fn() }));
+vi.mock('@/hooks/use-documents', () => ({ useUploadFileToS3: () => ({ mutateAsync: mocks.upload, isPending: false }) }));
+vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock('@/components/ui/account-search-select', () => ({
   AccountSearchSelect: ({ value, onChange }: { value: string; onChange: (id: string) => void }) => (
@@ -141,5 +143,27 @@ describe('the same form as the standard dialog', () => {
       }),
       expect.anything(),
     );
+  });
+});
+
+describe('Create Journal Entry attachment (GL-20)', () => {
+  it('uploads the picked PDF as a journal_entry file and posts its key', async () => {
+    mocks.upload.mockResolvedValue({ key: 'tenants/t-1/journal/bill.pdf', fileUrl: 'https://store/tenants/t-1/journal/bill.pdf' });
+    render(<CreateJournalEntryPage />);
+    fillBalancedEntry();
+    const file = new File(['%PDF'], 'bill.pdf', { type: 'application/pdf' });
+    fireEvent.change(screen.getByLabelText('Attachment'), { target: { files: [file] } });
+    fireEvent.click(submit());
+    await vi.waitFor(() => expect(mocks.mutate).toHaveBeenCalled());
+    expect(mocks.upload).toHaveBeenCalledWith({ file, purpose: 'journal_entry' });
+    expect(mocks.mutate.mock.calls[0][0]).toMatchObject({ attachment_key: 'tenants/t-1/journal/bill.pdf' });
+  });
+
+  it('refuses a file that is not a PDF or image', () => {
+    render(<CreateJournalEntryPage />);
+    fillBalancedEntry();
+    fireEvent.change(screen.getByLabelText('Attachment'), { target: { files: [new File(['x'], 'notes.txt', { type: 'text/plain' })] } });
+    expect(screen.getByText('Attach a PDF, JPEG or PNG file.')).toBeTruthy();
+    expect(submit().disabled).toBe(true);
   });
 });

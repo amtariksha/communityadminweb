@@ -280,6 +280,9 @@ export interface UploadFileInput {
   // otherwise). Normal tenant users omit this; the api client supplies the
   // header from the selected tenant automatically.
   tenantId?: string;
+  // What the upload is for (POST /upload/presigned-url `purpose`), e.g.
+  // journal_entry; a route that keeps the key may insist on it.
+  purpose?: string;
 }
 
 function putFileWithProgress(
@@ -342,6 +345,7 @@ export function useUploadFileToS3() {
         {
           fileName: input.file.name,
           contentType: input.file.type || 'application/octet-stream',
+          ...(input.purpose ? { purpose: input.purpose } : {}),
         },
         input.tenantId
           ? { headers: { 'x-tenant-id': input.tenantId } }

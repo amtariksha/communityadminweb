@@ -24,6 +24,8 @@ export interface JournalEntryRow {
   reverses_entry_number?: number | null;
   reversed_by_entry_id?: string | null;
   reversed_by_entry_number?: number | null;
+  /** GL-20: the supporting file's storage key; absent from an older API. */
+  attachment_key?: string | null;
 }
 
 export interface JournalEntrySourceRef {

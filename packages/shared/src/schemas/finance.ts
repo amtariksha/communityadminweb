@@ -48,6 +48,8 @@ export const createJournalEntrySchema = z
     source_id: z.string().uuid().nullable().default(null),
     // Phase C round-trip — see api-side schema for rationale.
     voucher_type_name: z.string().max(50).nullable().optional(),
+    // GL-20: a supporting file — the storage key of the poster's own upload.
+    attachment_key: z.string().trim().min(1).max(1000).nullable().optional(),
     lines: z
       .array(journalLineSchema)
       .min(2, 'Journal entry must have at least two lines'),

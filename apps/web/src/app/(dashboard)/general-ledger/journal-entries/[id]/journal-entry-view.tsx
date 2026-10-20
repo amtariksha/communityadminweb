@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ShowLogsButton } from '@/components/show-logs';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import { useJournalEntry, type JournalEntryView as Entry } from '@/hooks/use-journal-entries';
 import { ApiError } from '@/lib/api-error';
 import { currentRole } from '@/lib/current-role';
@@ -48,7 +49,21 @@ function Header({ entry }: { entry: Entry }): ReactNode {
         ))}
       </dl>
       <p className="text-sm">{entry.narration}</p>
+      {entry.attachment_key && <AttachmentLink fileKey={entry.attachment_key} />}
     </div>
+  );
+}
+
+/** GL-20: the entry's supporting file, signed when opened (finance readers and the poster). */
+function AttachmentLink({ fileKey }: { fileKey: string }): ReactNode {
+  const open = useOpenStoredFile();
+  return (
+    <p className="text-sm">
+      <span className="text-muted-foreground">Attachment: </span>
+      <button type="button" className="text-primary underline" onClick={() => void open({ key: fileKey })}>
+        {fileKey.split('/').pop()}
+      </button>
+    </p>
   );
 }
 
