@@ -456,7 +456,7 @@ export const classicMenu: MenuNode[] = [
               { label: 'Batch Upload Journal Entries', path: '/general-ledger/journal-entries/bulk-posting/journal-entries' },
             ],
           },
-          planned('ledger.journal.bulk-corrections', 'Bulk Corrections', 'GL-25'),
+          { id: 'ledger.journal.bulk-corrections', label: 'Bulk Corrections', href: '/general-ledger/journal-entries/bulk-corrections', logs: ['journal_entry'] },
         ],
       },
       {
