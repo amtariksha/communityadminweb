@@ -1,4 +1,5 @@
 /** Small display helpers shared by the Assets page and its tabs. */
+import { formatDate as formatDay } from '@/lib/utils';
 
 export const ASSET_TYPE_ICONS: Record<string, string> = {
   equipment: '\uD83D\uDD27',
@@ -41,13 +42,10 @@ export function warrantyStatus(expiryDate: string): { label: string; variant: 's
   return { label: 'Active', variant: 'success' };
 }
 
+/** `01 Apr 2026`; a plain `YYYY-MM-DD` (how the API sends a date) is that day in any time zone. */
 export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '-';
-  return new Date(dateStr).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+  return formatDay(dateStr);
 }
 
 // ASSET-06 — the frequencies the API accepts; older free text is read as one of them.
