@@ -13,6 +13,7 @@ const SOURCE_LABELS: Readonly<Record<string, string>> = {
   debit_note: 'Debit Note',
   opening_balance: 'Opening Balance',
   tally_opening: 'Opening Balance',
+  party_opening: 'Opening Balance',
   opening_balance_migration: 'Opening Balance',
   year_close: 'Year Close',
   reversal: 'Reversal',
