@@ -8,6 +8,7 @@ import { useSaveShiftGrid, useShiftGrid, type ShiftGridRow } from '@/hooks/use-s
 import { ApiError, friendlyError } from '@/lib/api-error';
 import { currentRole } from '@/lib/current-role';
 import { ShiftsGrid } from './shifts-grid';
+import { CategoriesBlock } from './categories-block';
 
 // The roles PUT /staff/shifts/bulk accepts (staff writes).
 const SAVE_ROLES = new Set(['super_admin', 'community_admin', 'accountant']);
@@ -19,9 +20,9 @@ function saveError(error: unknown): string {
 }
 
 /**
- * Staff Manager › Setup (STAFF-10 / STAFF-11): Staff Shift Management as an
- * editable grid. Staff categories, the ID card header and devices join with
- * STAFF-41 and STAFF-43.
+ * Staff Manager › Setup (STAFF-S1): the society's staff categories
+ * (STAFF-41) and Staff Shift Management (STAFF-11), each an editable grid
+ * with its own save. The ID card header and devices join with STAFF-43.
  */
 export function SetupContent(): ReactNode {
   const { addToast } = useToast();
@@ -39,7 +40,10 @@ export function SetupContent(): ReactNode {
     }
   }
 
+  const editable = role !== null && SAVE_ROLES.has(role);
   return (
+    <div className="space-y-4">
+    <CategoriesBlock editable={editable} />
     <Card>
       <CardHeader>
         <CardTitle>Staff Shift Management</CardTitle>
@@ -63,5 +67,6 @@ export function SetupContent(): ReactNode {
         )}
       </CardContent>
     </Card>
+    </div>
   );
 }

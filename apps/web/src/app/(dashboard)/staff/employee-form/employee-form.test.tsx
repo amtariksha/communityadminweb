@@ -25,6 +25,11 @@ vi.mock('@/hooks', () => ({
   useUpdateEmployee: () => ({ mutate: mocks.update, isPending: false, error: null }),
 }));
 vi.mock('@/hooks/use-next-badge', () => ({ useNextBadge: () => ({ data: mocks.nextBadge }) }));
+const categoryMocks = vi.hoisted(() => ({ categories: null as unknown }));
+vi.mock('@/hooks/use-staff-categories', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-staff-categories')>()),
+  useStaffCategories: () => ({ data: categoryMocks.categories }),
+}));
 vi.mock('@tanstack/react-query', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tanstack/react-query')>()),
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
@@ -42,6 +47,7 @@ beforeEach(() => {
   mocks.create.mockReset();
   mocks.update.mockReset();
   mocks.nextBadge = null;
+  categoryMocks.categories = null;
   toast.mockReset();
 });
 
@@ -54,6 +60,22 @@ describe('EmployeeForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(mocks.create.mock.calls[0][0]).toMatchObject(PAYLOAD);
+  });
+
+  it("picks the society's category and sends it with the type it stands for (STAFF-41)", () => {
+    categoryMocks.categories = [
+      { id: 'c-guard', name: 'Security Guard', kind: 'official', grants_guard_role: true, is_active: true, sort_order: 1, legacy_type: 'security_guard' },
+      { id: 'c-lift', name: 'Lift Operator', kind: 'official', grants_guard_role: false, is_active: true, sort_order: 2, legacy_type: null },
+    ];
+    render(<EmployeeForm mode="dialog" open onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect(screen.queryByLabelText('Staff Type')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Test Lift Operator' } });
+    fireEvent.change(screen.getByLabelText('Phone search'), { target: { value: '0000000046' } });
+    fireEvent.change(screen.getByLabelText('Staff Category'), { target: { value: 'c-lift' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(mocks.create.mock.calls[0][0]).toMatchObject({ category_id: 'c-lift', staff_type: 'lift_operator' });
   });
 
   it('as a page: Add Staff, Save and New and Close, with the same payload', () => {

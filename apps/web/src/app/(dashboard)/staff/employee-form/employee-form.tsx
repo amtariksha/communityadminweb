@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/select';
 import { UserSearchSelect } from '@/components/ui/user-search-select';
 import type { Staff } from '@/hooks/use-staff';
 import { STAFF_TYPE_OPTIONS } from '../staff-fields';
+import { categoryOfRecord } from '@/hooks/use-staff-categories';
 import { useEmployeeForm } from './use-employee-form';
 import { RecordFields } from './record-fields';
 
@@ -62,6 +63,39 @@ function TextField({ id, label, value, onChange, placeholder }: { id: string; la
   );
 }
 
+/** STAFF-41: the society's Official categories; the fixed types against an older API. */
+function CategoryField({ form }: { form: Form }): ReactNode {
+  const { draft, set, categories } = form;
+  if (!categories) {
+    return (
+      <div className="space-y-2">
+        <Label htmlFor="emp-type">Staff Type</Label>
+        <Select id="emp-type" value={draft.type} onChange={(event) => set('type', event.target.value)}>
+          {STAFF_TYPE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </Select>
+      </div>
+    );
+  }
+  const current = categoryOfRecord(categories, { category_id: draft.categoryId || null, staff_type: draft.type });
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="emp-category">Staff Category</Label>
+      <Select id="emp-category" value={current?.id ?? ''} onChange={(event) => set('categoryId', event.target.value)}>
+        {!current && <option value="">Choose a category</option>}
+        {categories.map((category) => (
+          <option key={category.id} value={category.id}>
+            {category.name}
+            {category.grants_guard_role ? ' (guard app)' : ''}
+          </option>
+        ))}
+      </Select>
+      <FormFieldError error={form.error} field="category_id" />
+    </div>
+  );
+}
+
 function EmployeeFields({ form }: { form: Form }): ReactNode {
   const { draft, set } = form;
   return (
@@ -75,14 +109,7 @@ function EmployeeFields({ form }: { form: Form }): ReactNode {
         </div>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="emp-type">Staff Type</Label>
-          <Select id="emp-type" value={draft.type} onChange={(event) => set('type', event.target.value)}>
-            {STAFF_TYPE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </Select>
-        </div>
+        <CategoryField form={form} />
         <TextField id="emp-designation" label="Designation" placeholder="e.g., Head Guard" value={draft.designation} onChange={(value) => set('designation', value)} />
       </div>
       <TextField id="emp-address" label="Address" placeholder="Home address" value={draft.address} onChange={(value) => set('address', value)} />

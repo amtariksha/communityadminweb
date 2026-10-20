@@ -65,6 +65,10 @@ vi.mock('@/hooks/use-regular-visitors', () => ({
 }));
 
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
+vi.mock('@/hooks/use-staff-categories', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-staff-categories')>()),
+  useStaffCategories: () => ({ data: null }),
+}));
 
 beforeEach(() => {
   mocks.exportColumns = [];

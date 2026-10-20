@@ -1,5 +1,6 @@
 'use client';
 
+import { StaffTypeOptions } from './staff-type-options';
 import { LockPanel } from '@/components/gate-lock/lock-panel';
 import { isLocked } from '@/lib/gate-unlock';
 import { useState, type FormEvent, type ReactNode } from 'react';
@@ -924,14 +925,8 @@ export default function GateContent(): ReactNode {
                           onChange={(e) => setStaffType(e.target.value)}
                         >
                           <option value="">Select type</option>
-                          <option value="maid">Maid</option>
-                          <option value="cook">Cook</option>
-                          <option value="driver">Driver</option>
-                          <option value="nanny">Nanny</option>
-                          <option value="gardener">Gardener</option>
-                          <option value="plumber">Plumber</option>
-                          <option value="electrician">Electrician</option>
-                          <option value="other">Other</option>
+                          {/* STAFF-41: the society's staff categories. */}
+                          <StaffTypeOptions />
                         </Select>
                       </div>
                     </div>
@@ -1394,16 +1389,8 @@ function RegisteredRegularsDirectory(): ReactNode {
               className="w-40"
             >
               <option value="">All types</option>
-              <option value="maid">Maid</option>
-              <option value="cook">Cook</option>
-              <option value="driver">Driver</option>
-              <option value="nanny">Nanny</option>
-              <option value="tutor">Tutor</option>
-              <option value="gardener">Gardener</option>
-              <option value="plumber">Plumber</option>
-              <option value="electrician">Electrician</option>
-              <option value="therapist">Therapist</option>
-              <option value="other">Other</option>
+              {/* STAFF-41: the society's household-help categories. */}
+              <StaffTypeOptions only="domestic" />
             </Select>
             <Select
               value={activeFilter}

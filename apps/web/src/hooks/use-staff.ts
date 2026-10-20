@@ -17,16 +17,8 @@ export interface Staff {
   tenant_id: string;
   name: string;
   phone: string;
-  // Must match society_staff.staff_type CHECK (migration 018).
-  staff_type:
-    | 'security_guard'
-    | 'watchman'
-    | 'housekeeping'
-    | 'gardener'
-    | 'plumber'
-    | 'electrician'
-    | 'manager'
-    | 'other';
+  // The fixed type (migration 018), or since STAFF-41 its category's slug.
+  staff_type: string;
   designation: string | null;
   id_proof_type: string | null;
   id_proof_number: string | null;
@@ -47,8 +39,9 @@ export interface Staff {
   languages?: string | null;
   notes?: string | null;
   is_active: boolean;
-  // STAFF-40 (migration 240); absent from an older API (read is_active there).
+  // STAFF-40 / STAFF-41 (migration 240); absent from an older API (read is_active there).
   status?: StaffStatus;
+  category_id?: string | null;
   status_reason?: string | null;
   status_changed_at?: string | null;
   created_at: string;

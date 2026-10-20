@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast';
 import { useCreateEmployee, useUpdateEmployee } from '@/hooks';
 import { useNextBadge } from '@/hooks/use-next-badge';
+import { categoryOfRecord, staffTypeOfCategory, useStaffCategories, type StaffCategory } from '@/hooks/use-staff-categories';
 import type { Staff } from '@/hooks/use-staff';
 import type { UserSearchHit } from '@/hooks/use-user-search';
 import { friendlyError } from '@/lib/api-error';
@@ -20,6 +21,8 @@ export interface EmployeeDraft {
   // The directory user picked for the phone, so no duplicate user is made.
   selected: UserSearchHit | null;
   type: string;
+  /** STAFF-41: the society's category ('' = none chosen / an older API). */
+  categoryId: string;
   designation: string;
   address: string;
   emergency: string;
@@ -33,6 +36,7 @@ export function draftFrom(employee?: Staff | null): EmployeeDraft {
     phone: employee?.phone ?? '',
     selected: null,
     type: employee?.staff_type ?? 'security_guard',
+    categoryId: employee?.category_id ?? '',
     designation: employee?.designation ?? '',
     address: employee?.address ?? '',
     emergency: employee?.emergency_contact ?? '',
@@ -74,6 +78,20 @@ function checkNew(draft: EmployeeDraft, ceiling: string): Checked<string> {
 }
 
 /**
+ * STAFF-41 — the category picked (or the one standing for the fixed type),
+ * sent as category_id with the type it writes; the fixed type alone against
+ * an API without categories.
+ */
+export function typeFields(
+  draft: Pick<EmployeeDraft, 'type' | 'categoryId'>,
+  categories: readonly StaffCategory[] | null,
+): { staff_type: string; category_id?: string } {
+  if (!categories) return { staff_type: draft.type };
+  const category = categoryOfRecord(categories, { category_id: draft.categoryId || null, staff_type: draft.type });
+  return category ? { staff_type: staffTypeOfCategory(category), category_id: category.id } : { staff_type: draft.type };
+}
+
+/**
  * State and saving of the employee form (STAFF-10, SB-07): one set of
  * checks and payloads for the standard dialog and the classic page.
  */
@@ -98,6 +116,8 @@ export function useEmployeeForm(employee: Staff | null | undefined) {
   const { record, setField, resetRecord } = useRecordDraft(employee);
   const maxJoinDate = useMemo(joinDateCeiling, []);
   const editing = Boolean(employee);
+  // null against an API without categories: the form keeps the fixed types.
+  const categories = useStaffCategories({ kind: 'official' }).data ?? null;
   const set = <K extends keyof EmployeeDraft>(key: K, value: EmployeeDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
   const refuse = (check: { title: string; description: string }) =>
     addToast({ title: check.title, description: check.description, variant: 'destructive' });
@@ -109,7 +129,7 @@ export function useEmployeeForm(employee: Staff | null | undefined) {
     if (recordError) return refuse({ title: recordError, description: 'Shorten the field and save again.' });
     const fields = {
       name: draft.name,
-      staff_type: draft.type,
+      ...typeFields(draft, categories),
       designation: draft.designation || undefined,
       address: draft.address || undefined,
       emergency_contact: common.value.emergency,
@@ -144,6 +164,7 @@ export function useEmployeeForm(employee: Staff | null | undefined) {
   return {
     draft,
     set,
+    categories,
     record,
     setRecord: setField,
     reset: () => {
