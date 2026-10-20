@@ -401,8 +401,19 @@ export const classicMenu: MenuNode[] = [
           { id: 'bank.accounts.new', label: 'Add account', href: '/bank-cash/accounts/new', logs: ['bank_account'] },
         ],
       },
-      // The four tax registers are BANK-15; today's tax screen meanwhile.
-      { id: 'bank.taxes', label: 'Taxes', href: '/tax' },
+      // BANK-15 / BANK-16: the four tax registers with Remit; today's /tax
+      // (GST reports, TDS summary, Form 16A) stays reachable through them.
+      {
+        id: 'bank.taxes',
+        label: 'Taxes',
+        aliases: ['/tax'],
+        tabs: [
+          { id: 'bank.taxes.tds', label: 'TDS', href: '/bank-cash/taxes/tds', logs: ['tax_remittance'] },
+          { id: 'bank.taxes.state-gst', label: 'State GST', href: '/bank-cash/taxes/state-gst', logs: ['tax_remittance'] },
+          { id: 'bank.taxes.central-gst', label: 'Central GST', href: '/bank-cash/taxes/central-gst', logs: ['tax_remittance'] },
+          { id: 'bank.taxes.integrated-gst', label: 'Integrated GST', href: '/bank-cash/taxes/integrated-gst', logs: ['tax_remittance'] },
+        ],
+      },
       {
         id: 'bank.fixed-deposits',
         label: 'Fixed Deposits',
