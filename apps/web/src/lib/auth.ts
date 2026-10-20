@@ -197,9 +197,10 @@ export function logout(options: { reason?: 'session_expired' | 'manual' } = {}):
   localStorage.removeItem(TENANT_KEY);
   localStorage.removeItem(USER_KEY);
   purgeLegacyTokenStorage();
-  // The httpOnly refresh cookie is killed by POST /auth/logout. Fire
-  // and forget — the user is redirecting anyway and the cookie has a
-  // bounded lifetime, so don't block the UX on the response.
+  // POST /auth/logout revokes the refresh token on the server and clears
+  // its httpOnly cookie. Fire and forget, but with `keepalive`: the page
+  // navigates away on the next line, and without it the browser may cancel
+  // the request, leaving the cookie to sign the next person back in.
   const apiBase =
     process.env.NEXT_PUBLIC_API_URL ??
     (typeof window !== 'undefined' &&
@@ -209,6 +210,7 @@ export function logout(options: { reason?: 'session_expired' | 'manual' } = {}):
   void fetch(`${apiBase}/auth/logout`, {
     method: 'POST',
     credentials: 'include',
+    keepalive: true,
   }).catch(() => {
     /* network flake — the cookie expires server-side either way */
   });
