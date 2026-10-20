@@ -2,11 +2,11 @@
 
 import { useState, type ReactNode } from 'react';
 import { FormFrame, type FormMode } from '@/components/form-page';
+import { RichTextEditor } from '@/components/rich-text/rich-text-editor';
 import { AccountSearchSelect } from '@/components/ui/account-search-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
 import { useCreateAmenity, useUpdateAmenity, type Amenity } from '@/hooks';
 import { friendlyError } from '@/lib/api-error';
@@ -95,15 +95,36 @@ function ChargeFields({ values, set, page }: FieldsProps): ReactNode {
         <p className="text-xs text-muted-foreground">Booking invoices credit this account (Other Income when none is picked).</p>
       </div>
       <div className="space-y-2">
-        {/* The committee's word for the same column is Notes (AMEN-S2). */}
-        <Label htmlFor="amenity-rules">{page ? 'Notes' : 'Rules'}</Label>
-        <Textarea id="amenity-rules" value={values.notes} onChange={(e) => set({ notes: e.target.value })} placeholder="Usage rules and guidelines..." rows={3} />
+        {/* The committee's word for the same column is Notes (AMEN-S2); rich text (AMEN-22). */}
+        <RichTextEditor id="amenity-rules" label={page ? 'Notes' : 'Rules'} initialHtml={values.notes} onChange={(notes) => set({ notes })} />
       </div>
+      <BookingRuleFields values={values} set={set} page={page} />
       {page && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={values.isActive} onChange={(e) => set({ isActive: e.target.checked })} />
           Active (an inactive amenity takes no bookings and is listed under Inactive Amenities)
         </label>
+      )}
+    </>
+  );
+}
+
+/** AMEN-22 — terms the booker accepts, and booking across several days (charged by the date). */
+function BookingRuleFields({ values, set }: FieldsProps): ReactNode {
+  return (
+    <>
+      {values.pricingType === 'per_day' && (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={values.allowMultiDay} onChange={(e) => set({ allowMultiDay: e.target.checked })} />
+          Allow booking across multiple days
+        </label>
+      )}
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={values.termsEnabled} onChange={(e) => set({ termsEnabled: e.target.checked })} />
+        Enable Terms and Conditions (the booker must accept them)
+      </label>
+      {values.termsEnabled && (
+        <RichTextEditor id="amenity-terms" label="Terms and Conditions" initialHtml={values.termsText} onChange={(termsText) => set({ termsText })} />
       )}
     </>
   );

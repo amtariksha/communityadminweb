@@ -8,6 +8,7 @@ import { formatCurrency } from '@/lib/utils';
 import { useUnitMembers } from '@/hooks';
 import type { Amenity } from '@/hooks';
 import { useUnitChoices } from '../../helpdesk/new/use-unit-choices';
+import { safeAmenityHtml } from '../amenity-text';
 
 /** The fields of the booking form (AMEN-S8), shared by its dialog and its page. */
 
@@ -20,12 +21,16 @@ export interface BookingFormValues {
   endTime: string;
   purpose: string;
   guestsCount: string;
+  /** AMEN-22 — '' = one day; the booker accepted the amenity's terms. */
+  endDate: string;
+  acceptTerms: boolean;
 }
 
 export function emptyBookingForm(date: string): BookingFormValues {
   return {
     amenityId: '', unitId: '', memberId: '', bookingDate: date,
     startTime: '09:00', endTime: '10:00', purpose: '', guestsCount: '0',
+    endDate: '', acceptTerms: false,
   };
 }
 
@@ -59,6 +64,24 @@ export function AmenityField({
 export interface FieldsProps {
   form: BookingFormValues;
   set: (patch: Partial<BookingFormValues>) => void;
+}
+
+/** AMEN-22 — the amenity's terms, shown sanitised, which the booker must accept. */
+export function BookingTermsField({ form, set, amenity }: FieldsProps & { amenity?: Amenity }): ReactNode {
+  if (!amenity?.terms_enabled) return null;
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <p className="text-sm font-medium">Terms and Conditions</p>
+      <div
+        className="prose prose-sm max-h-40 max-w-none overflow-y-auto text-sm [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
+        dangerouslySetInnerHTML={{ __html: safeAmenityHtml(amenity.terms_text) }}
+      />
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={form.acceptTerms} onChange={(e) => set({ acceptTerms: e.target.checked })} />
+        The resident accepts the terms and conditions
+      </label>
+    </div>
+  );
 }
 
 export function UnitMemberFields({ form, set }: FieldsProps): ReactNode {
@@ -113,7 +136,7 @@ export function UnitMemberFields({ form, set }: FieldsProps): ReactNode {
   );
 }
 
-export function BookingWhenFields({ form, set }: FieldsProps): ReactNode {
+export function BookingWhenFields({ form, set, amenity }: FieldsProps & { amenity?: Amenity }): ReactNode {
   return (
     <>
       <div className="grid grid-cols-3 gap-3">
@@ -121,6 +144,13 @@ export function BookingWhenFields({ form, set }: FieldsProps): ReactNode {
           <Label htmlFor="nb-date">Date</Label>
           <Input id="nb-date" type="date" value={form.bookingDate} onChange={(e) => set({ bookingDate: e.target.value })} />
         </div>
+        {/* AMEN-22 — an amenity charged by the date may be booked for several days. */}
+        {amenity?.allow_multi_day && (
+          <div className="space-y-2">
+            <Label htmlFor="nb-end-date">End date</Label>
+            <Input id="nb-end-date" type="date" min={form.bookingDate} value={form.endDate} onChange={(e) => set({ endDate: e.target.value })} />
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="nb-start">Start</Label>
           <Input id="nb-start" type="time" value={form.startTime} onChange={(e) => set({ startTime: e.target.value })} />

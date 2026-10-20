@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useAmenityQuote } from '@/hooks';
+import { useAmenityQuote, type QuoteRequest } from '@/hooks';
 import { ApiError } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/utils';
 
@@ -13,8 +13,7 @@ import { formatCurrency } from '@/lib/utils';
 
 interface BookingChargePreviewProps {
   amenityId: string;
-  startTime: string;
-  endTime: string;
+  request: QuoteRequest;
 }
 
 const UNIT_LABEL: Record<string, string> = { hour: 'hour', day: 'day', slot: 'slot' };
@@ -26,12 +25,8 @@ function basisLine(quantity: string, unit: string | null, rate: string): string 
   return `${quantity} ${plural} × ${formatCurrency(Number(rate))}`;
 }
 
-export function BookingChargePreview({
-  amenityId,
-  startTime,
-  endTime,
-}: BookingChargePreviewProps): ReactNode {
-  const quote = useAmenityQuote(amenityId, startTime, endTime);
+export function BookingChargePreview({ amenityId, request }: BookingChargePreviewProps): ReactNode {
+  const quote = useAmenityQuote(amenityId, request);
 
   if (!amenityId) return null;
   if (quote.isLoading) {

@@ -628,6 +628,7 @@ export type {
   AmenityBookingFilters,
   AmenityQuote,
   CancelBookingResult,
+  QuoteRequest,
 } from './use-amenities';
 
 // Voting

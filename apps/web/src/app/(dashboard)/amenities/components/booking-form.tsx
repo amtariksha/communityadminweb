@@ -9,6 +9,7 @@ import type { Amenity } from '@/hooks';
 import { BookingChargePreview } from './booking-charge-preview';
 import {
   AmenityField,
+  BookingTermsField,
   BookingWhenFields,
   emptyBookingForm,
   UnitMemberFields,
@@ -26,13 +27,18 @@ import {
 
 const TIME = /^\d{2}:\d{2}$/;
 
-export function validateBookingForm(form: BookingFormValues): string | null {
+/** A last day after the first (AMEN-22); '' or the same day = a one-day booking. */
+const severalDays = (form: BookingFormValues): boolean => form.endDate !== '' && form.endDate > form.bookingDate;
+
+export function validateBookingForm(form: BookingFormValues, amenity?: Amenity): string | null {
   if (!form.amenityId) return 'Please pick an amenity.';
   if (!form.unitId) return 'Please pick a unit.';
   if (!form.memberId) return 'Please pick a member.';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.bookingDate)) return 'Date must be YYYY-MM-DD.';
   if (!TIME.test(form.startTime) || !TIME.test(form.endTime)) return 'Times must be HH:MM.';
-  if (form.startTime >= form.endTime) return 'End time must be after start time.';
+  if (form.endDate && form.endDate < form.bookingDate) return 'End date must be on or after the date.';
+  if (!severalDays(form) && form.startTime >= form.endTime) return 'End time must be after start time.';
+  if (amenity?.terms_enabled && !form.acceptTerms) return 'The resident has to accept the terms and conditions.';
   return null;
 }
 
@@ -60,7 +66,7 @@ interface BookingFormProps {
   defaultDate: string;
 }
 
-function bookingInput(form: BookingFormValues) {
+export function bookingInput(form: BookingFormValues, amenity?: Amenity) {
   const guests = Number(form.guestsCount || 0);
   return {
     amenity_id: form.amenityId,
@@ -71,6 +77,8 @@ function bookingInput(form: BookingFormValues) {
     end_time: form.endTime,
     purpose: form.purpose.trim() || null,
     guests_count: Number.isFinite(guests) && guests >= 0 ? guests : 0,
+    ...(severalDays(form) ? { end_date: form.endDate } : {}),
+    ...(amenity?.terms_enabled ? { accept_terms: form.acceptTerms } : {}),
   };
 }
 
@@ -85,13 +93,15 @@ export function BookingForm({ mode, open, onClose, onSaved, amenities, defaultDa
     if (open) setForm(emptyBookingForm(defaultDate));
   }, [open, defaultDate]);
 
+  const amenity = amenities.find((row) => row.id === form.amenityId);
+
   function handleSubmit(): void {
-    const err = validateBookingForm(form);
+    const err = validateBookingForm(form, amenity);
     if (err) {
       addToast({ title: err, variant: 'destructive' });
       return;
     }
-    createBooking.mutate(bookingInput(form), {
+    createBooking.mutate(bookingInput(form, amenity), {
       onSuccess(response) {
         addToast({ ...bookingCreatedToast(response.data.invoice_number), variant: 'success' });
         onSaved();
@@ -115,10 +125,14 @@ export function BookingForm({ mode, open, onClose, onSaved, amenities, defaultDa
       savingLabel="Reserving…"
       dialogClassName="max-w-lg"
     >
-      <AmenityField amenities={amenities} value={form.amenityId} onChange={(amenityId) => set({ amenityId })} />
+      <AmenityField amenities={amenities} value={form.amenityId} onChange={(amenityId) => set({ amenityId, endDate: '', acceptTerms: false })} />
       <UnitMemberFields form={form} set={set} />
-      <BookingWhenFields form={form} set={set} />
-      <BookingChargePreview amenityId={form.amenityId} startTime={form.startTime} endTime={form.endTime} />
+      <BookingWhenFields form={form} set={set} amenity={amenity} />
+      <BookingTermsField form={form} set={set} amenity={amenity} />
+      <BookingChargePreview
+        amenityId={form.amenityId}
+        request={{ startTime: form.startTime, endTime: form.endTime, date: form.bookingDate, endDate: severalDays(form) ? form.endDate : undefined }}
+      />
     </FormFrame>
   );
 }

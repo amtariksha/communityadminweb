@@ -15,6 +15,9 @@ describe('amenityPayload', () => {
       price_per_unit: 500,
       deposit_amount: undefined,
       rules: null,
+      terms_enabled: false,
+      terms_text: null,
+      allow_multi_day: false,
     });
     expect(amenityPayload({ ...values, isActive: false, incomeAccountId: 'acc-1' }, true).payload?.is_active).toBe(false);
   });
@@ -31,6 +34,18 @@ describe('amenityPayload', () => {
     expect(amenityPayload({ ...values, incomeAccountId: 'acc-1' }, true).payload?.income_account_id).toBe('acc-1');
     // The standard dialog has no picker: the API keeps crediting Other Income.
     expect(amenityPayload(values, false).payload).not.toHaveProperty('income_account_id');
+  });
+
+  it('needs terms text when the terms are on, and multi-day only for an amenity charged by the date (AMEN-22)', () => {
+    const free = { ...values, pricingType: 'free', price: '' };
+    expect(amenityPayload({ ...free, termsEnabled: true, termsText: '<p> </p>' }, false).error).toMatch(/terms/);
+    expect(amenityPayload({ ...free, termsEnabled: true, termsText: '<p>Clean up after</p>' }, false).payload).toMatchObject({
+      terms_enabled: true,
+      terms_text: '<p>Clean up after</p>',
+    });
+    expect(amenityPayload({ ...free, allowMultiDay: true }, false).payload?.allow_multi_day).toBe(false);
+    expect(amenityPayload({ ...free, pricingType: 'per_day', allowMultiDay: true }, false).payload?.allow_multi_day).toBe(true);
+    expect(amenityPayload({ ...free, notes: '<p></p>' }, false).payload?.rules).toBeNull();
   });
 
   it("starts an edit from the amenity's values", () => {

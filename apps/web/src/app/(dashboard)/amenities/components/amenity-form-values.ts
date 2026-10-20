@@ -1,4 +1,5 @@
 import type { Amenity } from '@/hooks';
+import { plainText } from '../amenity-text';
 
 /** The fields of the amenity form (AMEN-S2, today's set) and what is sent. */
 
@@ -14,6 +15,10 @@ export interface AmenityFormValues {
   isActive: boolean;
   /** AMEN-21 — '' = none (the API credits Other Income). */
   incomeAccountId: string;
+  /** AMEN-22 — Notes (`notes`) and the terms are HTML from the editor. */
+  termsEnabled: boolean;
+  termsText: string;
+  allowMultiDay: boolean;
 }
 
 export interface AmenityPayload {
@@ -27,13 +32,16 @@ export interface AmenityPayload {
   rules: string | null;
   is_active?: boolean;
   income_account_id?: string | null;
+  terms_enabled: boolean;
+  terms_text: string | null;
+  allow_multi_day: boolean;
 }
 
 export function amenityFormValues(amenity?: Amenity | null): AmenityFormValues {
   if (!amenity) {
     return {
       name: '', type: 'clubhouse', location: '', capacity: '', pricingType: 'free', price: '', deposit: '', notes: '', isActive: true,
-      incomeAccountId: '',
+      incomeAccountId: '', termsEnabled: false, termsText: '', allowMultiDay: false,
     };
   }
   return {
@@ -47,6 +55,9 @@ export function amenityFormValues(amenity?: Amenity | null): AmenityFormValues {
     notes: amenity.rules ?? '',
     isActive: amenity.is_active,
     incomeAccountId: amenity.income_account_id ?? '',
+    termsEnabled: amenity.terms_enabled === true,
+    termsText: amenity.terms_text ?? '',
+    allowMultiDay: amenity.allow_multi_day === true,
   };
 }
 
@@ -69,6 +80,7 @@ export function amenityPayload(values: AmenityFormValues, withActive: boolean): 
   if (!values.name.trim()) return { error: 'Name is required' };
   // AMEN-S2 — a paid amenity names the account its invoices credit.
   if (withActive && isPaid(values) && !values.incomeAccountId) return { error: 'Pick the amenity income account' };
+  if (values.termsEnabled && !plainText(values.termsText)) return { error: 'Write the terms and conditions, or switch them off' };
   const capacity = values.capacity.trim() === '' ? null : Number(values.capacity);
   if (capacity !== null && (!Number.isInteger(capacity) || capacity < 1)) return { error: 'Capacity must be a whole number above 0' };
   const price = amount(values.price);
@@ -82,7 +94,11 @@ export function amenityPayload(values: AmenityFormValues, withActive: boolean): 
     pricing_type: values.pricingType,
     price_per_unit: price,
     deposit_amount: deposit,
-    rules: values.notes.trim() || null,
+    rules: plainText(values.notes) ? values.notes.trim() : null,
+    terms_enabled: values.termsEnabled,
+    terms_text: plainText(values.termsText) ? values.termsText.trim() : null,
+    // AMEN-22 — booking over several days is for an amenity charged by the date.
+    allow_multi_day: values.allowMultiDay && values.pricingType === 'per_day',
   };
   if (withActive) payload.is_active = values.isActive;
   if (values.incomeAccountId) payload.income_account_id = values.incomeAccountId;

@@ -7,6 +7,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { useAmenities, type Amenity } from '@/hooks';
 import { formatCurrency } from '@/lib/utils';
 import { formatAmenityType, formatPricingType } from '../amenity-labels';
+import { plainText } from '../amenity-text';
 
 type SetupStatus = 'active' | 'inactive';
 
@@ -23,7 +24,7 @@ const COLUMNS: DataTableColumn<Amenity>[] = [
   },
   // AMEN-21 — an amenity without an account (or an older API) credits Other Income.
   { key: 'income', header: 'Income Account', cell: (row) => row.income_account_name ?? 'Other Income' },
-  { key: 'notes', header: 'Notes', cell: (row) => row.rules ?? '', className: 'max-w-[320px] whitespace-pre-line text-muted-foreground' },
+  { key: 'notes', header: 'Notes', cell: (row) => plainText(row.rules), className: 'max-w-[320px] text-muted-foreground' },
 ];
 
 const ACTIONS: DataTableAction<Amenity>[] = [

@@ -36,6 +36,10 @@ export interface Amenity {
   /** AMEN-21 — the income account its invoices credit; absent on an older API. */
   income_account_id?: string | null;
   income_account_name?: string | null;
+  /** AMEN-22 — terms the booker accepts (sanitised HTML), booking over several days. */
+  terms_enabled?: boolean;
+  terms_text?: string | null;
+  allow_multi_day?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -108,6 +112,9 @@ interface CreateAmenityInput {
   rules?: string | null;
   description?: string | null;
   income_account_id?: string | null;
+  terms_enabled?: boolean;
+  terms_text?: string | null;
+  allow_multi_day?: boolean;
 }
 
 interface UpdateAmenityInput {
@@ -123,6 +130,9 @@ interface UpdateAmenityInput {
   description?: string | null;
   is_active?: boolean;
   income_account_id?: string | null;
+  terms_enabled?: boolean;
+  terms_text?: string | null;
+  allow_multi_day?: boolean;
 }
 
 // Backend Zod (amenity.controller.ts:43–52) requires:
@@ -144,6 +154,9 @@ interface CreateBookingInput {
   end_time: string;
   purpose?: string | null;
   guests_count?: number;
+  /** AMEN-22 — the last day of a multi-day booking; the booker accepted the terms. */
+  end_date?: string;
+  accept_terms?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -160,8 +173,7 @@ export const amenityKeys = {
   bookings: () => [...amenityKeys.all, 'bookings'] as const,
   bookingList: (filters?: AmenityBookingFilters) =>
     [...amenityKeys.bookings(), filters] as const,
-  quote: (amenityId: string, startTime: string, endTime: string) =>
-    [...amenityKeys.all, 'quote', amenityId, startTime, endTime] as const,
+  quote: (amenityId: string, request: QuoteRequest) => [...amenityKeys.all, 'quote', amenityId, request] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -245,23 +257,38 @@ export interface AmenityQuote {
 
 const TIME_PATTERN = /^\d{2}:\d{2}$/;
 
-export function useAmenityQuote(amenityId: string, startTime: string, endTime: string) {
+/** What the quote is for: times on a day, and (AMEN-22) the last day of a multi-day booking. */
+export interface QuoteRequest {
+  startTime: string;
+  endTime: string;
+  date?: string;
+  endDate?: string;
+}
+
+function quoteParams(request: QuoteRequest): Record<string, string> {
+  const params: Record<string, string> = { start_time: request.startTime, end_time: request.endTime };
+  if (request.date) params.date = request.date;
+  if (request.endDate) params.end_date = request.endDate;
+  return params;
+}
+
+function quoteReady(request: QuoteRequest): boolean {
+  if (!TIME_PATTERN.test(request.startTime) || !TIME_PATTERN.test(request.endTime)) return false;
+  // Several days run from the first day's start to the last day's end.
+  return Boolean(request.endDate && request.date && request.endDate > request.date) || request.startTime < request.endTime;
+}
+
+export function useAmenityQuote(amenityId: string, request: QuoteRequest) {
   return useQuery({
-    queryKey: amenityKeys.quote(amenityId, startTime, endTime),
+    queryKey: amenityKeys.quote(amenityId, request),
     queryFn: function fetchQuote() {
       return api
-        .get<{ data: AmenityQuote }>(`/amenities/${amenityId}/quote`, {
-          params: { start_time: startTime, end_time: endTime },
-        })
+        .get<{ data: AmenityQuote }>(`/amenities/${amenityId}/quote`, { params: quoteParams(request) })
         .then(function unwrap(res) {
           return res.data;
         });
     },
-    enabled:
-      amenityId !== '' &&
-      TIME_PATTERN.test(startTime) &&
-      TIME_PATTERN.test(endTime) &&
-      startTime < endTime,
+    enabled: amenityId !== '' && quoteReady(request),
     retry: false,
   });
 }
