@@ -1,6 +1,8 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '@/lib/api-error';
+import { forgetStoredFileLinks } from '@/lib/stored-file';
 import { StaffStatusList } from './staff-status-list';
 
 /**
@@ -18,7 +20,9 @@ vi.mock('next/link', () => ({
 }));
 
 const download = vi.hoisted(() => vi.fn());
-vi.mock('@/lib/api', () => ({ api: { download } }));
+// POST /upload/download-url signs a stored file (lib/stored-file.ts).
+const post = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/api', () => ({ api: { download, post } }));
 const printHtml = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/download', () => ({ saveBlob: vi.fn(), printHtml }));
 const badgeSettings = vi.hoisted(() => ({ value: null as null | { badge_header_image_url: string | null; badge_back_text: string } }));
@@ -75,6 +79,9 @@ const lastFilters = (): Record<string, unknown> => mocks.list.mock.calls.at(-1)?
 
 beforeEach(() => {
   nav.pathname = '/staff/active';
+  forgetStoredFileLinks();
+  post.mockReset();
+  printHtml.mockReset();
   mocks.list.mockReset().mockReturnValue(page([employee()]));
   mocks.deactivate.mockReset();
   mocks.reactivate.mockReset();
@@ -227,15 +234,35 @@ describe('Staff Manager status lists', () => {
   });
 
   // STAFF-43: one badge with the ID card header and the back-side text.
-  it('Badge prints the person’s card with the society’s header image and back text', () => {
-    badgeSettings.value = { badge_header_image_url: 'https://files.example.test/meraghar/tenants/t/header.png', badge_back_text: 'Return to the office' };
+  it('Badge prints the person’s card with the header image’s signed link and the back text', async () => {
+    const stored = 'https://files.example.test/meraghar/tenants/t/header.png';
+    const signed = 'https://files.example.test/meraghar/tenants/t/header.png?X-Signature=abc';
+    post.mockResolvedValue({ data: { downloadUrl: signed, expiresAt: new Date(Date.now() + 3_600_000).toISOString() } });
+    badgeSettings.value = { badge_header_image_url: stored, badge_back_text: 'Return to the office' };
     mocks.list.mockReturnValue(page([employee({ badge_no: '104' })]));
     render(<StaffStatusList />);
     fireEvent.click(screen.getByRole('button', { name: 'Badge' }));
+    await waitFor(() => expect(printHtml).toHaveBeenCalled());
     const html = printHtml.mock.calls.at(-1)?.[0] as string;
-    expect(html).toContain('src="https://files.example.test/meraghar/tenants/t/header.png"');
+    // The bucket is private: the card draws the signed link, never the stored address.
+    expect(html).toContain('src="https://files.example.test/meraghar/tenants/t/header.png?X-Signature=abc"');
+    expect(html).not.toContain(`src="${stored}"`);
+    expect(post).toHaveBeenCalledWith('/upload/download-url', expect.objectContaining({ file_url: stored }), undefined);
     expect(html).toContain('104');
     expect(html).toContain('Return to the office');
+    badgeSettings.value = null;
+  });
+
+  it('Badge prints the society’s name when the header image is not available', async () => {
+    post.mockRejectedValue(new ApiError(404, { statusCode: 404, message: 'No', code: 'file_not_found' } as never));
+    badgeSettings.value = { badge_header_image_url: 'https://files.example.test/meraghar/tenants/t/gone.png', badge_back_text: '' };
+    mocks.list.mockReturnValue(page([employee({ badge_no: '105' })]));
+    render(<StaffStatusList />);
+    fireEvent.click(screen.getByRole('button', { name: 'Badge' }));
+    await waitFor(() => expect(printHtml).toHaveBeenCalled());
+    const html = printHtml.mock.calls.at(-1)?.[0] as string;
+    expect(html).not.toContain('<img');
+    expect(html).toContain('Test Heights');
     badgeSettings.value = null;
   });
 

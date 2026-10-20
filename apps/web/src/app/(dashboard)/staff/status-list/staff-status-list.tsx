@@ -6,9 +6,6 @@ import { DataTable, type DataTableAction, type DataTableColumn } from '@/compone
 import { useRouteStatus } from '@/components/layout/menu/use-route-status';
 import { useToast } from '@/components/ui/toast';
 import { useDeactivateEmployee, useReactivateEmployee } from '@/hooks';
-import { useSocietyProfile } from '@/hooks/use-society-profile';
-import { useStaffSettings } from '@/hooks/use-staff-settings';
-import { printHtml } from '@/lib/download';
 import { staffFiltersToParams, useChangeStaffStatus } from '@/hooks/use-staff';
 import {
   registerParams,
@@ -24,7 +21,7 @@ import { STAFF_BASE, STAFF_STATUSES, type StaffStatusRoute } from '@/lib/staff-s
 import { formatDate } from '@/lib/utils';
 import { StaffSearchBy } from '../staff-search';
 import { MoveStaffDialog, type StaffMove } from './move-staff-dialog';
-import { badgeHtml } from './badge-print';
+import { useBadgePrint } from './use-badge-print';
 
 const PAGE_SIZES = [25, 50, 100] as const;
 
@@ -117,10 +114,8 @@ function StatusList({ status }: { status: StaffStatusRoute }): ReactNode {
   const query = useStaffRegister({ ...filters, page, limit: pageSize });
   const [move, setMove] = useState<{ move: StaffMove; row: Row } | null>(null);
   const { changeStatus, onReactivate } = useStatusChanges();
-  // STAFF-43: the badge print reads the ID card header and back text.
-  const badgeSettings = useStaffSettings().data ?? null;
-  const society = useSocietyProfile().data;
-  const printBadge = (row: Row) => printHtml(badgeHtml(row, badgeSettings, society?.display_name || society?.name || ''));
+  // STAFF-43: the badge print reads the ID card header (signed) and back text.
+  const printBadge = useBadgePrint();
   const onSearch = useCallback((value: string) => {
     setQ(value);
     setPage(1);
@@ -159,7 +154,7 @@ function StatusList({ status }: { status: StaffStatusRoute }): ReactNode {
         columns={columnsFor(status)}
         actions={[
           { key: 'edit', header: 'Edit', label: 'Edit', href: editHref },
-          { key: 'badge', header: 'Badge', label: 'Badge', onClick: printBadge },
+          { key: 'badge', header: 'Badge', label: 'Badge', onClick: (row) => void printBadge(row) },
           ...statusActions(status, (next, row) => setMove({ move: next, row }), onReactivate),
         ]}
         rows={query.data?.data ?? []}
