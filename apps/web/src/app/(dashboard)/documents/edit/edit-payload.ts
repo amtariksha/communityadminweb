@@ -11,6 +11,8 @@ export interface EditState {
   audience: ResidentAudience;
   expiry: string;
   changeNotes: string;
+  /** PROF-42: on the society's public files page. */
+  isPublic: boolean;
 }
 
 export interface ReplacedFile {
@@ -37,7 +39,13 @@ export function initialEditState(file: DocumentFile): EditState {
     audience: residentAudience(file.audience_role),
     expiry: file.expiry_date ?? '',
     changeNotes: '',
+    isPublic: file.is_public === true,
   };
+}
+
+/** PROF-42: only a Resident Documents file for all residents can be public. */
+export function canBePublicHere(state: Pick<EditState, 'root' | 'audience'>): boolean {
+  return state.root === 'residents' && state.audience === 'all';
 }
 
 /** Whether saving moves the file where residents will see it (asks first, FILE-D2). */
@@ -73,6 +81,9 @@ export function editPayload(
   if (state.description.trim() !== before.description) body.description = state.description.trim() || null;
   if (folderId && folderId !== before.folder) body.category_id = folderId;
   if (state.expiry !== before.expiry) body.expiry_date = state.expiry || null;
+  // A file leaving all residents' view is unticked by the API; only a kept tick change is sent.
+  const isPublic = state.isPublic && canBePublicHere(state);
+  if (isPublic !== before.isPublic) body.is_public = isPublic;
   if (replaced) {
     Object.assign(body, replaced);
     if (state.changeNotes.trim()) body.change_notes = state.changeNotes.trim();

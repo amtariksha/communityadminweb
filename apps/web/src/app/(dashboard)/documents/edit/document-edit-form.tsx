@@ -13,13 +13,16 @@ import { FolderField, folderError, useResolveFolder } from '../files/folder-fiel
 import { AudienceSelect, ExpiryField, TextFields } from '../upload/upload-fields';
 import { DocumentVersions } from './document-versions';
 import { ReplaceFileFields, RootSelect } from './edit-fields';
-import { editPayload, initialEditState, movesToResidents, type EditState, type ReplacedFile } from './edit-payload';
+import { PublicTick } from '../files/public-tick';
+import { canBePublicHere, editPayload, initialEditState, movesToResidents, type EditState, type ReplacedFile } from './edit-payload';
 
 export interface DocumentEditFormProps {
   mode: FormMode;
   documentId: string;
   /** Dialog only. */
   open?: boolean;
+  /** Downloadable Files (PROF-42): offer the Public tick (always shown for a file already public). */
+  offerPublic?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -33,8 +36,10 @@ function EditFields(props: {
   set: (patch: Partial<EditState>) => void;
   replacement: File | null;
   onReplace: (file: File | null) => void;
+  offerPublic: boolean;
 }): ReactNode {
   const { file, state, set } = props;
+  const showPublic = (props.offerPublic || file.is_public === true) && state.root === 'residents';
   const folders = useDocumentCategories().data ?? [];
   return (
     <>
@@ -57,6 +62,7 @@ function EditFields(props: {
         <RootSelect value={state.root} onChange={(root) => set({ root })} />
       )}
       {state.root === 'residents' && <AudienceSelect value={state.audience} onChange={(audience) => set({ audience })} />}
+      {showPublic && <PublicTick checked={state.isPublic} allowed={canBePublicHere(state)} onChange={(isPublic) => set({ isPublic })} />}
       <ExpiryField value={state.expiry} onChange={(expiry) => set({ expiry })} />
       <ReplaceFileFields
         file={props.replacement}
@@ -125,7 +131,15 @@ function LoadedEditForm(props: DocumentEditFormProps & { file: DocumentFile; ver
       saveLabel="Save Changes"
       dialogClassName="max-w-2xl"
     >
-      <EditFields file={file} versions={props.versions} state={state} set={set} replacement={replacement} onReplace={setReplacement} />
+      <EditFields
+        file={file}
+        versions={props.versions}
+        state={state}
+        set={set}
+        replacement={replacement}
+        onReplace={setReplacement}
+        offerPublic={props.offerPublic ?? false}
+      />
     </FormFrame>
   );
 }

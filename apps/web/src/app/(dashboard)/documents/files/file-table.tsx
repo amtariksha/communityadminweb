@@ -25,11 +25,13 @@ export interface FileTableProps {
   emptyText: string;
   /** Resident Documents: who each file is for. */
   showAudience?: boolean;
+  /** Downloadable Files (PROF-42): whether each file is on the public page. */
+  showPublic?: boolean;
   /** Where Edit returns to. */
   returnTo: string;
 }
 
-function columns(showAudience: boolean): DataTableColumn<DocumentFile>[] {
+function columns(showAudience: boolean, showPublic: boolean): DataTableColumn<DocumentFile>[] {
   const list: DataTableColumn<DocumentFile>[] = [
     {
       key: 'name',
@@ -46,6 +48,7 @@ function columns(showAudience: boolean): DataTableColumn<DocumentFile>[] {
     { key: 'by', header: 'Uploaded by', cell: (row) => row.uploaded_by_name ?? '—' },
   ];
   if (showAudience) list.push({ key: 'audience', header: 'Audience', cell: (row) => audienceLabel(row.audience_role) });
+  if (showPublic) list.push({ key: 'public', header: 'Public', cell: (row) => (row.is_public ? 'Yes' : '—') });
   return list;
 }
 
@@ -88,7 +91,7 @@ export function FileTable(props: FileTableProps): ReactNode {
   return (
     <DataTable
       title={props.title}
-      columns={columns(props.showAudience ?? false)}
+      columns={columns(props.showAudience ?? false, props.showPublic ?? false)}
       actions={actions}
       rows={props.rows}
       rowKey={(row) => row.id}

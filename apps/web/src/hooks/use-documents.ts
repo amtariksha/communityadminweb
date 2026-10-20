@@ -73,6 +73,8 @@ interface UploadDocumentInput {
   audience_unit_id?: string | null;
   unit_id?: string | null;
   folder_type?: 'common' | 'unit' | 'committee';
+  /** PROF-42: sent only when ticked; an API without it ignores the key. */
+  is_public?: boolean;
 }
 
 export interface UpdateDocumentInput {
@@ -92,6 +94,8 @@ export interface UpdateDocumentInput {
   file_size?: number;
   mime_type?: string;
   change_notes?: string;
+  /** PROF-42: offered on the society's public files page. */
+  is_public?: boolean;
 }
 
 /** A row of GET /documents/expiring: the document plus its days to expiry. */

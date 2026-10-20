@@ -27,6 +27,8 @@ export interface DocumentFile {
   unit_number?: string | null;
   folder_type?: 'common' | 'unit' | 'committee' | null;
   expiry_date?: string | null;
+  /** PROF-42: offered on the society's public files page (absent before that API). */
+  is_public?: boolean;
   created_at: string;
 }
 

@@ -9,6 +9,7 @@ import { checkUploadFile } from '@/lib/validation';
 import { useUnitChoices } from '../../helpdesk/new/use-unit-choices';
 import { FolderField, folderError, useResolveFolder } from '../files/folder-field';
 import { placementFor, ROOT_LABELS, type FileRoot, type ResidentAudience } from '../files/file-roots';
+import { PublicTick } from '../files/public-tick';
 import { AudienceSelect, ExpiryField, FilePicker, TextFields, UnitSelect } from './upload-fields';
 
 export interface UploadFileFormProps {
@@ -18,6 +19,8 @@ export interface UploadFileFormProps {
   unitId?: string;
   /** A folder name to start with when the folder does not exist yet. */
   newFolderName?: string;
+  /** Downloadable Files (PROF-42): offer the Public tick. */
+  offerPublic?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -30,6 +33,7 @@ interface UploadState {
   audience: ResidentAudience;
   unitId: string;
   expiry: string;
+  isPublic: boolean;
 }
 
 function problem(state: UploadState, root: FileRoot, file: File | null, folders: { id: string; name: string }[]): string | null {
@@ -65,7 +69,9 @@ export function UploadFileForm(props: UploadFileFormProps): ReactNode {
     audience: 'all',
     unitId: props.unitId ?? '',
     expiry: '',
+    isPublic: false,
   });
+  const publicAllowed = root === 'residents' && state.audience === 'all';
   const set = (patch: Partial<UploadState>) => setState((current) => ({ ...current, ...patch }));
 
   async function save(): Promise<void> {
@@ -85,6 +91,7 @@ export function UploadFileForm(props: UploadFileFormProps): ReactNode {
         file_size: file.size,
         expiry_date: state.expiry || undefined,
         ...placementFor(root, state.audience, state.unitId),
+        ...(props.offerPublic && publicAllowed && state.isPublic ? { is_public: true } : {}),
       });
       addToast({ title: 'File uploaded', variant: 'success' });
       props.onSaved();
@@ -121,6 +128,9 @@ export function UploadFileForm(props: UploadFileFormProps): ReactNode {
         onDescription={(description) => set({ description })}
       />
       {root === 'residents' && <AudienceSelect value={state.audience} onChange={(audience) => set({ audience })} />}
+      {props.offerPublic && root === 'residents' && (
+        <PublicTick checked={state.isPublic} allowed={publicAllowed} onChange={(isPublic) => set({ isPublic })} />
+      )}
       <ExpiryField value={state.expiry} onChange={(expiry) => set({ expiry })} />
       <FilePicker
         label="File"

@@ -3,10 +3,11 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
 import { parseRoot, rootListHref, safeReturn } from '../files/file-roots';
+import { offersPublic } from '../files/public-tick';
 import { UploadFileForm } from './upload-file-form';
 
 // Admin Files › Upload File (FILE-S3, SB-07):
-// /documents/upload?root=admin|residents|unit&folder=&unit_id=&return=
+// /documents/upload?root=admin|residents|unit&folder=&unit_id=&return=&public=offer
 function UploadFilePage(): ReactNode {
   const router = useRouter();
   const params = useSearchParams();
@@ -20,6 +21,7 @@ function UploadFilePage(): ReactNode {
       folderId={params.get('folder') ?? undefined}
       unitId={unitId}
       newFolderName={params.get('new_folder') ?? undefined}
+      offerPublic={offersPublic(params)}
       onClose={() => router.push(back)}
       onSaved={() => router.push(back)}
     />
