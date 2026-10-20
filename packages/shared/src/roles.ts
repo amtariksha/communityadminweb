@@ -80,6 +80,9 @@ export const APP_ROLE_ACCESS = {
     'tenant', // alias, see file-header
     'owner_family', // alias, see file-header
     'tenant_family', // alias, see file-header
+    // UNIT-30 — a caretaker / unit manager acts for the units they manage
+    // (their dues, payments, visitors, helpdesk); never voting or move-out.
+    'unit_manager',
   ],
   guard: [
     'security_guard',
