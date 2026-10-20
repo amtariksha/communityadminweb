@@ -110,6 +110,7 @@ describe('classic modules', () => {
     expect(find(menu, 'income.setup')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Auto Invoicing', '/income/setup/auto-invoicing'],
       ['Income Accounts', '/income/setup/income-accounts'],
+      ['Utility Invoicing', '/income/setup/utility-invoicing'],
       ['Payment Gateway', '/income/setup/payment-gateway'],
       ['Customize Invoice', '/income/setup/customize-invoice'],
       ['GST', '/income/setup/gst'],
@@ -118,6 +119,7 @@ describe('classic modules', () => {
     ]);
     expect(entryHref(find(menu, 'income.setup') as MenuNode)).toBe('/income/setup/auto-invoicing');
     expect(governingItem('/income/setup/defaulters')?.href).toBe('/invoices');
+    expect(governingItem('/income/setup/utility-invoicing')?.href).toBe('/invoices');
     expect(find(menu, 'income.registers')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Receipts', '/income/registers/receipts'],
       ['Credit Notes', '/income/registers/credit-notes'],

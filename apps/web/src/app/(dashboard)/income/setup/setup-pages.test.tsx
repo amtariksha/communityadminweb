@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AutoInvoicingSetupPage from './auto-invoicing/page';
 import DefaultersSetupPage from './defaulters/page';
+import UtilityInvoicingSetupPage from './utility-invoicing/page';
 import { remindersSentence } from './defaulters/reminders-summary';
 
 const TENANT = '11111111-1111-4111-8111-111111111111';
@@ -88,6 +89,16 @@ describe('Income Tracker › Setup › Auto Invoicing', () => {
     mocks.layout = 'standard';
     render(<AutoInvoicingSetupPage />);
     expect(screen.getByRole('heading', { name: 'Auto Invoicing' })).toBeTruthy();
+  });
+});
+
+describe('Income Tracker › Setup › Utility Invoicing', () => {
+  it('points to Utility Tracker › Setup, for every role', () => {
+    signIn('accountant');
+    render(<UtilityInvoicingSetupPage />);
+
+    expect(screen.getByRole('link', { name: 'Setup' }).getAttribute('href')).toBe('/utilities/setup');
+    expect(screen.queryByRole('note')).toBeNull();
   });
 });
 
