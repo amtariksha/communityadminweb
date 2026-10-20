@@ -143,13 +143,13 @@ describe('AmenitiesContent — AMEN-03 controls', () => {
     expect(hooks.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Please pick a unit.' }));
   });
 
-  it('offers only Confirmed and Cancelled in the status filter', () => {
+  it('offers only the states something sets in the status filter (AMEN-40: Awaiting Payment)', () => {
     render(<AmenitiesContent />);
 
     const options = Array.from(
       (screen.getByLabelText('Status') as HTMLSelectElement).options,
     ).map((o) => o.textContent);
-    expect(options).toEqual(['All', 'Confirmed', 'Cancelled']);
+    expect(options).toEqual(['All', 'Awaiting Payment', 'Confirmed', 'Cancelled']);
   });
 
   it('asks the API for the whole visible month', () => {

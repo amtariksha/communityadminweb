@@ -19,6 +19,8 @@ export interface AmenityFormValues {
   termsEnabled: boolean;
   termsText: string;
   allowMultiDay: boolean;
+  /** AMEN-40 — '1'…'9', or '' = never cancel an unpaid booking. */
+  autoCancelDays: string;
 }
 
 export interface AmenityPayload {
@@ -35,6 +37,7 @@ export interface AmenityPayload {
   terms_enabled: boolean;
   terms_text: string | null;
   allow_multi_day: boolean;
+  auto_cancel_days?: number | null;
 }
 
 export function amenityFormValues(amenity?: Amenity | null): AmenityFormValues {
@@ -42,6 +45,8 @@ export function amenityFormValues(amenity?: Amenity | null): AmenityFormValues {
     return {
       name: '', type: 'clubhouse', location: '', capacity: '', pricingType: 'free', price: '', deposit: '', notes: '', isActive: true,
       incomeAccountId: '', termsEnabled: false, termsText: '', allowMultiDay: false,
+      // AMEN-S2 — a new amenity waits 2 days for payment.
+      autoCancelDays: '2',
     };
   }
   return {
@@ -58,6 +63,7 @@ export function amenityFormValues(amenity?: Amenity | null): AmenityFormValues {
     termsEnabled: amenity.terms_enabled === true,
     termsText: amenity.terms_text ?? '',
     allowMultiDay: amenity.allow_multi_day === true,
+    autoCancelDays: amenity.auto_cancel_days ? String(amenity.auto_cancel_days) : '',
   };
 }
 
@@ -100,6 +106,8 @@ export function amenityPayload(values: AmenityFormValues, withActive: boolean): 
     // AMEN-22 — booking over several days is for an amenity charged by the date.
     allow_multi_day: values.allowMultiDay && values.pricingType === 'per_day',
   };
+  // AMEN-40 — only the page has the field; '' = never cancelled automatically.
+  if (withActive) payload.auto_cancel_days = values.autoCancelDays ? Number(values.autoCancelDays) : null;
   if (withActive) payload.is_active = values.isActive;
   if (values.incomeAccountId) payload.income_account_id = values.incomeAccountId;
   return { payload };

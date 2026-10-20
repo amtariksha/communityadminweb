@@ -25,6 +25,8 @@ const COLUMNS: DataTableColumn<Amenity>[] = [
   // AMEN-21 — an amenity without an account (or an older API) credits Other Income.
   { key: 'income', header: 'Income Account', cell: (row) => row.income_account_name ?? 'Other Income' },
   { key: 'notes', header: 'Notes', cell: (row) => plainText(row.rules), className: 'max-w-[320px] text-muted-foreground' },
+  // AMEN-40 — empty = an unpaid booking is never cancelled automatically.
+  { key: 'auto-cancel', header: 'Auto Cancel in Days', cell: (row) => (row.auto_cancel_days ? String(row.auto_cancel_days) : '') },
 ];
 
 const ACTIONS: DataTableAction<Amenity>[] = [

@@ -40,6 +40,8 @@ export interface Amenity {
   terms_enabled?: boolean;
   terms_text?: string | null;
   allow_multi_day?: boolean;
+  /** AMEN-40 — days an unpaid booking waits before it is cancelled; null = never. */
+  auto_cancel_days?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -83,6 +85,8 @@ export interface AmenityBooking {
   unit_number?: string;
   invoice_id?: string | null;
   invoice_number?: string | null;
+  /** AMEN-40 — when an unpaid booking is cancelled; null = never. */
+  auto_cancel_at?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +120,7 @@ interface CreateAmenityInput {
   terms_enabled?: boolean;
   terms_text?: string | null;
   allow_multi_day?: boolean;
+  auto_cancel_days?: number | null;
 }
 
 interface UpdateAmenityInput {
@@ -134,6 +139,7 @@ interface UpdateAmenityInput {
   terms_enabled?: boolean;
   terms_text?: string | null;
   allow_multi_day?: boolean;
+  auto_cancel_days?: number | null;
 }
 
 // Backend Zod (amenity.controller.ts:43–52) requires:

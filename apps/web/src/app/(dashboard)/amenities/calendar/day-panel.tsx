@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Amenity, AmenityBooking } from '@/hooks';
 import { formatCurrency } from '@/lib/utils';
-import { amenityTypeIcon, bookingBillable, bookingStatusVariant, formatAmenityType, formatBookingStatus } from '../amenity-labels';
+import { amenityTypeIcon, bookingBillable, bookingStatusVariant, formatAmenityType, formatBookingStatus, isLive } from '../amenity-labels';
 
 interface DayPanelProps {
   selectedDate: Date | null;
@@ -32,7 +32,7 @@ function BookingActions({ booking, props }: { booking: AmenityBooking; props: Da
           Invoice {booking.invoice_number ?? ''}
         </Link>
       ) : (
-        booking.status === 'confirmed' &&
+        isLive(booking.status) &&
         bookingBillable(booking) && (
           <Button variant="outline" size="sm" className="h-7 text-xs" disabled={generating} onClick={() => props.onGenerateInvoice(booking)}>
             <FileText className="mr-1 h-3 w-3" />
@@ -40,7 +40,7 @@ function BookingActions({ booking, props }: { booking: AmenityBooking; props: Da
           </Button>
         )
       )}
-      {booking.status === 'confirmed' && (
+      {isLive(booking.status) && (
         <Button variant="outline" size="sm" className="h-7 text-xs text-red-600 hover:text-red-700" onClick={() => props.onCancel(booking)}>
           <X className="mr-1 h-3 w-3" />
           Cancel

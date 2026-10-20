@@ -21,8 +21,8 @@ export const AMENITY_TYPES = [
 
 export const PRICING_TYPES = ['free', 'hourly', 'per_slot', 'per_day'] as const;
 
-// Only these two are ever set (AMEN-03); Completed / No Show were offered and never matched.
-export const BOOKING_STATUSES = ['confirmed', 'cancelled'] as const;
+// What is ever set (AMEN-03, AMEN-40); Completed / No Show were offered and never matched.
+export const BOOKING_STATUSES = ['awaiting_payment', 'confirmed', 'cancelled'] as const;
 
 const TYPE_ICONS: Record<string, string> = {
   clubhouse: '\u{1F3E0}',
@@ -49,8 +49,14 @@ export const formatAmenityType = words;
 export const formatPricingType = words;
 export const formatBookingStatus = words;
 
+/** A booking that holds its time: confirmed, or (AMEN-40) still waiting for payment. */
+export function isLive(status: string): boolean {
+  return status === 'confirmed' || status === 'awaiting_payment';
+}
+
 export function bookingStatusVariant(status: string): 'success' | 'destructive' | 'secondary' | 'warning' {
   if (status === 'confirmed') return 'success';
+  if (status === 'awaiting_payment') return 'warning';
   if (status === 'cancelled') return 'destructive';
   if (status === 'no_show') return 'warning';
   return 'secondary';

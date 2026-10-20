@@ -12,6 +12,8 @@ import { RESERVATION_COLUMNS } from './reservation-columns';
 
 const PAGE_SIZES = [25, 50, 100] as const;
 
+const LIVE_STATES: readonly string[] = ['confirmed', 'awaiting_payment'];
+
 export const STATUS_PANEL_TITLES: Record<string, string> = {
   awaiting_payment: 'Reservations Awaiting Payment',
   confirmed: 'Reservations Confirmed',
@@ -32,10 +34,10 @@ export function ReservationPanel({ filters, onCancel, count }: ReservationPanelP
   const query = useAmenityReservations(filters, page, pageSize);
   const title = STATUS_PANEL_TITLES[filters.status] ?? filters.status;
   const total = query.data?.total ?? 0;
-  const actions: DataTableAction<AmenityReservation>[] =
-    filters.status === 'confirmed'
-      ? [{ key: 'cancel', header: 'Cancel', label: 'Cancel', onClick: onCancel, hidden: (row) => row.status !== 'confirmed' }]
-      : [];
+  // A live booking — confirmed or still waiting for payment — can be cancelled.
+  const actions: DataTableAction<AmenityReservation>[] = LIVE_STATES.includes(filters.status)
+    ? [{ key: 'cancel', header: 'Cancel', label: 'Cancel', onClick: onCancel, hidden: (row) => !LIVE_STATES.includes(row.status) }]
+    : [];
 
   return (
     <section aria-label={title} className="space-y-2">

@@ -48,6 +48,14 @@ describe('amenityPayload', () => {
     expect(amenityPayload({ ...free, notes: '<p></p>' }, false).payload?.rules).toBeNull();
   });
 
+  it('sends the auto-cancel days from the page, blank as never (AMEN-40)', () => {
+    const paid = { ...values, incomeAccountId: 'acc-1' };
+    expect(amenityFormValues().autoCancelDays).toBe('2');
+    expect(amenityPayload(paid, true).payload?.auto_cancel_days).toBe(2);
+    expect(amenityPayload({ ...paid, autoCancelDays: '' }, true).payload?.auto_cancel_days).toBeNull();
+    expect(amenityPayload(paid, false).payload).not.toHaveProperty('auto_cancel_days');
+  });
+
   it("starts an edit from the amenity's values", () => {
     const form = amenityFormValues({
       id: 'am-1', tenant_id: 't', name: 'Hall', amenity_type: 'party_hall', description: null, location: 'Block A',

@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/toast';
 import { useCreateAmenity, useUpdateAmenity, type Amenity } from '@/hooks';
 import { friendlyError } from '@/lib/api-error';
 import { AMENITY_TYPES, amenityTypeIcon, formatAmenityType, formatPricingType, PRICING_TYPES } from '../amenity-labels';
-import { amenityFormValues, amenityPayload, type AmenityFormValues } from './amenity-form-values';
+import { amenityFormValues, amenityPayload, isPaid, type AmenityFormValues } from './amenity-form-values';
 
 interface AmenityFormProps {
   mode: FormMode;
@@ -99,6 +99,7 @@ function ChargeFields({ values, set, page }: FieldsProps): ReactNode {
         {/* The committee's word for the same column is Notes (AMEN-S2); rich text (AMEN-22). */}
         <RichTextEditor id="amenity-rules" label={page ? 'Notes' : 'Rules'} initialHtml={values.notes} onChange={(notes) => set({ notes })} />
       </div>
+      <AutoCancelField values={values} set={set} page={page} />
       <BookingRuleFields values={values} set={set} page={page} />
       {page && (
         <label className="flex items-center gap-2 text-sm">
@@ -107,6 +108,29 @@ function ChargeFields({ values, set, page }: FieldsProps): ReactNode {
         </label>
       )}
     </>
+  );
+}
+
+const AUTO_CANCEL_OPTIONS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+/**
+ * AMEN-40 — a booking with a charge waits for payment and is cancelled
+ * (invoice reversed with a credit note) when still unpaid after these days.
+ */
+function AutoCancelField({ values, set, page }: FieldsProps): ReactNode {
+  if (!page || !isPaid(values)) return null;
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="amenity-auto-cancel">Auto Cancel reservation if not paid in</Label>
+      <Select id="amenity-auto-cancel" value={values.autoCancelDays} onChange={(e) => set({ autoCancelDays: e.target.value })}>
+        <option value="">Never</option>
+        {AUTO_CANCEL_OPTIONS.map((days) => (
+          <option key={days} value={days}>
+            {days} {days === '1' ? 'day' : 'days'}
+          </option>
+        ))}
+      </Select>
+    </div>
   );
 }
 

@@ -43,18 +43,27 @@ export function validateBookingForm(form: BookingFormValues, amenity?: Amenity):
   return null;
 }
 
-/** The success message names the invoice when the API raised one. */
-export function bookingCreatedToast(invoiceNumber: string | null | undefined): {
+/**
+ * The success message names the invoice when the API raised one; AMEN-40: a
+ * booking with a charge waits for that invoice to be paid.
+ */
+export function bookingCreatedToast(
+  invoiceNumber: string | null | undefined,
+  status?: string,
+): {
   title: string;
   description?: string;
 } {
   if (invoiceNumber) {
     return {
       title: `Booking + invoice ${invoiceNumber} created`,
-      description: 'The invoice is posted to the resident’s account.',
+      description:
+        status === 'awaiting_payment'
+          ? 'The invoice is posted to the resident’s account; the booking is confirmed once it is paid.'
+          : 'The invoice is posted to the resident’s account.',
     };
   }
-  return { title: 'Booking created' };
+  return { title: status === 'awaiting_payment' ? 'Booking created — awaiting payment' : 'Booking created' };
 }
 
 interface BookingFormProps {
@@ -105,7 +114,7 @@ export function BookingForm({ mode, open, onClose, onSaved, amenities, defaultDa
     }
     createBooking.mutate(bookingInput(form, amenity), {
       onSuccess(response) {
-        addToast({ ...bookingCreatedToast(response.data.invoice_number), variant: 'success' });
+        addToast({ ...bookingCreatedToast(response.data.invoice_number, response.data.status), variant: 'success' });
         onSaved();
       },
       onError(error) {

@@ -68,6 +68,17 @@ describe('ReservationsContent', () => {
     calls.list = [];
   });
 
+  it('ticks Awaiting Payment and Confirmed to start with, and fetches a panel for each (AMEN-40)', async () => {
+    render(<ReservationsContent />);
+    expect((screen.getByRole('checkbox', { name: 'Awaiting Payment' }) as HTMLInputElement).checked).toBe(true);
+
+    await act(async () => fetchWith({ from: '2030-03-01', to: '2030-03-31' }));
+
+    const asked = calls.list.filter((call) => call.enabled).map((call) => (call.filters as { status: string }).status);
+    expect(asked).toContain('awaiting_payment');
+    expect(screen.getByRole('table', { name: 'Reservations Awaiting Payment' })).toBeTruthy();
+  });
+
   it('opens empty and asks for nothing until Fetch', () => {
     render(<ReservationsContent />);
 
@@ -105,6 +116,7 @@ describe('ReservationsContent', () => {
   it('asks to tick a state when none is ticked', async () => {
     render(<ReservationsContent />);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Confirmed' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Awaiting Payment' }));
 
     await act(async () => fetchWith({ from: '2030-03-01', to: '2030-03-31' }));
 

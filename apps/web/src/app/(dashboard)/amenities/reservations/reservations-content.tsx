@@ -14,8 +14,9 @@ import { CancelBookingDialog } from '../cancel-booking-dialog';
 import { monthRange } from '../calendar/calendar-dates';
 import { ReservationPanel } from './reservation-panel';
 
-// The states a booking reaches today; Awaiting Payment joins with AMEN-40.
+// AMEN-40 — a booking with a charge waits for payment before it is confirmed.
 const STATUS_TICKS: ReadonlyArray<{ value: ReservationStatus; label: string }> = [
+  { value: 'awaiting_payment', label: 'Awaiting Payment' },
   { value: 'confirmed', label: 'Confirmed' },
   { value: 'cancelled', label: 'Cancelled' },
 ];
@@ -90,7 +91,7 @@ export function ReservationsContent(): ReactNode {
     return monthRange(today.getFullYear(), today.getMonth());
   }, []);
   const [amenityId, setAmenityId] = useState('');
-  const [statuses, setStatuses] = useState<ReservationStatus[]>(['confirmed']);
+  const [statuses, setStatuses] = useState<ReservationStatus[]>(['awaiting_payment', 'confirmed']);
   const [applied, setApplied] = useState<Applied | null>(null);
   const [cancelTarget, setCancelTarget] = useState<AmenityReservation | null>(null);
   const counts = useCounts(applied);
