@@ -30,6 +30,7 @@ import { ASSET_STATUS_ROUTES, ASSETS_BASE } from '@/lib/asset-statuses';
 import { MEETING_STATES, MEETINGS_BASE } from '@/lib/meeting-states';
 import { reportsMenuNode } from '@/components/reports/module-reports';
 import { statusMenuChildren } from './status-menu';
+import { PROJECT_STATES, PROJECTS_BASE } from '@/lib/project-states';
 
 /**
  * One entry in the classic menu (requirements SB-02, Part 3.3).
@@ -793,7 +794,19 @@ export const classicMenu: MenuNode[] = [
     children: [
       // PROJ-22: Setup Task Categories; Access Control comes with PROJ-47.
       { id: 'projects.setup', label: 'SetUp', href: '/governance/setup', logs: ['meeting'] },
-      planned('projects.projects', 'Projects', 'PROJ-41'),
+      {
+        // PROJ-41: List View, then the Open / In Progress / Closed boards (SB-05).
+        id: 'projects.projects',
+        label: 'Projects',
+        forms: [
+          { label: 'Create Project', path: '/governance/projects/new' },
+          { label: 'Edit Project', path: '/governance/projects/:id' },
+        ],
+        tabs: [
+          { id: 'projects.projects.list', label: 'List View', href: PROJECTS_BASE, logs: ['project'] },
+          ...statusMenuChildren('projects.projects', PROJECTS_BASE, PROJECT_STATES, { logs: ['project'] }),
+        ],
+      },
       {
         id: 'projects.meetings',
         label: 'Meetings',

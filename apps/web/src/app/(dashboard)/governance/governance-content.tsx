@@ -17,6 +17,7 @@ import {
   ListTodo,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ProjectsList } from './projects/projects-list';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -60,7 +61,7 @@ import { addDays, todayIST } from '@/lib/date';
 
 export function GovernanceContent() {
   const { addToast: toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'meetings' | 'tasks'>('meetings');
+  const [activeTab, setActiveTab] = useState<'meetings' | 'tasks' | 'projects'>('meetings');
   const [meetingFilter, setMeetingFilter] = useState<string>('all');
   const [taskFilter, setTaskFilter] = useState<string>('all');
 
@@ -262,7 +263,22 @@ export function GovernanceContent() {
           <ListTodo className="h-4 w-4" />
           MoM Action Tasks ({tasks.length})
         </button>
+        {/* PROJ-41: the projects tracker (List View) in the standard layout. */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('projects')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'projects'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <FileText className="h-4 w-4" />
+          Projects
+        </button>
       </div>
+
+      {activeTab === 'projects' && <ProjectsList />}
 
       {/* Tab 1: Meetings */}
       {activeTab === 'meetings' && (

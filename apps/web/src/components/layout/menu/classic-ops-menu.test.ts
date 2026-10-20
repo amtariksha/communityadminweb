@@ -73,13 +73,21 @@ describe('Admin Files (FILE-10)', () => {
   });
 });
 
-describe('Projects & Meetings (PROJ-10 to PROJ-12)', () => {
-  it('shows SetUp (PROJ-22), Meetings with Open and Closed as sub-tabs, then Tasks', () => {
+describe('Projects & Meetings (PROJ-10 to PROJ-12, PROJ-41)', () => {
+  it('shows SetUp (PROJ-22), Projects (PROJ-41), Meetings with Open and Closed as sub-tabs, then Tasks', () => {
     expect(children('projects')).toEqual([
       ['SetUp', '/governance/setup'],
+      ['Projects', undefined],
       ['Meetings', undefined],
       ['Tasks', '/governance/tasks'],
       ['Reports', '/governance/reports'],
+    ]);
+    // PROJ-41: List View, then the three status boards.
+    expect(tabs('projects.projects')).toEqual([
+      ['List View', '/governance/projects'],
+      ['Open', '/governance/projects/open'],
+      ['In Progress', '/governance/projects/in-progress'],
+      ['Closed', '/governance/projects/closed'],
     ]);
     expect(tabs('projects.meetings')).toEqual([
       ['Open', '/governance/meetings/open'],
@@ -93,6 +101,12 @@ describe('Projects & Meetings (PROJ-10 to PROJ-12)', () => {
     expect(locate('/governance/meetings/m-1/minutes', menu)?.child?.label).toBe('Meeting Minutes');
     expect(locate('/governance/meetings/m-1', menu)?.child?.id).toBe('projects.meetings');
     expect(locate('/governance', menu)?.child?.id).toBe('projects.meetings');
+  });
+
+  it('opens Create and Edit Project as pages, the boards as tabs (PROJ-41)', () => {
+    expect(locate('/governance/projects/new', menu)?.child?.label).toBe('Create Project');
+    expect(locate('/governance/projects/p-1', menu)?.child?.label).toBe('Edit Project');
+    expect(locate('/governance/projects/in-progress', menu)?.tab?.label).toBe('In Progress');
   });
 });
 
