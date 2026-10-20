@@ -156,3 +156,26 @@ export function useSaveDocumentRanges() {
     },
   });
 }
+
+/** Setup › Other › Upload letter head (INC-42): a JPG or PNG up to 1 MB. */
+export function useUploadLetterhead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const body = new FormData();
+      body.append('file', file);
+      return api.post<{ data: Omit<DocumentSettings, 'letterhead_url'> }>('/billing-documents/letterhead', body).then((res) => res.data);
+    },
+    // The answer has no link to the new image; reading again signs one.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: billingDocumentKeys.settings }),
+  });
+}
+
+/** Takes the letterhead off the documents. */
+export function useRemoveLetterhead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.delete<{ data: Omit<DocumentSettings, 'letterhead_url'> }>('/billing-documents/letterhead').then((res) => res.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: billingDocumentKeys.settings }),
+  });
+}

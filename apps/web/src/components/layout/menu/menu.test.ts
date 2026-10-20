@@ -113,6 +113,7 @@ describe('classic modules', () => {
       ['Utility Invoicing', '/income/setup/utility-invoicing'],
       ['Payment Gateway', '/income/setup/payment-gateway'],
       ['Customize Invoice', '/income/setup/customize-invoice'],
+      ['Other', '/income/setup/other'],
       ['GST', '/income/setup/gst'],
       ['Notifications', '/income/setup/notifications'],
       ['Defaulters', '/income/setup/defaulters'],
