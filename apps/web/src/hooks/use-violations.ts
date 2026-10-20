@@ -123,3 +123,29 @@ export function useDeleteCategory() {
     },
   });
 }
+
+/** RULE-07 — whether the unit's residents are told of their violations (off until switched on). */
+export interface ViolationNotifications {
+  notify_residents: boolean;
+}
+
+const notificationsKey = [...violationKeys.all, 'notifications'] as const;
+
+export function useViolationNotifications() {
+  return useQuery({
+    queryKey: notificationsKey,
+    queryFn: () => api.get<{ data: ViolationNotifications }>('/violations/setup/notifications').then((res) => res.data),
+    retry: false,
+  });
+}
+
+export function useSaveViolationNotifications() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ViolationNotifications) =>
+      api.put<{ data: ViolationNotifications }>('/violations/setup/notifications', input).then((res) => res.data),
+    onSuccess(saved) {
+      queryClient.setQueryData(notificationsKey, saved);
+    },
+  });
+}

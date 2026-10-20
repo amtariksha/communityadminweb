@@ -661,7 +661,7 @@ export const classicMenu: MenuNode[] = [
         id: 'rules.setup',
         label: 'Rules & Violations Set Up',
         tabs: [
-          { id: 'rules.setup.approvers', label: 'Approvers Set Up', href: '/violations/setup/approvers', logs: ['violation_approvers'] },
+          { id: 'rules.setup.approvers', label: 'Approvers Set Up', href: '/violations/setup/approvers', logs: ['violation_approvers', 'tenant_settings'] },
           { id: 'rules.setup.categories', label: 'Category Set Up', href: '/violations/setup/categories', logs: ['violation_category'] },
         ],
       },

@@ -44,4 +44,9 @@ describe('updateTenantSchema settings_json', () => {
 
     expect(parsed).toEqual({ settings_json: {} });
   });
+
+  it('keeps the violation notification switch (RULE-07)', () => {
+    const settings = { violations: { notify_residents: true } };
+    expect(updateTenantSchema.parse({ settings_json: settings })).toEqual({ settings_json: settings });
+  });
 });

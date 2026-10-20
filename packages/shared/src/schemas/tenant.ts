@@ -47,10 +47,24 @@ export const moveInSettingsSchema = z.object({
 
 export type MoveInSettings = z.infer<typeof moveInSettingsSchema>;
 
+/**
+ * RULE-07 — Community Rules & Violations: `settings_json.violations`. Whether
+ * the unit's residents get an app notification when a violation against
+ * their unit is approved or closed; off until a community admin switches it
+ * on. Mirrors communityos packages/shared/src/schemas/tenant.ts; written by
+ * PUT /violations/setup/notifications.
+ */
+export const violationSettingsSchema = z.object({
+  notify_residents: z.boolean().optional(),
+});
+
+export type ViolationSettings = z.infer<typeof violationSettingsSchema>;
+
 const tenantSettingsSchema = z.object({
   scheduled_reports: scheduledReportsSchema.optional(),
   announcements: announcementSettingsSchema.optional(),
   move_in: moveInSettingsSchema.optional(),
+  violations: violationSettingsSchema.optional(),
   // INC-39 / INC-42 — document look; written by PUT /billing-documents/settings.
   billing_documents: billingDocumentsSchema.optional(),
   // INC-41 — prefixes and padding per series; written by PUT /billing-numbering.
