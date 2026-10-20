@@ -30,6 +30,7 @@ import { useInvoiceFiles } from './use-invoice-files';
 import { useInvoiceScan } from './use-invoice-scan';
 import { InvoiceEntriesPanel, InvoiceTdsBlock } from './invoice-side-panels';
 import { useConvertRequestToInvoice, useRequestPrefill } from './from-request';
+import { useBillPrefill, useEditVendorInvoice } from './edit-bill';
 
 export interface VendorInvoiceFormProps {
   mode: FormMode;
@@ -38,6 +39,8 @@ export interface VendorInvoiceFormProps {
   open?: boolean;
   /** EXP-10 — an approved purchase request to convert: its lines and vendor fill the form. */
   fromRequestId?: string;
+  /** EXP-S10 — an invoice to edit (by reversal and re-post): it fills the form, Post Entries re-posts it. */
+  editBillId?: string;
   onClose: () => void;
   onSaved: (bill: PostedVendorInvoice) => void;
 }
@@ -55,16 +58,16 @@ const DEFAULT_DAYS_APPLIED = readCreditDays(null);
  * The society's vendor credit days (EXP-S8, SB-15). Once they load, a new
  * invoice's due date follows them unless it was changed by hand.
  */
-function useCreditDays(setHeader: (fn: (h: InvoiceHeader) => InvoiceHeader) => void): number {
+function useCreditDays(setHeader: (fn: (h: InvoiceHeader) => InvoiceHeader) => void, follow: boolean): number {
   const tenant = useTenant(getCurrentTenant() ?? '');
   const days = readCreditDays(tenant.data?.settings_json as Record<string, unknown> | undefined);
   const applied = useRef(DEFAULT_DAYS_APPLIED);
   useEffect(() => {
-    if (applied.current === days) return;
+    if (!follow || applied.current === days) return;
     const before = applied.current;
     applied.current = days;
     setHeader((h) => (h.invoiceDate && h.dueDate === addDays(h.invoiceDate, before) ? { ...h, dueDate: addDays(h.invoiceDate, days) } : h));
-  }, [days, setHeader]);
+  }, [days, setHeader, follow]);
   return days;
 }
 
@@ -87,7 +90,8 @@ export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
   const { mode, vendorId: fixedVendorId } = props;
   const { addToast } = useToast();
   const [header, setHeader] = useState<InvoiceHeader>(() => blankHeader(fixedVendorId, DEFAULT_DAYS_APPLIED));
-  const creditDays = useCreditDays(setHeader);
+  // An invoice being edited keeps its own dates and figures.
+  const creditDays = useCreditDays(setHeader, !props.editBillId);
   const [rows, setRows] = useState<InvoiceRow[]>(() => emptyRows());
   const [touched, setTouched] = useState(false);
   const heads = useInvoiceHeads();
@@ -96,12 +100,14 @@ export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
   const tdsConfig = useTdsConfig();
   const create = useCreateVendorInvoice();
   const convert = useConvertRequestToInvoice();
+  const edit = useEditVendorInvoice();
   const fromRequest = useRequestPrefill(props.fromRequestId, setHeader, setRows);
+  const editing = useBillPrefill(props.editBillId, setHeader, setRows);
   const fileRef = useRef<HTMLInputElement>(null);
   const prefilledFor = useRef<string>('');
 
   const headList = useMemo(() => heads.data?.data ?? [], [heads.data]);
-  useVendorDefaults(vendor.data, headList, prefilledFor, setHeader, setRows, Boolean(props.fromRequestId));
+  useVendorDefaults(props.editBillId ? undefined : vendor.data, headList, prefilledFor, setHeader, setRows, Boolean(props.fromRequestId));
 
   const input = useMemo(() => toInvoiceInput(header, rows), [header, rows]);
   const debouncedInput = useDebouncedValue(input, 400);
@@ -124,7 +130,7 @@ export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
 
   function save(): void {
     setTouched(true);
-    if (!input) return;
+    if (!input || editing.issue) return;
     const handlers = {
       onSuccess(bill: PostedVendorInvoice) {
         void finish(bill);
@@ -135,6 +141,7 @@ export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
     };
     // EXP-10: from a purchase request, posting converts the request.
     if (props.fromRequestId) convert.mutate({ requestId: props.fromRequestId, input }, handlers);
+    else if (props.editBillId) edit.mutate({ billId: props.editBillId, input }, handlers);
     else create.mutate(input, handlers);
   }
 
@@ -143,10 +150,10 @@ export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
     <FormFrame
       mode={mode}
       open={props.open}
-      title={`${fixedVendorId ? `Post vendor invoice — ${vendorName}` : 'Post vendor invoice'}${fromRequest.detail ? ` (from ${fromRequest.detail.purchase_request.pr_number})` : ''}`}
+      title={formTitle(fixedVendorId ? vendorName : '', fromRequest.detail?.purchase_request.pr_number, editing.bill?.bill_number)}
       saveLabel="Post Entries"
       savingLabel="Posting…"
-      saving={create.isPending || convert.isPending}
+      saving={create.isPending || convert.isPending || edit.isPending}
       onSave={save}
       onClose={props.onClose}
       dialogClassName="max-w-6xl"
@@ -165,10 +172,26 @@ export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
         <Input id="inv-payee" maxLength={255} value={header.payeeName} onChange={(e) => patch({ payeeName: e.target.value })} />
       </div>
       <InvoiceFiles waiting={invoiceFiles.files} refused={invoiceFiles.refused} onAdd={invoiceFiles.add} onRemove={invoiceFiles.remove} />
-      <InvoiceEntriesPanel preview={input ? preview.data : undefined} loading={preview.isFetching} error={input ? preview.error : null} />
+      <InvoiceEntriesPanel preview={input ? ownNumberAllowed(preview.data, editing.bill, header.invoiceNo) : undefined} loading={preview.isFetching} error={input ? preview.error : null} />
+      {editing.issue && <p role="alert" className="text-sm text-destructive">{editing.issue}</p>}
       {touched && issue && <p role="alert" className="text-sm text-destructive">{issue}</p>}
     </FormFrame>
   );
+}
+
+function formTitle(vendorName: string, requestNumber?: string, editedBill?: string): string {
+  const what = editedBill ? `Edit vendor invoice ${editedBill}` : 'Post vendor invoice';
+  return `${what}${vendorName ? ` — ${vendorName}` : ''}${requestNumber ? ` (from ${requestNumber})` : ''}`;
+}
+
+/** An invoice being edited keeps its own number: the preview's "already has" warning is about itself. */
+function ownNumberAllowed<P extends { duplicate_invoice_number: boolean }>(
+  preview: P | undefined,
+  bill: { vendor_invoice_number: string | null } | null,
+  invoiceNo: string,
+): P | undefined {
+  if (!preview || !bill || bill.vendor_invoice_number?.trim().toLowerCase() !== invoiceNo.trim().toLowerCase()) return preview;
+  return { ...preview, duplicate_invoice_number: false };
 }
 
 /** Once per vendor: line 1, TDS and payee from the vendor's defaults. */

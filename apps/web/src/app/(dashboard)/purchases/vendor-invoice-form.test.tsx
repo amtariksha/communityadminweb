@@ -15,6 +15,16 @@ vi.mock('@/components/ui/select', () => ({
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('@/hooks/use-debounced-value', () => ({ useDebouncedValue: <T,>(value: T) => value }));
 vi.mock('@/hooks/use-ocr', () => ({ useOcrInvoice: () => ({ mutateAsync: vi.fn(), isPending: false }) }));
+// Editing from the statement (EXP-S10): edit-bill.test.ts covers it.
+const editMocks = vi.hoisted(() => ({ mutate: vi.fn(), issue: null as string | null }));
+vi.mock('./vendor-invoice/edit-bill', () => ({
+  useBillPrefill: (billId?: string) => ({
+    bill: billId ? { id: billId, bill_number: 'BILL-00003', vendor_invoice_number: 'SL-55' } : null,
+    issue: billId ? editMocks.issue : null,
+    loading: false,
+  }),
+  useEditVendorInvoice: () => ({ mutate: editMocks.mutate, isPending: false }),
+}));
 vi.mock('@/hooks/use-documents', () => ({ useUploadFileToS3: () => ({ mutateAsync: vi.fn() }) }));
 // The convert hook (EXP-10) and the attachments hook (EXP-12) use react-query directly.
 vi.mock('@tanstack/react-query', async (original) => ({
@@ -185,6 +195,41 @@ describe('Post vendor invoice', () => {
     expect(screen.getByTestId('total-taxable').textContent).toContain('2,500');
     const last = mocks.previewInputs[mocks.previewInputs.length - 1] as { lines: Array<{ taxable_amount: number }> };
     expect(last.lines[0].taxable_amount).toBe(2500);
+  });
+
+  it('re-posts an invoice opened for editing through PATCH, not a new invoice (EXP-S10)', async () => {
+    editMocks.mutate.mockReset();
+    editMocks.issue = null;
+    render(<VendorInvoiceForm mode="page" vendorId={vendor.id} editBillId="b3" onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect(screen.getByText(/Edit vendor invoice BILL-00003/)).toBeTruthy();
+    // The invoice's own lines fill the form (not the vendor's defaults).
+    expect(field('Line 1 expense head').value).toBe('');
+    type('Invoice No *', 'SL-55');
+    type('Line 1 expense head', HEAD);
+    type('Line 1 amount', '1200');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Post Entries' }));
+    });
+
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(editMocks.mutate).toHaveBeenCalledTimes(1);
+    expect(editMocks.mutate.mock.calls[0][0]).toMatchObject({ billId: 'b3', input: { vendor_invoice_number: 'SL-55' } });
+  });
+
+  it('will not post an invoice the form cannot edit, and says why', async () => {
+    editMocks.mutate.mockReset();
+    editMocks.issue = 'This invoice was posted before GST was kept per line. Cancel it and post it again.';
+    render(<VendorInvoiceForm mode="page" vendorId={vendor.id} editBillId="b4" onClose={vi.fn()} onSaved={vi.fn()} />);
+    type('Invoice No *', 'SL-56');
+    type('Line 1 amount', '1200');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Post Entries' }));
+    });
+
+    expect(screen.getByText(/Cancel it and post it again/)).toBeTruthy();
+    expect(editMocks.mutate).not.toHaveBeenCalled();
   });
 
   it('previews nothing while the form cannot post', () => {

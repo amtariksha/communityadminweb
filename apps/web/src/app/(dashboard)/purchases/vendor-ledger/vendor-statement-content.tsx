@@ -31,6 +31,12 @@ function reverseTarget(row: StatementRow): ReverseTarget | null {
   return null;
 }
 
+/** The invoice form filled from this invoice, when it may be edited. */
+export function editHref(vendorId: string, row: StatementRow): string | null {
+  if (row.kind !== 'invoice' || !row.can_edit || !row.source_id) return null;
+  return `/expense-tracker/by-vendors/${vendorId}/invoice?edit=${row.source_id}`;
+}
+
 function FullStatement({ vendorId, statement, filters, onFetch, loading }: {
   vendorId: string;
   statement: VendorStatement;
@@ -65,12 +71,17 @@ function FullStatement({ vendorId, statement, filters, onFetch, loading }: {
         loading={loading}
         fetchMode={{ panel, fetched: true }}
         export={{ path: `/purchases/vendors/${vendorId}/statement/export`, params: statementParams(filters), filename: 'vendor-statement' }}
-        actions={[{ key: 'reverse', header: 'Reverse', label: (r) => (r.kind === 'invoice' ? 'Cancel' : 'Reverse'), hidden: (r) => reverseTarget(r) === null, onClick: (r) => setTarget(reverseTarget(r)) }]}
+        actions={[
+          { key: 'reverse', header: 'Reverse', label: (r) => (r.kind === 'invoice' ? 'Cancel' : 'Reverse'), hidden: (r) => reverseTarget(r) === null, onClick: (r) => setTarget(reverseTarget(r)) },
+          // D2: an invoice nothing is set against is edited by reversal and re-post (EXP-04).
+          { key: 'edit', header: 'Edit', label: 'Edit', hidden: (r) => editHref(vendorId, r) === null, href: (r) => editHref(vendorId, r) ?? '' },
+        ]}
         footer={
           <TableRow>
             <TableCell colSpan={7} className="font-medium">Total</TableCell>
             <TableCell className="text-right font-medium tabular-nums">{formatCurrency(statement.totals.due)}</TableCell>
             <TableCell className="text-right font-medium tabular-nums">{formatCurrency(statement.totals.payment)}</TableCell>
+            <TableCell />
             <TableCell />
           </TableRow>
         }

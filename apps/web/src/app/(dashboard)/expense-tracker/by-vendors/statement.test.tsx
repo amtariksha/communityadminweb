@@ -29,6 +29,7 @@ vi.mock('@/hooks/use-vendor-ledger', () => ({
       opening_balance: '1000.00',
       rows: [
         { line_id: 'l1', entry_id: 'e1', entry_date: '2026-06-05', voucher_number: 'BILL-00002', posted_by_name: 'Treasurer', invoice_date: '2026-06-05', vendor_invoice_number: 'CW-1', expense_heads: 'Repair Expense', comments: null, due: '5000.00', payment: '0.00', kind: 'invoice', source_id: 'b1', is_reversal: false, is_reversed: false, can_reverse: false, can_edit: false },
+        { line_id: 'l3', entry_id: 'e3', entry_date: '2026-06-10', voucher_number: 'BILL-00003', posted_by_name: 'Treasurer', invoice_date: '2026-06-10', vendor_invoice_number: 'CW-2', expense_heads: 'Repair Expense', comments: null, due: '1500.00', payment: '0.00', kind: 'invoice', source_id: 'b3', is_reversal: false, is_reversed: false, can_reverse: true, can_edit: true },
         { line_id: 'l2', entry_id: 'e2', entry_date: '2026-06-20', voucher_number: 'PV-00001', posted_by_name: 'Treasurer', invoice_date: null, vendor_invoice_number: null, expense_heads: null, comments: null, due: '0.00', payment: '4000.00', kind: 'payment', source_id: 'p1', is_reversal: false, is_reversed: false, can_reverse: true, can_edit: false },
       ],
       totals: { due: '5000.00', payment: '4000.00' },
@@ -62,6 +63,14 @@ describe('Vendor account statement', () => {
     expect(screen.getByText('CW-1')).toBeTruthy();
     expect(screen.getByTestId('net-payable').textContent).toContain('2,000');
     expect(screen.getAllByRole('button', { name: 'Reverse' })).toHaveLength(1);
+  });
+
+  it('offers Edit (by reversal and re-post) only on an invoice nothing is set against', () => {
+    render(<VendorStatementContent vendorId="v1" initialTab="full" />);
+    const edits = screen.getAllByRole('link', { name: 'Edit' });
+    expect(edits).toHaveLength(1);
+    expect(edits[0].getAttribute('href')).toBe('/expense-tracker/by-vendors/v1/invoice?edit=b3');
+    expect(screen.getAllByRole('button', { name: 'Cancel' })).toHaveLength(1);
   });
 });
 

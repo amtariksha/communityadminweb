@@ -16,8 +16,12 @@ export const BY_VENDORS_HOME = '/purchases';
 export function VendorInvoicePage(): ReactNode {
   const router = useRouter();
   const params = useParams<{ vendorId: string }>();
+  const search = useSearchParams();
   // EXP-10 — opened from Closed Purchase Request › Convert to invoice.
-  const fromRequest = useSearchParams().get('from_request') ?? undefined;
+  const fromRequest = search.get('from_request') ?? undefined;
+  // EXP-S10 — opened from the vendor's statement › Edit; back there after.
+  const editBill = search.get('edit') ?? undefined;
+  const done = editBill ? `/expense-tracker/by-vendors/${params.vendorId}/statement?tab=full` : BY_VENDORS_HOME;
   const available = useVendorInvoicesAvailable();
 
   if (available.data === false) {
@@ -34,8 +38,9 @@ export function VendorInvoicePage(): ReactNode {
       mode="page"
       vendorId={params.vendorId}
       fromRequestId={fromRequest}
-      onClose={() => router.push(BY_VENDORS_HOME)}
-      onSaved={() => router.push(BY_VENDORS_HOME)}
+      editBillId={editBill}
+      onClose={() => router.push(done)}
+      onSaved={() => router.push(done)}
     />
   );
 }
