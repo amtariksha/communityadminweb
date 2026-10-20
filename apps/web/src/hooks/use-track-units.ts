@@ -17,6 +17,9 @@ export interface TrackUnitRow {
   primary_contact_name: string | null;
   /** Nothing ever referred to it: Delete is offered (INC-49). */
   deletable?: boolean;
+  /** UTIL-11 — billed for utilities, and whether it has an active unit meter (absent on an older API). */
+  utility_tracked?: boolean;
+  has_active_meter?: boolean;
 }
 
 export interface TrackUnitList {
@@ -26,9 +29,12 @@ export interface TrackUnitList {
 
 export interface TrackUnitSaveRow {
   id: string;
-  billing_category_id: string | null;
+  /** Left out = unchanged (Track Utility Flats does not edit the type). */
+  billing_category_id?: string | null;
   area_sqft: number | null;
   garden_area: number | null;
+  /** UTIL-11 — Track Utility Flats. */
+  utility_tracked?: boolean;
 }
 
 export interface TrackUnitSaveResult {
