@@ -29,9 +29,10 @@ export function VisitorDetailDialog({ visitor, onClose }: { visitor: Visitor | n
             <dl className="mt-4 space-y-2">
               <Field label="Phone" value={visitor.visitor_phone} />
               <Field label="Unit" value={[visitor.block, visitor.unit_number].filter(Boolean).join('-')} />
-              <Field label="Entry Reason" value={visitor.purpose} />
+              <Field label="Entry Reason" value={visitor.entry_reason ?? visitor.purpose} />
               <Field label="Vehicle No" value={visitor.vehicle_number} />
               <Field label="Gate" value={visitor.gate_name} />
+              <Field label="Out By Gate" value={visitor.checked_out_gate_name} />
               <Field label="Pre-approved" value={visitor.pre_approved ? 'Yes' : 'No'} />
               <Field label="Expected At" value={visitor.expected_at ? indiaDateTime(visitor.expected_at) : null} />
               <Field label="In Time" value={visitor.checked_in_at ? indiaDateTime(visitor.checked_in_at) : null} />

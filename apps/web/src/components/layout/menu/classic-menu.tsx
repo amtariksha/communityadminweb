@@ -426,7 +426,7 @@ export const classicMenu: MenuNode[] = [
           },
           // GATE-11: alerts as a table; the live SOS console is under More.
           { id: 'gate.investigator.panic', label: 'Panic Alerts', href: '/gate/investigator/panic-alerts', logs: ['safety'] },
-          planned('gate.investigator.incidents', 'Incidents', 'GATE-42'),
+          { id: 'gate.investigator.incidents', label: 'Incidents', href: '/gate/investigator/incidents', logs: ['gate'] },
           { id: 'gate.investigator.vehicles', label: 'Vehicle Logs', href: '/gate/investigator/vehicles' },
           { id: 'gate.investigator.staff-logs', label: 'Staff Logs', href: '/gate/investigator/staff-logs', logs: ['gate'] },
           { id: 'gate.investigator.parcels', label: 'Parcels', href: '/gate/investigator/parcels', logs: ['gate'] },

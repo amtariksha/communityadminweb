@@ -20,13 +20,30 @@ export interface EntryReasonGridRow {
   is_active: boolean;
 }
 
+/** An incident category (GATE-42). */
+export interface IncidentCategory {
+  id: string;
+  name: string;
+  is_active: boolean;
+  sort_order: number;
+}
+
+/** A row of PUT /gate/incident-categories/bulk. */
+export interface IncidentCategoryGridRow {
+  id?: string;
+  name: string;
+  is_active: boolean;
+}
+
 export const gateListKeys = {
   all: ['gate-lists'] as const,
   entryReasons: (tenantId: string, includeInactive: boolean) => [...gateListKeys.all, 'entry-reasons', tenantId, includeInactive] as const,
+  incidentCategories: (tenantId: string, includeInactive: boolean) =>
+    [...gateListKeys.all, 'incident-categories', tenantId, includeInactive] as const,
 };
 
 /** null when the API predates the list (404), so the screen says "not available yet". */
-async function orNullOn404<T>(load: () => Promise<T>): Promise<T | null> {
+export async function orNullOn404<T>(load: () => Promise<T>): Promise<T | null> {
   try {
     return await load();
   } catch (error) {
@@ -56,6 +73,34 @@ export function useSaveEntryReasons() {
   return useMutation({
     mutationFn: function saveEntryReasons(rows: EntryReasonGridRow[]) {
       return api.put<{ data: EntryReason[] }>('/gate/entry-reasons/bulk', { rows });
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: gateListKeys.all });
+    },
+  });
+}
+
+/** The society's incident categories (seeded with three on the first read). */
+export function useIncidentCategories(includeInactive = false) {
+  const tenantId = getCurrentTenant() ?? '';
+  return useQuery({
+    queryKey: gateListKeys.incidentCategories(tenantId, includeInactive),
+    enabled: tenantId !== '',
+    queryFn: () =>
+      orNullOn404(async () => {
+        const res = await api.get<{ data: IncidentCategory[] }>(
+          `/gate/incident-categories${includeInactive ? '?include_inactive=true' : ''}`,
+        );
+        return res.data;
+      }),
+  });
+}
+
+export function useSaveIncidentCategories() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: function saveIncidentCategories(rows: IncidentCategoryGridRow[]) {
+      return api.put<{ data: IncidentCategory[] }>('/gate/incident-categories/bulk', { rows });
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: gateListKeys.all });

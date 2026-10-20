@@ -146,6 +146,7 @@ describe('classic modules', () => {
     expect(find(menu, 'gate.investigator')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['Visitors', '/gate/investigator/visitors'],
       ['Panic Alerts', '/gate/investigator/panic-alerts'],
+      ['Incidents', '/gate/investigator/incidents'],
       ['Vehicle Logs', '/gate/investigator/vehicles'],
       ['Staff Logs', '/gate/investigator/staff-logs'],
       ['Parcels', '/gate/investigator/parcels'],
@@ -290,6 +291,7 @@ describe('visibleMenu', () => {
     const investigator = find(menu, 'gate.investigator');
     expect(investigator?.tabs?.map((tab) => tab.href)).toEqual([
       '/gate/investigator/visitors',
+      '/gate/investigator/incidents',
       '/gate/investigator/vehicles',
       '/gate/investigator/staff-logs',
       '/gate/investigator/parcels',
