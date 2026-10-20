@@ -30,6 +30,8 @@ export interface CreateOnboardingInput {
   tenancy_type?: 'short_term' | 'long_term';
   occupancy_type?: 'full' | 'shared';
   maintenance_payer?: 'owner' | 'tenant';
+  // MOVE-15 — the society's move-in fields for the tenant, by key.
+  fields?: Record<string, string | string[] | null>;
 }
 
 export interface CreateOnboardingResult {

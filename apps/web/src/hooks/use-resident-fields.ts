@@ -118,6 +118,28 @@ export function useSaveMemberFields(memberId: string) {
   });
 }
 
+/** MOVE-15 — the fields typed on Add Member, saved once the member exists. */
+export function useSaveFieldsOfNewMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { memberId: string; values: Record<string, FieldValue> }) =>
+      api.put<{ data: SubjectFields }>(`/tenant-lifecycle/members/${input.memberId}/fields`, { values: input.values }).then((res) => res.data),
+    onSuccess(fields) {
+      queryClient.setQueryData(residentFieldKeys.member(fields.subject_id), fields);
+    },
+  });
+}
+
+/** What a move-in request sent for the society's fields (its View). */
+export function useOnboardingFields(onboardingId: string | null) {
+  return useQuery({
+    queryKey: [...residentFieldKeys.all, 'onboarding', onboardingId ?? ''] as const,
+    enabled: Boolean(onboardingId),
+    queryFn: () =>
+      orNotAvailable(() => api.get<{ data: SubjectFields }>(`/tenant-lifecycle/onboardings/${onboardingId}/fields`).then((res) => res.data)),
+  });
+}
+
 export function useExitFields(exitId: string | null) {
   return useQuery({
     queryKey: residentFieldKeys.exit(exitId ?? ''),

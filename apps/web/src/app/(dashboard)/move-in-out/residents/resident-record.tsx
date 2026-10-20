@@ -17,6 +17,7 @@ import { MemberForm } from '../../units/components/member-form';
 import { memberFormValues, memberTags } from '../../units/components/member-form-values';
 import { unitLabel } from '../components/register-presets';
 import { AgreementBlock } from './agreement-block';
+import { SocietyFieldsBlock } from './society-fields-block';
 
 const TYPES: Record<string, string> = { owner: 'Owner', tenant: 'Tenant', owner_family: 'Owner Family', tenant_family: 'Tenant Family' };
 const STATUS: Record<string, string> = { active: 'Active', never: 'Never logged in', no_account: 'No account' };
@@ -108,6 +109,7 @@ function RecordBody({ record, readOnly }: { record: ResidentRecord; readOnly: bo
       ) : (
         <MemberForm mode="page" initial={memberFormValues(member)} saving={actions.saving} onClose={close} onSave={actions.save} />
       )}
+      <SocietyFieldsBlock memberId={member.id} readOnly={locked} />
       {member.member_type === 'tenant' && (
         <Card>
           <CardContent className="space-y-2 pt-6">

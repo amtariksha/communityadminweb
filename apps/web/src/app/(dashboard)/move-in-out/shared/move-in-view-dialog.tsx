@@ -4,6 +4,8 @@ import { type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RequestChecklistPanel, canTickChecklists } from '@/components/move-checklist';
+import { SocietyFields, initialValues } from '@/components/society-fields';
+import { useOnboardingFields } from '@/hooks/use-resident-fields';
 import { useApprovalDetail } from '@/hooks/use-approvals';
 import type { MoveIn } from '@/hooks/use-move-ins';
 import { indiaDateTime } from '@/lib/india-time';
@@ -16,6 +18,19 @@ function Field({ label, value }: { label: string; value: string | null | undefin
       <dt className="text-muted-foreground">{label}</dt>
       <dd>{value || '—'}</dd>
     </div>
+  );
+}
+
+/** MOVE-15 — what the move-in sent for the society's fields, read-only. */
+function SentFields({ onboardingId }: { onboardingId: string }): ReactNode {
+  const query = useOnboardingFields(onboardingId);
+  const fields = query.data?.fields ?? [];
+  if (fields.length === 0) return null;
+  return (
+    <section className="mt-4 space-y-2">
+      <h3 className="text-sm font-semibold">Society fields</h3>
+      <SocietyFields fields={fields} values={initialValues(fields)} readOnly />
+    </section>
   );
 }
 
@@ -37,6 +52,7 @@ export function MoveInViewDialog({ moveIn, onClose }: { moveIn: MoveIn | null; o
               <Field label="Agreement" value={moveIn.lease_start_date ? `${formatDate(moveIn.lease_start_date)} – ${formatDate(moveIn.lease_end_date)}` : null} />
               <Field label="Requested" value={`${indiaDateTime(moveIn.requested_at)}${moveIn.requested_by_name ? ` by ${moveIn.requested_by_name}` : ''}`} />
             </dl>
+            <SentFields onboardingId={moveIn.onboarding_id} />
             <div className="mt-4">
               <RequestChecklistPanel kind="onboarding" requestId={moveIn.onboarding_id} canTick={canTickChecklists()} />
             </div>

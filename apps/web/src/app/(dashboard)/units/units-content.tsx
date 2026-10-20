@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useCallback, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus,
@@ -78,6 +78,8 @@ import {
 import type { MemberImportResult, UnitDetailMember } from '@/hooks';
 import type { UpdateMemberInput } from '@/hooks/use-unit-members';
 import { MemberExtraFields, MemberForm, type MemberExtraValues } from './components/member-form';
+import { FormFieldsInput, appliesFor, filledValues } from '@/components/society-fields';
+import { useSaveFieldsOfNewMember, type FieldValue } from '@/hooks/use-resident-fields';
 import { UnitEditForm } from './components/unit-edit-form';
 import type { UnitRecord } from './components/unit-edit-values';
 import { useUnitBlocks } from '@/hooks/use-unit-blocks';
@@ -395,6 +397,9 @@ export default function UnitsContent(): ReactNode {
   const [addMemberBirthdate, setAddMemberBirthdate] = useState('');
   // UNIT-15 — Primary Contact, Lives Here, Association Member, Alternate Address.
   const [addMemberExtra, setAddMemberExtra] = useState<MemberExtraValues>(NEW_MEMBER_EXTRA);
+  // MOVE-15 — the society's fields typed on Add Member / Onboard Tenant.
+  const [addMemberFields, setAddMemberFields] = useState<Record<string, FieldValue>>({});
+  const [onboardFields, setOnboardFields] = useState<Record<string, FieldValue>>({});
   const [addMemberIdProofType, setAddMemberIdProofType] = useState('');
   const [addMemberIdProofNumber, setAddMemberIdProofNumber] = useState('');
   // ID scan (Aadhaar / PAN / Passport / Voter / DL). Auto-fills Name;
@@ -431,6 +436,13 @@ export default function UnitsContent(): ReactNode {
   const disconnectTenant = useDisconnectTenant();
   const bulkImportMembers = useBulkImportMembers();
   const createOnboarding = useCreateOnboarding();
+  const saveNewMemberFields = useSaveFieldsOfNewMember();
+  useEffect(() => {
+    if (addMemberOpen) setAddMemberFields({});
+  }, [addMemberOpen]);
+  useEffect(() => {
+    if (onboardTenantOpen) setOnboardFields({});
+  }, [onboardTenantOpen]);
   // FeatPlan #OW-1 — agreement upload (long-term tenancies only).
   // Three-step flow lifted from renew-lease-dialog.tsx: pick file →
   // pre-signed PUT to S3 → POST /onboard with the returned URL+key.
@@ -1114,6 +1126,7 @@ export default function UnitsContent(): ReactNode {
         maintenance_payer: onboardMaintenancePayer,
         agreement_document_url: agreementUrl,
         agreement_document_key: agreementKey,
+        ...(Object.keys(filledValues(onboardFields)).length > 0 ? { fields: filledValues(onboardFields) } : {}),
       },
       {
         onSuccess() {
@@ -1281,9 +1294,19 @@ export default function UnitsContent(): ReactNode {
         alternate_address: addMemberExtra.alternate_address.trim() || null,
       } as Parameters<typeof addMember.mutate>[0],
       {
-        onSuccess() {
+        onSuccess(res) {
           setAddMemberOpen(false);
           addToast({ title: 'Member added', variant: 'success' });
+          const values = filledValues(addMemberFields);
+          if (res?.data?.id && Object.keys(values).length > 0) {
+            saveNewMemberFields.mutate(
+              { memberId: res.data.id, values },
+              {
+                onError: (error) =>
+                  addToast({ title: 'Member added; the society fields were not saved', description: friendlyError(error), variant: 'destructive' }),
+              },
+            );
+          }
         },
         onError(error) {
           addToast({ title: 'Failed to add member', description: friendlyError(error), variant: 'destructive' });
@@ -2392,6 +2415,12 @@ export default function UnitsContent(): ReactNode {
                 otherPrimaryName={detail?.current_members.find((m) => m.is_primary_contact)?.name ?? null}
                 onChange={setAddMemberExtra}
               />
+              <FormFieldsInput
+                phase="in"
+                applies={appliesFor(addMemberType)}
+                values={addMemberFields}
+                onChange={(key, value) => setAddMemberFields((current) => ({ ...current, [key]: value }))}
+              />
             </div>
             <DialogFooter>
               <DialogClose>
@@ -2768,6 +2797,14 @@ export default function UnitsContent(): ReactNode {
                   Approvals page after the request is created.
                 </p>
               )}
+              <div className="col-span-2">
+                <FormFieldsInput
+                  phase="in"
+                  applies="tenant"
+                  values={onboardFields}
+                  onChange={(key, value) => setOnboardFields((current) => ({ ...current, [key]: value }))}
+                />
+              </div>
             </div>
             <DialogFooter>
               <DialogClose>

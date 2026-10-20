@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   reactivate: vi.fn(),
   agreement: vi.fn(),
+  fields: null as unknown,
+  saveFields: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ back: vi.fn() }) }));
@@ -31,6 +33,10 @@ vi.mock('@/hooks/use-unit-members', () => ({
   useReactivateMember: () => ({ mutate: mocks.reactivate }),
 }));
 vi.mock('@/hooks/use-units', () => ({ useRemoveMember: () => ({ mutate: mocks.remove }) }));
+vi.mock('@/hooks/use-resident-fields', () => ({
+  useMemberFields: () => ({ isLoading: false, data: mocks.fields, dataUpdatedAt: 1 }),
+  useSaveMemberFields: () => ({ mutate: mocks.saveFields, isPending: false }),
+}));
 vi.mock('@/hooks', () => ({ useUploadFileToS3: () => ({ mutateAsync: vi.fn() }) }));
 vi.mock('../../units/components/police-verification', () => ({ PoliceVerification: (): ReactNode => <p>Police verification</p> }));
 
@@ -49,6 +55,7 @@ const record = (member = tenant, lease: unknown = null) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.fields = null;
   vi.spyOn(window, 'confirm').mockReturnValue(true);
 });
 
@@ -107,5 +114,30 @@ describe('ResidentRecordContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Deactivate' }));
 
     expect(mocks.remove).toHaveBeenCalledWith({ unitId: 'u-5', memberId: 'm-5' }, expect.anything());
+  });
+
+  it('shows the society fields for the member’s type and saves them (MOVE-15)', () => {
+    mocks.record = record();
+    mocks.fields = {
+      subject_id: 'm-5',
+      applies_to: 'tenant',
+      fields: [
+        { id: 'f-1', key: 'profession', label: 'Profession', type: 'text', choices: null, read_only: false, value: 'Engineer' },
+        { id: 'f-2', key: 'rental_agreement_status', label: 'Rental Agreement Status', type: 'single', choices: ['Active'], read_only: true, value: 'No Agreement' },
+      ],
+    };
+    render(<ResidentRecordContent memberId="m-5" readOnly={false} />);
+
+    expect(screen.getByRole('heading', { name: 'Society fields' })).toBeTruthy();
+    expect(screen.getByText('No Agreement')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Profession'), { target: { value: 'Architect' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Society Fields' }));
+    expect(mocks.saveFields).toHaveBeenCalledWith({ profession: 'Architect' }, expect.anything());
+  });
+
+  it('hides the society fields on an older API', () => {
+    mocks.record = record();
+    render(<ResidentRecordContent memberId="m-5" readOnly={false} />);
+    expect(screen.queryByRole('heading', { name: 'Society fields' })).toBeNull();
   });
 });
