@@ -35,12 +35,14 @@ export interface ImportFlowState {
   busy: boolean;
   previewing: boolean;
   pick: (file: File | null) => void;
-  runPreview: () => Promise<void>;
-  runApply: (preview: ImportPreview) => Promise<void>;
+  /** Preview the picked file, or the rows of an on-screen grid when given. */
+  runPreview: (rows?: Array<Record<string, unknown>>) => Promise<void>;
+  /** Commit what was previewed: the same file, or the same grid rows. */
+  runApply: (preview: ImportPreview, rows?: Array<Record<string, unknown>>) => Promise<void>;
   template: (format: 'xlsx' | 'csv') => Promise<void>;
 }
 
-/** The steps of one SB-13 upload: pick → preview → commit, with the "not deployed" and refused states. */
+/** The steps of one SB-13 import — pick a file (or fill the grid) → preview → commit — with the "not deployed" and refused states. */
 export function useImportFlow(target: ImportTarget, options: Record<string, unknown> | undefined, onApplied?: (result: ImportCommitResult) => void): ImportFlowState {
   const { addToast } = useToast();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -63,19 +65,23 @@ export function useImportFlow(target: ImportTarget, options: Record<string, unkn
     setFile(tooBig ? null : next);
   }
 
-  async function runPreview(): Promise<void> {
-    if (!file) return;
+  const sourceOf = (rows?: Array<Record<string, unknown>>) => (rows ? { rows } : file ? { file } : null);
+
+  async function runPreview(rows?: Array<Record<string, unknown>>): Promise<void> {
+    const source = sourceOf(rows);
+    if (!source) return;
     try {
-      setStep({ kind: 'previewed', preview: await preview.mutateAsync({ file, options }) });
+      setStep({ kind: 'previewed', preview: await preview.mutateAsync({ ...source, options }) });
     } catch (error) {
       fail('Could not read the file', error);
     }
   }
 
-  async function runApply(current: ImportPreview): Promise<void> {
-    if (!file) return;
+  async function runApply(current: ImportPreview, rows?: Array<Record<string, unknown>>): Promise<void> {
+    const source = sourceOf(rows);
+    if (!source) return;
     try {
-      const result = await apply.mutateAsync({ file, options, batchId: current.batch_id });
+      const result = await apply.mutateAsync({ ...source, options, batchId: current.batch_id });
       setStep({ kind: 'applied', result });
       onApplied?.(result);
     } catch (error) {

@@ -90,7 +90,7 @@ function ImportSteps({ flow, title, allowed, children }: { flow: ImportFlowState
   );
 }
 
-interface StepViewProps {
+export interface StepViewProps {
   step: ImportStep;
   columns: readonly ImportPreviewColumn[];
   applyLabel: string;
@@ -98,7 +98,8 @@ interface StepViewProps {
   onApply: (preview: ImportPreview) => void;
 }
 
-function ImportStepView({ step, columns, applyLabel, disabled, onApply }: StepViewProps): ReactNode {
+/** What follows a preview: the rows and the commit button, the refused rows, or the result. */
+export function ImportStepView({ step, columns, applyLabel, disabled, onApply }: StepViewProps): ReactNode {
   if (step.kind === 'applied') return <CommitSummary result={step.result} />;
   if (step.kind === 'refused') {
     return (
