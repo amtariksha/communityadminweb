@@ -30,16 +30,46 @@ export interface GstReportRow {
   total: number;
 }
 
+/** One rate's taxable value and tax heads in the GSTR-1 JSON (INC-63: IGST and cess too). */
+export interface Gstr1ItemDetail {
+  txval: number;
+  rt: number;
+  iamt: number;
+  camt: number;
+  samt: number;
+  csamt: number;
+}
+
+export interface Gstr1Invoice {
+  inum: string;
+  idt: string;
+  val: number;
+  pos: string;
+  rchrg: 'N';
+  inv_typ: 'R';
+  itms: Array<{ num: number; itm_det: Gstr1ItemDetail }>;
+}
+
+/**
+ * GET /tax/gst/export. INC-63: invoices split CGST + SGST or IGST as
+ * posted; B2B per payer GSTIN, B2CL (inter-state above ₹1,00,000 without
+ * a GSTIN) per place of supply, B2CS by supply type, place and rate.
+ */
 export interface Gstr1Export {
   gstin: string;
   fp: string;
-  b2b: unknown[];
+  b2b: Array<{ ctin: string; inv: Gstr1Invoice[] }>;
+  b2cl?: Array<{ pos: string; inv: Array<Omit<Gstr1Invoice, 'rchrg' | 'inv_typ'>> }>;
   b2cs: Array<{
     sply_ty: string;
     pos: string;
+    /** INC-63 — 'OE'; absent on an older API. */
+    typ?: string;
     txval: number;
+    iamt?: number;
     camt: number;
     samt: number;
+    csamt?: number;
     rt: number;
   }>;
   summary: { total_invoices: number; total_taxable: number; total_tax: number };
