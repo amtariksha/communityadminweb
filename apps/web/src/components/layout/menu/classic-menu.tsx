@@ -464,7 +464,7 @@ export const classicMenu: MenuNode[] = [
         label: 'Query',
         tabs: [
           { id: 'ledger.query.by-group', label: 'By Account Group', href: '/general-ledger/query/by-group' },
-          planned('ledger.query.by-user', 'By User', 'GL-17'),
+          { id: 'ledger.query.by-user', label: 'By User', href: '/general-ledger/query/by-user' },
         ],
       },
       { id: 'ledger.trial-balance', label: 'Trial Balance', href: '/general-ledger/trial-balance', logs: ['financial_year'] },
