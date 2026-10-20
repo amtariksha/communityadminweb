@@ -739,6 +739,7 @@ export const classicMenu: MenuNode[] = [
     forms: [
       { label: 'Create Form', path: '/community-forms/new' },
       { label: 'Edit Form', path: '/community-forms/:id/edit' },
+      { label: 'Response', path: '/community-forms/responses/:id' },
     ],
     children: [
       {
@@ -750,7 +751,16 @@ export const classicMenu: MenuNode[] = [
           { id: 'forms.setup.forms', label: 'Setup Community Form', href: '/community-forms/setup/forms', logs: ['community_form'] },
         ],
       },
-      planned('forms.responses', 'Responses', 'FORM-06'),
+      {
+        id: 'forms.responses',
+        label: 'Responses',
+        // FORM-06: status as sub-tabs (SB-05).
+        tabs: [
+          { id: 'forms.responses.unapproved', label: 'Unapproved', href: '/community-forms/responses/unapproved', logs: ['community_form_response'] },
+          { id: 'forms.responses.approved', label: 'Approved', href: '/community-forms/responses/approved', logs: ['community_form_response'] },
+          { id: 'forms.responses.rejected', label: 'Rejected', href: '/community-forms/responses/rejected', logs: ['community_form_response'] },
+        ],
+      },
       reportsMenuNode('forms', 'FORM-07'),
     ],
   },

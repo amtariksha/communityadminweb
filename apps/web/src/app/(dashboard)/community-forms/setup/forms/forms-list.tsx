@@ -68,6 +68,7 @@ export function FormsList(): ReactNode {
   const actions: DataTableAction<CommunityForm>[] = [
     { key: 'edit', header: 'Edit', label: 'Edit', href: (row) => `/community-forms/${row.id}/edit` },
     { key: 'publish', header: 'Publish / Unpublish', label: (row) => (row.status === 'published' ? 'Unpublish' : 'Publish'), onClick: togglePublish },
+    { key: 'responses', header: 'View Responses', label: 'View Responses', href: (row) => `/community-forms/responses/unapproved?form_id=${row.id}` },
   ];
 
   if (list.error && isNotDeployed(list.error)) {

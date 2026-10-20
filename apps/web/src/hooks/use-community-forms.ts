@@ -68,7 +68,7 @@ export const communityFormKeys = {
   one: (id: string) => [...communityFormKeys.all, 'one', id] as const,
 };
 
-export function formParams(filters: FormFilters): Record<string, string> {
+export function formParams(filters: object): Record<string, string> {
   const params: Record<string, string> = {};
   for (const [key, value] of Object.entries(filters)) {
     if (value !== undefined && value !== '') params[key] = String(value);
