@@ -10,6 +10,8 @@ import { lastMonthRanges } from '@/lib/date';
 import { formatCurrency } from '@/lib/utils';
 import { accountLabel, type BankAccountRow } from '../../bank/bank-types';
 import { registerColumns } from './register-columns';
+import { RegisterScopeRadio, RegisterSearchForm } from './register-search';
+import { filterRows, type RegisterSearch } from './register-filter';
 
 // POST /bank/reconciliation/:lineId/(un)reconcile.
 const RECONCILE_ROLES: ReadonlySet<string> = new Set(['super_admin', 'community_admin', 'accountant']);
@@ -19,6 +21,9 @@ interface Query {
   accountId: string;
   from: string;
   to: string;
+  scope: RegisterSearch['scope'];
+  q: string;
+  searchIn: RegisterSearch['searchIn'];
 }
 
 function notAvailable(error: unknown): boolean {
@@ -34,15 +39,19 @@ function notAvailable(error: unknown): boolean {
 export function BankRegisterPanel({ accounts }: { accounts: readonly BankAccountRow[] }): ReactNode {
   const [month] = lastMonthRanges(1);
   const [accountId, setAccountId] = useState('');
+  // BANK-09: Non reconciled by default; search applies to the fetched period.
+  const [scope, setScope] = useState<RegisterSearch['scope']>('unreconciled');
   const [query, setQuery] = useState<Query | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const canReconcile = useMemo(() => RECONCILE_ROLES.has(currentRole() ?? ''), []);
   const register = useBankRegister(query);
-  const rows = register.data?.rows ?? [];
+  const rows = query ? filterRows(register.data?.rows ?? [], query) : [];
   const missing = notAvailable(register.error);
 
   const accountPicker = (
+    <>
+    <RegisterScopeRadio value={scope} onChange={setScope} />
     <div className="space-y-1">
       <Label htmlFor="register-account">Account</Label>
       <select id="register-account" className={SELECT_CLASS} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
@@ -52,10 +61,18 @@ export function BankRegisterPanel({ accounts }: { accounts: readonly BankAccount
         ))}
       </select>
     </div>
+    </>
   );
 
   return (
     <div className="space-y-3">
+      <RegisterSearchForm
+        disabled={query === null}
+        onSearch={(q, searchIn) => {
+          if (query) setQuery({ ...query, q, searchIn });
+          setPage(1);
+        }}
+      />
       {register.data && (
         <p className="text-sm text-muted-foreground">
           Opening balance {formatCurrency(register.data.opening_balance)} · Closing balance {formatCurrency(register.data.closing_balance)}
@@ -88,7 +105,7 @@ export function BankRegisterPanel({ accounts }: { accounts: readonly BankAccount
               extra={accountPicker}
               extraError={() => (accountId ? null : 'Choose an account.')}
               onFetch={(criteria) => {
-                setQuery({ accountId, from: criteria.from, to: criteria.to });
+                setQuery({ accountId, from: criteria.from, to: criteria.to, scope, q: query?.q ?? '', searchIn: query?.searchIn ?? 'any' });
                 setPage(1);
               }}
             />

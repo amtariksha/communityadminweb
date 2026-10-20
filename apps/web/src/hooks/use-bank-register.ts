@@ -33,12 +33,29 @@ export interface BankRegister {
 }
 
 /** The register of one account for a period; kept under the bank keys, so a reconcile refetches it. */
-export function useBankRegister(query: { accountId: string; from: string; to: string } | null) {
+export interface BankRegisterQuery {
+  accountId: string;
+  from: string;
+  to: string;
+  // BANK-09: scope and search-in; absent = every line.
+  scope?: string;
+  q?: string;
+  searchIn?: string;
+}
+
+function registerParams(query: BankRegisterQuery | null): Record<string, string> {
+  const params: Record<string, string> = { from: query?.from ?? '', to: query?.to ?? '' };
+  if (query?.scope) params.scope = query.scope;
+  if (query?.q) Object.assign(params, { q: query.q, search_in: query.searchIn ?? 'any' });
+  return params;
+}
+
+export function useBankRegister(query: BankRegisterQuery | null) {
   return useQuery({
     queryKey: [...bankKeys.all, 'register', query],
     queryFn: () =>
       api
-        .get<{ data: BankRegister }>(`/bank/register/${query?.accountId}`, { params: { from: query?.from ?? '', to: query?.to ?? '' } })
+        .get<{ data: BankRegister }>(`/bank/register/${query?.accountId}`, { params: registerParams(query) })
         .then((res) => res.data),
     enabled: query !== null,
   });

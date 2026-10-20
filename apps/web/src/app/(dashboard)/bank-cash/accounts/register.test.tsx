@@ -84,11 +84,12 @@ describe('bank register', () => {
     renderPage();
     await screen.findByRole('listitem');
     fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'ba-1' } });
+    fireEvent.click(screen.getByLabelText('All Transactions'));
     fireEvent.click(screen.getByRole('button', { name: 'Fetch' }));
 
     const table = screen.getByRole('table', { name: 'Bank Register' });
     await within(table).findByText('RCP-l1');
-    expect(registerCalls()[0]).toEqual(['/bank/register/ba-1', { params: { from: '2026-10-01', to: '2026-10-31' } }]);
+    expect(registerCalls()[0]).toEqual(['/bank/register/ba-1', { params: { from: '2026-10-01', to: '2026-10-31', scope: 'all' } }]);
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows[0].textContent).toContain('₹12,000');
     expect(rows[1].textContent).toContain('₹11,500');
@@ -110,5 +111,24 @@ describe('bank register', () => {
     await within(table).findByText('RCP-l1');
     expect(within(table).queryByRole('button', { name: 'Reconcile' })).toBeNull();
     expect(within(table).queryByRole('button', { name: 'Undo' })).toBeNull();
+  });
+});
+
+describe('bank register scope and search (BANK-09)', () => {
+  it('fetches Non reconciled by default and searches the period by amount', async () => {
+    renderPage();
+    await screen.findByRole('listitem');
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'ba-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Fetch' }));
+    const table = screen.getByRole('table', { name: 'Bank Register' });
+    await within(table).findByText('RCP-l1');
+    expect(within(table).queryByText('RCP-l2')).toBeNull();
+    expect(registerCalls()[0][1]).toEqual({ params: { from: '2026-10-01', to: '2026-10-31', scope: 'unreconciled' } });
+
+    fireEvent.change(screen.getByLabelText('Search'), { target: { value: '500' } });
+    fireEvent.click(screen.getByLabelText('Amount'));
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await waitFor(() => expect(registerCalls().at(-1)?.[1]).toEqual({ params: { from: '2026-10-01', to: '2026-10-31', scope: 'unreconciled', q: '500', search_in: 'amount' } }));
+    expect(await within(table).findByText('No transactions match.')).toBeTruthy();
   });
 });
