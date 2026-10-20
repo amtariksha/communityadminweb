@@ -13,6 +13,8 @@ export interface MemberImport {
   columns: readonly ImportPreviewColumn[];
   /** Only these roles may run it (else the finance writers). */
   roles?: readonly string[];
+  /** The commit button; "Post" unless the job posts nothing (bill-to details: "Save"). */
+  applyLabel?: string;
 }
 
 export interface MemberImportMatrix {
@@ -151,6 +153,7 @@ export const MEMBER_IMPORT_MATRICES: readonly MemberImportMatrix[] = [
       {
         type: 'unit_billing_identity',
         label: 'Bill-to name, GSTIN and PAN',
+        applyLabel: 'Save',
         description: 'One row per unit. A blank cell keeps what is stored; a dash (-) clears it. A wrong row is reported and the others are saved.',
         endpoint: INVOICE_IMPORTS_ENDPOINT,
         columns: [

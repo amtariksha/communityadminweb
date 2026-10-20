@@ -15,14 +15,14 @@ function mayRun(job: MemberImport): boolean {
   return role !== null && job.roles.includes(role);
 }
 
-/** One Member Income bulk posting: the batch grid (`?door=grid`) or the Excel upload. */
-export function MemberImportJob(): ReactNode {
+/** One income bulk posting: the batch grid (`?door=grid`) or the Excel upload; Close returns to its matrix page. */
+export function IncomeImportJob({ find, closeHref }: { find: (type: string) => MemberImport | undefined; closeHref: string }): ReactNode {
   const router = useRouter();
   const type = String(useParams()?.type ?? '');
   const door = useSearchParams()?.get('door') === 'grid' ? 'grid' : 'excel';
-  const job = memberImport(type);
+  const job = find(type);
   const close = (
-    <Button type="button" variant="outline" onClick={() => router.push(BULK_POSTING_HREF)}>
+    <Button type="button" variant="outline" onClick={() => router.push(closeHref)}>
       Close
     </Button>
   );
@@ -39,7 +39,7 @@ export function MemberImportJob(): ReactNode {
     title: job.label,
     description: job.description,
     columns: job.columns,
-    applyLabel: 'Post',
+    applyLabel: job.applyLabel ?? 'Post',
     allowed: mayRun(job),
   };
   return (
@@ -48,4 +48,9 @@ export function MemberImportJob(): ReactNode {
       {door === 'grid' ? <ImportGrid {...common} /> : <ImportFlow {...common} />}
     </div>
   );
+}
+
+/** Member Income's bulk posting job. */
+export function MemberImportJob(): ReactNode {
+  return <IncomeImportJob find={memberImport} closeHref={BULK_POSTING_HREF} />;
 }

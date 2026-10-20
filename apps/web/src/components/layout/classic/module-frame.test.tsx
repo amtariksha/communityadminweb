@@ -121,7 +121,7 @@ describe('screen finder', () => {
       nodes.flatMap((node) => [...(node.planned ? [node.id] : []), ...planned([...(node.children ?? []), ...(node.tabs ?? [])])]);
     const plannedIds = new Set(planned(classicMenu));
 
-    expect(plannedIds.size).toBeGreaterThan(0);
+    // INC-62 built the last planned entry; the rule holds for any planned one added later.
     expect(entries.filter((entry) => plannedIds.has(entry.id))).toEqual([]);
   });
 

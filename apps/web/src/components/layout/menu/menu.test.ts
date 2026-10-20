@@ -104,10 +104,11 @@ describe('classic modules', () => {
 
   it('Income Tracker shows Setup and Receipts & Invoices with their sub-tabs', () => {
     expect(labels('income')).toEqual(['Setup', 'Track Units', 'Member Income', 'Receipts & Invoices', 'Defaulters', 'Non Member Income', 'Reports']);
-    // INC-46: Non Member Income's By Vendors and By Date, shown with Customers; Bulk Posting stays planned.
+    // INC-46: Non Member Income's By Vendors and By Date, shown with Customers; INC-62 its Bulk Posting.
     expect(find(menu, 'income.non-member')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['By Vendors', '/income/non-member'],
       ['By Date', '/income/non-member/by-date'],
+      ['Bulk Posting', '/income/non-member/bulk-posting'],
     ]);
     expect(governingItem('/income/non-member/payers/p-1/statement')?.href).toBe('/customers');
     // INC-37: Track Units has the grid and the unit types, gated with Invoices.
@@ -268,7 +269,10 @@ describe('menus point only at screens that exist', () => {
 describe('visibleMenu', () => {
   it('hides planned entries and modules with nothing built yet', () => {
     const menu = visibleMenu(classicMenu, EVERYONE);
-    expect(find(menu, 'income.non-member.bulk-posting')).toBeUndefined();
+    // INC-62 built the last planned entry of the classic menu.
+    expect(find(menu, 'income.non-member.bulk-posting')?.href).toBe('/income/non-member/bulk-posting');
+    const plannedOnly = visibleMenu([{ id: 'x', label: 'X', children: [{ id: 'x.p', label: 'P', planned: 'T-1' }] }], EVERYONE);
+    expect(find(plannedOnly, 'x.p')).toBeUndefined();
     expect(find(menu, 'units.survey')?.href).toBe('/units/surveys');
     expect(find(menu, 'gate.move')?.href).toBe('/gate/move-in-out');
     expect(find(menu, 'gate.reports')?.href).toBe('/gate/reports');

@@ -290,7 +290,14 @@ export const classicMenu: MenuNode[] = [
         tabs: [
           { id: 'income.non-member.by-vendors', label: 'By Vendors', href: '/income/non-member', logs: ['customer', 'invoice', 'receipt'] },
           { id: 'income.non-member.by-date', label: 'By Date', href: '/income/non-member/by-date', logs: ['invoice', 'receipt'] },
-          planned('income.non-member.bulk-posting', 'Bulk Posting', 'INC-62'),
+          {
+            // INC-62: payers' opening balances, invoices and collections (SB-13); each job is a page under it.
+            id: 'income.non-member.bulk-posting',
+            label: 'Bulk Posting',
+            href: '/income/non-member/bulk-posting',
+            logs: ['import_batch'],
+            forms: [{ label: 'Bulk Posting', path: '/income/non-member/bulk-posting/:type' }],
+          },
         ],
       },
       reportsMenuNode('income', 'REP-04'),
