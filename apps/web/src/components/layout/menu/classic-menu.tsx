@@ -668,7 +668,8 @@ export const classicMenu: MenuNode[] = [
         tabs: [
           { id: 'amenity.setup.amenity', label: 'Amenity', href: '/amenities/setup', logs: ['amenity'] },
           { id: 'amenity.setup.event', label: 'Event', href: '/amenities/setup/events', logs: ['event'] },
-          planned('amenity.setup.restrictions', 'Restrictions', 'AMEN-41'),
+          // AMEN-41 — block defaulters and owners of let flats from reserving.
+          { id: 'amenity.setup.restrictions', label: 'Restrictions', href: '/amenities/setup/restrictions', logs: ['tenant_settings'] },
         ],
       },
       {

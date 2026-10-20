@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { billingGatewaySchema } from './billing-documents';
+import { storedAmenitySettingsSchema } from './amenity-settings';
 
 /**
  * The monthly report digest (REP-01). Mirrors communityos
@@ -70,6 +71,9 @@ const tenantSettingsSchema = z.object({
   // and PUT /billing-numbering (HTML sanitiser, prefix checks), as in the API.
   // INC-43 — absorb the gateway charge only above an amount; read by PaymentService.
   billing_gateway: billingGatewaySchema.optional(),
+  // AMEN-41 / AMEN-45 — Amenity & Event › Setup › Restrictions and Notifications;
+  // written by PATCH /tenant-settings/amenity.
+  amenity_settings: storedAmenitySettingsSchema.optional(),
 });
 
 export const createTenantSchema = z.object({

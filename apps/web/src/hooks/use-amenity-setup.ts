@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { amenitySettingsFrom, type UpdateAmenitySettingsInput } from '@communityos/shared';
 import { api } from '@/lib/api';
 import { amenityKeys } from './use-amenities';
 
@@ -109,6 +110,32 @@ export function useSaveAmenityAddons(amenityId: string) {
       api.put<{ data: AmenityAddon[] }>(`/amenities/${amenityId}/addons`, { rows }).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: amenityKeys.all });
+    },
+  });
+}
+
+/**
+ * AMEN-41 / AMEN-45 — Setup › Restrictions and Setup Notifications:
+ * GET / PATCH /tenant-settings/amenity (the stored values over the defaults).
+ */
+const settingsKey = ['tenant-settings', 'amenity'] as const;
+
+export function useAmenitySettings() {
+  return useQuery({
+    queryKey: settingsKey,
+    queryFn: () =>
+      api.get<{ data: unknown }>('/tenant-settings/amenity').then((res) => amenitySettingsFrom(res.data)),
+    retry: false,
+  });
+}
+
+export function useSaveAmenitySettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (change: UpdateAmenitySettingsInput) =>
+      api.patch<{ data: unknown }>('/tenant-settings/amenity', change).then((res) => amenitySettingsFrom(res.data)),
+    onSuccess: (saved) => {
+      queryClient.setQueryData(settingsKey, saved);
     },
   });
 }
