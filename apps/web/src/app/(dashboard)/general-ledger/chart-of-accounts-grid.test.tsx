@@ -191,6 +191,46 @@ describe('Chart of Accounts grid', () => {
     await waitFor(() => expect(del).toHaveBeenCalledWith('/ledger/accounts/a-old'));
   });
 
+  it('splits Income into member and non-member grids with a Default Bank Account, one Save for both (GL-18)', async () => {
+    const INCOME = [
+      account('i-maint', 'I-100', 'Maintenance', 'g-in', { balance_type: 'credit', income_scope: null }),
+      account('i-rent', 'I-200', 'Clubhouse Rent', 'g-in', { balance_type: 'credit', income_scope: 'non_member' }),
+    ];
+    const BANKS = [account('a-hdfc', 'B-1', 'Main Bank', 'g-ca', { is_bank_account: true })];
+    get.mockImplementation(async (path: string, options?: { params?: Record<string, string> }) => {
+      if (path === '/ledger/account-groups') return { data: [...GROUPS, group('g-in', 'INC', 'Indirect Incomes', 'income')] };
+      if (path === '/ledger/settings') return { data: null };
+      if (options?.params?.is_active === 'false') return { data: [], total: 0 };
+      if (options?.params?.account_type === 'asset') return { data: BANKS, total: 1 };
+      return { data: INCOME, total: INCOME.length };
+    });
+    put.mockResolvedValue({ data: { created: 1, updated: 1, entries_posted: 0, deactivated: 0 } });
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ChartTabPage slug="income" />
+      </QueryClientProvider>,
+    );
+    const member = await screen.findByRole('table', { name: 'Set up Member Income Accounts' });
+    const nonMember = screen.getByRole('table', { name: 'Set up Non-Member Income Accounts' });
+    expect(within(member).getByDisplayValue('Maintenance')).toBeTruthy();
+    expect(within(nonMember).getByDisplayValue('Clubhouse Rent')).toBeTruthy();
+
+    fireEvent.change(within(member).getByLabelText('Default Bank Account, row 1'), { target: { value: 'a-hdfc' } });
+    fireEvent.change(within(nonMember).getByLabelText('Group, row 2'), { target: { value: 'g-in' } });
+    fireEvent.change(within(nonMember).getByLabelText('GL Account No., row 2'), { target: { value: 'I-300' } });
+    fireEvent.change(within(nonMember).getByLabelText('Account Name, row 2'), { target: { value: 'Hall Hire' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+
+    await waitFor(() => expect(put).toHaveBeenCalled());
+    expect(put.mock.calls[0][1]).toEqual({
+      type: 'income',
+      rows: [
+        { id: 'i-maint', default_bank_account_id: 'a-hdfc', group_id: 'g-in', code: 'I-100', name: 'Maintenance' },
+        { default_bank_account_id: null, income_scope: 'non_member', group_id: 'g-in', code: 'I-300', name: 'Hall Hire' },
+      ],
+    });
+  });
+
   it('is read-only for a committee member', async () => {
     signIn('committee_member');
     renderTab();

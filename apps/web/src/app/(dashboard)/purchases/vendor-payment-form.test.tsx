@@ -21,7 +21,7 @@ vi.mock('./debit-note-dialog', () => ({ DebitNoteDialog: () => null }));
 
 const mocks = vi.hoisted(() => ({ create: vi.fn() }));
 const bills = vi.hoisted(() => [
-  { id: 'b1', bill_number: 'BILL-00001', vendor_invoice_number: 'SL-1', bill_date: '2026-09-01', due_date: '2026-10-01', payee_name: null, status: 'overdue', heads: 'AMC - Lift', invoice_amount: '5000.00', remaining: '5000.00', tds_amount: '0.00' },
+  { id: 'b1', bill_number: 'BILL-00001', vendor_invoice_number: 'SL-1', bill_date: '2026-09-01', due_date: '2026-10-01', payee_name: null, status: 'overdue', heads: 'AMC - Lift', default_bank_account_id: 'cash-ledger', invoice_amount: '5000.00', remaining: '5000.00', tds_amount: '0.00' },
   { id: 'b2', bill_number: 'BILL-00002', vendor_invoice_number: 'SL-2', bill_date: '2026-09-15', due_date: '2026-10-15', payee_name: null, status: 'received', heads: 'AMC - Lift', invoice_amount: '3000.00', remaining: '3000.00', tds_amount: '0.00' },
 ]);
 
@@ -58,6 +58,11 @@ describe('Pay a vendor', () => {
   function renderForm(): void {
     render(<VendorPaymentForm mode="page" vendorId="vendor-1" onClose={vi.fn()} onSaved={vi.fn()} />);
   }
+
+  it('preselects the Bank Account of the invoice’s head when opened for it (GL-18)', () => {
+    render(<VendorPaymentForm mode="page" vendorId="vendor-1" initialBillId="b1" onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect(field('Paid from *').value).toBe('cash-ledger');
+  });
 
   it('Select All puts what remains into each Edit Amount, and Amount paid is their sum', () => {
     renderForm();

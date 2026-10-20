@@ -10,6 +10,7 @@ import { ExportStrip } from '@/components/data-table/export-strip';
 import { printableTable, toTsv, type TextColumn } from '@/components/data-table/table-text';
 import { useAccountGroups } from '@/hooks';
 import {
+  isMoneyLedger,
   useAllLedgerAccounts,
   useSaveAccountsBulk,
   type AccountBulkResult,
@@ -22,7 +23,10 @@ import { formatDate } from '@/lib/utils';
 import { ApiError, friendlyError } from '@/lib/api-error';
 import { currentRole } from '@/lib/current-role';
 import { AccountGrid } from './account-grid';
+import { IncomeGrids } from './income-grids';
 import { CHART_TABS, type ChartTab } from './chart-types';
+
+const MONEY_TYPES = ['asset'] as const;
 
 // PUT /ledger/accounts/bulk.
 const WRITE_ROLES: ReadonlySet<string> = new Set(['super_admin', 'community_admin', 'accountant']);
@@ -77,6 +81,12 @@ export function ChartTabPage({ slug }: { slug: ChartTab['slug'] }): ReactNode {
   const accountsQuery = useAllLedgerAccounts(tab.groupTypes);
   const saveMutation = useSaveAccountsBulk();
   const settingsQuery = useLedgerSettings();
+  // GL-18: the bank and cash ledgers a head's money may go through.
+  const assetsQuery = useAllLedgerAccounts(MONEY_TYPES);
+  const bankChoices = useMemo(
+    () => (assetsQuery.data ?? []).filter((account) => account.is_active !== false && isMoneyLedger(account)).map((account) => ({ id: account.id, label: account.name })),
+    [assetsQuery.data],
+  );
   const canSave = useMemo(() => WRITE_ROLES.has(currentRole() ?? ''), []);
   // Deactivated accounts have their own table (an API older than GL-14 lists them too).
   const accounts = (accountsQuery.data ?? []).filter((account) => account.is_active !== false);
@@ -121,6 +131,18 @@ export function ChartTabPage({ slug }: { slug: ChartTab['slug'] }): ReactNode {
           <Skeleton className="h-40 w-full" />
         ) : groupsQuery.isError || accountsQuery.isError ? (
           <p role="alert" className="text-sm text-destructive">The accounts could not be loaded. Reload the page to try again.</p>
+        ) : slug === 'income' ? (
+          <IncomeGrids
+            key={accountsQuery.dataUpdatedAt}
+            tab={tab}
+            groups={tabGroups(groupsQuery.data ?? [], tab, accounts)}
+            accounts={accounts}
+            bankChoices={bankChoices}
+            readOnly={!canSave}
+            isSaving={saveMutation.isPending}
+            save={save}
+            onNothingToSave={() => addToast({ title: 'No changes to save' })}
+          />
         ) : (
           <AccountGrid
             // A fresh copy of the saved list resets the grid after Save Changes.
@@ -131,6 +153,8 @@ export function ChartTabPage({ slug }: { slug: ChartTab['slug'] }): ReactNode {
             readOnly={!canSave}
             isSaving={saveMutation.isPending}
             accountingStart={settingsQuery.data?.accounting_start_date ?? null}
+            // GL-18: an expense head's bank account.
+            extras={slug === 'expense' ? { bank: { header: 'Bank Account', choices: bankChoices } } : {}}
             save={save}
             onNothingToSave={() => addToast({ title: 'No changes to save' })}
           />

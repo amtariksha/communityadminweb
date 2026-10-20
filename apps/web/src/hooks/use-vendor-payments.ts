@@ -22,6 +22,8 @@ export interface OpenBill {
   payee_name: string | null;
   status: string;
   heads: string | null;
+  // GL-18: the Bank Account its heads pay through, when they agree on one (absent on an older API).
+  default_bank_account_id?: string | null;
   invoice_amount: string;
   remaining: string;
   tds_amount: string;

@@ -8,6 +8,7 @@ import {
   type GridCellProps,
   type GridChange,
   type GridColumn,
+  type EditableGridProps,
   type GridDeactivate,
   type GridRowState,
   type GridSaveResult,
@@ -22,13 +23,25 @@ export interface AccountValues {
   opening_balance: string;
   // GL-19: the day the opening balance is posted on ('' = none).
   opening_balance_date: string;
+  // GL-18: the bank or cash ledger the head's money goes through ('' = none).
+  default_bank_account_id: string;
   // A system account (bank, cash, receivables…) keeps its code and group.
   system: boolean;
 }
 
-const blank = (): AccountValues => ({ group_id: '', code: '', name: '', opening_balance: '', opening_balance_date: '', system: false });
+const blank = (): AccountValues => ({
+  group_id: '', code: '', name: '', opening_balance: '', opening_balance_date: '', default_bank_account_id: '', system: false,
+});
 const isBlank = (values: AccountValues): boolean =>
-  !values.group_id && !values.code.trim() && !values.name.trim() && !values.opening_balance.trim() && !values.opening_balance_date;
+  !values.group_id && !values.code.trim() && !values.name.trim() && !values.opening_balance.trim() && !values.opening_balance_date &&
+  !values.default_bank_account_id;
+
+/** GL-18: the bank column of an income or expense grid, and the side its new rows are for. */
+export interface AccountGridExtras {
+  bank?: { header: string; choices: ReadonlyArray<{ id: string; label: string }> };
+  // New rows of this grid get this income scope (member / non-member grids).
+  scope?: 'member' | 'non_member';
+}
 const TWO_DECIMALS = /^\d+(\.\d{1,2})?$/;
 const SELECT_CLASS = 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-60';
 
@@ -41,6 +54,7 @@ export function savedAccountRows(accounts: readonly ChartAccount[]) {
       name: account.name,
       opening_balance: String(Number(account.opening_balance ?? 0)),
       opening_balance_date: account.opening_balance_date ?? '',
+      default_bank_account_id: account.default_bank_account_id ?? '',
       system: account.is_system,
     },
   }));
@@ -78,9 +92,11 @@ export function validateAccounts(rows: readonly GridRowState<AccountValues>[], w
 }
 
 /** The grid's added and changed rows, as PUT /ledger/accounts/bulk takes them. */
-export function toAccountRows(change: GridChange<AccountValues>, withOpening: boolean): AccountBulkRow[] {
+export function toAccountRows(change: GridChange<AccountValues>, withOpening: boolean, extras: AccountGridExtras = {}): AccountBulkRow[] {
   return change.upserts.map(({ id, values }) => ({
     ...(id ? { id } : {}),
+    ...(extras.bank ? { default_bank_account_id: values.default_bank_account_id || null } : {}),
+    ...(extras.scope && !id ? { income_scope: extras.scope } : {}),
     group_id: values.group_id,
     code: values.code.trim(),
     name: values.name.trim(),
@@ -127,7 +143,7 @@ function CodeCell({ cell }: { cell: GridCellProps<AccountValues> }): ReactNode {
   );
 }
 
-function columns(groups: readonly AccountGroup[], withOpening: boolean): GridColumn<AccountValues>[] {
+function columns(groups: readonly AccountGroup[], withOpening: boolean, extras: AccountGridExtras): GridColumn<AccountValues>[] {
   const list: GridColumn<AccountValues>[] = [
     { key: 'group', header: 'Group', kind: 'custom', render: (cell) => <GroupCell cell={cell} groups={groups} /> },
     { key: 'code', header: 'GL Account No.', kind: 'custom', render: (cell) => <CodeCell cell={cell} /> },
@@ -136,6 +152,10 @@ function columns(groups: readonly AccountGroup[], withOpening: boolean): GridCol
   if (withOpening) {
     list.push({ key: 'opening', header: 'Opening Balance', kind: 'number', field: 'opening_balance', min: 0, step: 0.01, className: 'w-40' });
     list.push({ key: 'opening-date', header: 'Opening Balance Date', kind: 'custom', render: (cell) => <OpeningDateCell cell={cell} /> });
+  }
+  if (extras.bank) {
+    const options = extras.bank.choices.map((choice) => ({ value: choice.id, label: choice.label }));
+    list.push({ key: 'bank', header: extras.bank.header, kind: 'select', field: 'default_bank_account_id', options, placeholder: 'None' });
   }
   return list;
 }
@@ -161,6 +181,11 @@ interface AccountGridProps {
   isSaving: boolean;
   /** GL-19: opening balance dates may not be before it. */
   accountingStart?: string | null;
+  extras?: AccountGridExtras;
+  /** Heading of the grid when it is not the tab's (the two income grids). */
+  label?: string;
+  /** For a page that saves several grids with one button (EditableGrid). */
+  shared?: Pick<EditableGridProps<AccountValues>, 'hideSave' | 'onChange' | 'errors'>;
   /** Resolves when saved; rejects with the API error otherwise. */
   save: (rows: AccountBulkRow[], deactivations: string[]) => Promise<unknown>;
   onNothingToSave: () => void;
@@ -174,13 +199,14 @@ const DEACTIVATE: GridDeactivate<AccountValues> = {
 };
 
 /** One type of the chart of accounts on the shared editable grid (GL-12, SB-08). */
-export function AccountGrid({ tab, groups, accounts, readOnly, isSaving, accountingStart = null, save, onNothingToSave }: AccountGridProps): ReactNode {
+export function AccountGrid(props: AccountGridProps): ReactNode {
+  const { tab, groups, accounts, readOnly, isSaving, accountingStart = null, extras = {}, save, onNothingToSave } = props;
   const withOpening = tab.slug === 'assets';
 
   async function onSave(change: GridChange<AccountValues>): Promise<GridSaveResult | void> {
     if (change.upserts.length === 0 && change.deactivations.length === 0) return onNothingToSave();
     try {
-      await save(toAccountRows(change, withOpening), change.deactivations.flatMap((row) => (row.id ? [row.id] : [])));
+      await save(toAccountRows(change, withOpening, extras), change.deactivations.flatMap((row) => (row.id ? [row.id] : [])));
     } catch (error) {
       // The API numbers the rows it was sent: the upserts, then the deactivations.
       return {
@@ -194,8 +220,8 @@ export function AccountGrid({ tab, groups, accounts, readOnly, isSaving, account
 
   return (
     <EditableGrid
-      label={tab.heading}
-      columns={columns(groups, withOpening)}
+      label={props.label ?? tab.heading}
+      columns={columns(groups, withOpening, extras)}
       rows={savedAccountRows(accounts)}
       blank={blank}
       isBlank={isBlank}
@@ -206,6 +232,7 @@ export function AccountGrid({ tab, groups, accounts, readOnly, isSaving, account
       isSaving={isSaving}
       emptyText="No accounts of this type yet. Add them in the blank rows."
       onSave={onSave}
+      {...props.shared}
     />
   );
 }

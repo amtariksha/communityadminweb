@@ -73,7 +73,12 @@ export function VendorPaymentForm(props: VendorPaymentFormProps): ReactNode {
   useEffect(() => {
     const bill = bills.find((b) => b.id === props.initialBillId);
     if (bill) setRows((current) => (current[bill.id] ? current : { ...current, [bill.id]: tickRow(bill, true) }));
-  }, [bills, props.initialBillId]);
+    // GL-18: the invoice's heads' Bank Account, when nothing is chosen yet.
+    const preset = bill?.default_bank_account_id;
+    if (preset && choices.paidFrom.some((choice) => choice.id === preset)) {
+      setDetails((current) => (current.bankLedgerId ? current : { ...current, bankLedgerId: preset }));
+    }
+  }, [bills, props.initialBillId, choices.paidFrom]);
 
   const issue = paymentIssue(payMode, bills, rows, details);
   const patch = (next: Partial<PaymentDetails>): void => setDetails((d) => ({ ...d, ...next }));

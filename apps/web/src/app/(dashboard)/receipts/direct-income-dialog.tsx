@@ -22,6 +22,8 @@ import { friendlyError } from '@/lib/api-error';
 import { api } from '@/lib/api';
 import { todayIST } from '@/lib/date';
 import { receiptKeys } from '@/hooks/use-receipts';
+import { ledgerKeys } from '@/hooks/use-ledger';
+import type { LedgerAccount } from '@communityos/shared';
 
 // ---------------------------------------------------------------------------
 // Direct-income receipt dialog
@@ -103,6 +105,22 @@ export function DirectIncomeDialog({
     },
   });
 
+  // GL-18: the head's Default Bank Account fills the receiving ledger
+  // when none is chosen yet.
+  async function pickIncomeAccount(accountId: string): Promise<void> {
+    setIncomeAccountId(accountId);
+    if (!accountId || bankAccountId) return;
+    try {
+      const head = await queryClient.fetchQuery({
+        queryKey: ledgerKeys.account(accountId),
+        queryFn: () => api.get<{ data: LedgerAccount & { default_bank_account_id?: string | null } }>(`/ledger/accounts/${accountId}`).then((res) => res.data),
+      });
+      if (head.default_bank_account_id) setBankAccountId((current) => current || (head.default_bank_account_id as string));
+    } catch {
+      // Without the head's details the operator picks the ledger, as before.
+    }
+  }
+
   function handleSubmit(e: FormEvent): void {
     e.preventDefault();
     if (!incomeAccountId) {
@@ -181,7 +199,7 @@ export function DirectIncomeDialog({
               <Label>Income account</Label>
               <AccountSearchSelect
                 value={incomeAccountId}
-                onChange={setIncomeAccountId}
+                onChange={pickIncomeAccount}
                 accountType={['income']}
                 placeholder="Pick income ledger (FD interest, donation…)"
               />

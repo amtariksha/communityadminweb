@@ -17,6 +17,14 @@ export interface ChartAccount extends LedgerAccount {
   deactivated_at?: string | null;
   // GL-19: the day its opening balance is posted on.
   opening_balance_date?: string | null;
+  // GL-18: its default bank or cash ledger, and (income) which invoices it is for.
+  default_bank_account_id?: string | null;
+  income_scope?: 'member' | 'non_member' | 'both' | null;
+}
+
+/** A bank or cash ledger: what a head's default bank may be (GL-18). */
+export function isMoneyLedger(account: ChartAccount): boolean {
+  return account.is_bank_account || account.code === 'cash' || account.group_name === 'Cash-in-Hand';
 }
 
 async function fetchAllAccounts(types: readonly AccountType[], inactive = false): Promise<ChartAccount[]> {
@@ -85,6 +93,8 @@ export interface AccountBulkRow {
   name: string;
   opening_balance?: number;
   opening_balance_date?: string | null;
+  default_bank_account_id?: string | null;
+  income_scope?: 'member' | 'non_member' | 'both';
 }
 
 export interface AccountBulkResult {
