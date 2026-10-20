@@ -30,6 +30,18 @@ const UNIT_COLUMNS: readonly ImportPreviewColumn[] = [
   { key: 'block', label: 'Block' },
 ];
 
+const INVOICE_COLUMNS: readonly ImportPreviewColumn[] = [
+  ...UNIT_COLUMNS,
+  { key: 'account', label: 'Account Code' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'gst_rate', label: 'GST %' },
+  { key: 'comment', label: 'Comment' },
+  { key: 'invoice_date', label: 'Invoice Date' },
+  { key: 'due_date', label: 'Due Date' },
+  { key: 'period_from', label: 'Period From' },
+  { key: 'period_to', label: 'Period To' },
+];
+
 export const MEMBER_IMPORT_MATRICES: readonly MemberImportMatrix[] = [
   {
     heading: 'Upload Opening Balances',
@@ -49,6 +61,42 @@ export const MEMBER_IMPORT_MATRICES: readonly MemberImportMatrix[] = [
           { key: 'as_of', label: 'As of' },
           { key: 'comment', label: 'Comment' },
         ],
+      },
+    ],
+  },
+  {
+    heading: 'Post Invoices in Bulk',
+    note: 'Each row is posted the way Post Invoice posts it. A wrong row stops the whole file until it is fixed.',
+    jobs: [
+      {
+        type: 'member_invoice',
+        label: 'Single-account invoices',
+        description: 'One row = one invoice of one income account (parking, fines, extras), posted at once with its GST.',
+        endpoint: INVOICE_IMPORTS_ENDPOINT,
+        columns: INVOICE_COLUMNS,
+      },
+      {
+        type: 'member_invoice_lines',
+        label: 'Multi-line invoices',
+        description: 'One row per line; the rows of one unit with the same Invoice Date make one invoice (up to 14 lines).',
+        endpoint: INVOICE_IMPORTS_ENDPOINT,
+        columns: [
+          ...UNIT_COLUMNS,
+          { key: 'account', label: 'Account Code' },
+          { key: 'quantity', label: 'Quantity' },
+          { key: 'amount', label: 'Amount' },
+          { key: 'gst_rate', label: 'GST %' },
+          { key: 'comment', label: 'Comment' },
+          { key: 'invoice_date', label: 'Invoice Date' },
+          { key: 'due_date', label: 'Due Date' },
+        ],
+      },
+      {
+        type: 'member_debit_note',
+        label: 'Debit notes',
+        description: 'One row = one debit note of one income account, on the debit note series.',
+        endpoint: INVOICE_IMPORTS_ENDPOINT,
+        columns: INVOICE_COLUMNS,
       },
     ],
   },

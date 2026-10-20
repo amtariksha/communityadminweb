@@ -21,6 +21,16 @@ describe('Member Income › Bulk Posting', () => {
     ]);
   });
 
+  it('lists the three invoice jobs under Post Invoices in Bulk', () => {
+    render(<MemberBulkPostingContent />);
+    const invoices = screen.getByRole('table', { name: 'Post Invoices in Bulk' });
+    expect(within(invoices).getAllByRole('row').slice(1).map((row) => row.querySelector('td')?.textContent)).toEqual([
+      'Single-account invoices',
+      'Multi-line invoices',
+      'Debit notes',
+    ]);
+  });
+
   it('knows each job by its import type, and opening balances are the community admin’s', () => {
     expect(memberImport('unit_opening_balance')?.roles).toEqual(['super_admin', 'community_admin']);
     expect(memberImport('nothing')).toBeUndefined();
