@@ -10,10 +10,10 @@ describe('Utility Tracker › Bulk Posting (UTIL-12)', () => {
   it('offers only the rows whose ticket has shipped, for the chosen block', () => {
     render(<BulkPostingContent />);
 
-    // Header + water, electricity, gas readings (UTIL-15 / UTIL-16) + calculated bills (UTIL-07).
-    expect(screen.getAllByRole('row')).toHaveLength(5);
+    // Header + water, electricity, gas readings (UTIL-15 / UTIL-16) + calculated bills (UTIL-07) + GSTIN / PAN (INC-60).
+    expect(screen.getAllByRole('row')).toHaveLength(6);
     expect(screen.getByText('Calculated bills to invoices')).toBeTruthy();
-    expect(screen.queryByText(/GSTIN/)).toBeNull();
+    expect(screen.getByRole('link', { name: 'Update using Excel' }).getAttribute('href')).toBe('/income/members/bulk-posting/unit_billing_identity?door=excel');
     const batches = screen.getAllByRole('link', { name: 'Invoices in Batch' }).map((link) => link.getAttribute('href'));
     expect(batches).toEqual([
       '/utilities/bulk-posting/batch?meter_type=water&block=A',

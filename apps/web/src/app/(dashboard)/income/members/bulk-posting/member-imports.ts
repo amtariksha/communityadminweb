@@ -144,6 +144,24 @@ export const MEMBER_IMPORT_MATRICES: readonly MemberImportMatrix[] = [
       },
     ],
   },
+  {
+    heading: 'Update GSTIN and PAN No',
+    note: 'Units billed to a company: the name, GSTIN and PAN printed on their invoices and filed in GSTR-1 (B2B).',
+    jobs: [
+      {
+        type: 'unit_billing_identity',
+        label: 'Bill-to name, GSTIN and PAN',
+        description: 'One row per unit. A blank cell keeps what is stored; a dash (-) clears it. A wrong row is reported and the others are saved.',
+        endpoint: INVOICE_IMPORTS_ENDPOINT,
+        columns: [
+          ...UNIT_COLUMNS,
+          { key: 'bill_to_name', label: 'Bill to Name' },
+          { key: 'billing_gstin', label: 'GSTIN' },
+          { key: 'billing_pan', label: 'PAN' },
+        ],
+      },
+    ],
+  },
 ];
 
 export const MEMBER_IMPORTS: readonly MemberImport[] = MEMBER_IMPORT_MATRICES.flatMap((matrix) => matrix.jobs);

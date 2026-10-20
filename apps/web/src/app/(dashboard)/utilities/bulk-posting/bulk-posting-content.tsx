@@ -31,8 +31,8 @@ const readingsRow = (meterType: string, label: string): BulkPostingRow => ({
 /**
  * The rows whose ticket has shipped (UTIL-S7: "a row whose ticket has not
  * shipped is hidden"): readings to invoices per meter type (UTIL-15 grid,
- * UTIL-16 upload) and calculated bills to invoices (UTIL-07). The GSTIN /
- * PAN upload (INC-60) joins when it is built.
+ * UTIL-16 upload) and calculated bills to invoices (UTIL-07), and the
+ * bill-to name, GSTIN and PAN of units (INC-60, Member Income's upload).
  */
 export const BULK_POSTING_ROWS: readonly BulkPostingRow[] = [
   readingsRow('water', 'Water'),
@@ -41,6 +41,11 @@ export const BULK_POSTING_ROWS: readonly BulkPostingRow[] = [
   {
     type: 'Calculated bills to invoices',
     direct: { label: 'Invoices in Batch', href: (block) => withBlock('/utilities/bulk-posting/bills', block) },
+  },
+  {
+    type: 'Update GSTIN and PAN No',
+    direct: { label: 'Update in Batch', href: () => '/income/members/bulk-posting/unit_billing_identity?door=grid' },
+    excel: { label: 'Update using Excel', href: () => '/income/members/bulk-posting/unit_billing_identity?door=excel' },
   },
 ];
 
