@@ -61,6 +61,7 @@ import {
   BroadcastPromotional,
   BroadcastConfirm,
   BroadcastRecipients,
+  mayIncludeManagers,
   recipientAudience,
   SMS_CHANNELS,
   SmsPreview,
@@ -175,6 +176,7 @@ export default function NotificationsContent(): ReactNode {
   // ANN-08 — their recipients (and Staff in standard), one block for "… of Block".
   const [composeRecipient, setComposeRecipient] = useState('all');
   const [composeBlocks, setComposeBlocks] = useState<string[]>([]);
+  const [composeManagers, setComposeManagers] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const classic = useAdminLayout() === 'classic';
   const channelsQuery = useNotificationChannels();
@@ -185,7 +187,8 @@ export default function NotificationsContent(): ReactNode {
   const allBlocks = blockMaster.data?.data?.map((block) => block.name) ?? legacyBlocks.data ?? [];
   const { audience: composeAudience, byBlock } = recipientAudience(composeRecipient);
   const isSms = SMS_CHANNELS.has(composeChannel);
-  const audienceCount = useAudienceCount(composeAudience, composeBlocks, confirmOpen);
+  const withManagers = composeManagers && mayIncludeManagers(composeRecipient);
+  const audienceCount = useAudienceCount(composeAudience, composeBlocks, confirmOpen, withManagers);
 
   // The dashboard's send-now tiles open the composer with a channel chosen
   // (`?compose=1&channel=sms_general|push`, ANN-09).
@@ -230,6 +233,7 @@ export default function NotificationsContent(): ReactNode {
     setComposeChannel('push');
     setComposeRecipient('all');
     setComposeBlocks([]);
+    setComposeManagers(false);
     setComposeCategory('');
     setComposeUrgent(false);
     setComposePromotional(false);
@@ -270,6 +274,7 @@ export default function NotificationsContent(): ReactNode {
         channel: composeChannel,
         target_audience: composeAudience,
         ...(byBlock ? { target_blocks: composeBlocks } : {}),
+        ...(withManagers ? { include_managers: true } : {}),
         category: composeCategory || null,
         urgency: composeUrgent ? 'urgent' : 'normal',
         // Sent only when ticked, so an API before UNIT-37 sees the same request.
@@ -439,9 +444,11 @@ export default function NotificationsContent(): ReactNode {
                   blocks={composeBlocks}
                   allBlocks={allBlocks}
                   classic={classic}
+                  includeManagers={composeManagers}
                   onChange={(patch) => {
                     if (patch.recipient !== undefined) setComposeRecipient(patch.recipient);
                     if (patch.blocks !== undefined) setComposeBlocks(patch.blocks);
+                    if (patch.includeManagers !== undefined) setComposeManagers(patch.includeManagers);
                     setStagedTemplateId(null);
                   }}
                 />

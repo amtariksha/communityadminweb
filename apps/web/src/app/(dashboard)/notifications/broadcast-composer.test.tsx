@@ -136,4 +136,21 @@ describe('Broadcast composer', () => {
     expect(screen.getByText('No one matches these recipients.')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('sends Include Managers with a block broadcast, and offers no such box for committee members (UNIT-30)', async () => {
+    render(<NotificationsContent />);
+
+    fireEvent.click(screen.getByLabelText('All Committee Members'));
+    expect(screen.queryByLabelText(/Include Managers/)).toBeNull();
+    fireEvent.click(screen.getByLabelText('All Owners and Tenants of Block …'));
+    fireEvent.change(screen.getByLabelText('Block'), { target: { value: 'A' } });
+    fireEvent.click(screen.getByLabelText(/Include Managers/));
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Water' } });
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'No water 10 to 12.' } });
+    fireEvent.click(screen.getByRole('button', { name: /Send Notification/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await vi.waitFor(() => expect(state.send).toHaveBeenCalled());
+    expect(state.create.mock.calls[0][0]).toMatchObject({ target_blocks: ['A'], include_managers: true });
+  });
 });

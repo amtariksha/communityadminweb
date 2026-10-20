@@ -76,6 +76,8 @@ interface CreateTemplateInput {
   target_audience: string;
   // ANN-08 — "… of Block" recipients.
   target_blocks?: string[];
+  // UNIT-30 — the targeted units' caretakers / unit managers too.
+  include_managers?: boolean;
   // Migration 076 — optional; admin can save a template without a
   // category (sends as a generic announcement-style payload).
   category?: string | null;

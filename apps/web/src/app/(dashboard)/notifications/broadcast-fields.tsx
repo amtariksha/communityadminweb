@@ -47,12 +47,20 @@ export function recipientAudience(recipient: string): { audience: string; byBloc
   return { audience: choice.audience, byBlock: choice.byBlock };
 }
 
+/** UNIT-30 — committee and staff broadcasts name no unit, so they have no unit managers to add. */
+export function mayIncludeManagers(recipient: string): boolean {
+  const { audience } = recipientAudience(recipient);
+  return audience !== 'committee' && audience !== 'staff';
+}
+
 export function BroadcastRecipients(props: {
   recipient: string;
   blocks: readonly string[];
   allBlocks: readonly string[];
   classic: boolean;
-  onChange: (patch: { recipient?: string; blocks?: string[] }) => void;
+  /** UNIT-30 — Include Managers; the checkbox shows when this is given. */
+  includeManagers?: boolean;
+  onChange: (patch: { recipient?: string; blocks?: string[]; includeManagers?: boolean }) => void;
 }): ReactNode {
   const { byBlock } = recipientAudience(props.recipient);
   return (
@@ -75,6 +83,12 @@ export function BroadcastRecipients(props: {
             {props.allBlocks.map((block) => <option key={block} value={block}>{block}</option>)}
           </Select>
         </div>
+      )}
+      {props.includeManagers !== undefined && mayIncludeManagers(props.recipient) && (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={props.includeManagers} onChange={(e) => props.onChange({ includeManagers: e.target.checked })} />
+          Include Managers (caretakers of these units)
+        </label>
       )}
     </fieldset>
   );

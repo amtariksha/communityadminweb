@@ -140,7 +140,8 @@ export const classicMenu: MenuNode[] = [
         tabs: [
           { id: 'units.access.committee', label: 'Management Committee', href: '/units/access-control/committee' },
           { id: 'units.access.office', label: 'Office Staff', href: '/units/access-control/office-staff' },
-          planned('units.access.caretakers', 'Care Taker / Unit Manager', 'UNIT-30'),
+          // UNIT-30
+          { id: 'units.access.caretakers', label: 'Care Taker / Unit Manager', href: '/units/access-control/caretakers' },
         ],
       },
       { id: 'units.broadcast', label: 'Broadcast', href: '/units/broadcast', aliases: ['/notifications'] },
