@@ -73,9 +73,35 @@ describe('GatewayChargeCard', () => {
     fireEvent.click(saveButton());
 
     expect(mocks.mutate).toHaveBeenCalledWith(
-      { tenant_id: TENANT, settings: { gateway_fee_mode: 'absorbed' } },
+      { tenant_id: TENANT, settings: { gateway_fee_mode: 'absorbed', billing_gateway: { absorb_min_amount: null } } },
       expect.anything(),
     );
+  });
+
+  it('asks for the minimum only when the society pays, and saves it as billing_gateway (INC-43)', () => {
+    render(<GatewayChargeCard />);
+    expect(screen.queryByLabelText('Absorb only above amount (₹)')).toBeNull();
+
+    fireEvent.click(payerBox());
+    fireEvent.change(screen.getByLabelText('Absorb only above amount (₹)'), { target: { value: '5000' } });
+    fireEvent.click(saveButton());
+
+    expect(mocks.mutate).toHaveBeenCalledWith(
+      { tenant_id: TENANT, settings: { gateway_fee_mode: 'absorbed', billing_gateway: { absorb_min_amount: 5000 } } },
+      expect.anything(),
+    );
+  });
+
+  it('shows the saved minimum and refuses a negative one', () => {
+    mocks.settings = { gateway_fee_mode: 'absorbed', billing_gateway: { absorb_min_amount: 5000 } };
+    render(<GatewayChargeCard />);
+    const minimum = screen.getByLabelText('Absorb only above amount (₹)') as HTMLInputElement;
+    expect(minimum.value).toBe('5000');
+
+    fireEvent.change(minimum, { target: { value: '-10' } });
+
+    expect(screen.getByText('Enter an amount of 0 or more, with at most two decimals.')).toBeTruthy();
+    expect(saveButton().disabled).toBe(true);
   });
 
   it('will not save a charge above 5%', () => {

@@ -18,10 +18,19 @@ import {
   type GatewayChargeForm,
 } from './gateway-charge';
 
+function savedSentence(form: GatewayChargeForm): string {
+  if (!form.absorbed) return `Residents pay the invoice amount plus ${form.percent}%.`;
+  const minimum = form.minAmount.trim();
+  return minimum
+    ? `The society pays the gateway charge on payments of ₹${minimum} or more; smaller payments carry it.`
+    : 'The society pays the gateway charge; residents pay the invoice amount.';
+}
+
 /**
  * Settings › Online payment charges (INC-12). When a resident pays dues
  * online, the payment gateway's charge is either added to what they pay or
- * borne by the society. Applies to orders created after the change.
+ * borne by the society — on every payment, or only from a minimum amount
+ * (INC-43, `billing_gateway`). Applies to orders created after the change.
  */
 export function GatewayChargeCard(): ReactNode {
   const { addToast } = useToast();
@@ -60,9 +69,7 @@ export function GatewayChargeCard(): ReactNode {
           }
           addToast({
             title: 'Online payment charges saved',
-            description: form.absorbed
-              ? 'The society pays the gateway charge; residents pay the invoice amount.'
-              : `Residents pay the invoice amount plus ${form.percent}%.`,
+            description: savedSentence(form),
             variant: 'success',
           });
         },
@@ -99,6 +106,28 @@ export function GatewayChargeCard(): ReactNode {
           />
           Society pays the gateway charge
         </label>
+
+        {form.absorbed && (
+          <div className="max-w-xs space-y-2">
+            <Label htmlFor="gateway-absorb-min">Absorb only above amount (₹)</Label>
+            <Input
+              id="gateway-absorb-min"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="0.01"
+              value={form.minAmount}
+              onChange={(e) => setForm((prev) => ({ ...prev, minAmount: e.target.value }))}
+            />
+            {errors.minAmount ? (
+              <p className="text-xs text-destructive">{errors.minAmount}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Payments below this amount carry the charge. Blank: the society pays it on every payment.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="max-w-xs space-y-2">
           <Label htmlFor="gateway-fee-percent">Gateway charge (%)</Label>
