@@ -9,6 +9,7 @@ import { PAYER_STATEMENT_TABS, type StatementTab } from '../members/[unitId]/sta
 import { StatementScreen, useStatementState } from '../members/[unitId]/statement/statement-screen';
 import { DueTable } from '../members/[unitId]/statement/summary-tabs';
 import { NON_MEMBER_BASE } from './non-member-routes';
+import { RecurringSection } from './recurring/recurring-section';
 
 function tabLabels(statement: UnitStatement | undefined): ReadonlyArray<[StatementTab, string]> {
   const due = statement ? ` (${formatCurrency(statement.summary.current_due)})` : '';
@@ -35,13 +36,17 @@ export function PayerStatementContent({ customerId }: { customerId: string }): R
   const state = useStatementState('all', PAYER_STATEMENT_TABS);
   const query = usePayerStatement(customerId, state.effective);
   return (
-    <StatementScreen
-      party={{ kind: 'payer', id: customerId }}
-      state={state}
-      query={query}
-      labels={tabLabels(query.data)}
-      summaryTab={<PayerDueTab customerId={customerId} />}
-      closeHref={NON_MEMBER_BASE}
-    />
+    <div className="space-y-6">
+      <StatementScreen
+        party={{ kind: 'payer', id: customerId }}
+        state={state}
+        query={query}
+        labels={tabLabels(query.data)}
+        summaryTab={<PayerDueTab customerId={customerId} />}
+        closeHref={NON_MEMBER_BASE}
+      />
+      {/* INC-66 — what this payer is invoiced on a schedule. */}
+      <RecurringSection customerId={customerId} />
+    </div>
   );
 }
