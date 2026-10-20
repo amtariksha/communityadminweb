@@ -73,6 +73,8 @@ const ENTITY_TYPES = [
   { value: 'meeting_task', label: 'Meeting Task' },
   { value: 'material', label: 'Inventory Item' },
   { value: 'stock_movement', label: 'Stock Movement' },
+  { value: 'inventory_category', label: 'Inventory Category' },
+  { value: 'inventory_alert_recipients', label: 'Low-stock Alert Recipients' },
   { value: 'inventory', label: 'Procurement' },
   // Role grants, removals and expiries (Settings › Access & Roles › Role expiry).
   { value: 'user_tenant_role', label: 'Role Assignment' },

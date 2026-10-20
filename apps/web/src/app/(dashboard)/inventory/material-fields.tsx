@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { useInventoryCategories } from '@/hooks/use-inventory-setup';
 import { MATERIAL_CATEGORIES, MATERIAL_UNITS, type MaterialValues } from './material-form';
 
 type Set = (patch: Partial<MaterialValues>) => void;
@@ -36,6 +37,8 @@ interface MaterialFieldsProps {
 
 /** The item's fields (ASSET-S10, ASSET-11): name, vendor, category, unit, location, re-order level and quantity, cost. */
 export function MaterialFields({ values, set, showOpeningStock, nameLabel }: MaterialFieldsProps): ReactNode {
+  // ASSET-17: the society's active categories (sent by name, which the API matches); the fixed seven before it has them.
+  const categories = useInventoryCategories().data?.map((category) => category.name) ?? MATERIAL_CATEGORIES;
   return (
     <div className="space-y-3">
       <Field id="mat-name" label={nameLabel}>
@@ -47,7 +50,7 @@ export function MaterialFields({ values, set, showOpeningStock, nameLabel }: Mat
       <div className="grid grid-cols-2 gap-3">
         <Field id="mat-category" label="Category">
           <Select id="mat-category" value={values.category} onChange={(e) => set({ category: e.target.value })}>
-            {[...new Set([...MATERIAL_CATEGORIES, values.category])].map((c) => (
+            {[...new Set([...categories, values.category])].map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </Select>

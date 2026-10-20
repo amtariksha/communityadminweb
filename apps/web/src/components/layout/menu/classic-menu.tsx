@@ -807,7 +807,12 @@ export const classicMenu: MenuNode[] = [
         label: 'Setup',
         tabs: [
           { id: 'assets.setup.asset-categories', label: 'Setup Asset Categories', href: '/asset-inventory/setup/asset-categories', logs: ['asset_category'] },
-          planned('assets.setup.inventory-categories', 'Setup Inventory Categories', 'ASSET-17'),
+          {
+            id: 'assets.setup.inventory-categories',
+            label: 'Setup Inventory Categories',
+            href: '/asset-inventory/setup/inventory-categories',
+            logs: ['inventory_category', 'inventory_alert_recipients'],
+          },
         ],
       },
       {

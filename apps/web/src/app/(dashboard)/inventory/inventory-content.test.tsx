@@ -29,6 +29,8 @@ const mocks = vi.hoisted(() => {
   };
 });
 
+// An API without inventory categories (ASSET-17): the fixed seven are offered.
+vi.mock('@/hooks/use-inventory-setup', () => ({ useInventoryCategories: () => ({ data: undefined }) }));
 vi.mock('@/hooks', () => ({
   useMaterials: mocks.query([]),
   useLOIs: mocks.query([]),
