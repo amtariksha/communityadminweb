@@ -9,8 +9,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/components/ui/toast';
-import { fetchPresignedDownloadUrl } from '@/hooks/use-documents';
 import { useApproveFormResponse, useFormResponse, useRejectFormResponse, type FormResponseAnswer, type FormResponseDetail } from '@/hooks/use-form-responses';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import { ApiError, friendlyError } from '@/lib/api-error';
 import { isNotDeployed } from '@/lib/not-deployed';
 import { formatDate } from '@/lib/utils';
@@ -19,18 +19,14 @@ import { FormsPage } from '../../_parts/forms-page';
 const STATUS: Readonly<Record<string, string>> = { unapproved: 'Unapproved', approved: 'Approved', rejected: 'Rejected' };
 const DECISIONS: Readonly<Record<string, string>> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', not_required: 'Not required' };
 
-/** A file answer opens through a signed link: the page never holds a raw storage URL as a link. */
-async function openFile(url: string, name: string): Promise<void> {
-  const signed = await fetchPresignedDownloadUrl({ fileUrl: url, disposition: 'inline', fileName: name });
-  window.open(signed, '_blank', 'noopener,noreferrer');
-}
-
+/** A file answer opens through a signed link (the shared stored-file helper): the page never holds a raw storage URL as a link. */
 function AnswerValue({ answer }: { answer: FormResponseAnswer }): ReactNode {
+  const openFile = useOpenStoredFile();
   if (answer.file_urls) {
     return (
       <span className="flex flex-wrap gap-3">
         {answer.file_urls.map((url, index) => (
-          <button key={url} type="button" className="text-primary underline" onClick={() => void openFile(url, answer.file_names?.[index] ?? 'file')}>
+          <button key={url} type="button" className="text-primary underline" onClick={() => void openFile(url, { fileName: answer.file_names?.[index] ?? 'file' })}>
             {answer.file_names?.[index] ?? `File ${index + 1}`}
           </button>
         ))}

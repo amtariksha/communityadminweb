@@ -18,7 +18,7 @@ vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams()
 vi.mock('@/lib/layout-context', () => ({ useAdminLayout: () => 'classic' }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('@/components/show-logs', () => ({ ShowLogsButton: (): ReactNode => <button type="button">Show Logs</button> }));
-vi.mock('@/hooks/use-documents', () => ({ fetchPresignedDownloadUrl: state.sign }));
+vi.mock('@/hooks/use-stored-file', () => ({ useOpenStoredFile: () => state.sign }));
 vi.mock('@/hooks/use-form-responses', () => {
   const mutation = () => ({ mutate: vi.fn(), isPending: false });
   return {
@@ -92,14 +92,11 @@ describe('Response detail', () => {
       answers: [{ question_id: 'q1', position: 1, question_text: 'Photo', question_type: 'file_upload', value_text: null, value_number: null, value_date: null, value_options: null, file_urls: [stored], file_names: ['leak.jpg'], acknowledged: null }],
       steps: [{ level: 1, approver_name: 'Ravi Shah', decision: 'pending', decided_by_name: null, decided_at: null, comments: null }],
     };
-    const open = vi.spyOn(window, 'open').mockReturnValue(null);
     const { container } = render(<ResponseDetail id="id-FR-0003" />);
 
     expect(container.innerHTML).not.toContain(stored);
     fireEvent.click(screen.getByRole('button', { name: 'leak.jpg' }));
-    await vi.waitFor(() => expect(open).toHaveBeenCalledWith('https://signed.example.test/x', '_blank', 'noopener,noreferrer'));
-    expect(state.sign).toHaveBeenCalledWith({ fileUrl: stored, disposition: 'inline', fileName: 'leak.jpg' });
+    await vi.waitFor(() => expect(state.sign).toHaveBeenCalledWith(stored, { fileName: 'leak.jpg' }));
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
-    open.mockRestore();
   });
 });
