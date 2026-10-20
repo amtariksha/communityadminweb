@@ -48,6 +48,8 @@ export const MODULE_FEATURES: FeatureToggle[] = [
   { key: 'documents', label: 'Documents', description: 'Document vault — bylaws, NOCs, ID proofs.' },
   // RULE-01 — Community Rules & Violations.
   { key: 'violations', label: 'Rules & Violations', description: 'Rule categories, violations raised against units, warnings and penalties.' },
+  // FORM-01 — Community Forms.
+  { key: 'community_forms', label: 'Community Forms', description: 'Forms the committee builds, members answer, and approvers approve.' },
 ];
 
 /**

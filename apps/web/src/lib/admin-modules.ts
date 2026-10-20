@@ -25,7 +25,7 @@ export const ADMIN_MODULES: readonly AdminModule[] = [
   { id: 'parking_manager', label: 'Parking Manager', menuId: 'parking', routes: ['/parking'] },
   { id: 'facility_booking', label: 'Amenity & Event', menuId: 'amenity', routes: ['/amenities', '/events'] },
   { id: 'community_restrictions', label: 'Community Rules & Violations', menuId: 'rules', routes: ['/violations'] },
-  { id: 'community_forms', label: 'Community Forms', menuId: 'forms', routes: [] },
+  { id: 'community_forms', label: 'Community Forms', menuId: 'forms', routes: ['/community-forms'] },
   { id: 'issue_tracker', label: 'Projects & Meetings', menuId: 'projects', routes: ['/governance', '/meetings'] },
   { id: 'asset_tracker', label: 'Asset & Inventory', menuId: 'assets', routes: ['/assets', '/inventory', '/asset-inventory'] },
   { id: 'ad_manager', label: 'Announcement Mgr', menuId: 'announcements', routes: ['/announcements'] },
