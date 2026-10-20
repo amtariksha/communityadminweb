@@ -1,5 +1,7 @@
 'use client';
 
+import { LockPanel } from '@/components/gate-lock/lock-panel';
+import { isLocked } from '@/lib/gate-unlock';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import {
   Users,
@@ -772,6 +774,11 @@ export default function GateContent(): ReactNode {
           </div>
         </CardHeader>
         <CardContent>
+          {/* GATE-43: an admin without a guard role opens the log with a one-time code. */}
+          {visitorsQuery.isError && isLocked(visitorsQuery.error) ? (
+            <LockPanel scope="visitors" />
+          ) : (
+          <>
           <Table>
             <TableHeader>
               <TableRow>
@@ -822,6 +829,8 @@ export default function GateContent(): ReactNode {
             </div>
           )}
           {renderPager(visitorPage, visitorsQuery.data?.total, setVisitorPage)}
+          </>
+          )}
         </CardContent>
       </Card>
     );

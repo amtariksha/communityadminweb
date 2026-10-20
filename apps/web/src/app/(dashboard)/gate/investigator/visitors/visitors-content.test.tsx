@@ -32,6 +32,10 @@ vi.mock('@/hooks/use-gate', async (importOriginal) => ({
 vi.mock('@/hooks/use-gate-settings', () => ({ useGateSettings: () => mocks.useGateSettings() }));
 vi.mock('@/hooks/use-unit-blocks', () => ({ useUnitBlocks: () => mocks.useUnitBlocks() }));
 vi.mock('@/hooks/use-gate-lists', () => ({ useEntryReasons: () => mocks.useEntryReasons() }));
+vi.mock('@/hooks/use-gate-unlock', () => ({
+  useRequestUnlockCode: () => ({ mutateAsync: vi.fn() }),
+  useVerifyUnlockCode: () => ({ mutateAsync: vi.fn() }),
+}));
 
 const NOW = new Date('2026-10-19T08:00:00.000Z').getTime();
 const minutesAgo = (minutes: number) => new Date(NOW - minutes * 60_000).toISOString();
@@ -131,6 +135,7 @@ describe('Incident Investigator › Visitors', () => {
 
     expect(download).toHaveBeenCalledWith('/gate/visitors/export', {
       params: { date_from: '2026-10-19', date_to: '2026-10-19', format: 'csv' },
+      headers: {},
     });
   });
 
@@ -168,6 +173,15 @@ describe('Incident Investigator › Visitors', () => {
     fireEvent.click(within(row).getByRole('button', { name: 'View' }));
 
     expect(screen.getAllByText('Main Gate').length).toBeGreaterThan(1);
+  });
+});
+
+describe('the investigator lock (GATE-43)', () => {
+  it('shows the lock panel instead of the list when the API answers 423', () => {
+    mocks.useVisitors.mockReturnValue({ isError: true, error: { status: 423, code: 'investigator_locked' }, isLoading: false });
+    render(<VisitorsContent />);
+    expect(screen.getByRole('button', { name: 'Request Code' })).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
   });
 });
 

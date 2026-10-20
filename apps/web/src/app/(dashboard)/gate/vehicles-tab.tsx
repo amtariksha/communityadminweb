@@ -1,5 +1,7 @@
 'use client';
 
+import { LockPanel } from '@/components/gate-lock/lock-panel';
+import { isLocked } from '@/lib/gate-unlock';
 import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { AlertTriangle, Car, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -197,6 +199,11 @@ export function VehiclesTab(): ReactNode {
           </div>
         </CardHeader>
         <CardContent>
+          {/* GATE-43: the vehicle log opens for an admin with a one-time code. */}
+          {logsQuery.isError && isLocked(logsQuery.error) ? (
+            <LockPanel scope="vehicles" />
+          ) : (
+            <>
           <Table>
             <TableHeader>
               <TableRow>
@@ -216,6 +223,8 @@ export function VehiclesTab(): ReactNode {
             <div className="mt-4">
               <DataTablePager page={page} pageSize={GATE_LIST_PAGE_SIZE} total={total} pageSizeOptions={[GATE_LIST_PAGE_SIZE]} onPageChange={setPage} />
             </div>
+          )}
+            </>
           )}
         </CardContent>
       </Card>

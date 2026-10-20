@@ -53,6 +53,16 @@ describe('Guard App Settings block', () => {
     expect((screen.getByLabelText(/Guard may call the resident/) as HTMLInputElement).checked).toBe(true);
   });
 
+  it('turns the investigator lock off with the other ticks (GATE-43)', async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(<GuardAppBlock switches={{ ...SWITCHES, investigator_lock: true }} editable save={save} />);
+
+    fireEvent.click(screen.getByLabelText(/Lock the visitor and vehicle logs/));
+    await click('Save');
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ investigator_lock: false }));
+  });
+
   it('says not available yet against an older API', () => {
     render(<GuardAppBlock switches={undefined} editable save={vi.fn()} />);
     expect(screen.getByText('Guard app settings are not available yet.')).toBeTruthy();

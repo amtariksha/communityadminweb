@@ -10,6 +10,8 @@ export interface GateSwitches {
   block_visitor_photos: boolean;
   unit_checkin_alert_threshold: number | null;
   auto_checkout_hours: number | null;
+  /** GATE-43; absent from an API that predates the lock. */
+  investigator_lock?: boolean;
 }
 
 /**

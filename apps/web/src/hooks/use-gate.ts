@@ -1,5 +1,6 @@
 'use client';
 
+import { isLocked, unlockHeaders } from '@/lib/gate-unlock';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
@@ -319,14 +320,19 @@ export function useGateStats() {
   });
 }
 
+/** GATE-43: an admin's read waits for the unlock; a 423 is not retried. */
+const retryUnlessLocked = (failures: number, error: unknown): boolean => !isLocked(error) && failures < 1;
+
 export function useVisitors(filters?: VisitorFilters) {
   return useQuery({
     queryKey: gateKeys.visitorList(filters),
     queryFn: function fetchVisitors() {
       return api.get<PaginatedResponse<Visitor>>('/gate/visitors', {
         params: visitorFiltersToParams(filters),
+        headers: unlockHeaders('visitors'),
       });
     },
+    retry: retryUnlessLocked,
   });
 }
 
@@ -388,8 +394,10 @@ export function useAnprLogs(filters?: AnprLogFilters) {
     queryFn: function fetchAnprLogs() {
       return api.get<PaginatedResponse<AnprLog>>('/gate/anpr/logs', {
         params: anprFiltersToParams(filters),
+        headers: unlockHeaders('vehicles'),
       });
     },
+    retry: retryUnlessLocked,
   });
 }
 

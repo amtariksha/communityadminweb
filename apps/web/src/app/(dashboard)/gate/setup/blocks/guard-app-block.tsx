@@ -5,7 +5,7 @@ import { friendlyError } from '@/lib/api-error';
 import type { GateSwitches } from '@/hooks/use-gate-settings';
 import { BlockForm, NotAvailableYet, SetupBlock } from './setup-block';
 
-type Tick = 'capture_vehicle_details' | 'guard_may_call_resident' | 'block_visitor_photos';
+type Tick = 'capture_vehicle_details' | 'guard_may_call_resident' | 'block_visitor_photos' | 'investigator_lock';
 
 const TICKS: ReadonlyArray<{ key: Tick; label: string; hint: string }> = [
   {
@@ -22,6 +22,11 @@ const TICKS: ReadonlyArray<{ key: Tick; label: string; hint: string }> = [
     key: 'block_visitor_photos',
     label: 'Do not allow visitor photos',
     hint: 'Entry requests from the gate cannot carry a photo of the visitor.',
+  },
+  {
+    key: 'investigator_lock',
+    label: 'Lock the visitor and vehicle logs',
+    hint: 'Admins open them with a one-time code sent to their phone, and every opening is logged. Guards are never asked.',
   },
 ];
 
@@ -45,21 +50,24 @@ export function GuardAppBlock({ switches, editable, save }: GuardAppBlockProps):
 }
 
 function GuardAppForm({ switches, editable, save }: GuardAppBlockProps & { switches: GateSwitches }): ReactNode {
-  const pick = (from: GateSwitches) => ({
+  const pick = (from: GateSwitches): Record<Tick, boolean> => ({
     capture_vehicle_details: from.capture_vehicle_details,
     guard_may_call_resident: from.guard_may_call_resident,
     block_visitor_photos: from.block_visitor_photos,
+    investigator_lock: from.investigator_lock !== false,
   });
+  // An API without the lock has no such switch to save.
+  const ticks = TICKS.filter(({ key }) => key !== 'investigator_lock' || switches.investigator_lock !== undefined);
   const [values, setValues] = useState(pick(switches));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const dirty = TICKS.some(({ key }) => values[key] !== switches[key]);
+  const dirty = ticks.some(({ key }) => values[key] !== pick(switches)[key]);
 
   async function onSave(): Promise<void> {
     setSaving(true);
     setError(null);
     try {
-      await save(values);
+      await save(Object.fromEntries(ticks.map(({ key }) => [key, values[key]])));
     } catch (failure) {
       setError(friendlyError(failure));
     } finally {
@@ -69,7 +77,7 @@ function GuardAppForm({ switches, editable, save }: GuardAppBlockProps & { switc
 
   return (
     <BlockForm editable={editable} dirty={dirty} saving={saving} error={error} onSave={() => void onSave()}>
-      {TICKS.map(({ key, label, hint }) => (
+      {ticks.map(({ key, label, hint }) => (
         <label key={key} className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"

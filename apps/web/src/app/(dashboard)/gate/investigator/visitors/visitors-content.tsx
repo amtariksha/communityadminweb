@@ -1,11 +1,14 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { UnitBlockLinks } from '@/components/block-links';
 import { CountedSelect, DataTable, type DataTableColumn } from '@/components/data-table';
 import { useVisitors, visitorFiltersToParams, type Visitor, type VisitorFilters } from '@/hooks/use-gate';
 import { useGateSettings } from '@/hooks/use-gate-settings';
 import { useEntryReasons } from '@/hooks/use-gate-lists';
+import { LockPanel } from '@/components/gate-lock/lock-panel';
+import { isLocked, unlockHeaders } from '@/lib/gate-unlock';
 import {
   DayRangeFilter,
   REGISTER_PAGE_SIZES,
@@ -58,9 +61,17 @@ export function VisitorsContent(): ReactNode {
   };
   const query = useVisitors({ ...filters, page: state.page, limit: state.pageSize });
 
+  // GATE-43: an admin without a guard role opens the log with a one-time code.
+  if (query.isError && isLocked(query.error)) return <LockPanel scope="visitors" />;
+
   return (
     <div className="space-y-3">
-      <UnitBlockLinks value={state.block} onChange={state.setBlock} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <UnitBlockLinks value={state.block} onChange={state.setBlock} />
+        <Link href="/gate/investigator/access-log" className="text-sm text-primary underline">
+          View Logs
+        </Link>
+      </div>
       <DataTable<Visitor>
         title="Visitors"
         columns={COLUMNS}
@@ -104,7 +115,12 @@ export function VisitorsContent(): ReactNode {
             ) : null}
           </>
         }
-        export={{ path: '/gate/visitors/export', params: visitorFiltersToParams(filters) ?? {}, filename: 'visitors' }}
+        export={{
+          path: '/gate/visitors/export',
+          params: visitorFiltersToParams(filters) ?? {},
+          filename: 'visitors',
+          headers: unlockHeaders('visitors'),
+        }}
         loading={query.isLoading}
         error={query.isError ? query.error : undefined}
         onRetry={() => void query.refetch()}

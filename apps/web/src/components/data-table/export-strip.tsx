@@ -20,6 +20,8 @@ export interface DataTableExport {
   filename: string;
   /** Options sent as a JSON body instead (POST), e.g. a report's (REP-05). */
   body?: Record<string, unknown>;
+  /** Extra request headers, e.g. the gate log's unlock (GATE-43). */
+  headers?: Record<string, string>;
 }
 
 interface ExportStripProps {
@@ -58,7 +60,7 @@ export function ExportStrip({ config, copyText, printPage, rowCount }: ExportStr
     try {
       const blob = config.body
         ? await api.downloadPost(config.path, { ...config.body, format })
-        : await api.download(config.path, { params: { ...config.params, format } });
+        : await api.download(config.path, { params: { ...config.params, format }, headers: config.headers });
       saveBlob(blob, exportFileName(config.filename, format));
     } catch (failure) {
       setError(exportError(failure));
