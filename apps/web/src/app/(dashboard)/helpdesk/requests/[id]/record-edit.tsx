@@ -122,7 +122,13 @@ export function RecordEdit({ ticket, canEdit, isSaving, onSave }: RecordEditProp
           </Select>
         </Field>
         <PeopleFields values={values} set={set} disabled={disabled} />
-        <AssetPicker value={values.assetId} currentName={ticket.related_to_name} disabled={disabled} onChange={(assetId) => set({ assetId })} />
+        <AssetPicker
+          value={values.assetId}
+          currentName={ticket.related_to_name}
+          current={ticket.linked_asset}
+          disabled={disabled}
+          onChange={(assetId) => set({ assetId })}
+        />
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={values.urgent} disabled={disabled} onChange={(event) => set({ urgent: event.target.checked })} />

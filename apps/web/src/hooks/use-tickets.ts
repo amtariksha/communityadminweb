@@ -46,6 +46,22 @@ export interface TicketFacets {
   serviced_by?: TicketFacetOption[];
 }
 
+/** What the request page shows of its linked asset (read through GET /tickets/:id). */
+export interface LinkedAsset {
+  id: string;
+  name: string;
+  asset_code: string | null;
+  asset_type: string | null;
+  status: string | null;
+  condition: string | null;
+  location: string | null;
+  site: string | null;
+  building: string | null;
+  wing: string | null;
+  floor: string | null;
+  room: string | null;
+}
+
 export interface Ticket {
   id: string;
   tenant_id: string;
@@ -95,6 +111,8 @@ export interface Ticket {
   related_to_type?: string | null;
   related_to_id?: string | null;
   related_to_name?: string | null;
+  /** HELP-19 — the linked asset as the request read returns it (null when none); older APIs omit it. */
+  linked_asset?: LinkedAsset | null;
   // HELP-20: the raiser's rating, once given (detail only).
   survey?: { rating: number; feedback: string | null; submitted_at: string } | null;
   /** The columns the last edit changed (PATCH only). */

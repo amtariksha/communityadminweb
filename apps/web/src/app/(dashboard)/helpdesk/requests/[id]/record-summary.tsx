@@ -6,6 +6,7 @@ import { fetchPresignedDownloadUrl, type Ticket } from '@/hooks';
 import { friendlyError } from '@/lib/api-error';
 import { formatDate } from '@/lib/utils';
 import { requestAgeDays } from '../../../tickets/ticket-badges';
+import { linkedAssetLine } from './linked-asset';
 
 interface Attachment {
   url: string;
@@ -59,6 +60,7 @@ export function RecordSummary({ ticket, requestNoLabel }: { ticket: Ticket; requ
         <Fact label="Unit">{ticket.unit_number ?? '—'}</Fact>
         <Fact label="Type">{requestTypeLabel(ticket)}</Fact>
         <Fact label="Days">{requestAgeDays(ticket)}</Fact>
+        {ticket.linked_asset && <Fact label="Asset">{linkedAssetLine(ticket.linked_asset)}</Fact>}
       </dl>
       <div className="text-sm">
         <p className="font-medium">{ticket.subject}</p>

@@ -5,11 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { useAssets } from '@/hooks';
+import type { LinkedAsset } from '@/hooks/use-tickets';
+import { linkedAssetLine } from './linked-asset';
 
 interface AssetPickerProps {
   value: string;
   /** The linked asset's name as stored on the request. */
   currentName: string | null | undefined;
+  /** The linked asset as the request read returns it, for roles that cannot search the register. */
+  current?: LinkedAsset | null;
   disabled: boolean;
   onChange: (assetId: string) => void;
 }
@@ -18,9 +22,10 @@ const RESULTS = 20;
 
 /**
  * Linked asset (HELP-19): search the society's assets and pick one; blank
- * unlinks. A role that cannot read the asset register sees the name only.
+ * unlinks. A role that cannot read the asset register sees the linked
+ * asset as the request read returns it (code, name, place, status).
  */
-export function AssetPicker({ value, currentName, disabled, onChange }: AssetPickerProps): ReactNode {
+export function AssetPicker({ value, currentName, current, disabled, onChange }: AssetPickerProps): ReactNode {
   const [search, setSearch] = useState('');
   const assets = useAssets({ search: search.trim() || undefined, limit: RESULTS });
   const found = assets.data?.data ?? [];
@@ -30,7 +35,7 @@ export function AssetPicker({ value, currentName, disabled, onChange }: AssetPic
     return (
       <div className="space-y-1 text-sm">
         <span className="font-medium">Linked asset</span>
-        <p className="text-muted-foreground">{currentName ?? '—'}</p>
+        <p className="text-muted-foreground">{current ? linkedAssetLine(current) : currentName ?? '—'}</p>
       </div>
     );
   }

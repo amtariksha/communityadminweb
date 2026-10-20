@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   role: 'community_admin',
   ticket: null as unknown,
   isError: false,
+  assetsError: false,
   update: vi.fn(),
   comment: vi.fn(),
   addToast: vi.fn(),
@@ -39,7 +40,7 @@ vi.mock('@/hooks', () => ({
   }),
   useHelpdeskAssignees: () => ({ data: [{ user_id: 'admin-1', name: 'Test Admin', roles: ['community_admin'] }] }),
   useServicedByOptions: () => ({ isSuccess: true, data: [{ id: 'staff-1', name: 'Test Plumber', staff_type: 'plumber', designation: null }] }),
-  useAssets: () => ({ isError: false, data: { data: [{ id: 'asset-1', name: 'Lift 2' }] } }),
+  useAssets: () => ({ isError: mocks.assetsError, data: mocks.assetsError ? undefined : { data: [{ id: 'asset-1', name: 'Lift 2' }] } }),
   useConvertToCommunity: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUploadFileToS3: () => ({ mutateAsync: vi.fn(), isPending: false }),
   fetchPresignedDownloadUrl: vi.fn(),
@@ -84,6 +85,7 @@ beforeEach(() => {
   mocks.role = 'community_admin';
   mocks.ticket = ticket();
   mocks.isError = false;
+  mocks.assetsError = false;
   mocks.update.mockReset().mockResolvedValue({ data: {} });
   mocks.comment.mockReset().mockResolvedValue({ data: {} });
 });
@@ -171,6 +173,38 @@ describe('RequestRecord', () => {
   it('keeps the reply boxes for the desk', () => {
     renderRecord();
     expect(screen.getByLabelText('Write to Resident Communication')).toBeTruthy();
+  });
+
+  const LINKED = {
+    id: 'asset-9',
+    name: 'Booster pump 2',
+    asset_code: 'PMP-002',
+    asset_type: 'plumbing',
+    status: 'active',
+    condition: null,
+    location: 'Basement',
+    site: null,
+    building: 'Tower A',
+    wing: null,
+    floor: 'B1',
+    room: null,
+  };
+
+  it('shows the linked asset from the request read in the summary', () => {
+    mocks.ticket = ticket({ related_to_type: 'asset', related_to_id: 'asset-9', related_to_name: 'Booster pump 2', linked_asset: LINKED });
+    renderRecord();
+
+    const summary = screen.getByRole('region', { name: 'Request summary' });
+    expect(within(summary).getByText('PMP-002 Booster pump 2 · Basement, Tower A, B1 · active')).toBeTruthy();
+  });
+
+  it('gives a role that cannot search the asset register the asset fields, not only its name', () => {
+    mocks.role = 'facility_supervisor';
+    mocks.assetsError = true;
+    mocks.ticket = ticket({ related_to_type: 'asset', related_to_id: 'asset-9', related_to_name: 'Booster pump 2', linked_asset: LINKED });
+    renderRecord();
+
+    expect(screen.getAllByText('PMP-002 Booster pump 2 · Basement, Tower A, B1 · active')).toHaveLength(2);
   });
 
   it('says "Request not found" for an unknown request', () => {
