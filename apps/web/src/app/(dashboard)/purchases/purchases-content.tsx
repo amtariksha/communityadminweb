@@ -82,6 +82,7 @@ import { VendorInvoiceForm } from './vendor-invoice/vendor-invoice-form';
 import { VendorPaymentForm } from './vendor-payment/vendor-payment-form';
 import { NumberingForm } from './vendor-ledger/numbering-form';
 import { InputCreditCard } from './vendor-ledger/input-credit-card';
+import { CreditDaysCard } from './vendor-ledger/credit-days-card';
 import { PaymentRegisterContent } from './vendor-ledger/payment-register-content';
 import { VendorPayablesContent } from './vendor-ledger/vendor-payables-content';
 import { BudgetTab } from '@/app/(dashboard)/expense-tracker/budget/budget-view';
@@ -1936,6 +1937,7 @@ export default function PurchasesContent(): ReactNode {
         <div className="space-y-4">
           <NumberingForm />
           <InputCreditCard />
+          <CreditDaysCard />
         </div>
       )}
       {activeTab === 'budget' && <BudgetTab />}

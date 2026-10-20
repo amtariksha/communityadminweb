@@ -10,8 +10,14 @@ import type { InvoiceHead, TdsBasis, VendorInvoiceInput, VendorInvoiceLineInput 
 
 export const SHOWN_ROWS = 7;
 export const MAX_ROWS = 50;
-/** Due date = invoice date + this many days (requirements default; no setting yet). */
+/** Due date = invoice date + the society's vendor credit days; this many while it has set none. */
 export const DEFAULT_CREDIT_DAYS = 30;
+
+/** `settings_json.vendor_credit_days` (0 – 365), else 30 — the rule the API's invoice posting reads. */
+export function readCreditDays(settings: Record<string, unknown> | null | undefined): number {
+  const days = settings?.vendor_credit_days;
+  return typeof days === 'number' && Number.isInteger(days) && days >= 0 && days <= 365 ? days : DEFAULT_CREDIT_DAYS;
+}
 
 export interface InvoiceRow {
   head: string;

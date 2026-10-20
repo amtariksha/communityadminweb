@@ -10,13 +10,15 @@ import { useToast } from '@/components/ui/toast';
 import { useTdsConfig, useVendor, useVendors } from '@/hooks';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useBillPreview, useCreateVendorInvoice, useInvoiceHeads, type InvoiceHead, type PostedVendorInvoice } from '@/hooks/use-vendor-bills';
+import { useTenant } from '@/hooks/use-tenants';
+import { getCurrentTenant } from '@/lib/auth';
 import { friendlyError } from '@/lib/api-error';
 import {
   addDays,
-  DEFAULT_CREDIT_DAYS,
   defaultRow,
   emptyRows,
   formIssue,
+  readCreditDays,
   toInvoiceInput,
   vendorHeaderDefaults,
   type InvoiceHeader,
@@ -42,10 +44,30 @@ export interface VendorInvoiceFormProps {
 
 const today = (): string => new Date().toISOString().slice(0, 10);
 
-function blankHeader(vendorId = ''): InvoiceHeader {
+function blankHeader(vendorId = '', creditDays: number): InvoiceHeader {
   const date = today();
-  return { vendorId, invoiceNo: '', invoiceDate: date, dueDate: addDays(date, DEFAULT_CREDIT_DAYS), tdsValue: '', tdsBasis: 'percent_excl_gst', tdsSection: '', payeeName: '' };
+  return { vendorId, invoiceNo: '', invoiceDate: date, dueDate: addDays(date, creditDays), tdsValue: '', tdsBasis: 'percent_excl_gst', tdsSection: '', payeeName: '' };
 }
+
+const DEFAULT_DAYS_APPLIED = readCreditDays(null);
+
+/**
+ * The society's vendor credit days (EXP-S8, SB-15). Once they load, a new
+ * invoice's due date follows them unless it was changed by hand.
+ */
+function useCreditDays(setHeader: (fn: (h: InvoiceHeader) => InvoiceHeader) => void): number {
+  const tenant = useTenant(getCurrentTenant() ?? '');
+  const days = readCreditDays(tenant.data?.settings_json as Record<string, unknown> | undefined);
+  const applied = useRef(DEFAULT_DAYS_APPLIED);
+  useEffect(() => {
+    if (applied.current === days) return;
+    const before = applied.current;
+    applied.current = days;
+    setHeader((h) => (h.invoiceDate && h.dueDate === addDays(h.invoiceDate, before) ? { ...h, dueDate: addDays(h.invoiceDate, days) } : h));
+  }, [days, setHeader]);
+  return days;
+}
+
 
 /** The rates a line dated `date` may carry: the society's, plus 12 and 28 before the reform date. */
 function rateOptionsFor(gst: { rate_options: number[]; pre_reform_rates: number[]; reform_date: string } | undefined, date: string): number[] {
@@ -64,7 +86,8 @@ function rateOptionsFor(gst: { rate_options: number[]; pre_reform_rates: number[
 export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
   const { mode, vendorId: fixedVendorId } = props;
   const { addToast } = useToast();
-  const [header, setHeader] = useState<InvoiceHeader>(() => blankHeader(fixedVendorId));
+  const [header, setHeader] = useState<InvoiceHeader>(() => blankHeader(fixedVendorId, DEFAULT_DAYS_APPLIED));
+  const creditDays = useCreditDays(setHeader);
   const [rows, setRows] = useState<InvoiceRow[]>(() => emptyRows());
   const [touched, setTouched] = useState(false);
   const heads = useInvoiceHeads();
@@ -128,7 +151,7 @@ export function VendorInvoiceForm(props: VendorInvoiceFormProps): ReactNode {
       onClose={props.onClose}
       dialogClassName="max-w-6xl"
     >
-      <HeaderFields header={header} onChange={patch} vendors={fixedVendorId ? null : vendorList.data?.data ?? []} />
+      <HeaderFields header={header} onChange={patch} creditDays={creditDays} vendors={fixedVendorId ? null : vendorList.data?.data ?? []} />
       <div className="flex items-center gap-2">
         <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" aria-label="Invoice file to scan" onChange={(e) => { void scan.read(e.target.files?.[0]); e.target.value = ''; }} />
         <button type="button" className="text-sm text-primary underline" disabled={scan.pending} onClick={() => fileRef.current?.click()}>
@@ -167,8 +190,13 @@ function useVendorDefaults(
   }, [vendor, heads, prefilledFor, setHeader, setRows, keepRows]);
 }
 
-function HeaderFields(props: { header: InvoiceHeader; onChange: (patch: Partial<InvoiceHeader>) => void; vendors: Vendor[] | null }): ReactNode {
-  const { header, onChange } = props;
+function HeaderFields(props: {
+  header: InvoiceHeader;
+  onChange: (patch: Partial<InvoiceHeader>) => void;
+  creditDays: number;
+  vendors: Vendor[] | null;
+}): ReactNode {
+  const { header, onChange, creditDays } = props;
   return (
     <div className="grid gap-3 sm:grid-cols-4">
       {props.vendors && (
@@ -186,7 +214,7 @@ function HeaderFields(props: { header: InvoiceHeader; onChange: (patch: Partial<
       </div>
       <div className="space-y-1">
         <Label htmlFor="inv-date">Invoice date *</Label>
-        <Input id="inv-date" type="date" value={header.invoiceDate} onChange={(e) => onChange({ invoiceDate: e.target.value, dueDate: e.target.value ? addDays(e.target.value, DEFAULT_CREDIT_DAYS) : header.dueDate })} />
+        <Input id="inv-date" type="date" value={header.invoiceDate} onChange={(e) => onChange({ invoiceDate: e.target.value, dueDate: e.target.value ? addDays(e.target.value, creditDays) : header.dueDate })} />
       </div>
       <div className="space-y-1">
         <Label htmlFor="inv-due">Due date *</Label>

@@ -8,6 +8,8 @@ export interface TenantSettings {
   // EXP-11 — input GST on vendor invoices claimed (input ledgers) or a cost
   // (expense head); unset = claimed only when the society has a GSTIN.
   gst_input_credit_claimable?: boolean | null;
+  // EXP-S8 — days from a vendor invoice's date to its due date (unset = 30).
+  vendor_credit_days?: number | null;
 
   // Admin-web arrangement for this society: today's layout or the
   // classic menu, density and wording. Absent = standard.

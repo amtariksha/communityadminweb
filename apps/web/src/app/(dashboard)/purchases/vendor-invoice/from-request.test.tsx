@@ -19,6 +19,9 @@ vi.mock('@/components/ui/select', () => ({
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('@/hooks/use-debounced-value', () => ({ useDebouncedValue: <T,>(value: T) => value }));
 vi.mock('@/hooks/use-ocr', () => ({ useOcrInvoice: () => ({ mutateAsync: vi.fn(), isPending: false }) }));
+// The society's vendor credit days (EXP-S8): none set, so 30.
+vi.mock('@/lib/auth', () => ({ getCurrentTenant: () => 'society-1' }));
+vi.mock('@/hooks/use-tenants', () => ({ useTenant: () => ({ data: { settings_json: {} } }) }));
 vi.mock('@/hooks', () => ({
   useVendor: () => ({ data: { id: 'v-1', name: 'Volt Electricals', default_expense_account_id: null } }),
   useVendors: () => ({ data: { data: [], total: 0 } }),

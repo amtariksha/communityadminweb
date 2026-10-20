@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { VendorInvoiceForm } from './vendor-invoice/vendor-invoice-form';
 
@@ -28,6 +28,11 @@ vi.mock('./vendor-invoice/from-request', () => ({
   useRequestPrefill: () => ({ ready: true, detail: null }),
   useConvertRequestToInvoice: () => ({ mutate: vi.fn(), isPending: false }),
 }));
+
+// EXP-S8 / SB-15 — the society's vendor credit days set the default due date.
+const society = vi.hoisted(() => ({ settings: {} as Record<string, unknown> }));
+vi.mock('@/lib/auth', () => ({ getCurrentTenant: () => 'society-1' }));
+vi.mock('@/hooks/use-tenants', () => ({ useTenant: () => ({ data: { settings_json: society.settings } }) }));
 
 const HEAD = 'head-amc-lift';
 const mocks = vi.hoisted(() => ({
@@ -101,6 +106,20 @@ describe('Post vendor invoice', () => {
   beforeEach(() => {
     mocks.create.mockReset();
     mocks.previewInputs.length = 0;
+    society.settings = {};
+  });
+
+  it('falls due the society’s credit days after the invoice date (30 while none is set)', () => {
+    society.settings = { vendor_credit_days: 45 };
+    renderPage();
+    type('Invoice date *', '2026-10-05');
+    expect(field('Due date *').value).toBe('2026-11-19');
+
+    society.settings = {};
+    cleanup();
+    renderPage();
+    type('Invoice date *', '2026-10-05');
+    expect(field('Due date *').value).toBe('2026-11-04');
   });
 
   it('fills line 1 with the vendor\'s head and CGST/SGST rate, and TDS with its section and rate', () => {
