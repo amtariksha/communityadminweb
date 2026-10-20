@@ -84,3 +84,43 @@ describe('ApproverGridEditor', () => {
     expect(screen.getByText('Add committee or office users in Units & Users first.')).toBeTruthy();
   });
 });
+
+describe('ApproverGridEditor — two levels, any one approver (RULE-S1)', () => {
+  it('shows Level1 and Level2 with a Clear link, and saves no minimums', () => {
+    mocks.grid = { ...GRID, request_type: 'violation' as ApproverGrid['request_type'] };
+    render(
+      <ApproverGridEditor
+        type="violation"
+        peopleHeader="Name"
+        canEdit
+        levels={[1, 2]}
+        showMinimums={false}
+        clearable
+        levelLabel={(level) => `Level${level}`}
+      />,
+    );
+
+    expect(screen.queryByText('No Access')).toBeNull();
+    expect(screen.queryByText('Level 3')).toBeNull();
+    expect(screen.queryByLabelText('Level 1 minimum approvals')).toBeNull();
+    fireEvent.click(screen.getByLabelText('Bina Rao: Level2'));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Clear' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    expect(mocks.save.mock.calls[0][0]).toEqual({
+      people: [
+        { user_id: 'u-anil', level: 0 },
+        { user_id: 'u-bina', level: 2 },
+      ],
+      levels: [],
+    });
+  });
+
+  it('lists only the people the filter keeps', () => {
+    mocks.grid = GRID;
+    render(<ApproverGridEditor type="purchase_request" peopleHeader="Approvers" canEdit showPerson={(person) => person.roles.includes('accountant')} />);
+
+    expect(screen.queryByText('Anil Kumar')).toBeNull();
+    expect(screen.getByText('Bina Rao')).toBeTruthy();
+  });
+});

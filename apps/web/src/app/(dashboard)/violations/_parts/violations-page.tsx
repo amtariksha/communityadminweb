@@ -15,6 +15,11 @@ import { cn } from '@/lib/utils';
  * the content renders.
  */
 export const STANDARD_TABS: ReadonlyArray<{ href: string; label: string }> = [
+  { href: '/violations/open/awaiting-approval', label: 'Awaiting Approval' },
+  { href: '/violations/open/warning', label: 'Warning' },
+  { href: '/violations/open/penalty', label: 'Penalty' },
+  { href: '/violations/closed', label: 'Closed Violations' },
+  { href: '/violations/setup/approvers', label: 'Approvers Set Up' },
   { href: '/violations/setup/categories', label: 'Category Set Up' },
 ];
 
@@ -46,10 +51,12 @@ export interface ViolationsPageProps {
   /** Audit record types for Show Logs in the standard header; classic takes them from the menu. */
   logs?: readonly string[];
   actions?: ReactNode;
+  /** Standard layout only: in classic the module frame has them (e.g. Create Violation). */
+  standardActions?: ReactNode;
   children: ReactNode;
 }
 
-export function ViolationsPage({ title, logs, actions, children }: ViolationsPageProps): ReactNode {
+export function ViolationsPage({ title, logs, actions, standardActions, children }: ViolationsPageProps): ReactNode {
   const layout = useAdminLayout();
   if (layout === 'classic') {
     return (
@@ -67,6 +74,7 @@ export function ViolationsPage({ title, logs, actions, children }: ViolationsPag
         actions={
           <div className="flex flex-wrap gap-2">
             {actions}
+            {standardActions}
             {logs && logs.length > 0 && <ShowLogsButton recordTypes={logs} />}
           </div>
         }

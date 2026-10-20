@@ -634,22 +634,37 @@ export const classicMenu: MenuNode[] = [
     id: 'rules',
     label: 'Community Rules & Violations',
     icon: icon(Gavel),
-    // RULE-02: the category form is a page (SB-07).
+    // RULE-02 / RULE-05. Open Violations by stage (SB-05), Create Violation
+    // on the Open pages, the category form and a violation's record as pages
+    // (SB-07). Close goes to the Open list, where the work is.
+    close: '/violations/open/awaiting-approval',
     forms: [
       { label: 'Create Category', path: '/violations/setup/categories/new' },
       { label: 'Edit Category', path: '/violations/setup/categories/:id' },
+      { label: 'Create Violation', path: '/violations/new' },
+      { label: 'Violation', path: '/violations/:id' },
     ],
     children: [
       {
         id: 'rules.setup',
         label: 'Rules & Violations Set Up',
         tabs: [
-          planned('rules.setup.approvers', 'Approvers Set Up', 'RULE-05'),
+          { id: 'rules.setup.approvers', label: 'Approvers Set Up', href: '/violations/setup/approvers', logs: ['violation_approvers'] },
           { id: 'rules.setup.categories', label: 'Category Set Up', href: '/violations/setup/categories', logs: ['violation_category'] },
         ],
       },
-      planned('rules.open', 'Open Violations', 'RULE-05'),
-      planned('rules.closed', 'Closed Violations', 'RULE-05'),
+      {
+        id: 'rules.open',
+        label: 'Open Violations',
+        create: { label: 'Create Violation', href: '/violations/new' },
+        tabs: [
+          { id: 'rules.open.awaiting', label: 'Awaiting Approval', href: '/violations/open/awaiting-approval', logs: ['violation'] },
+          { id: 'rules.open.warning', label: 'Warning', href: '/violations/open/warning', logs: ['violation'] },
+          { id: 'rules.open.penalty', label: 'Penalty', href: '/violations/open/penalty', logs: ['violation'] },
+        ],
+      },
+      // Their Closed list has neither Create Violation nor Show Logs.
+      { id: 'rules.closed', label: 'Closed Violations', href: '/violations/closed' },
     ],
   },
   {

@@ -56,6 +56,8 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   ['/general-ledger', '/accounts'],
   // Bank & Cash follows the Bank entry.
   ['/bank-cash', '/bank'],
+  // Community Rules & Violations: one standard entry for the module's pages (RULE-05).
+  ['/violations', '/violations/open/awaiting-approval'],
 ];
 
 /**

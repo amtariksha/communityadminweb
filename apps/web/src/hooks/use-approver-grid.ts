@@ -9,7 +9,7 @@ import { ApiError } from '@/lib/api-error';
  * side, No Access / Level 1 / 2 / 3 across, a minimum per level. `null`
  * when the API does not have the route yet (404).
  */
-export type ApproverGridType = 'purchase_request' | 'announcement' | 'move_in';
+export type ApproverGridType = 'purchase_request' | 'announcement' | 'move_in' | 'violation';
 
 export interface ApproverGridPerson {
   user_id: string;
