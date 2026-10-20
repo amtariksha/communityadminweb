@@ -4,11 +4,12 @@ import type { ReactNode } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ExportButton } from '@/components/ui/export-button';
 import { useBalanceSheet } from '@/hooks';
+import type { StatementSwitches } from '@/hooks/use-ledger';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ReportSkeleton } from './report-skeleton';
 
-export function BalanceSheetView({ asOfDate }: { asOfDate: string }): ReactNode {
-  const { data, isLoading, isError, error } = useBalanceSheet(asOfDate);
+export function BalanceSheetView({ asOfDate, switches = {} }: { asOfDate: string; switches?: StatementSwitches }): ReactNode {
+  const { data, isLoading, isError, error } = useBalanceSheet(asOfDate, switches);
 
   if (isLoading) return <ReportSkeleton />;
   if (isError) return <p className="py-8 text-center text-destructive">Failed to load: {(error as Error)?.message ?? 'Unknown error'}</p>;

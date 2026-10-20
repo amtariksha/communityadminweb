@@ -640,13 +640,26 @@ export function useTrialBalance(asOfDate: string) {
   });
 }
 
-export function useBalanceSheet(asOfDate: string) {
+/** GL-16: entries a statement may leave out; absent = the route's default. */
+export interface StatementSwitches {
+  suppressRetainedEarnings?: boolean;
+  suppressOpeningBalance?: boolean;
+}
+
+function switchParams(switches: StatementSwitches): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (switches.suppressRetainedEarnings !== undefined) params.suppress_retained_earnings = String(switches.suppressRetainedEarnings);
+  if (switches.suppressOpeningBalance !== undefined) params.suppress_opening_balance = String(switches.suppressOpeningBalance);
+  return params;
+}
+
+export function useBalanceSheet(asOfDate: string, switches: StatementSwitches = {}) {
   return useQuery({
-    queryKey: ledgerKeys.balanceSheet(asOfDate),
+    queryKey: [...ledgerKeys.balanceSheet(asOfDate), switches],
     queryFn: function fetchBalanceSheet() {
       return api
         .get<{ data: BalanceSheetReport }>('/ledger/reports/balance-sheet', {
-          params: { as_of_date: asOfDate },
+          params: { as_of_date: asOfDate, ...switchParams(switches) },
         })
         .then(function unwrap(res) {
           return res.data;
@@ -656,13 +669,13 @@ export function useBalanceSheet(asOfDate: string) {
   });
 }
 
-export function useIncomeExpenditure(startDate: string, endDate: string) {
+export function useIncomeExpenditure(startDate: string, endDate: string, switches: StatementSwitches = {}) {
   return useQuery({
-    queryKey: ledgerKeys.incomeExpenditure(startDate, endDate),
+    queryKey: [...ledgerKeys.incomeExpenditure(startDate, endDate), switches],
     queryFn: function fetchIncomeExpenditure() {
       return api
         .get<{ data: IncomeExpenditureReport }>('/ledger/reports/income-expenditure', {
-          params: { start_date: startDate, end_date: endDate },
+          params: { start_date: startDate, end_date: endDate, ...switchParams(switches) },
         })
         .then(function unwrap(res) {
           return res.data;

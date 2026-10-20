@@ -11,12 +11,12 @@ import {
 } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { ExportButton } from '@/components/ui/export-button';
-import { useIncomeExpenditure } from '@/hooks/use-ledger';
+import { useIncomeExpenditure, type StatementSwitches } from '@/hooks/use-ledger';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ReportSkeleton } from './report-skeleton';
 
-export function IncomeExpenditureView({ startDate, endDate }: { startDate: string; endDate: string }): ReactNode {
-  const { data, isLoading, isError, error } = useIncomeExpenditure(startDate, endDate);
+export function IncomeExpenditureView({ startDate, endDate, switches = {} }: { startDate: string; endDate: string; switches?: StatementSwitches }): ReactNode {
+  const { data, isLoading, isError, error } = useIncomeExpenditure(startDate, endDate, switches);
 
   if (isLoading) return <ReportSkeleton />;
   if (isError) return <p className="py-8 text-center text-destructive">Failed to load: {(error as Error)?.message ?? 'Unknown error'}</p>;

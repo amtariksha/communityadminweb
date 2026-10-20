@@ -13,7 +13,9 @@ vi.mock('@/components/ledger-reports', () => ({
   ),
   TrialBalanceView: ({ asOfDate }: { asOfDate: string }) => <p>{`TB ${asOfDate}`}</p>,
   TrialBalanceOptions: () => <p>TB options</p>,
-  BalanceSheetView: ({ asOfDate }: { asOfDate: string }) => <p>{`BS ${asOfDate}`}</p>,
+  BalanceSheetView: ({ asOfDate, switches }: { asOfDate: string; switches?: { suppressRetainedEarnings?: boolean; suppressOpeningBalance?: boolean } }) => (
+    <p>{`BS ${asOfDate} RE ${switches?.suppressRetainedEarnings} OB ${switches?.suppressOpeningBalance}`}</p>
+  ),
   GeneralLedgerView: () => <p>GL</p>,
   DefaultersView: () => <p>Defaulters</p>,
   VendorAgingView: () => <p>Vendor aging</p>,
@@ -80,5 +82,16 @@ describe('ReportsContent trial balance (GL-15)', () => {
     render(<ReportsContent />);
     expect(screen.getByText('TB options')).toBeTruthy();
     expect(screen.queryByLabelText('As of Date')).toBeNull();
+  });
+});
+
+describe('ReportsContent statement switches (GL-16)', () => {
+  it('passes the suppress switches to the balance sheet', () => {
+    mocks.report = 'balance-sheet';
+    render(<ReportsContent />);
+    expect(screen.getByText('BS 2026-10-14 RE false OB false')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Suppress Retained Earnings Transactions'));
+    fireEvent.click(screen.getByLabelText('Suppress Opening Balance'));
+    expect(screen.getByText('BS 2026-10-14 RE true OB true')).toBeTruthy();
   });
 });

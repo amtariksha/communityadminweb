@@ -117,6 +117,14 @@ export default function ReportsContent(): ReactNode {
   const dates = useReportDates();
   const { asOfDate, setAsOfDate, startDate, setStartDate, endDate, setEndDate } = dates;
   const [selectedAccountId, setSelectedAccountId] = useState('');
+  // GL-16: the statements' suppress switches (retained earnings on for the I&E, as the API does).
+  const [suppressRE, setSuppressRE] = useState<boolean | null>(null);
+  const [suppressOB, setSuppressOB] = useState(false);
+  const switches = {
+    suppressRetainedEarnings: suppressRE ?? selectedReport === 'income-expenditure',
+    suppressOpeningBalance: suppressOB,
+  };
+  const showSwitches = selectedReport === 'balance-sheet' || selectedReport === 'income-expenditure';
 
   const accountsQuery = useLedgerAccounts({ limit: 500 });
   const accounts = accountsQuery.data?.data ?? [];
@@ -133,9 +141,9 @@ export default function ReportsContent(): ReactNode {
       case 'trial-balance':
         return <TrialBalanceOptions />;
       case 'balance-sheet':
-        return <BalanceSheetView asOfDate={asOfDate} />;
+        return <BalanceSheetView asOfDate={asOfDate} switches={switches} />;
       case 'income-expenditure':
-        return <IncomeExpenditureView startDate={startDate} endDate={endDate} />;
+        return <IncomeExpenditureView startDate={startDate} endDate={endDate} switches={switches} />;
       case 'general-ledger':
         return <GeneralLedgerView accountId={selectedAccountId} startDate={startDate} endDate={endDate} />;
       case 'defaulters':
@@ -264,6 +272,18 @@ export default function ReportsContent(): ReactNode {
                         </Button>
                       </div>
                     </>
+                  )}
+                  {showSwitches && (
+                    <div className="flex flex-col gap-1 text-sm">
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={switches.suppressRetainedEarnings} onChange={(e) => setSuppressRE(e.target.checked)} />
+                        Suppress Retained Earnings Transactions
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={suppressOB} onChange={(e) => setSuppressOB(e.target.checked)} />
+                        Suppress Opening Balance
+                      </label>
+                    </div>
                   )}
                   {selectedCard.needsDateRange && (
                     <>
