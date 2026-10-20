@@ -72,6 +72,8 @@ const ENTITY_TYPES = [
   { value: 'material', label: 'Inventory Item' },
   { value: 'stock_movement', label: 'Stock Movement' },
   { value: 'inventory', label: 'Procurement' },
+  // Role grants, removals and expiries (Settings › Access & Roles › Role expiry).
+  { value: 'user_tenant_role', label: 'Role Assignment' },
 ];
 
 const ACTION_TYPES = [

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ShowLogsButton } from '@/components/show-logs';
 import { useToast } from '@/components/ui/toast';
 import {
   useRoleDelegation,
@@ -61,23 +62,23 @@ const FACILITY_GROUPS: ToggleGroup[] = [
   },
 ];
 
-// What each mode does today (auth.service getTenantRoles, SB-15). No mode
-// writes an audit entry when a role expires yet, so the pairs behave alike.
+// What each mode does (auth.service getTenantRoles decides access; the
+// hourly RoleExpiryAuditService job writes the entry once per expired role).
 const ENFORCEMENT_OPTIONS: { value: ExpiryEnforcement; label: string; desc: string }[] = [
   {
     value: 'hybrid',
     label: 'Hybrid (recommended)',
-    desc: 'Expired roles lose access.',
+    desc: 'Expired roles lose access and an audit-log entry is written on expiry.',
   },
   {
     value: 'filter_only',
     label: 'Filter only',
-    desc: 'Expired roles lose access (same as Hybrid).',
+    desc: 'Expired roles lose access. No audit entry on expiry (quiet).',
   },
   {
     value: 'log_only',
-    label: 'Log only',
-    desc: 'Expired roles keep working (same as Disabled).',
+    label: 'Log only (advisory)',
+    desc: 'Audit entry on expiry, but the role continues to work. Useful while transitioning policies.',
   },
   {
     value: 'disabled',
@@ -196,17 +197,20 @@ export function RoleDelegationCard(): ReactNode {
             (e.g. contract security) and resident agreement expiry (derived
             from the unit&apos;s lease end date).
           </p>
-          <Select
-            value={effective.expiry_enforcement}
-            onChange={(e) => setEnforcement(e.target.value as ExpiryEnforcement)}
-            className="max-w-md"
-          >
-            {ENFORCEMENT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label} — {opt.desc}
-              </option>
-            ))}
-          </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
+              value={effective.expiry_enforcement}
+              onChange={(e) => setEnforcement(e.target.value as ExpiryEnforcement)}
+              className="max-w-md"
+            >
+              {ENFORCEMENT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label} — {opt.desc}
+                </option>
+              ))}
+            </Select>
+            <ShowLogsButton recordTypes={['user_tenant_role']} action="role_expired" label="Expiry log" />
+          </div>
         </section>
 
         {/* Security Supervisor toggles */}

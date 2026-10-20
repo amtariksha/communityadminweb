@@ -11,6 +11,7 @@ import { RoleDelegationCard } from './role-delegation-card';
 const mocks = vi.hoisted(() => ({
   mutate: vi.fn(),
   addToast: vi.fn(),
+  showLogs: vi.fn(),
 }));
 
 vi.mock('@/hooks', () => ({
@@ -25,6 +26,12 @@ vi.mock('@/hooks', () => ({
   useUpdateRoleDelegation: () => ({ mutate: mocks.mutate, isPending: false }),
 }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: mocks.addToast }) }));
+vi.mock('@/components/show-logs', () => ({
+  ShowLogsButton: (props: Record<string, unknown>) => {
+    mocks.showLogs(props);
+    return null;
+  },
+}));
 
 describe('RoleDelegationCard', () => {
   beforeEach(() => {
@@ -74,17 +81,26 @@ describe('RoleDelegationCard', () => {
     expect(screen.getByText('Role expiry enforcement')).toBeTruthy();
   });
 
-  it('describes each expiry choice by what it does, promising no audit entry (SB-15)', () => {
+  // Q1 (2026-10-20): Hybrid and Log only write an audit entry when a role
+  // expires again (RoleExpiryAuditService), so their texts promise it.
+  it('describes each expiry choice by what it does, an audit entry under Hybrid and Log only', () => {
     render(<RoleDelegationCard />);
 
     const options = Array.from(document.querySelectorAll('option')).map((option) => option.textContent ?? '');
     expect(options).toEqual([
-      'Hybrid (recommended) — Expired roles lose access.',
-      'Filter only — Expired roles lose access (same as Hybrid).',
-      'Log only — Expired roles keep working (same as Disabled).',
+      'Hybrid (recommended) — Expired roles lose access and an audit-log entry is written on expiry.',
+      'Filter only — Expired roles lose access. No audit entry on expiry (quiet).',
+      'Log only (advisory) — Audit entry on expiry, but the role continues to work. Useful while transitioning policies.',
       'Disabled — Expired roles keep working; the end date is only recorded.',
     ]);
-    expect(options.join(' ')).not.toMatch(/audit/i);
+  });
+
+  it('opens the expiry entries from the expiry control', () => {
+    render(<RoleDelegationCard />);
+
+    expect(mocks.showLogs).toHaveBeenCalledWith(
+      expect.objectContaining({ recordTypes: ['user_tenant_role'], action: 'role_expired', label: 'Expiry log' }),
+    );
   });
 
   it('saves only the switch that was flipped', () => {
