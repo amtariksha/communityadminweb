@@ -641,7 +641,8 @@ export const classicMenu: MenuNode[] = [
         tabs: [
           { id: 'parking.vehicles.all', label: 'All Vehicles', href: '/parking/vehicles' },
           { id: 'parking.vehicles.awaiting', label: 'Awaiting Approval', href: '/approvals/vehicles' },
-          planned('parking.vehicles.bulk', 'Bulk Upload', 'PARK-11'),
+          // PARK-11: vehicles and slots from a sheet.
+          { id: 'parking.vehicles.bulk', label: 'Bulk Upload', href: '/parking/vehicles/bulk-upload', logs: ['import_batch'] },
         ],
       },
     ],

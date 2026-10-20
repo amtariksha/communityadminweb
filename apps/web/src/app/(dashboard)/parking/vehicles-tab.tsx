@@ -3,7 +3,8 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -192,9 +193,15 @@ export function VehiclesTab(): ReactNode {
       <CardHeader className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle>Vehicles</CardTitle>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Register Vehicle
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Register Vehicle
+            </Button>
+            {/* PARK-11 */}
+            <Link href="/parking/vehicles/bulk-upload" className={buttonVariants({ variant: 'outline' })}>
+              Bulk Upload
+            </Link>
+          </div>
         </div>
         <VehicleFiltersBar filters={filters} onChange={changeFilters} />
         <ExportStrip

@@ -3,7 +3,8 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Pencil, Plus, Search, UserMinus, UserPlus, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -146,6 +147,10 @@ export function SlotsTab(): ReactNode {
             <Button onClick={() => setEditing(null)}>
               <Plus className="mr-2 h-4 w-4" /> Add Slot
             </Button>
+            {/* PARK-11 */}
+            <Link href="/parking/vehicles/bulk-upload?upload=slots" className={buttonVariants({ variant: 'outline' })}>
+              Bulk Upload
+            </Link>
           </div>
         </div>
         <ExportStrip

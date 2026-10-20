@@ -193,6 +193,8 @@ describe('classic modules', () => {
     expect(find(menu, 'parking.vehicles')?.tabs?.map((tab) => [tab.label, tab.href])).toEqual([
       ['All Vehicles', '/parking/vehicles'],
       ['Awaiting Approval', '/approvals/vehicles'],
+      // PARK-11
+      ['Bulk Upload', '/parking/vehicles/bulk-upload'],
     ]);
     const withoutParking = visibleMenu(classicMenu, { roleAllowlist: null, enabledFeatures: ['invoices'] });
     expect(find(withoutParking, 'parking.slots')).toBeUndefined();
