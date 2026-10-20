@@ -27,13 +27,15 @@ describe('updateTenantSchema settings_json', () => {
     expect(scheduledReportsSchema.safeParse({ last_sent_period: '2026-13' }).success).toBe(false);
   });
 
-  it('keeps the billing document, numbering and gateway settings (INC-39 – INC-43)', () => {
-    const settings = {
-      billing_documents: { title_with_gst: 'TAX INVOICE', show_last_receipts: 3 },
-      billing_numbering: { member_invoice: { prefix: 'MF/', pad: 4 } },
-      billing_gateway: { absorb_min_amount: 5000 },
-    };
-    expect(updateTenantSchema.parse({ settings_json: settings })).toEqual({ settings_json: settings });
+  it('keeps the gateway setting and leaves documents and numbering to their own routes (INC-39 – INC-43)', () => {
+    const parsed = updateTenantSchema.parse({
+      settings_json: {
+        billing_documents: { title_with_gst: 'TAX INVOICE', show_last_receipts: 3 },
+        billing_numbering: { member_invoice: { prefix: 'MF/', pad: 4 } },
+        billing_gateway: { absorb_min_amount: 5000 },
+      },
+    });
+    expect(parsed).toEqual({ settings_json: { billing_gateway: { absorb_min_amount: 5000 } } });
     expect(billingNumberingSchema.safeParse({ member_invoice: { prefix: 'TOO-LONG-PREFIX', pad: 4 } }).success).toBe(false);
   });
 

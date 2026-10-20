@@ -206,8 +206,19 @@ export const classicMenu: MenuNode[] = [
           { id: 'income.setup.income-accounts', label: 'Income Accounts', href: '/income/setup/income-accounts', logs: ['ledger_account'] },
           { id: 'income.setup.utility-invoicing', label: 'Utility Invoicing', href: '/income/setup/utility-invoicing', logs: ['tenant_settings'] },
           { id: 'income.setup.payment-gateway', label: 'Payment Gateway', href: '/income/setup/payment-gateway', logs: ['tenant_settings'] },
-          { id: 'income.setup.customize-invoice', label: 'Customize Invoice', href: '/income/setup/customize-invoice', logs: ['tenant_settings'] },
-          { id: 'income.setup.other', label: 'Other', href: '/income/setup/other', logs: ['tenant_settings'] },
+          // Their documents, ranges and numbering are saved by their own routes (INC-39 – INC-42).
+          {
+            id: 'income.setup.customize-invoice',
+            label: 'Customize Invoice',
+            href: '/income/setup/customize-invoice',
+            logs: ['tenant_settings', 'billing-document', 'billing-document-range', 'billing-numbering'],
+          },
+          {
+            id: 'income.setup.other',
+            label: 'Other',
+            href: '/income/setup/other',
+            logs: ['tenant_settings', 'billing-document', 'billing-document-range', 'billing-numbering'],
+          },
           { id: 'income.setup.gst', label: 'GST', href: '/income/setup/gst', logs: ['tenant_settings'] },
           { id: 'income.setup.notifications', label: 'Notifications', href: '/income/setup/notifications', logs: ['tenant_settings'] },
           { id: 'income.setup.defaulters', label: 'Defaulters', href: '/income/setup/defaulters', logs: ['tenant_settings'] },

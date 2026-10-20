@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { billingDocumentsSchema, billingGatewaySchema, billingNumberingSchema } from './billing-documents';
+import { billingGatewaySchema } from './billing-documents';
 
 /**
  * The monthly report digest (REP-01). Mirrors communityos
@@ -65,10 +65,9 @@ const tenantSettingsSchema = z.object({
   announcements: announcementSettingsSchema.optional(),
   move_in: moveInSettingsSchema.optional(),
   violations: violationSettingsSchema.optional(),
-  // INC-39 / INC-42 — document look; written by PUT /billing-documents/settings.
-  billing_documents: billingDocumentsSchema.optional(),
-  // INC-41 — prefixes and padding per series; written by PUT /billing-numbering.
-  billing_numbering: billingNumberingSchema.optional(),
+  // INC-39 / INC-41 / INC-42 — billing_documents and billing_numbering are
+  // not declared: they are written only through PUT /billing-documents/settings
+  // and PUT /billing-numbering (HTML sanitiser, prefix checks), as in the API.
   // INC-43 — absorb the gateway charge only above an amount; read by PaymentService.
   billing_gateway: billingGatewaySchema.optional(),
 });
