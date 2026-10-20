@@ -6,6 +6,7 @@ import { type ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAmenities } from '@/hooks';
 import { AmenityForm } from '../../components/amenity-form';
+import { AmenityExtras } from '../../components/amenity-extras';
 
 const SETUP = '/amenities/setup';
 
@@ -26,5 +27,10 @@ export default function Page(): ReactNode {
       </p>
     );
   }
-  return <AmenityForm key={amenity.id} mode="page" amenity={amenity} onClose={() => router.push(SETUP)} onSaved={() => router.push(SETUP)} />;
+  return (
+    <div className="space-y-6">
+      <AmenityForm key={amenity.id} mode="page" amenity={amenity} onClose={() => router.push(SETUP)} onSaved={() => router.push(SETUP)} />
+      <AmenityExtras amenity={amenity} />
+    </div>
+  );
 }

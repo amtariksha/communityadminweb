@@ -44,15 +44,16 @@ export interface Amenity {
   updated_at: string;
 }
 
+/** A slot of the amenity on a day (GET /amenities/:id/slots?date=). */
 export interface AmenitySlot {
-  id: string;
-  amenity_id: string;
-  date: string;
+  /** AMEN-20 — id, name and cost; absent on an older API. */
+  id?: string;
+  name?: string | null;
+  /** Decimal string; null = the amenity's rate. */
+  cost?: string | null;
   start_time: string;
   end_time: string;
   is_available: boolean;
-  booked_by: string | null;
-  booking_id: string | null;
 }
 
 // Backend BookingRow (amenity.service.ts:46) returns the raw
@@ -157,6 +158,8 @@ interface CreateBookingInput {
   /** AMEN-22 — the last day of a multi-day booking; the booker accepted the terms. */
   end_date?: string;
   accept_terms?: boolean;
+  /** AMEN-20 — the slot booked (its times are the booking's). */
+  slot_id?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -263,16 +266,20 @@ export interface QuoteRequest {
   endTime: string;
   date?: string;
   endDate?: string;
+  /** AMEN-20 — a slot is charged its own cost. */
+  slotId?: string;
 }
 
 function quoteParams(request: QuoteRequest): Record<string, string> {
   const params: Record<string, string> = { start_time: request.startTime, end_time: request.endTime };
   if (request.date) params.date = request.date;
   if (request.endDate) params.end_date = request.endDate;
+  if (request.slotId) params.slot_id = request.slotId;
   return params;
 }
 
 function quoteReady(request: QuoteRequest): boolean {
+  if (request.slotId) return true;
   if (!TIME_PATTERN.test(request.startTime) || !TIME_PATTERN.test(request.endTime)) return false;
   // Several days run from the first day's start to the last day's end.
   return Boolean(request.endDate && request.date && request.endDate > request.date) || request.startTime < request.endTime;

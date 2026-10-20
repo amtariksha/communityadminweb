@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
-import { useUnitMembers } from '@/hooks';
-import type { Amenity } from '@/hooks';
+import { useAmenitySlots, useUnitMembers } from '@/hooks';
+import type { Amenity, AmenitySlot } from '@/hooks';
 import { useUnitChoices } from '../../helpdesk/new/use-unit-choices';
 import { safeAmenityHtml } from '../amenity-text';
 
@@ -24,14 +24,51 @@ export interface BookingFormValues {
   /** AMEN-22 — '' = one day; the booker accepted the amenity's terms. */
   endDate: string;
   acceptTerms: boolean;
+  /** AMEN-20 — the slot picked ('' = times typed in). */
+  slotId: string;
 }
 
 export function emptyBookingForm(date: string): BookingFormValues {
   return {
     amenityId: '', unitId: '', memberId: '', bookingDate: date,
     startTime: '09:00', endTime: '10:00', purpose: '', guestsCount: '0',
-    endDate: '', acceptTerms: false,
+    endDate: '', acceptTerms: false, slotId: '',
   };
+}
+
+/** "Morning 06:00–09:00 · ₹500" */
+export function slotLabel(slot: AmenitySlot): string {
+  const times = `${slot.start_time.slice(0, 5)}–${slot.end_time.slice(0, 5)}`;
+  const cost = slot.cost != null ? ` · ${formatCurrency(Number(slot.cost))}` : '';
+  return `${slot.name ? `${slot.name} ` : ''}${times}${cost}${slot.is_available ? '' : ' (taken)'}`;
+}
+
+/**
+ * AMEN-20 — an amenity charged by the slot is booked in one of the day's
+ * slots (each at its own cost); picking one sets the times. Hidden when the
+ * amenity has no slots that day (the times are typed in, as before).
+ */
+export function BookingSlotField({ form, set, amenity }: FieldsProps & { amenity?: Amenity }): ReactNode {
+  const slotsQuery = useAmenitySlots(amenity?.pricing_type === 'per_slot' ? amenity.id : '', form.bookingDate);
+  const slots = (slotsQuery.data ?? []).filter((slot) => Boolean(slot.id));
+  if (slots.length === 0) return null;
+  const pick = (slotId: string): void => {
+    const slot = slots.find((row) => row.id === slotId);
+    set(slot ? { slotId, startTime: slot.start_time.slice(0, 5), endTime: slot.end_time.slice(0, 5) } : { slotId: '' });
+  };
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="nb-slot">Slot</Label>
+      <Select id="nb-slot" value={form.slotId} onChange={(e) => pick(e.target.value)}>
+        <option value="">Pick a slot, or type the times</option>
+        {slots.map((slot) => (
+          <option key={slot.id} value={slot.id} disabled={!slot.is_available}>
+            {slotLabel(slot)}
+          </option>
+        ))}
+      </Select>
+    </div>
+  );
 }
 
 export function AmenityField({
@@ -142,7 +179,7 @@ export function BookingWhenFields({ form, set, amenity }: FieldsProps & { amenit
       <div className="grid grid-cols-3 gap-3">
         <div className="space-y-2">
           <Label htmlFor="nb-date">Date</Label>
-          <Input id="nb-date" type="date" value={form.bookingDate} onChange={(e) => set({ bookingDate: e.target.value })} />
+          <Input id="nb-date" type="date" value={form.bookingDate} onChange={(e) => set({ bookingDate: e.target.value, slotId: '' })} />
         </div>
         {/* AMEN-22 — an amenity charged by the date may be booked for several days. */}
         {amenity?.allow_multi_day && (
@@ -153,11 +190,11 @@ export function BookingWhenFields({ form, set, amenity }: FieldsProps & { amenit
         )}
         <div className="space-y-2">
           <Label htmlFor="nb-start">Start</Label>
-          <Input id="nb-start" type="time" value={form.startTime} onChange={(e) => set({ startTime: e.target.value })} />
+          <Input id="nb-start" type="time" value={form.startTime} onChange={(e) => set({ startTime: e.target.value, slotId: '' })} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="nb-end">End</Label>
-          <Input id="nb-end" type="time" value={form.endTime} onChange={(e) => set({ endTime: e.target.value })} />
+          <Input id="nb-end" type="time" value={form.endTime} onChange={(e) => set({ endTime: e.target.value, slotId: '' })} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">

@@ -20,7 +20,8 @@ interface AmenityFormProps {
   /** Dialog only. */
   open?: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  /** Gets the amenity as saved when the API returns it. */
+  onSaved: (amenity?: Amenity) => void;
 }
 
 interface FieldsProps {
@@ -151,10 +152,11 @@ export function AmenityForm({ mode, amenity, open, onClose, onSaved }: AmenityFo
       return;
     }
     try {
-      if (amenity) await updateMutation.mutateAsync({ id: amenity.id, ...payload });
-      else await createMutation.mutateAsync(payload);
+      const saved = amenity
+        ? await updateMutation.mutateAsync({ id: amenity.id, ...payload })
+        : await createMutation.mutateAsync(payload);
       addToast({ title: editing ? 'Amenity updated' : 'Amenity created', variant: 'success' });
-      onSaved();
+      onSaved(saved?.data);
     } catch (failure) {
       addToast({ title: editing ? 'Failed to update amenity' : 'Failed to create amenity', description: friendlyError(failure), variant: 'destructive' });
     }

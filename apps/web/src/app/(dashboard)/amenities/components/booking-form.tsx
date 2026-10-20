@@ -9,6 +9,7 @@ import type { Amenity } from '@/hooks';
 import { BookingChargePreview } from './booking-charge-preview';
 import {
   AmenityField,
+  BookingSlotField,
   BookingTermsField,
   BookingWhenFields,
   emptyBookingForm,
@@ -79,6 +80,7 @@ export function bookingInput(form: BookingFormValues, amenity?: Amenity) {
     guests_count: Number.isFinite(guests) && guests >= 0 ? guests : 0,
     ...(severalDays(form) ? { end_date: form.endDate } : {}),
     ...(amenity?.terms_enabled ? { accept_terms: form.acceptTerms } : {}),
+    ...(form.slotId ? { slot_id: form.slotId } : {}),
   };
 }
 
@@ -125,13 +127,20 @@ export function BookingForm({ mode, open, onClose, onSaved, amenities, defaultDa
       savingLabel="Reserving…"
       dialogClassName="max-w-lg"
     >
-      <AmenityField amenities={amenities} value={form.amenityId} onChange={(amenityId) => set({ amenityId, endDate: '', acceptTerms: false })} />
+      <AmenityField amenities={amenities} value={form.amenityId} onChange={(amenityId) => set({ amenityId, endDate: '', acceptTerms: false, slotId: '' })} />
       <UnitMemberFields form={form} set={set} />
       <BookingWhenFields form={form} set={set} amenity={amenity} />
+      <BookingSlotField form={form} set={set} amenity={amenity} />
       <BookingTermsField form={form} set={set} amenity={amenity} />
       <BookingChargePreview
         amenityId={form.amenityId}
-        request={{ startTime: form.startTime, endTime: form.endTime, date: form.bookingDate, endDate: severalDays(form) ? form.endDate : undefined }}
+        request={{
+          startTime: form.startTime,
+          endTime: form.endTime,
+          date: form.bookingDate,
+          endDate: severalDays(form) ? form.endDate : undefined,
+          slotId: form.slotId || undefined,
+        }}
       />
     </FormFrame>
   );

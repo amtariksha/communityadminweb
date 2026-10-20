@@ -41,6 +41,7 @@ vi.mock('@/hooks', () => {
       error: null,
     }),
     useUnitMembers: () => ({ data: [{ id: 'm-1', name: 'Asha Rao', member_type: 'owner' }], isLoading: false }),
+    useAmenitySlots: () => ({ data: [], isLoading: false }),
     useCreateAmenity: mutation,
     useUpdateAmenity: mutation,
     useCancelBooking: mutation,
