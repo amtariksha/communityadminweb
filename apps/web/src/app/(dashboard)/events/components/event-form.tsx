@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
-import { useCreateEvent, useUpdateEvent, type EventItem } from '@/hooks';
+import { useAmenities, useCreateEvent, useUpdateEvent, type EventItem } from '@/hooks';
 import { friendlyError } from '@/lib/api-error';
 import { EventCoverField } from './event-cover-field';
 import {
   AUDIENCE_OPTIONS,
+  CLASS_TYPE_OPTIONS,
   eventFormValues,
   eventPayload,
   STATUS_OPTIONS,
@@ -43,16 +44,55 @@ function Field({ id, label, children }: { id: string; label: string; children: R
   );
 }
 
-function WhenWhereFields({ values, set }: FieldsProps): ReactNode {
+function ClassVenueFields({ values, set }: FieldsProps): ReactNode {
+  const amenities = (useAmenities().data?.data ?? []).filter((amenity) => amenity.is_active || amenity.id === values.amenityId);
+  return (
+    <>
+      <fieldset className="space-y-1.5">
+        <legend className="text-sm font-medium">Class type *</legend>
+        <div className="flex gap-4">
+          {CLASS_TYPE_OPTIONS.map((option) => (
+            <label key={option.value} className="flex items-center gap-2 text-sm">
+              <input type="radio" name="event-class-type" checked={values.classType === option.value} onChange={() => set({ classType: option.value })} />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <div className="grid grid-cols-2 gap-3">
+        <Field id="event-amenity" label="Facility">
+          <select id="event-amenity" className={SELECT_CLASS} value={values.amenityId} onChange={(e) => set({ amenityId: e.target.value })}>
+            <option value="">Not in an amenity</option>
+            {amenities.map((amenity) => (
+              <option key={amenity.id} value={amenity.id}>
+                {amenity.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        {!values.amenityId && (
+          <Field id="event-location" label="Venue / Location">
+            <Input id="event-location" placeholder="Clubhouse Main Lawn" value={values.location} maxLength={255} onChange={(e) => set({ location: e.target.value })} />
+          </Field>
+        )}
+      </div>
+      {values.amenityId && <p className="text-xs text-muted-foreground">The event takes these hours in the amenity: nobody can book it then.</p>}
+    </>
+  );
+}
+
+function WhenFields({ values, set }: FieldsProps): ReactNode {
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
-        <Field id="event-date" label="Date *">
+        <Field id="event-date" label={values.classType === 'regular' ? 'Start Date *' : 'Date *'}>
           <Input id="event-date" type="date" value={values.eventDate} onChange={(e) => set({ eventDate: e.target.value })} />
         </Field>
-        <Field id="event-location" label="Venue / Location">
-          <Input id="event-location" placeholder="Clubhouse Main Lawn" value={values.location} maxLength={255} onChange={(e) => set({ location: e.target.value })} />
-        </Field>
+        {values.classType === 'regular' && (
+          <Field id="event-end-date" label="End Date">
+            <Input id="event-end-date" type="date" min={values.eventDate} value={values.endDate} onChange={(e) => set({ endDate: e.target.value })} />
+          </Field>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Field id="start-time" label="Start Time *">
@@ -99,7 +139,8 @@ function AudienceFields({ values, set }: FieldsProps): ReactNode {
 /**
  * Add Event / Edit Event (SB-07, screen AMEN-S4): the /events dialog in the
  * standard layout, a page in classic (`/amenities/events/new`,
- * `/amenities/events/:id/edit`). The cover image is uploaded here.
+ * `/amenities/events/:id/edit`). The cover image is uploaded here; AMEN-23
+ * adds the class type, the facility it is held in and a Regular class's end date.
  */
 export function EventForm({ mode, event, open, onClose, onSaved }: EventFormProps): ReactNode {
   const { addToast } = useToast();
@@ -140,7 +181,8 @@ export function EventForm({ mode, event, open, onClose, onSaved }: EventFormProp
         <Input id="event-title" placeholder="e.g. Diwali Mela & Cultural Evening" value={values.title} maxLength={255} onChange={(e) => set({ title: e.target.value })} />
       </Field>
       <EventCoverField value={values.coverImageUrl} onChange={(coverImageUrl) => set({ coverImageUrl })} />
-      <WhenWhereFields values={values} set={set} />
+      <ClassVenueFields values={values} set={set} />
+      <WhenFields values={values} set={set} />
       <AudienceFields values={values} set={set} />
       <Field id="event-desc" label="Event Description & Instructions">
         <Textarea

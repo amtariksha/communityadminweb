@@ -17,7 +17,18 @@ export interface EventFormValues {
   audience: EventAudience;
   status: EventStatus;
   description: string;
+  /** AMEN-23 — the amenity it is held in ('' = the venue written out), class type, last day. */
+  amenityId: string;
+  classType: EventClassType;
+  endDate: string;
 }
+
+export type EventClassType = 'regular' | 'one_time';
+
+export const CLASS_TYPE_OPTIONS: ReadonlyArray<{ value: EventClassType; label: string }> = [
+  { value: 'regular', label: 'Regular Class' },
+  { value: 'one_time', label: 'One-Time Class' },
+];
 
 export const AUDIENCE_OPTIONS: ReadonlyArray<{ value: EventAudience; label: string }> = [
   { value: 'all', label: 'All Society Residents' },
@@ -40,6 +51,7 @@ export function eventFormValues(event?: EventItem | null, today = todayIST()): E
     return {
       title: '', coverImageUrl: '', eventDate: today, startTime: '18:00', endTime: '20:00',
       location: 'Community Clubhouse', capacity: '', audience: 'all', status: 'published', description: '',
+      amenityId: '', classType: 'one_time', endDate: '',
     };
   }
   return {
@@ -53,6 +65,9 @@ export function eventFormValues(event?: EventItem | null, today = todayIST()): E
     audience: event.target_audience,
     status: event.status,
     description: event.description ?? '',
+    amenityId: event.amenity_id ?? '',
+    classType: event.class_type ?? 'one_time',
+    endDate: event.end_date && event.end_date !== event.event_date ? event.end_date.slice(0, 10) : '',
   };
 }
 
@@ -66,6 +81,9 @@ export function eventPayload(values: EventFormValues): { payload?: CreateEventIn
   const capacity = values.capacity.trim() === '' ? null : Number(values.capacity);
   if (capacity !== null && (!Number.isInteger(capacity) || capacity < 1)) return { error: 'Capacity must be a whole number above 0' };
   if (values.description.length > 3000) return { error: 'Description is at most 3,000 characters' };
+  if (!values.amenityId && !values.location.trim()) return { error: 'Pick the facility, or write the venue' };
+  const regular = values.classType === 'regular';
+  if (regular && values.endDate && values.endDate < values.eventDate) return { error: 'The end date must be on or after the start date' };
   return {
     payload: {
       title,
@@ -73,7 +91,11 @@ export function eventPayload(values: EventFormValues): { payload?: CreateEventIn
       event_date: values.eventDate,
       start_time: values.startTime,
       end_time: values.endTime,
-      location: values.location.trim() || null,
+      location: values.amenityId ? null : values.location.trim() || null,
+      // AMEN-23 — held in an amenity (its hours are taken from bookings); a Regular class runs to its end date.
+      amenity_id: values.amenityId || null,
+      class_type: values.classType,
+      end_date: regular && values.endDate ? values.endDate : null,
       max_attendees: capacity,
       cover_image_url: values.coverImageUrl || null,
       target_audience: values.audience,

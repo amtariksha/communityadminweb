@@ -193,10 +193,10 @@ export function EventsContent() {
                     {event.start_time} - {event.end_time}
                   </span>
                 </div>
-                {event.location && (
+                {(event.amenity_name ?? event.location) && (
                   <div className="flex items-center gap-2">
                     <MapPin className="h-3.5 w-3.5 text-primary" />
-                    <span className="truncate">{event.location}</span>
+                    <span className="truncate">{event.amenity_name ?? event.location}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-2 pt-1 font-medium text-foreground">

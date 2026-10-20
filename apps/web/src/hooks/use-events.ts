@@ -23,6 +23,14 @@ export interface EventItem {
   created_by_name?: string | null;
   rsvp_going_count?: number;
   my_rsvp_status?: string | null;
+  /** AMEN-23 — the amenity it is held in, Regular or One-Time class, its last day (absent on an older API). */
+  amenity_id?: string | null;
+  amenity_name?: string | null;
+  class_type?: 'regular' | 'one_time' | null;
+  end_date?: string | null;
+  /** AMEN-43 — sells tickets; the account its ticket invoices credit. */
+  is_ticketed?: boolean;
+  income_account_id?: string | null;
 }
 
 export interface EventRsvp {
@@ -50,6 +58,10 @@ export interface CreateEventInput {
   cover_image_url?: string | null;
   target_audience?: 'all' | 'tower' | 'floor' | 'members_only';
   status?: 'draft' | 'published' | 'ongoing' | 'completed' | 'cancelled';
+  amenity_id?: string | null;
+  class_type?: 'regular' | 'one_time';
+  end_date?: string | null;
+  income_account_id?: string | null;
 }
 
 export interface UpdateEventInput extends Partial<CreateEventInput> {}

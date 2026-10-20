@@ -17,10 +17,10 @@ const hhmm = (value: string): string => value.slice(0, 5);
 
 const COLUMNS: DataTableColumn<EventItem>[] = [
   { key: 'event', header: 'Events', cell: (row) => row.title, className: 'font-medium' },
-  // One-day events: the start and end are the day at its two times (an end date arrives with AMEN-23).
+  // AMEN-23 — a Regular class runs to its end date; a one-day event ends on its date.
   { key: 'start', header: 'Start Date', cell: (row) => `${formatDate(row.event_date)} ${hhmm(row.start_time)}`, className: 'whitespace-nowrap' },
-  { key: 'end', header: 'End Date', cell: (row) => `${formatDate(row.event_date)} ${hhmm(row.end_time)}`, className: 'whitespace-nowrap' },
-  { key: 'venue', header: 'Venue', cell: (row) => row.location ?? '' },
+  { key: 'end', header: 'End Date', cell: (row) => `${formatDate(row.end_date ?? row.event_date)} ${hhmm(row.end_time)}`, className: 'whitespace-nowrap' },
+  { key: 'venue', header: 'Venue', cell: (row) => row.amenity_name ?? row.location ?? '' },
   { key: 'status', header: 'Status', cell: (row) => row.status.replace(/^./, (c) => c.toUpperCase()) },
 ];
 

@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: state.toast }) }));
 vi.mock('@/hooks', () => ({
+  useAmenities: () => ({ data: { data: [{ id: 'am-1', name: 'Party Hall', is_active: true }, { id: 'am-2', name: 'Old Gym', is_active: false }] } }),
   useCreateEvent: () => ({ mutateAsync: state.create, isPending: false }),
   useUpdateEvent: () => ({ mutateAsync: state.update, isPending: false }),
   useUploadFileToS3: () => ({ mutateAsync: state.upload, isPending: false }),
@@ -77,6 +78,39 @@ describe('EventForm', () => {
 
     expect(state.update).not.toHaveBeenCalled();
     expect(state.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'The end time must be after the start time' }));
+  });
+
+  it('holds a Regular class in a facility from its date to its end date (AMEN-23)', async () => {
+    render(<EventForm mode="page" onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText('Event Name *'), { target: { value: 'Morning Yoga' } });
+    fireEvent.click(screen.getByLabelText('Regular Class'));
+    expect(screen.queryByRole('option', { name: 'Old Gym' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('Facility'), { target: { value: 'am-1' } });
+    expect(screen.queryByLabelText('Venue / Location')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Start Date *'), { target: { value: '2030-11-01' } });
+    fireEvent.change(screen.getByLabelText('End Date'), { target: { value: '2030-11-30' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add Event' }));
+    });
+
+    expect(state.create).toHaveBeenCalledWith(
+      expect.objectContaining({ amenity_id: 'am-1', class_type: 'regular', event_date: '2030-11-01', end_date: '2030-11-30', location: null }),
+    );
+  });
+
+  it('sends a One-Time class on one date, at a venue written out', async () => {
+    render(<EventForm mode="page" event={{ ...EVENT, class_type: 'one_time', end_date: null }} onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    expect(screen.queryByLabelText('End Date')).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    });
+
+    expect(state.update).toHaveBeenCalledWith({
+      id: 'ev-1',
+      data: expect.objectContaining({ amenity_id: null, class_type: 'one_time', end_date: null, location: 'Clubhouse lawn' }),
+    });
   });
 
   it('refuses a file that is not a picture', async () => {
