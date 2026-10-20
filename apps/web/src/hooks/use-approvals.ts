@@ -147,10 +147,16 @@ export function useApproveRequest() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: function approveRequest(input: { id: string; comments?: string }) {
+    // MOVE-13 — `confirm_incomplete_checklist` approves a move-in although
+    // checklist items are unticked (the API answers 409 checklist_incomplete
+    // without it).
+    mutationFn: function approveRequest(input: { id: string; comments?: string; confirm_incomplete_checklist?: boolean }) {
       return api.post<{ data: ApprovalRequest }>(
         `/approvals/${input.id}/approve`,
-        { comments: input.comments },
+        {
+          comments: input.comments,
+          ...(input.confirm_incomplete_checklist ? { confirm_incomplete_checklist: true } : {}),
+        },
       );
     },
     onSuccess: function invalidate() {

@@ -2,13 +2,14 @@
 
 import { useCallback, useState, type ReactNode } from 'react';
 import { DataTable, type DataTableColumn } from '@/components/data-table';
+import { checklistCount } from '@/components/move-checklist';
 import { useMoveIns, type MoveIn } from '@/hooks/use-move-ins';
 import { indiaDateTime } from '@/lib/india-time';
 import { MOVE_IN_PAGE_SIZES, NOT_AVAILABLE, memberTypeLabel } from '../shared/move-in-cells';
 import { MoveInViewDialog } from '../shared/move-in-view-dialog';
 import { DecisionDialog, type Decision } from './decision-dialog';
 
-// MOVE-S6; Checklist (n of m) joins with MOVE-13.
+// MOVE-S6.
 const COLUMNS: DataTableColumn<MoveIn>[] = [
   { key: 'name', header: 'Name', cell: (row) => row.name },
   { key: 'phone', header: 'Phone', cell: (row) => row.phone, className: 'whitespace-nowrap' },
@@ -17,6 +18,7 @@ const COLUMNS: DataTableColumn<MoveIn>[] = [
   { key: 'type', header: 'Owner/Tenant', cell: (row) => memberTypeLabel(row) },
   { key: 'requested', header: 'Requested On', cell: (row) => indiaDateTime(row.requested_at), className: 'whitespace-nowrap' },
   { key: 'by', header: 'Requested By', cell: (row) => row.requested_by_name ?? '—' },
+  { key: 'checklist', header: 'Checklist', cell: checklistCount, className: 'whitespace-nowrap' },
 ];
 
 // MOVE-12 — only the people allowed at the row's level (named on it, or

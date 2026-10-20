@@ -3,6 +3,7 @@
 import { type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { RequestChecklistPanel, canTickChecklists } from '@/components/move-checklist';
 import { useApprovalDetail } from '@/hooks/use-approvals';
 import type { MoveIn } from '@/hooks/use-move-ins';
 import { indiaDateTime } from '@/lib/india-time';
@@ -18,7 +19,7 @@ function Field({ label, value }: { label: string; value: string | null | undefin
   );
 }
 
-/** View on a move-in: who, where, the lease dates and each approval step (MOVE-S6 / S7). */
+/** View on a move-in: who, where, the lease dates, the checklist ticks (MOVE-13) and each approval step (MOVE-S6 / S7). */
 export function MoveInViewDialog({ moveIn, onClose }: { moveIn: MoveIn | null; onClose: () => void }): ReactNode {
   const detail = useApprovalDetail(moveIn?.approval_id ?? '');
   return (
@@ -36,6 +37,9 @@ export function MoveInViewDialog({ moveIn, onClose }: { moveIn: MoveIn | null; o
               <Field label="Agreement" value={moveIn.lease_start_date ? `${formatDate(moveIn.lease_start_date)} – ${formatDate(moveIn.lease_end_date)}` : null} />
               <Field label="Requested" value={`${indiaDateTime(moveIn.requested_at)}${moveIn.requested_by_name ? ` by ${moveIn.requested_by_name}` : ''}`} />
             </dl>
+            <div className="mt-4">
+              <RequestChecklistPanel kind="onboarding" requestId={moveIn.onboarding_id} canTick={canTickChecklists()} />
+            </div>
             <h3 className="mt-4 text-sm font-semibold">Approvals</h3>
             <ol className="mt-2 space-y-1 text-sm">
               {(detail.data?.steps ?? []).map((step) => (

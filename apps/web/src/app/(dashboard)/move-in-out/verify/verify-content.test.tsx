@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MoveIn } from '@/hooks/use-move-ins';
+import { ApiError } from '@/lib/api-error';
 import { VerifyContent } from './verify-content';
 
 /**
@@ -78,6 +79,7 @@ describe('Verify Move Ins', () => {
       'Owner/Tenant',
       'Requested On',
       'Requested By',
+      'Checklist',
       'Action',
       '',
       '',
@@ -103,7 +105,30 @@ describe('Verify Move Ins', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Approve' }));
 
-    expect(mocks.approve).toHaveBeenCalledWith({ id: 'ar-1', comments: undefined }, expect.anything());
+    expect(mocks.approve).toHaveBeenCalledWith({ id: 'ar-1', comments: undefined, confirm_incomplete_checklist: false }, expect.anything());
+  });
+
+  it('warns about unticked checklist items and approves on confirmation (MOVE-13)', () => {
+    mocks.approve.mockImplementationOnce((_input: unknown, options: { onError: (error: unknown) => void }) =>
+      options.onError(new ApiError(409, { statusCode: 409, error: 'Conflict', request_id: 'r', timestamp: '', message: '1 of 3 checklist items are ticked. Confirm to go on without the rest.', code: 'checklist_incomplete' })),
+    );
+    render(<VerifyContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Approve' }));
+    expect(within(screen.getByRole('dialog')).getByRole('alert').textContent).toContain('1 of 3 checklist items');
+
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Approve anyway' }));
+    expect(mocks.approve).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'ar-1', confirm_incomplete_checklist: true }), expect.anything());
+  });
+
+  it('shows Checklist (n of m) from the server', () => {
+    mocks.moveIns.mockImplementation((filters: { level?: number }) => ({
+      data: filters.level === 1 ? { data: [{ ...MOVE_IN, checklist_done: 1, checklist_total: 3 }], total: 1 } : { data: [], total: 0 },
+      isLoading: false,
+    }));
+    render(<VerifyContent />);
+    expect(within(screen.getByRole('table', { name: 'All Move Ins - Level 1' })).getByText('1 of 3')).toBeTruthy();
   });
 
   it('shows Approve and Reject only to the people allowed at the row’s level (MOVE-12)', () => {

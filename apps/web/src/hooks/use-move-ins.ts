@@ -23,6 +23,9 @@ export interface MoveIn {
   account_created: boolean;
   // MOVE-12 — the viewer may decide the current level; absent from an older API.
   can_act?: boolean;
+  // MOVE-13 — Checklist (n of m); absent from an older API.
+  checklist_done?: number;
+  checklist_total?: number;
 }
 
 export type MoveInFilters =

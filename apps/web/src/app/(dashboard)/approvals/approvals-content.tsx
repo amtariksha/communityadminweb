@@ -50,6 +50,8 @@ import {
 } from '@/hooks';
 import type { ApprovalRequest } from '@/hooks';
 import { REQUEST_TYPE_OPTIONS, formatRequestType } from './request-types';
+import { MoveChecklist } from './move-checklist';
+import { incompleteChecklistMessage } from '@/components/move-checklist';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -138,6 +140,7 @@ export default function ApprovalsContent(): ReactNode {
   const [selectedRequestId, setSelectedRequestId] = useState('');
   const [approveComments, setApproveComments] = useState('');
   const [rejectReason, setRejectReason] = useState('');
+  const [checklistWarning, setChecklistWarning] = useState<string | null>(null);
 
   // Queries
   const approvalsQuery = useApprovalRequests({
@@ -171,6 +174,7 @@ export default function ApprovalsContent(): ReactNode {
   function handleOpenApprove(request: ApprovalRequest): void {
     setSelectedRequestId(request.id);
     setApproveComments('');
+    setChecklistWarning(null);
     setApproveOpen(true);
   }
 
@@ -189,7 +193,11 @@ export default function ApprovalsContent(): ReactNode {
     if (!selectedRequestId) return;
 
     approveMutation.mutate(
-      { id: selectedRequestId, comments: approveComments.trim() || undefined },
+      {
+        id: selectedRequestId,
+        comments: approveComments.trim() || undefined,
+        confirm_incomplete_checklist: checklistWarning !== null,
+      },
       {
         onSuccess() {
           addToast({ title: 'Request approved successfully', variant: 'success' });
@@ -198,6 +206,12 @@ export default function ApprovalsContent(): ReactNode {
           setApproveComments('');
         },
         onError(error) {
+          // MOVE-13 — unticked checklist items: show the warning, approve on confirm.
+          const warning = incompleteChecklistMessage(error);
+          if (warning) {
+            setChecklistWarning(warning);
+            return;
+          }
           addToast({
             title: 'Failed to approve request',
             description: friendlyError(error),
@@ -522,6 +536,11 @@ export default function ApprovalsContent(): ReactNode {
                 onChange={(e) => setApproveComments(e.target.value)}
               />
             </div>
+            {checklistWarning && (
+              <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">
+                {checklistWarning}
+              </p>
+            )}
           </div>
 
           <DialogFooter>
@@ -532,7 +551,7 @@ export default function ApprovalsContent(): ReactNode {
               disabled={approveMutation.isPending}
               onClick={handleApprove}
             >
-              {approveMutation.isPending ? 'Approving...' : 'Approve'}
+              {approveMutation.isPending ? 'Approving...' : checklistWarning ? 'Approve anyway' : 'Approve'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -640,6 +659,8 @@ export default function ApprovalsContent(): ReactNode {
                   </>
                 )}
               </div>
+
+              <MoveChecklist request={detail.request} />
 
               <Separator />
 

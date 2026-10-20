@@ -529,8 +529,8 @@ export const classicMenu: MenuNode[] = [
         label: 'Setup',
         tabs: [
           { id: 'move.setup.verifiers', label: 'Verifiers', href: '/move-in-out/setup/verifiers', logs: ['tenant_settings'] },
-          planned('move.setup.move-in-checklist', 'Move In CheckList', 'MOVE-13'),
-          planned('move.setup.move-out-checklist', 'Move Out CheckList', 'MOVE-13'),
+          { id: 'move.setup.move-in-checklist', label: 'Move In CheckList', href: '/move-in-out/setup/move-in-checklist', logs: ['move_checklist'] },
+          { id: 'move.setup.move-out-checklist', label: 'Move Out CheckList', href: '/move-in-out/setup/move-out-checklist', logs: ['move_checklist'] },
           planned('move.setup.move-in-fields', 'Custom Fields For Move-in', 'MOVE-14'),
           planned('move.setup.move-out-fields', 'Custom Fields For Move-out', 'MOVE-14'),
         ],
