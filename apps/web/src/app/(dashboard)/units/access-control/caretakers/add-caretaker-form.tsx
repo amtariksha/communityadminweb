@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/toast';
 import { useAddUnitManager } from '@/hooks/use-unit-managers';
 import { UNIT_PICKER_LIMIT, useUnits } from '@/hooks/use-units';
 import { friendlyError } from '@/lib/api-error';
+import { todayIST } from '@/lib/date';
 import { normalizePhone } from '@/lib/validation';
 
 export const MAX_MANAGED_UNITS = 20;
@@ -28,10 +29,6 @@ export function caretakerFormError(input: { phone: string; name: string; units: 
   if (input.units.length > MAX_MANAGED_UNITS) return 'At most 20 units.';
   if (input.validUntil && input.validUntil <= input.today) return 'Valid until must be after today.';
   return null;
-}
-
-function indiaToday(): string {
-  return new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
 }
 
 /** Add New Caretaker / Unit Manager (UNIT-S10): phone, name, 1–20 units, an optional last day. */
@@ -52,7 +49,7 @@ export function AddCaretakerForm({ open, onClose }: { open: boolean; onClose: ()
   }
 
   function save(): void {
-    const problem = caretakerFormError({ phone, name, units, validUntil, today: indiaToday() });
+    const problem = caretakerFormError({ phone, name, units, validUntil, today: todayIST() });
     if (problem) {
       setError(problem);
       return;
