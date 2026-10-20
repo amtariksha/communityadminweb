@@ -36,6 +36,8 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   ['/move-in-out/tenants', '/units/directory'],
   ['/move-in-out/deactivated', '/units/directory'],
   ['/move-in-out/residents', '/units/directory'],
+  // The NOC lists are the standard Move-Outs entry (MOVE-18).
+  ['/move-in-out/noc', '/move-in-out/noc'],
   // Move In/Out Tracker works the move-in approvals: shown with Approvals (MOVE-05).
   ['/move-in-out', '/approvals'],
   // Society Profile (PROF-10): its files are documents; the rest follows

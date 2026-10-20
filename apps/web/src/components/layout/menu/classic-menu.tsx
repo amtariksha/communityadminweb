@@ -604,7 +604,16 @@ export const classicMenu: MenuNode[] = [
           { id: 'move.tenants.none', label: 'No Agreement Filled', href: '/move-in-out/tenants/no-agreement' },
         ],
       },
-      planned('move.noc', 'NOC Initiated', 'MOVE-18'),
+      // MOVE-18: move-outs in progress by NOC state (MOVE-S11).
+      {
+        id: 'move.noc',
+        label: 'NOC Initiated',
+        tabs: [
+          { id: 'move.noc.initiated', label: 'NOC Initiated', href: '/move-in-out/noc', logs: ['tenant_exit'] },
+          { id: 'move.noc.sent', label: 'NOC Sent', href: '/move-in-out/noc/sent', logs: ['tenant_exit'] },
+          { id: 'move.noc.submitted', label: 'NOC Submitted', href: '/move-in-out/noc/submitted', logs: ['tenant_exit'] },
+        ],
+      },
       { id: 'move.deactivated', label: 'Deactivated', href: '/move-in-out/deactivated', logs: ['member'] },
     ],
   },

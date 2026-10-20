@@ -39,6 +39,7 @@ import {
   Vote,
   Bell,
   Contact,
+  DoorOpen,
   Flame,
   Store,
   Wrench,
@@ -87,6 +88,8 @@ export const standardMenu: NavGroup[] = [
     items: [
       { label: 'Units', href: '/units', icon: <Home className="h-4 w-4" />, feature: 'units' },
       { label: 'Member Directory', href: '/units/directory', icon: <Contact className="h-4 w-4" />, feature: 'units' },
+      // MOVE-16 / MOVE-18: approved move-outs wait here for their NOC and completion.
+      { label: 'Move-Outs', href: '/move-in-out/noc', icon: <DoorOpen className="h-4 w-4" />, feature: 'units' },
       { label: 'Member Categories', href: '/setup/categories', icon: <Users className="h-4 w-4" />, feature: 'units' },
       { label: 'KYC Verification', href: '/setup/kyc', icon: <ShieldCheck className="h-4 w-4" />, feature: 'units' },
       { label: 'Gate', href: '/gate', icon: <ShieldCheck className="h-4 w-4" />, feature: 'gate' },

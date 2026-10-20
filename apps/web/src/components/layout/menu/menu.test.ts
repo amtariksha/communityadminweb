@@ -206,8 +206,15 @@ describe('classic modules', () => {
       ['Approved Move Ins', '/move-in-out/approved-move-ins'],
       ['Approved Owners', '/move-in-out/owners'],
       ['Approved Tenants', '/move-in-out/tenants'],
+      // MOVE-18: NOC Initiated · NOC Sent · NOC Submitted.
+      ['NOC Initiated', '/move-in-out/noc'],
       ['Deactivated', '/move-in-out/deactivated'],
     ]);
+    expect(find(menu, 'move.noc')?.tabs?.map((tab) => tab.href)).toEqual([
+      '/move-in-out/noc', '/move-in-out/noc/sent', '/move-in-out/noc/submitted',
+    ]);
+    // The NOC lists are the standard layout's Move-Outs entry too.
+    expect(governingItem('/move-in-out/noc/sent')?.href).toBe('/move-in-out/noc');
     expect(find(menu, 'move.tenants')?.tabs?.map((tab) => tab.label)).toEqual([
       'Approved Tenants', 'Agreement Ending This Month', 'Agreement Ended', 'No Agreement Filled',
     ]);
