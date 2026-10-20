@@ -79,6 +79,7 @@ describe('classic modules', () => {
       'Approved Users',
       'Access Control',
       'Broadcast',
+      'Statistics',
       'De-Activated Users',
       'Pet Setup',
       'Consent Activity',

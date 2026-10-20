@@ -145,7 +145,8 @@ export const classicMenu: MenuNode[] = [
         ],
       },
       { id: 'units.broadcast', label: 'Broadcast', href: '/units/broadcast', aliases: ['/notifications'] },
-      planned('units.statistics', 'Statistics', 'UNIT-31'),
+      // UNIT-31 — app adoption and re-invites.
+      { id: 'units.statistics', label: 'Statistics', href: '/units/statistics' },
       // UNIT-18: past members; Edit opens the resident record (Re-activate).
       { id: 'units.deactivated', label: 'De-Activated Users', href: '/units/deactivated', logs: ['member'] },
       planned('units.survey', 'Survey', 'P9'),
