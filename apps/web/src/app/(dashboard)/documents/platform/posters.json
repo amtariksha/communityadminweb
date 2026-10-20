@@ -1,0 +1,52 @@
+[
+  {
+    "slug": "get-the-resident-app",
+    "title": "Get the resident app",
+    "summary": "Pay dues, approve visitors and raise requests from your phone.",
+    "steps": [
+      "Ask the society office for the app link.",
+      "Install the app and sign in with your mobile number - the one the society has for you.",
+      "Choose your society and your flat.",
+      "Turn on notifications so you hear about visitors and notices."
+    ],
+    "more": "In the app: see and pay your dues, approve visitors at the gate, raise and track requests, read notices, book amenities."
+  },
+  {
+    "slug": "moving-in",
+    "title": "Moving in? Here's how",
+    "summary": "A few steps before and on moving day.",
+    "steps": [
+      "Tell the society office your flat number and moving date.",
+      "Owners: add your tenant or family in the app, or ask the office to add them.",
+      "Tenants: share your rental agreement and ID proof with the office.",
+      "Register your vehicles so the gate knows them.",
+      "Book the lift or loading area for moving day if the society asks for it.",
+      "Sign in to the resident app once you have been added."
+    ],
+    "more": "Moving out later? Start it in the app or at the office, and clear your dues first."
+  },
+  {
+    "slug": "expecting-a-visitor",
+    "title": "Expecting a visitor?",
+    "summary": "Let the gate know before they arrive.",
+    "steps": [
+      "Pre-approve guests in the app; they get a code to show at the gate.",
+      "For a walk-in visitor, the guard asks you in the app - approve or decline.",
+      "Deliveries can be left at the gate when you are away.",
+      "Add your daily help once, so they come and go without a call."
+    ],
+    "more": "In an emergency, use the SOS button in the app or call the security desk."
+  },
+  {
+    "slug": "something-to-fix",
+    "title": "Something to fix?",
+    "summary": "Raise a request in the app instead of waiting at the office.",
+    "steps": [
+      "Open Help Desk in the app and raise a request; add a photo if it helps.",
+      "Choose the category - plumbing, electrical, lift, cleaning and more.",
+      "Track it: you are told when it is taken up and when it is done.",
+      "Rate the work once the request is closed."
+    ],
+    "more": "Common areas too: report a broken light or a leak on any floor."
+  }
+]
