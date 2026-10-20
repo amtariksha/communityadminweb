@@ -277,3 +277,10 @@ export function useAddPurchaseRequestAttachment() {
       api.post<{ data: PRDetail }>(`/purchases/requests/${id}/attachments`, file),
   );
 }
+
+/** Takes a file off a request (the row is kept on file, 224): the author on a draft, a community admin while open. */
+export function useRemovePurchaseRequestAttachment() {
+  return useRequestMutation(({ id, attachmentId }: { id: string; attachmentId: string }) =>
+    api.delete<{ data: PRDetail }>(`/purchases/requests/${id}/attachments/${attachmentId}`),
+  );
+}

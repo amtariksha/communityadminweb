@@ -21,6 +21,7 @@ import { LinesGrid } from './purchase-request/lines-grid';
 import { PurchaseRequestView } from './purchase-request/purchase-request-view';
 import { QuotationFiles } from './purchase-request/quotation-files';
 import { useQuotationFiles } from './purchase-request/use-quotation-files';
+import { useRemoveQuotation } from './purchase-request/use-remove-quotation';
 import { amountsOf, hasErrors, requestPayload, validateRequest, type RequestErrors } from './purchase-request/request-state';
 import { useRequestForm } from './purchase-request/use-request-form';
 
@@ -109,6 +110,7 @@ export function PurchaseRequestForm(props: PurchaseRequestFormProps): ReactNode 
   const form = useRequestForm(props.requestId);
   const quotations = useQuotationFiles(form.stored?.attachments.length ?? 0);
   const { save, errors, saving } = useSave(form, quotations, props.requestId, props.onSaved);
+  const removal = useRemoveQuotation(props.requestId);
   const [picking, setPicking] = useState(false);
 
   if (form.heads.data === null) {
@@ -173,6 +175,8 @@ export function PurchaseRequestForm(props: PurchaseRequestFormProps): ReactNode 
         refused={quotations.refused}
         onAdd={quotations.add}
         onRemove={quotations.remove}
+        onRemoveAttached={props.requestId ? (id) => void removal.removeAttached(id) : undefined}
+        removingId={removal.removingId}
       />
       <div className="space-y-2">
         <div className="flex items-center justify-between">

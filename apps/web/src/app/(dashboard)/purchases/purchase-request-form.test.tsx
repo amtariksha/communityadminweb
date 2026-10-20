@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApproverGrid } from '@/hooks/use-approver-grid';
 import type { PRDetail } from '@/hooks/use-purchase-requests';
+import { ApiError } from '@/lib/api-error';
 import { PurchaseRequestForm } from './purchase-request-form';
 import { checkQuotations } from './purchase-request/use-quotation-files';
 
@@ -20,9 +21,11 @@ const mocks = vi.hoisted(() => ({
   heads: undefined as unknown,
   upload: vi.fn(),
   attach: vi.fn(),
+  removeFile: vi.fn(),
+  toast: vi.fn(),
 }));
 
-vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
+vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: mocks.toast }) }));
 vi.mock('@/lib/auth', () => ({ getUser: () => ({ id: 'me' }) }));
 vi.mock('@/hooks/use-vendors', () => ({
   useVendors: () => ({
@@ -43,6 +46,7 @@ vi.mock('@/hooks/use-purchase-requests', () => ({
   useSubmitPurchaseRequest: () => ({ mutateAsync: mocks.submit, isPending: false }),
   useWithdrawPurchaseRequest: () => ({ mutate: vi.fn(), isPending: false }),
   useAddPurchaseRequestAttachment: () => ({ mutateAsync: mocks.attach }),
+  useRemovePurchaseRequestAttachment: () => ({ mutateAsync: mocks.removeFile }),
 }));
 vi.mock('@/hooks/use-documents', () => ({ useUploadFileToS3: () => ({ mutateAsync: mocks.upload }) }));
 
@@ -221,6 +225,46 @@ describe('PurchaseRequestForm', () => {
       mime_type: 'application/pdf',
       size_bytes: 4,
     });
+  });
+
+  function ownDraftWithQuotation(): void {
+    mocks.detail = {
+      purchase_request: { id: 'pr-7', pr_number: 'PR-00007', title: 'Garden hose', status: 'draft', requested_by: 'me', request_date: '2026-10-01', details_html: null, estimated_amount: '500.00', vendor_id: null },
+      lines: [],
+      legacy: false,
+      totals: { grand_total: '0.00' },
+      attachments: [{ id: 'att-1', file_key: 'tenants/t-1/documents/q.pdf', file_name: 'quote.pdf', mime_type: 'application/pdf', size_bytes: 4 }],
+      approval: null,
+    } as unknown as PRDetail;
+    render(<PurchaseRequestForm mode="page" requestId="pr-7" onClose={vi.fn()} onSaved={vi.fn()} />);
+  }
+
+  it('removes a file already on a saved draft', async () => {
+    mocks.removeFile.mockResolvedValue({});
+    ownDraftWithQuotation();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove quote.pdf' }));
+
+    await vi.waitFor(() => expect(mocks.removeFile).toHaveBeenCalledWith({ id: 'pr-7', attachmentId: 'att-1' }));
+    await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledWith({ title: 'File removed', variant: 'success' }));
+  });
+
+  it('says removing is not available yet when the API has no route', async () => {
+    mocks.removeFile.mockRejectedValue(
+      new ApiError(404, { statusCode: 404, message: 'Cannot DELETE /api/v1/purchases/requests/pr-7/attachments/att-1' } as never),
+    );
+    ownDraftWithQuotation();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove quote.pdf' }));
+
+    await vi.waitFor(() =>
+      expect(mocks.toast).toHaveBeenCalledWith({ title: 'Removing a file is not available yet', variant: 'warning' }),
+    );
+  });
+
+  it('offers no Remove for attached files on a new request', () => {
+    renderForm();
+    expect(screen.queryByRole('button', { name: /^Remove / })).toBeNull();
   });
 
   it('refuses other file types, files over 5 MB and a sixth file', () => {
