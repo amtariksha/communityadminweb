@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import { formatDate } from '@/lib/utils';
 import type { Document as SocietyDocument } from '@communityos/shared';
 import { canWriteDocuments } from '../files/file-actions';
@@ -43,19 +44,13 @@ function TableSkeleton(): ReactNode {
   );
 }
 
-function download(doc: SocietyDocument): void {
-  const link = document.createElement('a');
-  link.href = doc.file_url;
-  link.download = doc.title;
-  link.target = '_blank';
-  link.click();
-}
-
 function RowActions({ doc, actions }: { doc: SocietyDocument; actions: DocumentRowActions }): ReactNode {
   const deleting = actions.deletingId === doc.id;
+  const openFile = useOpenStoredFile();
+  const download = (): Promise<void> => openFile(doc.file_url, { disposition: 'attachment', fileName: doc.file_name || doc.title });
   return (
     <div className="flex justify-end gap-1">
-      <Button variant="ghost" size="icon" title="Download" onClick={() => download(doc)}>
+      <Button variant="ghost" size="icon" title="Download" onClick={() => void download()}>
         <Download className="h-4 w-4" />
       </Button>
       <Button variant="ghost" size="icon" title="View" onClick={() => actions.onView(doc)}>

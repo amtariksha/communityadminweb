@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast';
 import { useUpdateSocietyProfile, type SocietyProfile, type SocietyProfileChange } from '@/hooks/use-society-profile';
+import { useLocalPreviews } from '@/hooks/use-stored-file';
 import { friendlyError } from '@/lib/api-error';
 import { LOGO_BYTES, PICTURE_TYPES, SLOT_PICTURE_BYTES, pickFile, pictureProblem, useUploadPicture } from '../profile-pictures';
 import { PictureSlot } from './picture-slot';
@@ -27,6 +28,7 @@ export function ProfileImages({ profile, canEditPictures, canEditLogo }: Profile
   const { addToast } = useToast();
   const update = useUpdateSocietyProfile();
   const uploadPicture = useUploadPicture();
+  const previews = useLocalPreviews();
   const [busy, setBusy] = useState(false);
 
   async function send(change: SocietyProfileChange, done: string): Promise<void> {
@@ -45,7 +47,9 @@ export function ProfileImages({ profile, canEditPictures, canEditLogo }: Profile
     if (problem) return addToast({ title: problem, variant: 'destructive' });
     setBusy(true);
     try {
-      await send(change(await uploadPicture(file)), 'Picture saved');
+      const stored = await uploadPicture(file);
+      previews.remember(stored, file);
+      await send(change(stored), 'Picture saved');
     } catch (error) {
       addToast({ title: 'Could not upload the picture', description: friendlyError(error), variant: 'destructive' });
     } finally {
@@ -63,7 +67,7 @@ export function ProfileImages({ profile, canEditPictures, canEditLogo }: Profile
             <PictureSlot
               key={index}
               label={`Image ${index + 1}`}
-              url={url}
+              url={previews.previewOf(url) ?? null}
               hint="300 × 200 px · PNG, JPEG or WebP up to 2 MB"
               busy={busy || update.isPending}
               canEdit={canEditPictures}
@@ -76,7 +80,7 @@ export function ProfileImages({ profile, canEditPictures, canEditLogo }: Profile
         <div className="max-w-xs">
           <PictureSlot
             label="Society Logo"
-            url={profile.logo_url}
+            url={previews.previewOf(profile.logo_url) ?? null}
             hint="PNG, JPEG or WebP up to 1 MB"
             busy={busy || update.isPending}
             canEdit={canEditLogo}

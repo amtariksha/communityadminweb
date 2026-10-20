@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast';
-import { RichTextEditor } from '@/components/rich-text/rich-text-editor';
+import { RichTextEditor, type PickedPicture } from '@/components/rich-text/rich-text-editor';
 import { isBlankHtml } from '@/components/rich-text/editor-html';
 import { useUpdateSocietyProfile } from '@/hooks/use-society-profile';
 import { friendlyError } from '@/lib/api-error';
@@ -20,7 +20,7 @@ export function WelcomeEditor({ savedHtml, canEdit }: { savedHtml: string | null
   const uploadPicture = useUploadPicture();
   const [html, setHtml] = useState(savedHtml ?? DEFAULT_WELCOME);
 
-  async function pickPicture(): Promise<string | null> {
+  async function pickPicture(): Promise<PickedPicture | null> {
     const file = await pickFile(PICTURE_TYPES.join(','));
     if (!file) return null;
     const problem = pictureProblem(file, SLOT_PICTURE_BYTES);
@@ -29,7 +29,7 @@ export function WelcomeEditor({ savedHtml, canEdit }: { savedHtml: string | null
       return null;
     }
     try {
-      return await uploadPicture(file);
+      return { url: await uploadPicture(file), file };
     } catch (error) {
       addToast({ title: 'Could not upload the picture', description: friendlyError(error), variant: 'destructive' });
       return null;

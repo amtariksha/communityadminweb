@@ -25,8 +25,8 @@ import {
   useDocuments,
   useExpiringDocuments,
   useDeleteDocument,
-  fetchPresignedDownloadUrl,
 } from '@/hooks';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import type { Document as SocietyDocument } from '@communityos/shared';
 import { useUnitChoices } from '../helpdesk/new/use-unit-choices';
 import { UploadDocumentDialog } from './upload-document-dialog';
@@ -97,28 +97,11 @@ export default function DocumentsContent(): ReactNode {
     });
   }
 
-  /**
-   * QA #258 — view button used to call window.open(file_url) which
-   * served whatever Content-Disposition the stored object had —
-   * which on E2E uploads is `attachment`, so the browser downloaded
-   * instead of rendering. Now we ask the API for a presigned GET
-   * signed with `ResponseContentDisposition: inline` and open that.
-   */
+  // QA #258 — opened through a link signed `inline`, so PDFs and pictures
+  // render in the browser instead of downloading.
+  const openFile = useOpenStoredFile();
   async function handleViewDocument(doc: SocietyDocument): Promise<void> {
-    try {
-      const url = await fetchPresignedDownloadUrl({
-        fileUrl: doc.file_url,
-        disposition: 'inline',
-        fileName: doc.file_name,
-      });
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      addToast({
-        title: 'Could not open document',
-        description: friendlyError(err),
-        variant: 'destructive',
-      });
-    }
+    await openFile(doc.file_url, { disposition: 'inline', fileName: doc.file_name });
   }
 
   return (

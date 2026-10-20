@@ -14,7 +14,6 @@ vi.mock('@/lib/layout-context', () => ({ useAdminLayout: () => 'classic' }));
 vi.mock('@/lib/current-role', () => ({ currentRole: () => state.role }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('@/components/show-logs', () => ({ ShowLogsButton: (): ReactNode => <button type="button">Show Logs</button> }));
-vi.mock('@/hooks/use-documents', () => ({ fetchPresignedDownloadUrl: vi.fn() }));
 vi.mock('@/hooks/use-violation-register', () => {
   const mutation = () => ({ mutate: vi.fn(), isPending: false });
   return {

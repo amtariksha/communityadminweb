@@ -1,18 +1,6 @@
 'use client';
 
-import { fetchPresignedDownloadUrl } from '@/hooks/use-documents';
-import type { DocumentFile } from '@/hooks/use-document-files';
 import { currentRole } from '@/lib/current-role';
-
-/** Opens a file in a new tab, or downloads it, through a short-lived link. */
-export async function openDocumentFile(file: Pick<DocumentFile, 'file_url' | 'file_name'>, download: boolean): Promise<void> {
-  const url = await fetchPresignedDownloadUrl({
-    fileUrl: file.file_url,
-    disposition: download ? 'attachment' : 'inline',
-    fileName: file.file_name,
-  });
-  window.open(url, '_blank', 'noopener,noreferrer');
-}
 
 // Who may upload, edit and archive (document.controller.ts: write roles;
 // archive is DELETE, which the committee member does not hold).

@@ -9,6 +9,10 @@ const mocks = vi.hoisted(() => ({ mutateAsync: vi.fn() }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock('@/hooks/use-documents', () => ({ useUploadFileToS3: () => ({ mutateAsync: vi.fn() }) }));
 vi.mock('@/hooks/use-society-profile', () => ({ useUpdateSocietyProfile: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }) }));
+// Each stored picture is shown through a signed link (lib/stored-file.ts).
+vi.mock('@/lib/api', () => ({
+  api: { post: async (_path: string, body: { file_url: string }) => ({ data: { downloadUrl: `${body.file_url}?signed=1` } }) },
+}));
 
 const ONE = 'https://objects.example.test/society-files/tenants/t/documents/1.jpg';
 const THREE = 'https://objects.example.test/society-files/tenants/t/documents/3.jpg';
@@ -17,11 +21,11 @@ const PROFILE = { images: [ONE, null, THREE], logo_url: null } as unknown as Soc
 describe('ProfileImages', () => {
   beforeEach(() => mocks.mutateAsync.mockReset().mockResolvedValue({}));
 
-  it('shows the pictures in their slots', () => {
+  it('shows the pictures in their slots, each through a signed link', async () => {
     render(<ProfileImages profile={PROFILE} canEditPictures canEditLogo />);
-    expect(within(screen.getByRole('group', { name: 'Image 1' })).getByRole('img').getAttribute('src')).toBe(ONE);
+    expect((await within(screen.getByRole('group', { name: 'Image 1' })).findByRole('img')).getAttribute('src')).toBe(`${ONE}?signed=1`);
     expect(within(screen.getByRole('group', { name: 'Image 2' })).getByText('No picture')).toBeTruthy();
-    expect(within(screen.getByRole('group', { name: 'Image 3' })).getByRole('img').getAttribute('src')).toBe(THREE);
+    expect((await within(screen.getByRole('group', { name: 'Image 3' })).findByRole('img')).getAttribute('src')).toBe(`${THREE}?signed=1`);
   });
 
   it('removes one picture and keeps the others in their slots', async () => {

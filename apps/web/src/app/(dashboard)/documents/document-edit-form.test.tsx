@@ -23,7 +23,6 @@ vi.mock('@/hooks/use-documents', () => ({
   useUpdateDocument: () => ({ mutateAsync: mocks.update }),
   useUploadFileToS3: () => ({ mutateAsync: mocks.storeFile }),
   useCreateCategory: () => ({ mutateAsync: vi.fn() }),
-  fetchPresignedDownloadUrl: vi.fn(),
 }));
 vi.mock('@/hooks/use-document-files', () => ({ useDocumentWithVersions: () => mocks.detail }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: mocks.addToast }) }));

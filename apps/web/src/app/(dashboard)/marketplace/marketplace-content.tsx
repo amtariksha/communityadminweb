@@ -16,6 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/layout/page-header';
+import { StoredImage } from '@/components/stored-image';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
@@ -202,22 +203,14 @@ function ListingsTab(): ReactNode {
               listings.map((listing) => (
                 <TableRow key={listing.id}>
                   <TableCell>
-                    {/* QA #362 — show the first image if uploaded.
-                        Native <img> over Next/Image because the
-                        object-store host is not in next.config
-                        remotePatterns; switching to next/image
-                        would require updating that allowlist. */}
-                    {listing.images && listing.images.length > 0 ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={listing.images[0]}
-                        alt={listing.title}
-                        className="h-10 w-10 rounded object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="h-10 w-10 rounded bg-muted" aria-hidden />
-                    )}
+                    {/* QA #362 — the first image, if uploaded, through a signed link. */}
+                    <StoredImage
+                      src={listing.images?.[0]}
+                      alt={listing.title}
+                      className="h-10 w-10 rounded object-cover"
+                      loading="lazy"
+                      fallback={<div className="h-10 w-10 rounded bg-muted" aria-hidden />}
+                    />
                   </TableCell>
                   <TableCell className="font-medium">{listing.title}</TableCell>
                   <TableCell>{formatCurrency(listing.price)}</TableCell>

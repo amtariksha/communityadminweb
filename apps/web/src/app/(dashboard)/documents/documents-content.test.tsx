@@ -48,7 +48,6 @@ vi.mock('@/hooks', () => ({
   useDeleteDocument: mocks.mutation,
   useUploadDocument: mocks.mutation,
   useUploadFileToS3: mocks.mutation,
-  fetchPresignedDownloadUrl: vi.fn(),
 }));
 
 vi.mock('../helpdesk/new/use-unit-choices', () => ({

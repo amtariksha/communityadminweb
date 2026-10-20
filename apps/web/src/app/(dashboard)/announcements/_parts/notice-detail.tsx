@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { announcementState, useAnnouncement, useAnnouncementDelivery, type Announcement, type AnnouncementDelivery } from '@/hooks';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import { formatDate } from '@/lib/utils';
 import { useWord } from '@/lib/vocabulary';
 import { blocksLabel, CHANNEL_LABELS, recipientsLabel, STATE_LABELS, stateVariant, typeLabel } from './labels';
@@ -16,7 +17,7 @@ function Row({ label, children }: { label: string; children: ReactNode }): React
   );
 }
 
-/** Only an http(s) address becomes a link; anything else (a `javascript:` URL) is shown as text. */
+/** Only an http(s) address opens; anything else (a `javascript:` URL) is shown as text. */
 export function linkableUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
@@ -27,17 +28,19 @@ export function linkableUrl(url: string): string | null {
 }
 
 function Attachments({ notice }: { notice: Announcement }): ReactNode {
+  const openFile = useOpenStoredFile();
   const urls = notice.attachment_urls ?? (notice.attachment_url ? [notice.attachment_url] : []);
   if (urls.length === 0) return null;
   return (
     <ul className="space-y-1 text-sm">
       {urls.map((url, index) => {
         const name = notice.attachment_names?.[index] ?? `Attachment ${index + 1}`;
-        const href = linkableUrl(url);
         return (
           <li key={`${index}-${url}`}>
-            {href ? (
-              <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline">{name}</a>
+            {linkableUrl(url) ? (
+              <button type="button" className="text-primary underline" onClick={() => void openFile(url, { fileName: name })}>
+                {name}
+              </button>
             ) : (
               <span>{name}</span>
             )}

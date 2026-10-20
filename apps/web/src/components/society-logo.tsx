@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getUser, getCurrentTenant, syncSocietyBranding } from '@/lib/auth';
 import { useCurrentUser } from '@/hooks';
+import { StoredImage } from '@/components/stored-image';
 
 interface SocietyBranding {
   logoUrl: string | null;
@@ -42,7 +43,6 @@ export function SocietyLogo() {
     logoUrl: null,
     name: DEFAULT_NAME,
   });
-  const [imgFailed, setImgFailed] = useState(false);
   const { data: freshUser } = useCurrentUser();
 
   useEffect(() => {
@@ -56,35 +56,23 @@ export function SocietyLogo() {
     if (!freshUser) return;
     syncSocietyBranding(freshUser.societies);
     setBranding(resolveBranding());
-    setImgFailed(false);
   }, [freshUser]);
-
-  const showImage = branding.logoUrl && !imgFailed;
 
   return (
     <div className="flex h-16 items-center gap-2 px-6">
-      {showImage ? (
-        // eslint-disable-next-line @next/next/no-img-element -- S3 URL,
-        // arbitrary host; avoids next.config remotePatterns wiring.
-        <img
-          src={branding.logoUrl ?? ''}
-          alt=""
-          className="h-8 w-8 rounded-lg object-contain"
-          onError={() => setImgFailed(true)}
-        />
-      ) : (
-        // Platform fallback when a society has no uploaded logo: the
-        // official Mera Ghar mark (white house + amber window on brand
-        // teal), served from /public. Reads well on both light and dark
-        // sidebars. Society-uploaded logos still override it at runtime.
-        // eslint-disable-next-line @next/next/no-img-element -- static
-        // local SVG; next/image would need extra config for no benefit.
-        <img
-          src="/logo.svg"
-          alt="Mera Ghar"
-          className="h-8 w-8 rounded-lg"
-        />
-      )}
+      {/* The society's uploaded logo through a signed link; the platform
+          mark (white house + amber window on brand teal, served from
+          /public) when it has none or it cannot be shown. */}
+      <StoredImage
+        src={branding.logoUrl}
+        alt=""
+        className="h-8 w-8 rounded-lg object-contain"
+        placeholder={<span className="h-8 w-8 rounded-lg" aria-hidden />}
+        fallback={
+          // eslint-disable-next-line @next/next/no-img-element -- static local SVG; next/image would need extra config for no benefit.
+          <img src="/logo.svg" alt="Mera Ghar" className="h-8 w-8 rounded-lg" />
+        }
+      />
       <span className="truncate text-lg font-bold">{branding.name}</span>
     </div>
   );

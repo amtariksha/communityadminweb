@@ -43,7 +43,6 @@ vi.mock('@/hooks', () => ({
   useAssets: () => ({ isError: mocks.assetsError, data: mocks.assetsError ? undefined : { data: [{ id: 'asset-1', name: 'Lift 2' }] } }),
   useConvertToCommunity: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUploadFileToS3: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  fetchPresignedDownloadUrl: vi.fn(),
 }));
 
 function ticket(overrides: Partial<Ticket> = {}): Ticket {

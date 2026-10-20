@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { StoredImage } from '@/components/stored-image';
 import { Button } from '@/components/ui/button';
 import { friendlyError } from '@/lib/api-error';
 import type { GateSwitches } from '@/hooks/use-gate-settings';
+import { useLocalPreviews } from '@/hooks/use-stored-file';
 import { pickFile, useUploadPicture } from '../../../society-profile/profile-pictures';
 import { NotAvailableYet, SetupBlock } from './setup-block';
 
@@ -36,6 +38,7 @@ export function PassFooterBlock(props: PassFooterBlockProps): ReactNode {
 
 function FooterEditor({ current, editable, save, upload }: PassFooterBlockProps & { current: string | null }): ReactNode {
   const uploadPicture = useUploadPicture();
+  const previews = useLocalPreviews();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -59,14 +62,24 @@ function FooterEditor({ current, editable, save, upload }: PassFooterBlockProps 
       setError(problem);
       return;
     }
-    await run(async () => save({ pass_footer_image_url: await (upload ?? uploadPicture)(file) }));
+    await run(async () => {
+      const stored = await (upload ?? uploadPicture)(file);
+      previews.remember(stored, file);
+      await save({ pass_footer_image_url: stored });
+    });
   }
 
   return (
     <div className="space-y-3">
       {current && current.startsWith('https://') ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={current} alt="Pass footer" style={{ maxWidth: 286, maxHeight: 81 }} className="rounded border object-contain" />
+        <StoredImage
+          src={previews.previewOf(current)}
+          alt="Pass footer"
+          style={{ maxWidth: 286, maxHeight: 81 }}
+          className="rounded border object-contain"
+          fallback={<p className="text-sm text-muted-foreground">The footer image is not available.</p>}
+          placeholder={<p className="text-sm text-muted-foreground">Loading the footer image…</p>}
+        />
       ) : (
         <p className="text-sm text-muted-foreground">No footer image. Passes show only the society&apos;s name.</p>
       )}

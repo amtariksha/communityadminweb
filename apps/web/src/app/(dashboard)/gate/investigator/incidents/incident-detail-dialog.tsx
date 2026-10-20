@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { StoredImage } from '@/components/stored-image';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { friendlyError } from '@/lib/api-error';
 import type { GateIncident } from '@/hooks/use-gate-incidents';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import { indiaDateTime } from '../register-kit';
 
 function Field({ label, value }: { label: string; value: string | null | undefined }): ReactNode {
@@ -43,6 +45,7 @@ function IncidentDetail({ incident, canClose, onClose, closeIncident }: Incident
   const [remark, setRemark] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const openFile = useOpenStoredFile();
   const open = incident.status === 'open';
 
   async function submit(): Promise<void> {
@@ -82,10 +85,15 @@ function IncidentDetail({ incident, canClose, onClose, closeIncident }: Incident
       {safePhotos(incident.photo_urls).length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {safePhotos(incident.photo_urls).map((url) => (
-            <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="Incident photo" className="h-24 w-24 rounded object-cover" />
-            </a>
+            <button key={url} type="button" aria-label="Open incident photo" onClick={() => void openFile(url)}>
+              <StoredImage
+                src={url}
+                alt="Incident photo"
+                className="h-24 w-24 rounded object-cover"
+                fallback={<span className="flex h-24 w-24 items-center justify-center rounded bg-muted text-xs text-muted-foreground">Not available</span>}
+                placeholder={<span className="block h-24 w-24 rounded bg-muted" aria-hidden />}
+              />
+            </button>
           ))}
         </div>
       )}

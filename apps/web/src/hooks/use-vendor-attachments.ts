@@ -64,16 +64,6 @@ export function useRemoveVendorAttachment(vendorId: string) {
   });
 }
 
-/** A signed link to download one stored file by its key. */
-export async function vendorFileLink(file: Pick<VendorAttachment, 'file_key' | 'file_name'>): Promise<string> {
-  const response = await api.post<{ data: { downloadUrl: string } }>('/upload/download-url', {
-    key: file.file_key,
-    disposition: 'attachment',
-    file_name: file.file_name,
-  });
-  return response.data.downloadUrl;
-}
-
 /** The picked file may be attached, or why not. */
 export function vendorFileProblem(file: Pick<File, 'name' | 'type' | 'size'>, alreadyHeld: number): string | null {
   if (!(VENDOR_FILE_TYPES as readonly string[]).includes(file.type)) return `${file.name}: attach a PDF, JPEG or PNG`;

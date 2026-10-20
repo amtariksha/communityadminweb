@@ -25,7 +25,6 @@ vi.mock('@/hooks/use-documents', () => ({
   useDocuments: (filters: unknown) => mocks.useDocuments(filters),
   useDeleteDocument: () => ({ mutate: vi.fn() }),
   useUpdateFolder: () => ({ mutate: mocks.updateFolder, isPending: false }),
-  fetchPresignedDownloadUrl: vi.fn(),
 }));
 vi.mock('@/hooks/use-document-files', () => ({ useDocumentFolders: (root: string) => mocks.folders(root) }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));

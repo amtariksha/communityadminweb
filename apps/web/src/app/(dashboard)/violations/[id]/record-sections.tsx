@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { fetchPresignedDownloadUrl } from '@/hooks/use-documents';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import type { ViolationDetail } from '@/hooks/use-violation-register';
 import { formatDate } from '@/lib/utils';
 import { OUTCOME_LABELS, rupees, STAGE_LABELS, unitLabel, VIOLATION_STATUS_LABELS } from '../_parts/labels';
@@ -17,13 +17,9 @@ function Fact({ label, children }: { label: string; children: ReactNode }): Reac
   );
 }
 
-async function openFile(url: string, name: string): Promise<void> {
-  const signed = await fetchPresignedDownloadUrl({ fileUrl: url, disposition: 'inline', fileName: name });
-  window.open(signed, '_blank', 'noopener,noreferrer');
-}
-
 /** The violation's facts (RULE-S8). */
 export function ViolationFacts({ violation }: { violation: ViolationDetail }): ReactNode {
+  const openFile = useOpenStoredFile();
   return (
     <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <Fact label="Violation No.">{violation.violation_number}</Fact>
@@ -64,7 +60,7 @@ export function ViolationFacts({ violation }: { violation: ViolationDetail }): R
           <Fact label="Attachments">
             <span className="flex flex-wrap gap-3">
               {violation.attachment_urls.map((url, index) => (
-                <button key={url} type="button" className="text-primary underline" onClick={() => void openFile(url, violation.attachment_names[index] ?? 'file')}>
+                <button key={url} type="button" className="text-primary underline" onClick={() => void openFile(url, { fileName: violation.attachment_names[index] ?? 'file' })}>
                   {violation.attachment_names[index] ?? `File ${index + 1}`}
                 </button>
               ))}

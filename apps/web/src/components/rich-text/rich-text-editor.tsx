@@ -5,6 +5,13 @@ import { Bold, Image as ImageIcon, Italic, Link as LinkIcon, List, ListOrdered, 
 import { Button } from '@/components/ui/button';
 import { isSafeLink, normaliseEditorHtml } from './editor-html';
 import { safeWelcomeHtml } from './safe-html';
+import { pickedPictureHtml, showStoredPictures, storedPicturesHtml } from './stored-pictures';
+
+/** A picture uploaded for the text: its stored address, and the picked file to show until the text is saved. */
+export interface PickedPicture {
+  url: string;
+  file?: File;
+}
 
 interface RichTextEditorProps {
   id: string;
@@ -12,8 +19,8 @@ interface RichTextEditorProps {
   /** The starting text; later changes to it are not pushed into the editor. */
   initialHtml: string;
   onChange: (html: string) => void;
-  /** Uploads a picture and gives its address, or null when cancelled. */
-  onPickImage?: () => Promise<string | null>;
+  /** Uploads a picture and gives it, or null when cancelled. */
+  onPickImage?: () => Promise<PickedPicture | null>;
   readOnly?: boolean;
 }
 
@@ -40,12 +47,18 @@ function run(command: string, value?: string): void {
  */
 export function RichTextEditor(props: RichTextEditorProps): ReactNode {
   const box = useRef<HTMLDivElement>(null);
-  const report = (): void => props.onChange(safeWelcomeHtml(normaliseEditorHtml(box.current?.innerHTML ?? '')));
+  const previews = useRef<string[]>([]);
+  const report = (): void => props.onChange(safeWelcomeHtml(normaliseEditorHtml(box.current ? storedPicturesHtml(box.current) : '')));
 
   useEffect(() => {
     // Only the first text: the editor owns its content afterwards. Cut down
     // to the allow-list first, whatever the API sent (never raw innerHTML).
-    if (box.current) box.current.innerHTML = safeWelcomeHtml(props.initialHtml);
+    if (box.current) {
+      box.current.innerHTML = safeWelcomeHtml(props.initialHtml);
+      showStoredPictures(box.current);
+    }
+    const made = previews.current;
+    return () => made.forEach((url) => URL.revokeObjectURL(url));
   }, []);
 
   function apply(command: string, value?: string): void {
@@ -60,8 +73,12 @@ export function RichTextEditor(props: RichTextEditorProps): ReactNode {
   }
 
   async function addImage(): Promise<void> {
-    const url = await props.onPickImage?.();
-    if (url) apply('insertImage', url);
+    const picked = await props.onPickImage?.();
+    if (!picked) return;
+    // The API signs only pictures of saved text, so a new one shows from the picked file.
+    const local = picked.file && typeof URL.createObjectURL === 'function' ? URL.createObjectURL(picked.file) : null;
+    if (local) previews.current.push(local);
+    apply('insertHTML', pickedPictureHtml(picked.url, local ?? picked.url));
   }
 
   return (

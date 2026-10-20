@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { StoredImage } from '@/components/stored-image';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useUploadFileToS3 } from '@/hooks';
+import { useLocalPreviews } from '@/hooks/use-stored-file';
 import { friendlyError } from '@/lib/api-error';
 import { checkUploadFile } from '@/lib/validation';
 
@@ -15,6 +17,8 @@ interface EventCoverFieldProps {
 /** Image (AMEN-S4): the event's cover picture, uploaded straight to file storage. */
 export function EventCoverField({ value, onChange }: EventCoverFieldProps): ReactNode {
   const upload = useUploadFileToS3();
+  // Until the event is saved the API does not sign the new cover: show the picked file.
+  const previews = useLocalPreviews();
   const [error, setError] = useState<string | null>(null);
 
   async function choose(file: File | undefined): Promise<void> {
@@ -25,6 +29,7 @@ export function EventCoverField({ value, onChange }: EventCoverFieldProps): Reac
     setError(null);
     try {
       const uploaded = await upload.mutateAsync({ file });
+      previews.remember(uploaded.fileUrl, file);
       onChange(uploaded.fileUrl);
     } catch (failure) {
       setError(`The picture could not be uploaded: ${friendlyError(failure)}`);
@@ -36,7 +41,13 @@ export function EventCoverField({ value, onChange }: EventCoverFieldProps): Reac
       <Label htmlFor="event-cover">Image</Label>
       {value && (
         <div className="flex items-center gap-3">
-          <img src={value} alt="Event cover" className="h-16 w-24 rounded object-cover" />
+          <StoredImage
+            src={previews.previewOf(value)}
+            alt="Event cover"
+            className="h-16 w-24 rounded object-cover"
+            fallback={<span className="flex h-16 w-24 items-center justify-center rounded bg-muted text-xs text-muted-foreground">Not available</span>}
+            placeholder={<span className="block h-16 w-24 rounded bg-muted" aria-hidden />}
+          />
           <Button type="button" variant="outline" size="sm" onClick={() => onChange('')}>
             Remove image
           </Button>

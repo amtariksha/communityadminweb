@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 import { useUploadFileToS3 } from '@/hooks';
 import { useUpdateLeaseAgreement, type ResidentRecord } from '@/hooks/use-resident-record';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import type { OnboardingSummary } from '@/hooks/use-tenant-lifecycle';
 import { friendlyError } from '@/lib/api-error';
 import { checkUploadFile } from '@/lib/validation';
@@ -49,6 +50,7 @@ export function AgreementBlock(props: AgreementBlockProps): ReactNode {
   const { addToast } = useToast();
   const update = useUpdateLeaseAgreement();
   const upload = useUploadFileToS3();
+  const openFile = useOpenStoredFile();
   const [start, setStart] = useState(lease?.lease_start_date ?? '');
   const [end, setEnd] = useState(lease?.lease_end_date ?? '');
   useEffect(() => {
@@ -100,9 +102,9 @@ export function AgreementBlock(props: AgreementBlockProps): ReactNode {
       <div className="space-y-1 text-sm">
         <span className="font-medium">Agreement Copy: </span>
         {lease.agreement_document_url ? (
-          <a href={lease.agreement_document_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+          <button type="button" className="text-primary hover:underline" onClick={() => void openFile(lease.agreement_document_url ?? '')}>
             Open
-          </a>
+          </button>
         ) : (
           <span className="text-muted-foreground">none</span>
         )}

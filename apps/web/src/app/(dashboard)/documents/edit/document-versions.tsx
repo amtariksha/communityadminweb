@@ -3,23 +3,15 @@
 import { type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useToast } from '@/components/ui/toast';
 import type { DocumentFileVersion } from '@/hooks/use-document-files';
-import { friendlyError } from '@/lib/api-error';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import { formatDate } from '@/lib/utils';
-import { openDocumentFile } from '../files/file-actions';
 
 /** Versions under Edit File (FILE-S4): every upload of the file stays downloadable. */
 export function DocumentVersions({ versions }: { versions: readonly DocumentFileVersion[] }): ReactNode {
-  const { addToast } = useToast();
-
-  async function download(version: DocumentFileVersion): Promise<void> {
-    try {
-      await openDocumentFile(version, true);
-    } catch (error) {
-      addToast({ title: 'Could not download', description: friendlyError(error), variant: 'destructive' });
-    }
-  }
+  const openFile = useOpenStoredFile();
+  const download = (version: DocumentFileVersion): Promise<void> =>
+    openFile(version.file_url, { disposition: 'attachment', fileName: version.file_name });
 
   return (
     <section aria-labelledby="versions-heading" className="space-y-2">

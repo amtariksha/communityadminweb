@@ -59,6 +59,8 @@ import {
   useUploadFileToS3,
 } from '@/hooks';
 import { Separator } from '@/components/ui/separator';
+import { StoredImage } from '@/components/stored-image';
+import { useLocalPreviews } from '@/hooks/use-stored-file';
 import { setCurrentTenant } from '@/lib/auth';
 import UserManagement from './user-management';
 import AddMemberDialog from './add-member-dialog';
@@ -205,6 +207,8 @@ export default function SuperAdminContent(): ReactNode {
   const updateTenant = useUpdateTenant();
   const updateFeatures = useUpdateFeatures();
   const uploadLogo = useUploadFileToS3();
+  // A logo picked but not saved yet is shown from the browser's copy.
+  const logoPreviews = useLocalPreviews();
 
   // Derived data
   const dashboard = dashboardQuery.data;
@@ -372,6 +376,7 @@ export default function SuperAdminContent(): ReactNode {
         file,
         tenantId: selectedTenantId,
       });
+      logoPreviews.remember(fileUrl, file);
       setEditLogoUrl(fileUrl);
       addToast({
         title: 'Logo uploaded — Save Branding to apply',
@@ -970,16 +975,13 @@ export default function SuperAdminContent(): ReactNode {
                   <Label>Logo</Label>
                   <div className="flex items-center gap-3">
                     <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg border bg-muted">
-                      {editLogoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={editLogoUrl}
-                          alt="Society logo"
-                          className="h-full w-full object-contain"
-                        />
-                      ) : (
-                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                      )}
+                      <StoredImage
+                        src={logoPreviews.previewOf(editLogoUrl)}
+                        tenantId={selectedTenantId}
+                        alt="Society logo"
+                        className="h-full w-full object-contain"
+                        fallback={<ImageIcon className="h-6 w-6 text-muted-foreground" />}
+                      />
                     </div>
                     <div className="flex flex-col gap-2">
                       <label className="inline-flex">

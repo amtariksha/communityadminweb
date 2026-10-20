@@ -254,7 +254,8 @@ async function request<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  if (tenantId) {
+  // A caller that names another society (a super admin acting on one) keeps it.
+  if (tenantId && !headers['x-tenant-id']) {
     headers['x-tenant-id'] = tenantId;
   }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, XCircle, FileText, Eye, ShieldCheck, Search } from 'lucide-react';
+import { CheckCircle2, XCircle, Eye, ShieldCheck, Search } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import {
 import { useToast } from '@/components/ui/toast';
 import { formatDate } from '@/lib/utils';
 import { useKycRecords, useVerifyKyc, useRejectKyc, type KycRecord } from '@/hooks';
+import { KycDocumentPreview } from './kyc-document-preview';
 
 export function KycContent() {
   const [statusFilter, setStatusFilter] = useState('all');
@@ -212,29 +213,7 @@ export function KycContent() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center p-4">
-            {selectedDoc?.document_url ? (
-              <div className="relative max-h-[70vh] w-full overflow-hidden rounded-md border bg-slate-50 flex items-center justify-center">
-                {selectedDoc.document_url.endsWith('.pdf') ? (
-                  <iframe
-                    src={selectedDoc.document_url}
-                    className="h-[500px] w-full"
-                    title="Document PDF"
-                  />
-                ) : (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={selectedDoc.document_url}
-                    alt="ID Document"
-                    className="max-h-[500px] w-auto object-contain"
-                  />
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center py-12 text-muted-foreground">
-                <FileText className="mb-2 h-10 w-10" />
-                <p>No document preview available</p>
-              </div>
-            )}
+            <KycDocumentPreview documentUrl={selectedDoc?.document_url} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSelectedDoc(null)}>

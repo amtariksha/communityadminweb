@@ -1,9 +1,8 @@
 'use client';
 
 import { type ReactNode } from 'react';
-import { useToast } from '@/components/ui/toast';
-import { fetchPresignedDownloadUrl, type Ticket } from '@/hooks';
-import { friendlyError } from '@/lib/api-error';
+import { type Ticket } from '@/hooks';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import { formatDate } from '@/lib/utils';
 import { requestAgeDays } from '../../../tickets/ticket-badges';
 import { linkedAssetLine } from './linked-asset';
@@ -39,17 +38,9 @@ function Fact({ label, children }: { label: string; children: ReactNode }): Reac
 
 /** Request No., Opened On, By, Unit, Type, Days, the request text and its files. */
 export function RecordSummary({ ticket, requestNoLabel }: { ticket: Ticket; requestNoLabel: string }): ReactNode {
-  const { addToast } = useToast();
+  const openFile = useOpenStoredFile();
   const attachments = attachmentsOf(ticket);
-
-  async function open(attachment: Attachment): Promise<void> {
-    try {
-      const url = await fetchPresignedDownloadUrl({ fileUrl: attachment.url, disposition: 'inline', fileName: attachment.name });
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      addToast({ title: 'Could not open attachment', description: friendlyError(error), variant: 'destructive' });
-    }
-  }
+  const open = (attachment: Attachment): Promise<void> => openFile(attachment.url, { fileName: attachment.name });
 
   return (
     <section aria-label="Request summary" className="space-y-3">

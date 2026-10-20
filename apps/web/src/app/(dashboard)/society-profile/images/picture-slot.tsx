@@ -1,10 +1,12 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { StoredImage } from '@/components/stored-image';
 import { Button } from '@/components/ui/button';
 
 interface PictureSlotProps {
   label: string;
+  /** The stored picture, or the browser's copy of one just picked. */
   url: string | null;
   hint: string;
   busy: boolean;
@@ -19,11 +21,13 @@ export function PictureSlot(props: PictureSlotProps): ReactNode {
     <div className="space-y-2 rounded-md border p-3" aria-label={props.label} role="group">
       <p className="text-sm font-medium">{props.label}</p>
       <div className="flex aspect-[3/2] items-center justify-center overflow-hidden rounded bg-muted">
-        {props.url ? (
-          <img src={props.url} alt={props.label} className="h-full w-full object-cover" />
-        ) : (
-          <span className="text-xs text-muted-foreground">No picture</span>
-        )}
+        <StoredImage
+          src={props.url}
+          alt={props.label}
+          className="h-full w-full object-cover"
+          fallback={<span className="text-xs text-muted-foreground">No picture</span>}
+          placeholder={null}
+        />
       </div>
       <p className="text-xs text-muted-foreground">{props.hint}</p>
       {props.canEdit && (

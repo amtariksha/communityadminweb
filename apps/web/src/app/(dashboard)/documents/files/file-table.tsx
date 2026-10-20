@@ -4,10 +4,11 @@ import { type ReactNode } from 'react';
 import { DataTable, type DataTableAction, type DataTableColumn, type DataTableSearch } from '@/components/data-table';
 import { useToast } from '@/components/ui/toast';
 import { useDeleteDocument } from '@/hooks/use-documents';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import type { DocumentFile } from '@/hooks/use-document-files';
 import { friendlyError } from '@/lib/api-error';
 import { formatDate } from '@/lib/utils';
-import { audienceLabel, canArchiveDocuments, canWriteDocuments, openDocumentFile } from './file-actions';
+import { audienceLabel, canArchiveDocuments, canWriteDocuments } from './file-actions';
 
 export interface FileTableProps {
   title: string;
@@ -56,13 +57,9 @@ export function FileTable(props: FileTableProps): ReactNode {
   const { addToast } = useToast();
   const archive = useDeleteDocument();
 
-  async function open(row: DocumentFile, download: boolean): Promise<void> {
-    try {
-      await openDocumentFile(row, download);
-    } catch (error) {
-      addToast({ title: 'Could not open the file', description: friendlyError(error), variant: 'destructive' });
-    }
-  }
+  const openFile = useOpenStoredFile();
+  const open = (row: DocumentFile, download: boolean): Promise<void> =>
+    openFile(row.file_url, { disposition: download ? 'attachment' : 'inline', fileName: row.file_name });
 
   function archiveFile(row: DocumentFile): void {
     if (!window.confirm(`Archive "${row.title}"? It is hidden everywhere and kept in the records.`)) return;

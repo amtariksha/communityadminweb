@@ -41,7 +41,9 @@ describe('EventForm', () => {
     state.toast.mockReset();
   });
 
-  it('adds an event from the page with the cover image it uploaded', async () => {
+  it('adds an event from the page with the cover image it uploaded (previewed from the picked file)', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:picked-cover');
+    URL.revokeObjectURL = vi.fn();
     const onSaved = vi.fn();
     render(<EventForm mode="page" onClose={vi.fn()} onSaved={onSaved} />);
 
@@ -50,7 +52,7 @@ describe('EventForm', () => {
     await act(async () => {
       fireEvent.change(screen.getByLabelText('Image'), { target: { files: [file] } });
     });
-    expect(screen.getByAltText('Event cover').getAttribute('src')).toBe('https://files.example/cover.png');
+    expect(screen.getByAltText('Event cover').getAttribute('src')).toBe('blob:picked-cover');
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add Event' }));
     });

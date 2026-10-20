@@ -59,7 +59,6 @@ vi.mock('@/hooks', () => ({
   useServicedByOptions: () => ({ isSuccess: true, data: [{ id: 'staff-1', name: 'Test Plumber', staff_type: 'plumber', designation: null }] }),
   useBulkAssignServicedBy: () => ({ mutateAsync: mocks.bulkServicedBy, isPending: false }),
   useUploadFileToS3: () => mocks.mutation(),
-  fetchPresignedDownloadUrl: vi.fn(),
   useHelpdeskKpi: () => ({
     data: {
       total_tickets: 5,

@@ -6,7 +6,6 @@ import { TicketDetailThreads } from './ticket-detail-threads';
 const upload = vi.hoisted(() => vi.fn());
 vi.mock('@/hooks', () => ({
   useUploadFileToS3: () => ({ mutateAsync: upload, isPending: false }),
-  fetchPresignedDownloadUrl: vi.fn(),
 }));
 vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 

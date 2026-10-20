@@ -12,6 +12,8 @@ vi.mock('next/link', () => ({
   ),
 }));
 vi.mock('@/hooks/use-documents', () => ({ useUploadFileToS3: () => ({ mutateAsync: vi.fn() }) }));
+const signLink = vi.hoisted(() => vi.fn(async () => ({ data: { downloadUrl: 'https://signed.example.test/footer.png' } })));
+vi.mock('@/lib/api', () => ({ api: { post: signLink } }));
 const roster = vi.hoisted(() => ({ value: undefined as unknown }));
 vi.mock('@/hooks/use-gate-desk', () => ({ useGuardRoster: () => roster.value }));
 
@@ -30,7 +32,8 @@ describe('Visitor Pass Footer Image block', () => {
     const save = vi.fn().mockResolvedValue(undefined);
     render(<PassFooterBlock switches={SWITCHES} editable save={save} />);
 
-    expect(screen.getByAltText('Pass footer').getAttribute('src')).toBe(SWITCHES.pass_footer_image_url);
+    expect((await screen.findByAltText('Pass footer')).getAttribute('src')).toBe('https://signed.example.test/footer.png');
+    expect(signLink).toHaveBeenCalledWith('/upload/download-url', expect.objectContaining({ file_url: SWITCHES.pass_footer_image_url }), undefined);
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Remove image' }));
     });

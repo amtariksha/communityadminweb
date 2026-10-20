@@ -13,7 +13,8 @@ vi.mock('@/components/ui/select', () => ({
 }));
 vi.mock('@/lib/date', () => ({ todayIST: () => '2026-10-19' }));
 const download = vi.hoisted(() => vi.fn());
-vi.mock('@/lib/api', () => ({ api: { download } }));
+const signLink = vi.hoisted(() => vi.fn(async () => ({ data: { downloadUrl: 'https://signed.example.test/a.jpg' } })));
+vi.mock('@/lib/api', () => ({ api: { download, post: signLink } }));
 vi.mock('@/lib/download', () => ({ saveBlob: vi.fn(), printHtml: vi.fn() }));
 
 const mocks = vi.hoisted(() => ({
@@ -84,7 +85,14 @@ describe('Incident Investigator › Incidents', () => {
     const row = screen.getByText('Bicycle missing from the stand').closest('tr') as HTMLElement;
     fireEvent.click(within(row).getByRole('button', { name: 'View' }));
 
-    expect(screen.getAllByAltText('Incident photo')).toHaveLength(1);
+    const photos = await screen.findAllByAltText('Incident photo');
+    expect(photos).toHaveLength(1);
+    expect(photos[0].getAttribute('src')).toBe('https://signed.example.test/a.jpg');
+    expect(signLink).toHaveBeenCalledWith(
+      '/upload/download-url',
+      expect.objectContaining({ file_url: 'https://store.example.com/files/tenants/t/documents/a.jpg', disposition: 'inline' }),
+      undefined,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Close Incident' }));
     expect(screen.getByRole('alert').textContent).toContain('at least 5');
 

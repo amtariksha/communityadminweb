@@ -3,26 +3,16 @@
 import { type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
-import { fetchPresignedDownloadUrl, type TicketComment } from '@/hooks';
-import { friendlyError } from '@/lib/api-error';
+import { type TicketComment } from '@/hooks';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import { IMAGE_TYPES } from '../helpdesk/new/request-fields';
 import type { useRequestFiles } from '../helpdesk/new/use-request-files';
 
 /** The images a comment carries, each opening in a new tab (HELP-19). */
 export function CommentAttachments({ comment }: { comment: TicketComment }): ReactNode {
-  const { addToast } = useToast();
+  const open = useOpenStoredFile();
   const urls = comment.attachment_urls ?? [];
   if (urls.length === 0) return null;
-
-  async function open(url: string, name: string): Promise<void> {
-    try {
-      const signed = await fetchPresignedDownloadUrl({ fileUrl: url, disposition: 'inline', fileName: name });
-      window.open(signed, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      addToast({ title: 'Could not open the file', description: friendlyError(error), variant: 'destructive' });
-    }
-  }
 
   return (
     <ul className="mt-1 flex flex-wrap gap-2 text-xs">
@@ -30,7 +20,7 @@ export function CommentAttachments({ comment }: { comment: TicketComment }): Rea
         const name = comment.attachment_names?.[index] ?? `File ${index + 1}`;
         return (
           <li key={url}>
-            <button type="button" className="text-primary hover:underline" onClick={() => void open(url, name)}>
+            <button type="button" className="text-primary hover:underline" onClick={() => void open(url, { fileName: name })}>
               {name}
             </button>
           </li>

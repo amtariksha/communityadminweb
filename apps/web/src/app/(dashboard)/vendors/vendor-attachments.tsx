@@ -5,27 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 import { useUploadFileToS3 } from '@/hooks/use-documents';
+import { useOpenStoredFile } from '@/hooks/use-stored-file';
 import {
   MAX_VENDOR_FILES,
   VENDOR_FILE_TYPES,
   useAddVendorAttachment,
   useRemoveVendorAttachment,
   useVendorAttachments,
-  vendorFileLink,
   vendorFileProblem,
   type VendorAttachment,
 } from '@/hooks/use-vendor-attachments';
 import { ApiError, friendlyError } from '@/lib/api-error';
 
 function FileRow({ file, onRemove, busy }: { file: VendorAttachment; onRemove: () => void; busy: boolean }): ReactNode {
-  const { addToast } = useToast();
-  async function download(): Promise<void> {
-    try {
-      window.open(await vendorFileLink(file), '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      addToast({ title: 'Could not open the file', description: friendlyError(error), variant: 'destructive' });
-    }
-  }
+  const openFile = useOpenStoredFile();
+  const download = (): Promise<void> => openFile({ key: file.file_key }, { disposition: 'attachment', fileName: file.file_name });
   return (
     <li className="flex flex-wrap items-center gap-2 text-sm">
       <span className="font-medium">{file.file_name}</span>
