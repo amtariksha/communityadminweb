@@ -123,6 +123,27 @@ export const MEMBER_IMPORT_MATRICES: readonly MemberImportMatrix[] = [
       },
     ],
   },
+  {
+    heading: 'Post Credit Notes in Bulk',
+    note: 'Waivers the committee decided for many flats, posted together.',
+    jobs: [
+      {
+        type: 'member_credit_note',
+        label: 'Credit notes',
+        description:
+          'One row = one credit note: General (the unit’s oldest bills first; any excess held as its advance) or Account Specific (that income account’s bills first). The comment is printed as the reason.',
+        endpoint: RECEIPT_IMPORTS_ENDPOINT,
+        columns: [
+          ...UNIT_COLUMNS,
+          { key: 'kind', label: 'Kind' },
+          { key: 'account', label: 'Account Code' },
+          { key: 'amount', label: 'Amount' },
+          { key: 'credit_note_date', label: 'Date' },
+          { key: 'comment', label: 'Comment' },
+        ],
+      },
+    ],
+  },
 ];
 
 export const MEMBER_IMPORTS: readonly MemberImport[] = MEMBER_IMPORT_MATRICES.flatMap((matrix) => matrix.jobs);
