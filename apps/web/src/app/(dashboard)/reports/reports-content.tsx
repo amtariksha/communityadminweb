@@ -25,7 +25,7 @@ import {
   DefaultersView,
   GeneralLedgerView,
   IncomeExpenditureView,
-  TrialBalanceView,
+  TrialBalanceOptions,
   VendorAgingView,
 } from '@/components/ledger-reports';
 import { reportFromParam, type ReportId } from './report-param';
@@ -52,7 +52,8 @@ const reportCards: ReportCardInfo[] = [
     icon: <Scale className="h-6 w-6 text-primary" />,
     category: 'accounting',
     needsDateRange: false,
-    needsAsOfDate: true,
+    // GL-15: the trial balance has its own From / To / Type form.
+    needsAsOfDate: false,
     needsAccount: false,
   },
   {
@@ -130,7 +131,7 @@ export default function ReportsContent(): ReactNode {
 
     switch (selectedReport) {
       case 'trial-balance':
-        return <TrialBalanceView asOfDate={asOfDate} />;
+        return <TrialBalanceOptions />;
       case 'balance-sheet':
         return <BalanceSheetView asOfDate={asOfDate} />;
       case 'income-expenditure':

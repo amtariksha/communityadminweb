@@ -9,4 +9,5 @@ export { GeneralLedgerView } from './general-ledger-view';
 export { IncomeExpenditureView } from './income-expenditure-view';
 export { ReportSkeleton } from './report-skeleton';
 export { TrialBalanceView } from './trial-balance-view';
+export { TrialBalanceOptions } from './trial-balance-options';
 export { VendorAgingView } from './vendor-aging-view';

@@ -12,6 +12,7 @@ vi.mock('@/components/ledger-reports', () => ({
     <p>{`I&E ${startDate} to ${endDate}`}</p>
   ),
   TrialBalanceView: ({ asOfDate }: { asOfDate: string }) => <p>{`TB ${asOfDate}`}</p>,
+  TrialBalanceOptions: () => <p>TB options</p>,
   BalanceSheetView: ({ asOfDate }: { asOfDate: string }) => <p>{`BS ${asOfDate}`}</p>,
   GeneralLedgerView: () => <p>GL</p>,
   DefaultersView: () => <p>Defaulters</p>,
@@ -62,7 +63,7 @@ describe('ReportsContent dates (REP-02)', () => {
   });
 
   it('Year End sets the end of the current financial year; Today sets today', () => {
-    mocks.report = 'trial-balance';
+    mocks.report = 'balance-sheet';
     render(<ReportsContent />);
 
     expect(valueOf('As of Date')).toBe('2026-10-14');
@@ -70,5 +71,14 @@ describe('ReportsContent dates (REP-02)', () => {
     expect(valueOf('As of Date')).toBe('2027-03-31');
     fireEvent.click(screen.getByRole('button', { name: 'Today' }));
     expect(valueOf('As of Date')).toBe('2026-10-14');
+  });
+});
+
+describe('ReportsContent trial balance (GL-15)', () => {
+  it('opens the trial balance with its own options form', () => {
+    mocks.report = 'trial-balance';
+    render(<ReportsContent />);
+    expect(screen.getByText('TB options')).toBeTruthy();
+    expect(screen.queryByLabelText('As of Date')).toBeNull();
   });
 });
