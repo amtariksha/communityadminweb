@@ -734,10 +734,24 @@ export const classicMenu: MenuNode[] = [
     id: 'forms',
     label: 'Community Forms',
     icon: icon(ClipboardList),
+    // FORM-02: the builder is its own page in both layouts (a builder does
+    // not fit a dialog); Create Form on both Setup tabs.
+    forms: [
+      { label: 'Create Form', path: '/community-forms/new' },
+      { label: 'Edit Form', path: '/community-forms/:id/edit' },
+    ],
     children: [
-      planned('forms.setup', 'Setup', 'FORM-02'),
-      planned('forms.responses', 'Responses', 'FORM-05'),
-      reportsMenuNode('forms', 'REP-04'),
+      {
+        id: 'forms.setup',
+        label: 'Setup',
+        create: { label: 'Create Form', href: '/community-forms/new' },
+        tabs: [
+          planned('forms.setup.approvers', 'Approvers Setup', 'FORM-05'),
+          { id: 'forms.setup.forms', label: 'Setup Community Form', href: '/community-forms/setup/forms', logs: ['community_form'] },
+        ],
+      },
+      planned('forms.responses', 'Responses', 'FORM-06'),
+      reportsMenuNode('forms', 'FORM-07'),
     ],
   },
   {

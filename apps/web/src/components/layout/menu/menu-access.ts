@@ -62,6 +62,8 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   ['/bank-cash', '/bank'],
   // Community Rules & Violations: one standard entry for the module's pages (RULE-05).
   ['/violations', '/violations/open/awaiting-approval'],
+  // Community Forms: one standard entry for the module's pages (FORM-02).
+  ['/community-forms', '/community-forms/setup/forms'],
 ];
 
 /**

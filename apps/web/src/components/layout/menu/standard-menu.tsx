@@ -47,6 +47,7 @@ import {
   Wallet,
   ScrollText,
   Gavel,
+  ClipboardList,
 } from 'lucide-react';
 
 /**
@@ -101,6 +102,7 @@ export const standardMenu: NavGroup[] = [
       { label: 'Tickets', href: '/tickets', icon: <TicketCheck className="h-4 w-4" />, feature: 'tickets' },
       { label: 'Announcements', href: '/announcements', icon: <Megaphone className="h-4 w-4" />, feature: 'announcements' },
       { label: 'Rules & Violations', href: '/violations/open/awaiting-approval', icon: <Gavel className="h-4 w-4" />, feature: 'violations' },
+      { label: 'Community Forms', href: '/community-forms/setup/forms', icon: <ClipboardList className="h-4 w-4" />, feature: 'community_forms' },
       { label: 'Voting', href: '/voting', icon: <Vote className="h-4 w-4" />, feature: 'voting' },
       { label: 'Gas', href: '/gas', icon: <Flame className="h-4 w-4" />, feature: 'gas' },
       { label: 'Marketplace', href: '/marketplace', icon: <Store className="h-4 w-4" />, feature: 'marketplace' },

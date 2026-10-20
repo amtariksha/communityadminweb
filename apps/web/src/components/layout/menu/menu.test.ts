@@ -268,7 +268,8 @@ describe('visibleMenu', () => {
     expect(find(menu, 'gate.move')?.href).toBe('/gate/move-in-out');
     expect(find(menu, 'gate.reports')?.href).toBe('/gate/reports');
     expect(find(menu, 'rules.setup.categories')?.href).toBe('/violations/setup/categories');
-    expect(find(menu, 'forms')).toBeUndefined();
+    expect(find(menu, 'forms.responses')).toBeUndefined();
+    expect(find(menu, 'forms.setup.forms')?.href).toBe('/community-forms/setup/forms');
     expect(find(menu, 'helpdesk.open')?.href).toBe('/helpdesk/open');
   });
 
