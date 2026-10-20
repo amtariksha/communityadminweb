@@ -5,6 +5,7 @@ import { DataTable, type DataTableAction, type DataTableColumn } from '@/compone
 import { useRouteStatus } from '@/components/layout/menu/use-route-status';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { categoryChoices, useAssetCategories } from '@/hooks/use-asset-categories';
 import { assetRegisterParams, useAssetRegister, type RegisterAsset } from '@/hooks/use-asset-register';
 import { ASSET_STATUS_ROUTES, ASSETS_BASE, mayRunStatusAction, primaryStatusAction } from '@/lib/asset-statuses';
 import { currentRole } from '@/lib/current-role';
@@ -16,7 +17,7 @@ import { useAssetStatusChange } from '../../assets/use-asset-status-change';
 const COLUMNS: DataTableColumn<RegisterAsset>[] = [
   { key: 'code', header: 'Asset Code', cell: (row) => row.asset_code ?? '—' },
   { key: 'name', header: 'Name', cell: (row) => row.name },
-  { key: 'category', header: 'Category', cell: (row) => categoryLabel(row.asset_type) },
+  { key: 'category', header: 'Category', cell: (row) => row.category_name ?? categoryLabel(row.asset_type) },
   { key: 'location', header: 'Location', cell: (row) => row.location || '—' },
   { key: 'purchased', header: 'Purchase Date', cell: (row) => formatDate(row.purchase_date) },
   { key: 'cost', header: 'Purchase Cost', cell: (row) => (row.purchase_cost != null ? formatCurrency(Number(row.purchase_cost)) : '—') },
@@ -25,6 +26,8 @@ const COLUMNS: DataTableColumn<RegisterAsset>[] = [
 ];
 
 function CategoryFilter({ value, onChange }: { value: string; onChange: (value: string) => void }): ReactNode {
+  // ASSET-16: the society's categories (by id); the fixed types before the API has them.
+  const { choices } = categoryChoices(useAssetCategories().data, ASSET_TYPES);
   return (
     <div className="space-y-1">
       <Label htmlFor="asset-category" className="text-xs text-muted-foreground">
@@ -32,7 +35,7 @@ function CategoryFilter({ value, onChange }: { value: string; onChange: (value: 
       </Label>
       <Select id="asset-category" value={value} onChange={(event) => onChange(event.target.value)}>
         <option value="">All Categories</option>
-        {ASSET_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+        {choices.map((choice) => <option key={choice.value} value={choice.value}>{choice.label}</option>)}
       </Select>
     </div>
   );

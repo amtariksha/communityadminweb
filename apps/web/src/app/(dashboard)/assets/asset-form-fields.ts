@@ -2,7 +2,10 @@ import type { Asset } from '@/hooks/use-assets';
 
 export interface AssetFormValues {
   name: string;
+  /** The fixed type, for an API without categories. */
   assetType: string;
+  /** ASSET-16 — the society's category. */
+  categoryId: string;
   location: string;
   manufacturer: string;
   model: string;
@@ -35,6 +38,7 @@ export function assetFormValues(asset?: Asset | null): AssetFormValues {
   return {
     name: asset?.name ?? '',
     assetType: asset?.asset_type ?? 'generator',
+    categoryId: asset?.category_id ?? '',
     location: asset?.location ?? '',
     manufacturer: asset?.manufacturer ?? '',
     model: asset?.model ?? '',
@@ -53,18 +57,20 @@ export function assetFormValues(asset?: Asset | null): AssetFormValues {
 }
 
 /** The same rules in the dialog and on the page (SB-07); null when valid. */
-export function assetFormError(values: AssetFormValues): string | null {
+export function assetFormError(values: AssetFormValues, byCategory = false): string | null {
   if (!values.name.trim()) return 'Enter the asset name.';
+  if (byCategory && !values.categoryId) return 'Choose the category.';
   if (!values.location.trim()) return 'Enter where the asset is.';
   if (values.purchaseCost && !(Number(values.purchaseCost) >= 0)) return 'The purchase cost must be zero or more.';
   if (values.assetCode.trim().length > 100) return 'An asset code is at most 100 characters.';
   return null;
 }
 
-export function assetPayload(values: AssetFormValues) {
+/** `byCategory`: the API has the society's categories (ASSET-16), so the category id is sent, else the fixed type. */
+export function assetPayload(values: AssetFormValues, byCategory = false) {
   return {
     name: values.name.trim(),
-    asset_type: values.assetType,
+    ...(byCategory ? { category_id: values.categoryId } : { asset_type: values.assetType }),
     location: values.location.trim(),
     manufacturer: values.manufacturer || undefined,
     model: values.model || undefined,

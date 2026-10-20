@@ -11,6 +11,11 @@ import { AssetStatusList } from './assets/asset-status-list';
  */
 
 const nav = vi.hoisted(() => ({ pathname: '/asset-inventory/assets/active' }));
+vi.mock('@/hooks/use-asset-categories', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-asset-categories')>()),
+  // An API without categories (ASSET-16): the fixed types are offered.
+  useAssetCategories: () => ({ data: undefined }),
+}));
 vi.mock('next/navigation', () => ({ usePathname: () => nav.pathname }));
 vi.mock('next/link', () => ({
   default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,

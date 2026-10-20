@@ -17,6 +17,9 @@ export interface Asset {
   id: string;
   name: string;
   asset_type: string;
+  /** ASSET-16 — the society's category (absent from an older API, or null before it was linked). */
+  category_id?: string | null;
+  category_name?: string | null;
   location: string;
   manufacturer: string;
   model: string;
@@ -241,7 +244,9 @@ export function useServiceLogs(assetId: string) {
 
 interface CreateAssetInput {
   name: string;
-  asset_type: string;
+  /** An API without categories (ASSET-16) reads the fixed type. */
+  asset_type?: string;
+  category_id?: string;
   location: string;
   manufacturer?: string;
   model?: string;
@@ -256,6 +261,7 @@ interface UpdateAssetInput {
   id: string;
   name?: string;
   asset_type?: string;
+  category_id?: string;
   location?: string;
   manufacturer?: string;
   model?: string;

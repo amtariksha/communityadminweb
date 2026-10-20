@@ -62,6 +62,7 @@ const ENTITY_TYPES = [
   { value: 'announcement', label: 'Announcement' },
   { value: 'asset', label: 'Asset' },
   { value: 'amc_contract', label: 'AMC Contract' },
+  { value: 'asset_category', label: 'Asset Category' },
   { value: 'staff', label: 'Staff' },
   { value: 'customer', label: 'Customer' },
   { value: 'amenity', label: 'Amenity' },

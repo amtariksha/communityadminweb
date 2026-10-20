@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
+import { categoryChoices, useAssetCategories, type CategoryChoice } from '@/hooks/use-asset-categories';
 import { useCreateAsset, useUpdateAsset, type Asset } from '@/hooks/use-assets';
 import { friendlyError } from '@/lib/api-error';
 import { LOCATION_PARTS, assetFormError, assetFormValues, assetPayload, type AssetFormValues } from './asset-form-fields';
@@ -32,16 +33,54 @@ function Text(props: { id: string; label: string; value: string; onChange: (valu
   );
 }
 
-function AssetFields({ values, set }: { values: AssetFormValues; set: Set }): ReactNode {
+interface CategoryOptions {
+  choices: CategoryChoice[];
+  byId: boolean;
+}
+
+/**
+ * The society's active categories (ASSET-16), plus the asset's own when it
+ * has been retired; today's fixed types before the API has categories.
+ */
+function useCategoryOptions(asset?: Asset | null): CategoryOptions {
+  const query = useAssetCategories();
+  const { choices, byId } = categoryChoices(query.data, ASSET_TYPES);
+  const own = asset?.category_id;
+  if (byId && own && !choices.some((choice) => choice.value === own)) {
+    return { byId, choices: [...choices, { value: own, label: `${asset?.category_name ?? 'Current'} (retired)`, legacyType: null }] };
+  }
+  return { choices, byId };
+}
+
+/** An asset saved before it was linked to a category opens on the category of its fixed type. */
+function withLegacyCategory(values: AssetFormValues, options: CategoryOptions, asset?: Asset | null): AssetFormValues {
+  if (!options.byId || values.categoryId || !asset) return values;
+  const match = options.choices.find((choice) => choice.legacyType === asset.asset_type);
+  return match ? { ...values, categoryId: match.value } : values;
+}
+
+function CategoryField({ values, set, options }: { values: AssetFormValues; set: Set; options: CategoryOptions }): ReactNode {
+  const value = options.byId ? values.categoryId : values.assetType;
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="asset-type">Category *</Label>
+      <Select
+        id="asset-type"
+        value={value}
+        onChange={(e) => set(options.byId ? { categoryId: e.target.value } : { assetType: e.target.value })}
+      >
+        {options.byId && <option value="">Choose a category</option>}
+        {options.choices.map((choice) => <option key={choice.value} value={choice.value}>{choice.label}</option>)}
+      </Select>
+    </div>
+  );
+}
+
+function AssetFields({ values, set, options }: { values: AssetFormValues; set: Set; options: CategoryOptions }): ReactNode {
   return (
     <div className="grid grid-cols-2 gap-4">
       <Text id="asset-name" label="Name *" value={values.name} onChange={(name) => set({ name })} wide />
-      <div className="space-y-2">
-        <Label htmlFor="asset-type">Category *</Label>
-        <Select id="asset-type" value={values.assetType} onChange={(e) => set({ assetType: e.target.value })}>
-          {ASSET_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
-        </Select>
-      </div>
+      <CategoryField values={values} set={set} options={options} />
       <Text id="asset-location" label="Location *" value={values.location} onChange={(location) => set({ location })} />
       <Text id="asset-code" label="Asset Code" value={values.assetCode} onChange={(assetCode) => set({ assetCode })} />
       {LOCATION_PARTS.map((part) => (
@@ -71,17 +110,20 @@ export function AssetForm(props: AssetFormProps): ReactNode {
   const { addToast } = useToast();
   const create = useCreateAsset();
   const update = useUpdateAsset();
-  const [values, setValues] = useState<AssetFormValues>(() => assetFormValues(props.asset));
+  const [typed, setValues] = useState<AssetFormValues>(() => assetFormValues(props.asset));
   const set: Set = (patch) => setValues((current) => ({ ...current, ...patch }));
   const editing = Boolean(props.asset);
+  const options = useCategoryOptions(props.asset);
+  const values = withLegacyCategory(typed, options, props.asset);
 
   async function save(andNew: boolean): Promise<void> {
-    const problem = assetFormError(values);
+    const problem = assetFormError(values, options.byId);
     if (problem) return addToast({ title: 'Check the asset', description: problem, variant: 'destructive' });
     try {
+      const payload = assetPayload(values, options.byId);
       const saved = props.asset
-        ? await update.mutateAsync({ id: props.asset.id, ...assetPayload(values) })
-        : await create.mutateAsync(assetPayload(values));
+        ? await update.mutateAsync({ id: props.asset.id, ...payload })
+        : await create.mutateAsync(payload);
       addToast({ title: editing ? 'Asset updated' : 'Asset created', variant: 'success' });
       if (andNew) setValues(assetFormValues());
       else props.onSaved(saved.data);
@@ -104,7 +146,7 @@ export function AssetForm(props: AssetFormProps): ReactNode {
       dialogClassName="max-w-lg"
     >
       {!editing && <p className="mb-2 text-xs text-muted-foreground">Leave Asset Code blank to get the next AST- number; the QR badge carries the code.</p>}
-      <AssetFields values={values} set={set} />
+      <AssetFields values={values} set={set} options={options} />
     </FormFrame>
   );
 }

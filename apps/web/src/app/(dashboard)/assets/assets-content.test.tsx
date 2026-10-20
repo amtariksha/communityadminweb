@@ -52,6 +52,11 @@ const DG_SET = vi.hoisted(() => ({
   created_at: '2026-01-01T00:00:00.000Z',
 }));
 
+vi.mock('@/hooks/use-asset-categories', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-asset-categories')>()),
+  // An API without categories (ASSET-16): the fixed types are offered.
+  useAssetCategories: () => ({ data: undefined }),
+}));
 vi.mock('@/hooks/use-assets', () => ({
   useAssetDashboard: mocks.query({
     total_assets: 4,

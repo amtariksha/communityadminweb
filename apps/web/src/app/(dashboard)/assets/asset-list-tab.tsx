@@ -64,7 +64,7 @@ function AssetRow({ asset, onEdit, onQr }: { asset: Asset } & Pick<AssetListTabP
       </TableCell>
       <TableCell>
         <span className="mr-1">{ASSET_TYPE_ICONS[asset.asset_type] ?? ''}</span>
-        <span className="capitalize">{asset.asset_type.replace(/_/g, ' ')}</span>
+        <span className="capitalize">{asset.category_name ?? asset.asset_type.replace(/_/g, ' ')}</span>
       </TableCell>
       <TableCell>{asset.location}</TableCell>
       <TableCell><Badge variant={conditionBadgeVariant(asset.condition)}>{asset.condition}</Badge></TableCell>
