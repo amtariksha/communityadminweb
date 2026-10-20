@@ -6,6 +6,7 @@ import { getCurrentTenant, getUser } from '@/lib/auth';
 import { applyTicketScope, getSidebarAllowlist, isDelegatedTicketRole } from '@/lib/admin-roles';
 import { classicMenu, type MenuNode } from '../menu/classic-menu';
 import { visibleMenu } from '../menu/menu-access';
+import { blockedMenuIds, useBlockedModules } from '../module-access';
 
 /**
  * The role that shapes the menu, resolved for the selected society the
@@ -25,12 +26,13 @@ export function useClassicMenu(): MenuNode[] {
   const role = currentMenuRole();
   // Supervisors reach HelpDesk Tracker only while their delegation switch is on.
   const { data: ticketScope } = useTicketScope(isDelegatedTicketRole(role));
-  return useMemo(
-    () =>
-      visibleMenu(classicMenu, {
-        enabledFeatures,
-        roleAllowlist: applyTicketScope(getSidebarAllowlist(role), role, ticketScope),
-      }),
-    [enabledFeatures, role, ticketScope],
-  );
+  // UNIT-24 — modules switched off for this person are left out.
+  const blocked = useBlockedModules();
+  return useMemo(() => {
+    const hidden = blockedMenuIds(blocked);
+    return visibleMenu(classicMenu, {
+      enabledFeatures,
+      roleAllowlist: applyTicketScope(getSidebarAllowlist(role), role, ticketScope),
+    }).filter((node) => !hidden.has(node.id));
+  }, [enabledFeatures, role, ticketScope, blocked]);
 }

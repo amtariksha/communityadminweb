@@ -15,6 +15,7 @@ import { SocietyLogo } from '@/components/society-logo';
 import { getUser, getCurrentTenant, logout } from '@/lib/auth';
 import { applyTicketScope, getSidebarAllowlist, isDelegatedTicketRole, pickDisplayRole } from '@/lib/admin-roles';
 import { standardMenu, type NavItem } from './menu/standard-menu';
+import { isRouteBlocked, useBlockedModules } from './module-access';
 
 interface SidebarProps {
   open: boolean;
@@ -139,6 +140,9 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
     return enabledFeatures.includes(item.feature);
   }
 
+  // UNIT-24 — modules the person's switches turn off (never more than the role).
+  const blockedModules = useBlockedModules();
+
   function isRoleVisible(item: NavItem): boolean {
     // null allowlist = broader admin role, show everything.
     if (!roleAllowlist) return true;
@@ -176,7 +180,8 @@ export function Sidebar({ open, onClose }: SidebarProps): ReactNode {
           {standardMenu.map((group) => {
             const visibleItems = group.items
               .filter(isFeatureVisible)
-              .filter(isRoleVisible);
+              .filter(isRoleVisible)
+              .filter((item) => !isRouteBlocked(item.href, blockedModules));
             if (visibleItems.length === 0) return null;
             return (
             <div key={group.label} className="mb-4">

@@ -20,6 +20,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { ClassicShell } from '@/components/layout/classic/classic-shell';
 import { LayoutProvider, useAdminLayout } from '@/lib/layout-context';
+import { ModuleAccessGate } from '@/components/layout/module-access';
 
 /**
  * Returns the existing tenant id ONLY if the user still has an
@@ -106,9 +107,17 @@ function StandardShell({ children }: DashboardLayoutProps): ReactNode {
 function AdminShell({ children }: DashboardLayoutProps): ReactNode {
   const layout = useAdminLayout();
   if (layout === 'classic') {
-    return <ClassicShell banner={<SuperAdminBanner />}>{children}</ClassicShell>;
+    return (
+      <ClassicShell banner={<SuperAdminBanner />}>
+        <ModuleAccessGate>{children}</ModuleAccessGate>
+      </ClassicShell>
+    );
   }
-  return <StandardShell>{children}</StandardShell>;
+  return (
+    <StandardShell>
+      <ModuleAccessGate>{children}</ModuleAccessGate>
+    </StandardShell>
+  );
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps): ReactNode {
