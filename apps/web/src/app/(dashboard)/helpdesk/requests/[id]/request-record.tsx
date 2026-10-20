@@ -14,6 +14,7 @@ import { useWord } from '@/lib/vocabulary';
 import { ConvertToCommunityButton } from '../../../tickets/convert-to-community';
 import { TicketDetailThreads } from '../../../tickets/ticket-detail-threads';
 import type { UploadedFiles } from '../../new/use-request-files';
+import { readsHelpdeskOnly } from '../../read-only-roles';
 import { RecordEdit } from './record-edit';
 import { RecordRating } from './record-rating';
 import { RecordSummary } from './record-summary';
@@ -77,6 +78,7 @@ export function RequestRecord({ ticketId, onClose }: RequestRecordProps): ReactN
   const { data: templates = [] } = useHelpdeskTemplates();
   const actions = useRecordActions(ticketId);
   const canEdit = useMemo(() => EDIT_ROLES.has(currentRole() ?? ''), []);
+  const readOnly = useMemo(() => readsHelpdeskOnly(), []);
   const ticket = query.data;
 
   if (query.isLoading) {
@@ -118,6 +120,7 @@ export function RequestRecord({ ticketId, onClose }: RequestRecordProps): ReactN
         onPost={actions.post}
         withFiles
         threadClassName={{ internal: 'print:hidden' }}
+        readOnly={readOnly}
       />
     </div>
   );

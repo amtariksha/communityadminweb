@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, useEffect, type ReactNode } from 'react';
 import {
   AlertCircle,
   Clock,
@@ -67,6 +67,7 @@ import { useTicketStatusUpdate } from './use-ticket-status-update';
 import { categoryChoices } from './category-choices';
 import { BulkReassignDialog } from './bulk-reassign-dialog';
 import { BulkServicedBy } from './bulk-serviced-by';
+import { readsHelpdeskOnly } from '../helpdesk/read-only-roles';
 import { QueueTabs, type QueueTab } from './queue-tabs';
 
 const CREATE_REQUEST_PAGE = '/helpdesk/new';
@@ -114,6 +115,8 @@ export default function TicketsContent(): ReactNode {
   const layout = useAdminLayout();
   const word = useWord();
   const PAGE_SIZE = 20;
+  // HelpDesk decision 7: committee members read the list; no bulk actions.
+  const readOnly = useMemo(() => readsHelpdeskOnly(), []);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('');
@@ -445,7 +448,7 @@ export default function TicketsContent(): ReactNode {
           <div className="flex items-center justify-between">
             <CardTitle>All Tickets</CardTitle>
             <div className="flex items-center gap-2">
-              {selectedIds.size > 0 && (
+              {!readOnly && selectedIds.size > 0 && (
                 <>
                   <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
                   <Button
@@ -481,6 +484,7 @@ export default function TicketsContent(): ReactNode {
                     type="checkbox"
                     className="h-4 w-4 cursor-pointer rounded border-input"
                     checked={tickets.length > 0 && selectedIds.size === tickets.length}
+                    disabled={readOnly}
                     onChange={toggleSelectAll}
                     aria-label="Select all tickets"
                   />
@@ -537,6 +541,7 @@ export default function TicketsContent(): ReactNode {
                         type="checkbox"
                         className="h-4 w-4 cursor-pointer rounded border-input"
                         checked={selectedIds.has(ticket.id)}
+                        disabled={readOnly}
                         onChange={() => toggleTicketSelection(ticket.id)}
                         aria-label={`Select ticket ${ticket.ticket_number}`}
                       />

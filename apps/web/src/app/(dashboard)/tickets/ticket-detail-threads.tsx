@@ -29,6 +29,8 @@ interface TicketDetailThreadsProps {
   withFiles?: boolean;
   /** Each thread's class, e.g. to keep the internal one off a printout. */
   threadClassName?: { resident?: string; internal?: string };
+  /** Read the threads only: no note boxes (HelpDesk decision 7). */
+  readOnly?: boolean;
 }
 
 interface ThreadProps {
@@ -42,6 +44,7 @@ interface ThreadProps {
   onPost: (message: string, isInternal: boolean, files?: UploadedFiles) => Promise<void>;
   withFiles: boolean;
   className?: string;
+  readOnly: boolean;
 }
 
 function authorLabel(comment: TicketComment): string {
@@ -76,6 +79,7 @@ function Thread({
   onPost,
   withFiles,
   className,
+  readOnly,
 }: ThreadProps): ReactNode {
   const [order, setOrder] = useState<SortOrder>('oldest');
   const [draft, setDraft] = useState('');
@@ -135,7 +139,7 @@ function Thread({
         ))}
       </ul>
 
-      {!isInternal && templates.length > 0 && (
+      {!readOnly && !isInternal && templates.length > 0 && (
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground">Template:</span>
           <select
@@ -160,9 +164,9 @@ function Thread({
         </div>
       )}
 
-      {withFiles && <CommentFilePicker id={`${headingId}-files`} files={files} />}
+      {!readOnly && withFiles && <CommentFilePicker id={`${headingId}-files`} files={files} />}
 
-      <div className="flex gap-2">
+      {!readOnly && <div className="flex gap-2">
         <Textarea
           aria-label={`Write to ${title}`}
           placeholder={placeholder}
@@ -179,7 +183,7 @@ function Thread({
         >
           <Send className="mr-1 h-4 w-4" /> Comment
         </Button>
-      </div>
+      </div>}
     </section>
   );
 }
@@ -196,6 +200,7 @@ export function TicketDetailThreads({
   onPost,
   withFiles = false,
   threadClassName,
+  readOnly = false,
 }: TicketDetailThreadsProps): ReactNode {
   const publicComments = comments.filter((comment) => !comment.is_internal);
   const internalComments = comments.filter((comment) => comment.is_internal);
@@ -213,6 +218,7 @@ export function TicketDetailThreads({
         onPost={onPost}
         withFiles={withFiles}
         className={threadClassName?.resident}
+        readOnly={readOnly}
       />
       <Thread
         title="Admin Internal Communication"
@@ -225,6 +231,7 @@ export function TicketDetailThreads({
         onPost={onPost}
         withFiles={withFiles}
         className={threadClassName?.internal}
+        readOnly={readOnly}
       />
     </div>
   );

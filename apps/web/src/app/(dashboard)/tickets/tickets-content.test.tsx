@@ -32,7 +32,10 @@ const mocks = vi.hoisted(() => ({
   assigneesSucceeded: true,
   exportColumns: [] as Array<{ key: string; label: string }>,
   mutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  role: null as string | null,
 }));
+
+vi.mock('@/lib/current-role', () => ({ currentRole: () => mocks.role }));
 
 vi.mock('@/hooks', () => ({
   useTickets: (filters: Record<string, unknown>) => mocks.useTickets(filters),
@@ -330,5 +333,21 @@ describe('Tickets page — Create Request (HELP-13)', () => {
     render(<TicketsContent />);
 
     expect(nav.replace).toHaveBeenCalledWith('/helpdesk/new');
+  });
+});
+
+describe('Tickets page — committee members read only (HelpDesk decision 7)', () => {
+  it('offers no selection and no bulk action', () => {
+    mocks.role = 'committee_member';
+    try {
+      render(<TicketsContent />);
+      const box = screen.getByRole('checkbox', { name: 'Select ticket TKT-1' }) as HTMLInputElement;
+      expect(box.disabled).toBe(true);
+      fireEvent.click(box);
+      expect(screen.queryByRole('button', { name: /Bulk Close/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: /Bulk Reassign/ })).toBeNull();
+    } finally {
+      mocks.role = null;
+    }
   });
 });

@@ -157,6 +157,22 @@ describe('RequestRecord', () => {
     expect((screen.getByLabelText('Status') as HTMLSelectElement).disabled).toBe(true);
   });
 
+  it('shows a committee member both threads without reply boxes (decision 7)', () => {
+    mocks.role = 'committee_member';
+    renderRecord();
+
+    expect(screen.getByText('Plumber booked')).toBeTruthy();
+    expect(screen.getByText('Spare key at the desk')).toBeTruthy();
+    expect(screen.queryByLabelText('Write to Resident Communication')).toBeNull();
+    expect(screen.queryByLabelText('Write to Admin Internal Communication')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Comment/ })).toBeNull();
+  });
+
+  it('keeps the reply boxes for the desk', () => {
+    renderRecord();
+    expect(screen.getByLabelText('Write to Resident Communication')).toBeTruthy();
+  });
+
   it('says "Request not found" for an unknown request', () => {
     mocks.ticket = undefined;
     mocks.isError = true;
