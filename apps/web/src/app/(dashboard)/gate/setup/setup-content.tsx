@@ -1,71 +1,64 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
-import { useGates } from '@/hooks/use-staff';
-import { useSaveGateGrid, type GateGridRow } from '@/hooks/use-gate-grid';
-import { ApiError, friendlyError } from '@/lib/api-error';
-import { currentRole } from '@/lib/current-role';
-import { GatesGrid } from './gates-grid';
-
-// The roles PUT /gate/gates/bulk accepts (gate writes, GATE-03).
-const SAVE_ROLES = new Set(['super_admin', 'community_admin', 'committee_member', 'security_supervisor']);
-
-function saveError(error: unknown): string {
-  // The admin web ships before the API: an older server has no bulk route.
-  if (error instanceof ApiError && error.status === 404) return 'Saving gates here is not available yet.';
-  return friendlyError(error);
-}
+import {
+  useGateSettings,
+  useUpdateGateSettings,
+  type GateSettingsChanges,
+  type GateSwitches,
+} from '@/hooks/use-gate-settings';
+import { canWriteGateSetup, NotAvailableYet, SetupBlock } from './blocks/setup-block';
+import { GuardAppBlock } from './blocks/guard-app-block';
+import { CheckinAlertBlock } from './blocks/checkin-alert-block';
+import { GatesBlock } from './blocks/gates-block';
+import { EmergencyNumbersBlock, ResidentCategoriesBlock } from './blocks/link-blocks';
+import { OverstayBlock } from './blocks/overstay-block';
 
 /**
- * Gate & Visitors › Setup (GATE-S1): the Gates block as an editable grid
- * (GATE-20). Guard-app switches, entry reasons, incident categories and the
- * other blocks join with GATE-40.
+ * Gate & Visitors › Setup (GATE-S1): one page of independent blocks, each
+ * with its own Save; saving one block never touches another. Entry reasons,
+ * the pass footer, incident categories and the guard roster join with their
+ * tickets (GATE-41, 46, 42, 47).
  */
 export function GateSetupContent(): ReactNode {
   const { addToast } = useToast();
-  const gatesQuery = useGates({ includeInactive: true });
-  const saveMutation = useSaveGateGrid();
-  const role = useMemo(() => currentRole(), []);
+  const editable = useMemo(() => canWriteGateSetup(), []);
+  const settingsQuery = useGateSettings();
+  const update = useUpdateGateSettings();
+  const settings = settingsQuery.data;
 
-  async function save(rows: GateGridRow[]): Promise<void> {
-    try {
-      await saveMutation.mutateAsync(rows);
-      addToast({ title: 'Gates saved', variant: 'success' });
-    } catch (error) {
-      addToast({ title: 'Could not save the gates', description: saveError(error), variant: 'destructive' });
-      throw error;
-    }
+  async function saveSettings(changes: GateSettingsChanges): Promise<void> {
+    await update.mutateAsync(changes);
+    addToast({ title: 'Gate settings saved', variant: 'success' });
   }
+  const saveSwitches = (changes: Partial<GateSwitches>) => saveSettings({ gate_settings: changes });
+  // Remount the setting blocks on fresh data so they show what was saved.
+  const version = settingsQuery.dataUpdatedAt;
+
+  if (settingsQuery.isLoading) return <Skeleton className="h-64 w-full" />;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Gates</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Tick In for gates visitors enter by and Out for gates they leave by. The guard app offers each gate for what it is ticked for.
-        </p>
-      </CardHeader>
-      <CardContent>
-        {gatesQuery.isLoading ? (
-          <Skeleton className="h-32 w-full" />
-        ) : gatesQuery.isError || !gatesQuery.data ? (
-          <p role="alert" className="text-sm text-destructive">
-            The gates could not be loaded. Reload the page to try again.
-          </p>
-        ) : (
-          <GatesGrid
-            // A fresh copy of the saved list resets the grid after Save Changes.
-            key={gatesQuery.dataUpdatedAt}
-            gates={gatesQuery.data}
-            readOnly={role === null || !SAVE_ROLES.has(role)}
-            isSaving={saveMutation.isPending}
-            save={save}
-          />
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      {settings === null || settingsQuery.isError ? (
+        <SetupBlock title="Guard App Settings">
+          {settingsQuery.isError ? (
+            <p role="alert" className="text-sm text-destructive">The gate settings could not be loaded. Reload the page to try again.</p>
+          ) : (
+            <NotAvailableYet what="Gate settings" />
+          )}
+        </SetupBlock>
+      ) : settings ? (
+        <>
+          <GuardAppBlock key={`app-${version}`} switches={settings.gate_settings} editable={editable} save={saveSwitches} />
+          <CheckinAlertBlock key={`alert-${version}`} switches={settings.gate_settings} editable={editable} save={saveSwitches} />
+        </>
+      ) : null}
+      <GatesBlock editable={editable} />
+      <ResidentCategoriesBlock />
+      <EmergencyNumbersBlock />
+      {settings ? <OverstayBlock key={`stay-${version}`} settings={settings} editable={editable} save={saveSettings} /> : null}
+    </div>
   );
 }

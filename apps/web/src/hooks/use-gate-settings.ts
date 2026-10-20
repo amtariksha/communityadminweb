@@ -3,10 +3,33 @@ import { api } from '@/lib/api';
 import { ApiError } from '@/lib/api-error';
 import { getCurrentTenant } from '@/lib/auth';
 
-/** GET / PATCH /tenant-settings/gate (GATE-03). */
+/** The guard-app switches, `gate_settings` (GATE-40); null = off. */
+export interface GateSwitches {
+  capture_vehicle_details: boolean;
+  guard_may_call_resident: boolean;
+  block_visitor_photos: boolean;
+  unit_checkin_alert_threshold: number | null;
+  auto_checkout_hours: number | null;
+}
+
+/**
+ * GET / PATCH /tenant-settings/gate (GATE-03, GATE-40). `gate_settings` is
+ * missing from an API that predates GATE-40; the screens say "not
+ * available yet" for those blocks.
+ */
 export interface GateSettings {
   overstay_threshold_minutes: number;
+  gate_settings?: GateSwitches;
 }
+
+/** What a PATCH may name: the threshold, and any switches. */
+export interface GateSettingsChanges {
+  overstay_threshold_minutes?: number;
+  gate_settings?: Partial<GateSwitches>;
+}
+
+export const CHECKIN_ALERT_MAX = 99;
+export const AUTO_CHECKOUT_HOURS_MAX = 48;
 
 export const OVERSTAY_MINUTES_MIN = 15;
 export const OVERSTAY_MINUTES_MAX = 1440;
@@ -40,7 +63,7 @@ export function useGateSettings() {
 export function useUpdateGateSettings() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: function updateGateSettings(changes: Partial<GateSettings>) {
+    mutationFn: function updateGateSettings(changes: GateSettingsChanges) {
       return api.patch<{ data: GateSettings }>('/tenant-settings/gate', changes);
     },
     onSuccess() {
