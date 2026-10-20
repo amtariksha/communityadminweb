@@ -12,6 +12,8 @@ export const REQUEST_TYPE_LABELS: Record<string, string> = {
   leave_request: 'Leave Request',
   work_order: 'Work Order',
   document: 'Document',
+  // RULE-04 — violations raised in Community Rules & Violations.
+  violation: 'Violation',
 };
 
 export const REQUEST_TYPE_OPTIONS: ReadonlyArray<{ value: string; label: string }> =
