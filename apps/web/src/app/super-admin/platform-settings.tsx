@@ -15,7 +15,7 @@ import type { TdsConfig } from '@/hooks';
 import { TdsConfigEditor } from '@/components/tds/tds-config-editor';
 import { GstRatesEditor } from '@/components/super-admin/gst-rates-editor';
 import { PaymentsSettings } from '@/components/super-admin/payments-settings';
-import { OtpSection } from './otp-settings';
+import { OtpSettings } from './otp-settings';
 
 // ---------------------------------------------------------------------------
 // Tab definitions
@@ -23,8 +23,8 @@ import { OtpSection } from './otp-settings';
 
 // Q2 (2026-10-20): Storage, Push Notifications, Email and Branding are gone —
 // they saved platform_config keys nothing reads (storage, push, e-mail and
-// branding come from the server environment). Payments has its own route,
-// which reads and writes what the API uses.
+// branding come from the server environment). Payments and OTP & Messaging
+// have their own routes, which read and write what the API uses.
 type SettingsTab = 'otp' | 'payments' | 'tax';
 
 const TABS: { key: SettingsTab; label: string; icon: typeof MessageSquare }[] = [
@@ -37,8 +37,8 @@ const TABS: { key: SettingsTab; label: string; icon: typeof MessageSquare }[] = 
 // Config key mapping (the generic platform-config route)
 // ---------------------------------------------------------------------------
 
-const TAB_CONFIG_KEYS: Record<Exclude<SettingsTab, 'payments'>, string> = {
-  otp: 'otp_provider',
+// OTP & Messaging and Payments have their own routes.
+const TAB_CONFIG_KEYS: Record<Exclude<SettingsTab, 'payments' | 'otp'>, string> = {
   tax: 'tds_config',
 };
 
@@ -200,13 +200,7 @@ export default function PlatformSettings(): ReactNode {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {activeTab === 'otp' && (
-            <OtpSection
-              config={getConfigForTab('otp')}
-              onSave={(v) => handleSave('otp', v)}
-              isPending={updateConfig.isPending}
-            />
-          )}
+          {activeTab === 'otp' && <OtpSettings />}
           {activeTab === 'payments' && <PaymentsSettings />}
           {activeTab === 'tax' && (
             <TaxDefaultsSection

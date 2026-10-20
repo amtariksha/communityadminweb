@@ -4,7 +4,7 @@ import PlatformSettings from './platform-settings';
 
 /**
  * Q2 — Platform settings offers only what the API reads: OTP & Messaging
- * (otp_provider), Payments (its own route) and Tax Defaults. Storage, Push
+ * and Payments (each its own route) and Tax Defaults. Storage, Push
  * Notifications, Email and Branding saved keys nothing reads and are gone.
  */
 
@@ -18,6 +18,7 @@ vi.mock('@/components/ui/toast', () => ({ useToast: () => ({ addToast: vi.fn() }
 vi.mock('@/components/super-admin/payments-settings', () => ({
   PaymentsSettings: () => <p>payments settings</p>,
 }));
+vi.mock('./otp-settings', () => ({ OtpSettings: () => <p>otp settings</p> }));
 vi.mock('@/components/super-admin/gst-rates-editor', () => ({ GstRatesEditor: () => null }));
 vi.mock('@/components/tds/tds-config-editor', () => ({ TdsConfigEditor: () => null }));
 
@@ -32,8 +33,10 @@ describe('PlatformSettings', () => {
     }
   });
 
-  it('shows the Payments settings on their own route, not the generic config save', () => {
+  it('shows OTP & Messaging and Payments from their own routes, not the generic config save', () => {
     render(<PlatformSettings />);
+
+    expect(screen.getByText('otp settings')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
 
