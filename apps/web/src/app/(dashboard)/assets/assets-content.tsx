@@ -44,9 +44,7 @@ import { friendlyError } from '@/lib/api-error';
 import { formatCurrency } from '@/lib/utils';
 import {
   useAssetDashboard,
-  useAMCs,
   useServiceLogs,
-  useCreateAMC,
   useLogService,
   useAssetChecklists,
   useCreateChecklist,
@@ -59,7 +57,6 @@ import {
 } from '@/hooks/use-assets';
 import type {
   Asset,
-  AMCContract,
   ServiceLog,
   AssetChecklist,
   AuditSchedule,
@@ -69,7 +66,7 @@ import type {
 import { useVendors } from '@/hooks';
 import { UserSearchSelect } from '@/components/ui/user-search-select';
 import type { UserSearchHit } from '@/hooks/use-user-search';
-import { AmcEditDialog } from './amc-edit-dialog';
+import { AmcContractsTab } from './amc-contracts-tab';
 import { AssetForm } from './asset-form';
 import { AssetQrDialog } from './asset-qr-dialog';
 import { AssetSearchSelect, type AssetChoice } from './asset-search-select';
@@ -102,12 +99,6 @@ const SERVICE_TYPES = [
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function daysRemaining(endDate: string): number {
-  const now = new Date();
-  const end = new Date(endDate);
-  return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-}
 
 // ---------------------------------------------------------------------------
 // Stat card
@@ -151,14 +142,6 @@ export default function AssetsContent(): ReactNode {
   const [assetDialogOpen, setAssetDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
 
-  // AMC dialog
-  const [amcDialogOpen, setAmcDialogOpen] = useState(false);
-  const [amcAsset, setAmcAsset] = useState<AssetChoice | null>(null);
-  const [amcVendorId, setAmcVendorId] = useState('');
-  const [amcContractNumber, setAmcContractNumber] = useState('');
-  const [amcStartDate, setAmcStartDate] = useState('');
-  const [amcEndDate, setAmcEndDate] = useState('');
-  const [amcAmount, setAmcAmount] = useState('');
 
   // Service dialog
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
@@ -213,8 +196,6 @@ export default function AssetsContent(): ReactNode {
   const { data: dashboard, isLoading: dashLoading } = useAssetDashboard();
   // The AMC and service-log pickers search the server (AssetSearchSelect);
   // the Assets tab pages through every asset itself (ASSET-02).
-  const [editingAmc, setEditingAmc] = useState<AMCContract | null>(null);
-  const { data: amcsData, isLoading: amcsLoading } = useAMCs();
   const { data: vendorsResponse } = useVendors();
   const vendors = (vendorsResponse as unknown as { data: Array<{ id: string; name: string }> })?.data ?? [];
 
@@ -222,11 +203,9 @@ export default function AssetsContent(): ReactNode {
   const [serviceFilterAssetId, setServiceFilterAssetId] = useState('');
   const { data: serviceLogs, isLoading: servicesLoading } = useServiceLogs(serviceFilterAssetId);
 
-  const amcs = amcsData?.data ?? [];
   const services = (serviceLogs as ServiceLog[] | undefined) ?? [];
 
   // Mutations
-  const createAMC = useCreateAMC();
   const logService = useLogService();
 
   // -----------------------------------------------------------------------
@@ -241,49 +220,6 @@ export default function AssetsContent(): ReactNode {
   function openAddAsset(): void {
     setEditingAsset(null);
     setAssetDialogOpen(true);
-  }
-
-  function resetAmcForm(): void {
-    setAmcAsset(null);
-    setAmcVendorId('');
-    setAmcContractNumber('');
-    setAmcStartDate('');
-    setAmcEndDate('');
-    setAmcAmount('');
-  }
-
-  function handleAmcSubmit(e: FormEvent): void {
-    e.preventDefault();
-    if (!amcAsset) {
-      addToast({ title: 'Select an asset', variant: 'destructive' });
-      return;
-    }
-    // amc_contracts keeps the vendor by name, not by id.
-    const vendor = vendors.find((v) => v.id === amcVendorId);
-    if (!vendor) {
-      addToast({ title: 'Select a vendor', variant: 'destructive' });
-      return;
-    }
-    createAMC.mutate(
-      {
-        asset_id: amcAsset.id,
-        vendor_name: vendor.name,
-        contract_number: amcContractNumber,
-        start_date: amcStartDate,
-        end_date: amcEndDate,
-        cost: Number(amcAmount),
-      },
-      {
-        onSuccess() {
-          addToast({ title: 'AMC contract created', variant: 'success' });
-          setAmcDialogOpen(false);
-          resetAmcForm();
-        },
-        onError(err) {
-          addToast({ title: 'Failed to create AMC', description: friendlyError(err), variant: 'destructive' });
-        },
-      },
-    );
   }
 
   function resetServiceForm(): void {
@@ -411,133 +347,8 @@ export default function AssetsContent(): ReactNode {
         />
       )}
 
-      {/* AMC tab */}
-      {activeTab === 'amc' && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>AMC Contracts</CardTitle>
-            <Dialog open={amcDialogOpen} onOpenChange={(open) => { setAmcDialogOpen(open); if (!open) resetAmcForm(); }}>
-              <DialogTrigger>
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add AMC
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <form onSubmit={handleAmcSubmit}>
-                  <DialogHeader>
-                    <DialogTitle>Create AMC Contract</DialogTitle>
-                    <DialogDescription>Link an AMC contract to an asset and vendor</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="amc-asset">Asset *</Label>
-                      <AssetSearchSelect id="amc-asset" value={amcAsset} onChange={setAmcAsset} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="amc-vendor">Vendor *</Label>
-                      <Select id="amc-vendor" value={amcVendorId} onChange={(e) => setAmcVendorId(e.target.value)} required>
-                        <option value="">Select vendor</option>
-                        {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="amc-contract">Contract Number *</Label>
-                      <Input id="amc-contract" value={amcContractNumber} onChange={(e) => setAmcContractNumber(e.target.value)} required />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="amc-start">Start Date *</Label>
-                        <Input id="amc-start" type="date" value={amcStartDate} onChange={(e) => setAmcStartDate(e.target.value)} required />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="amc-end">End Date *</Label>
-                        <Input id="amc-end" type="date" value={amcEndDate} onChange={(e) => setAmcEndDate(e.target.value)} required />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="amc-amount">Amount *</Label>
-                      <Input id="amc-amount" type="number" min="0" step="0.01" value={amcAmount} onChange={(e) => setAmcAmount(e.target.value)} required />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose>
-                      <Button type="button" variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button type="submit" disabled={createAMC.isPending}>Create</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent className="p-0">
-            {amcsLoading ? (
-              <div className="space-y-2 p-6">
-                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-              </div>
-            ) : amcs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <Wrench className="mb-2 h-10 w-10" />
-                <p className="text-lg font-medium">No AMC contracts</p>
-                <p className="text-sm">Add an AMC contract to track maintenance agreements</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Asset</TableHead>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Contract #</TableHead>
-                    <TableHead>Period</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Days Remaining</TableHead>
-                    <TableHead>Reminder</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-10" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {amcs.map((amc) => {
-                    const days = daysRemaining(amc.end_date);
-                    return (
-                      <TableRow key={amc.id}>
-                        <TableCell className="font-medium">{amc.asset_name}</TableCell>
-                        <TableCell>{amc.vendor_name}</TableCell>
-                        <TableCell className="font-mono text-xs">{amc.contract_number}</TableCell>
-                        <TableCell className="text-sm">
-                          {formatDate(amc.start_date)} - {formatDate(amc.end_date)}
-                        </TableCell>
-                        <TableCell>{formatCurrency(amc.cost)}</TableCell>
-                        <TableCell>
-                          <span className={days < 30 ? 'font-semibold text-destructive' : ''}>
-                            {days > 0 ? `${days} days` : 'Expired'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm">{amc.reminder_days ?? 30} days before</TableCell>
-                        <TableCell>
-                          <Badge variant={amc.status === 'active' ? 'success' : 'secondary'}>
-                            {amc.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <button
-                            type="button"
-                            className="rounded p-1 hover:bg-muted"
-                            onClick={() => setEditingAmc(amc)}
-                            title="Edit contract"
-                          >
-                            <Pencil className="h-4 w-4 text-muted-foreground" />
-                          </button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {/* AMC tab: the same list and form as Vendor Master › AMCs (VEND-11). */}
+      {activeTab === 'amc' && <AmcContractsTab />}
 
       {/* Service History tab */}
       {activeTab === 'services' && (
@@ -1262,7 +1073,6 @@ export default function AssetsContent(): ReactNode {
           onSaved={() => setAssetDialogOpen(false)}
         />
       )}
-      <AmcEditDialog amc={editingAmc} onClose={() => setEditingAmc(null)} />
     </div>
   );
 }

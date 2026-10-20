@@ -52,6 +52,7 @@ const DG_SET = vi.hoisted(() => ({
   created_at: '2026-01-01T00:00:00.000Z',
 }));
 
+vi.mock('./amc-contracts-tab', () => ({ AmcContractsTab: () => <p>Shared AMC tracker</p> }));
 vi.mock('@/hooks/use-asset-categories', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/hooks/use-asset-categories')>()),
   // An API without categories (ASSET-16): the fixed types are offered.
@@ -218,63 +219,11 @@ describe('AssetsContent', () => {
   });
 
   describe('AMC contracts', () => {
-    it('shows the contract cost the API returns', () => {
+    // VEND-11: the tab is Vendor Master › AMCs' list and form (tested in vendor-master/amc).
+    it('shows the shared AMC tracker', () => {
       render(<AssetsContent />);
       openTab('AMC Contracts');
-
-      const row = screen.getByText('AMC-1').closest('tr') as HTMLElement;
-      expect(within(row).getByText('₹12,000')).toBeTruthy();
-    });
-
-    it('posts vendor_name and cost, the fields the API stores', () => {
-      render(<AssetsContent />);
-      openTab('AMC Contracts');
-      fireEvent.click(screen.getByRole('button', { name: /add amc/i }));
-      const dialog = dialogTitled('Create AMC Contract');
-
-      // The asset picker searches the server (no 100-asset preload).
-      setField(/^asset/i, 'DG');
-      fireEvent.click(within(dialog).getByRole('button', { name: /^DG Set/ }));
-      setField(/^vendor/i, 'vendor-1');
-      setField(/contract number/i, 'AMC-9');
-      setField(/start date/i, '2026-11-01');
-      setField(/end date/i, '2027-10-31');
-      setField(/amount/i, '18000');
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }));
-
-      expect(mocks.createAMC.mutate).toHaveBeenCalledTimes(1);
-      expect(mocks.createAMC.mutate.mock.calls[0][0]).toEqual({
-        asset_id: 'asset-1',
-        vendor_name: 'Pumpline Service Co.',
-        contract_number: 'AMC-9',
-        start_date: '2026-11-01',
-        end_date: '2027-10-31',
-        cost: 18000,
-      });
-    });
-
-    it('edits the end date and reminder days of a contract (VEND-04)', () => {
-      render(<AssetsContent />);
-      openTab('AMC Contracts');
-      const row = screen.getByText('AMC-1').closest('tr') as HTMLElement;
-      expect(within(row).getByText('30 days before')).toBeTruthy();
-      fireEvent.click(within(row).getByTitle('Edit contract'));
-      const dialog = dialogTitled('Edit AMC Contract');
-
-      setField(/end date/i, '2099-03-31');
-      setField(/reminder days/i, '45');
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
-
-      expect(mocks.updateAMC.mutate).toHaveBeenCalledTimes(1);
-      expect(mocks.updateAMC.mutate.mock.calls[0][0]).toEqual({ id: 'amc-1', end_date: '2099-03-31', reminder_days: 45 });
-    });
-
-    it('has no Frequency field, because nothing stores it', () => {
-      render(<AssetsContent />);
-      openTab('AMC Contracts');
-      fireEvent.click(screen.getByRole('button', { name: /add amc/i }));
-
-      expect(screen.queryByLabelText(/frequency/i)).toBeNull();
+      expect(screen.getByText('Shared AMC tracker')).toBeTruthy();
     });
   });
 

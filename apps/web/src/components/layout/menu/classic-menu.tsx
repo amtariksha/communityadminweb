@@ -948,7 +948,22 @@ export const classicMenu: MenuNode[] = [
           { label: 'Vendors For Non Member Income', path: '/vendor-master/bulk-posting/non-member-income' },
         ],
       },
-      planned('vendors.amcs', 'AMCs', 'VEND-11'),
+      {
+        // VEND-11 / VEND-12: the contract tracker; Create Contract and a contract's form are pages.
+        id: 'vendors.amcs',
+        label: 'AMCs',
+        create: { label: 'Create Contract', href: '/vendor-master/amc/new' },
+        logs: ['amc_contract'],
+        forms: [
+          { label: 'Create Contract', path: '/vendor-master/amc/new' },
+          { label: 'Contract', path: '/vendor-master/amc/:id' },
+        ],
+        tabs: [
+          { id: 'vendors.amcs.calendar', label: 'Calendar', href: '/vendor-master/amc/calendar' },
+          { id: 'vendors.amcs.active', label: 'Active AMCs', href: '/vendor-master/amc/active', logs: ['amc_contract'] },
+          { id: 'vendors.amcs.expired', label: 'Expired AMCs', href: '/vendor-master/amc/expired', logs: ['amc_contract'] },
+        ],
+      },
     ],
   },
   {

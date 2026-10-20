@@ -53,6 +53,8 @@ const ROUTE_FAMILIES: ReadonlyArray<readonly [prefix: string, governedBy: string
   // Vendor Master (VEND-06 / VEND-07): the income parties follow Customers,
   // the rest Vendors (both the vendors feature).
   ['/vendor-master/non-member-income', '/customers'],
+  // AMCs (VEND-11) are the Assets page's AMC Contracts: the assets feature and roles.
+  ['/vendor-master/amc', '/assets'],
   ['/vendor-master', '/vendors'],
   // General Ledger: its statements follow Reports, the rest Accounts.
   ['/general-ledger/trial-balance', '/reports'],

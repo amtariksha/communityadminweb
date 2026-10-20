@@ -64,7 +64,14 @@ function MemberPicker({ values, onChange }: { values: VendorFormValues; onChange
   );
 }
 
-export function AddVendorDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }): ReactNode {
+interface AddVendorDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** The vendor just added, e.g. to select it on the AMC form (VEND-11). */
+  onCreated?: (vendor: { id: string; name: string }) => void;
+}
+
+export function AddVendorDialog({ open, onOpenChange, onCreated }: AddVendorDialogProps): ReactNode {
   const { addToast } = useToast();
   const [values, setValues] = useState<VendorFormValues>(emptyVendorForm);
   const createVendor = useCreateVendor();
@@ -76,7 +83,8 @@ export function AddVendorDialog({ open, onOpenChange }: { open: boolean; onOpenC
     );
     if (!payload) return;
     createVendor.mutate(payload as VendorPayload & { name: string }, {
-      onSuccess() {
+      onSuccess(result) {
+        onCreated?.({ id: result.data.id, name: result.data.name });
         onOpenChange(false);
         setValues(emptyVendorForm());
         addToast({ title: 'Vendor added successfully', variant: 'success' });

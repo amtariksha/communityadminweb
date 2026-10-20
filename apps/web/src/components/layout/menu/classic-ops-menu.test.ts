@@ -173,8 +173,8 @@ describe('Asset & Inventory (ASSET-07)', () => {
 
 describe('Vendor Master (VEND-06, VEND-07)', () => {
   it('shows both lists with Active and In-Active sub-tabs', () => {
-    // VEND-09 adds Bulk Posting after the two lists.
-    expect(children('vendors')?.map(([label]) => label)).toEqual(['Vendors For Expense', 'Vendors for Non Member Income', 'Bulk Posting']);
+    // VEND-09 adds Bulk Posting after the two lists, VEND-11 the AMCs.
+    expect(children('vendors')?.map(([label]) => label)).toEqual(['Vendors For Expense', 'Vendors for Non Member Income', 'Bulk Posting', 'AMCs']);
     expect(locate('/vendor-master/bulk-posting/expense', menu)?.child?.label).toBe('Vendors For Expense');
     expect(tabs('vendors.expense')).toEqual([
       ['Active', '/vendor-master/expense'],
@@ -184,6 +184,17 @@ describe('Vendor Master (VEND-06, VEND-07)', () => {
       ['Active', '/vendor-master/non-member-income'],
       ['In-Active', '/vendor-master/non-member-income/inactive'],
     ]);
+  });
+
+  it('has the AMC tracker: Calendar, Active and Expired, Create Contract as a page, gated like the Assets page (VEND-11)', () => {
+    expect(tabs('vendors.amcs')).toEqual([
+      ['Calendar', '/vendor-master/amc/calendar'],
+      ['Active AMCs', '/vendor-master/amc/active'],
+      ['Expired AMCs', '/vendor-master/amc/expired'],
+    ]);
+    expect(locate('/vendor-master/amc/new', menu)?.form).toBe(true);
+    expect(locate('/vendor-master/amc/0f8c2b1e-3d4a-4c5b-9e6f-7a8b9c0d1e2f', menu)?.form).toBe(true);
+    expect(governingItem('/vendor-master/amc/active')?.href).toBe('/assets');
   });
 
   it('opens the vendor form as a page and keeps today’s pages in the module', () => {
