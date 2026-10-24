@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { unitPanelKeys } from './use-unit-panel';
 import type { DocumentCategory, Document as SocietyDocument } from '@communityos/shared';
 
 // ---------------------------------------------------------------------------
@@ -240,8 +241,10 @@ export function useUploadDocument() {
     mutationFn: function uploadDocument(input: UploadDocumentInput) {
       return api.post<{ data: SocietyDocument }>('/documents', input);
     },
-    onSuccess: function invalidate() {
+    onSuccess: function invalidate(_data, input) {
       queryClient.invalidateQueries({ queryKey: documentKeys.all });
+      // The unit panel lists the unit's documents (Upload from its Documents section).
+      if (input.unit_id) queryClient.invalidateQueries({ queryKey: unitPanelKeys.panel(input.unit_id) });
     },
   });
 }
