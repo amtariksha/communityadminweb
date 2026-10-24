@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { useBadgeSheet, type BadgeSheetFilters } from '@/hooks/use-staff-badges'
 import { printHtml } from '@/lib/download';
 import { isRouteMissing } from '@/lib/not-deployed';
 import { BADGE_SHEET_STYLE, BadgeSheet, type BadgeSheetVariant } from '../badge-sheet';
+import { BadgeQrCodes } from './badge-qr-codes';
 
 const VARIANTS: ReadonlyArray<{ value: BadgeSheetVariant; label: string }> = [
   { value: 'badges', label: 'Staff Badges' },
@@ -62,6 +64,7 @@ export function BadgePrintContent(): ReactNode {
         <Button type="button" disabled={!sheet.data || sheet.data.cards.length === 0} onClick={print}>
           Print ({sheet.data?.cards.length ?? 0})
         </Button>
+        <Link href="/staff/reports/badges/scans" className="text-sm text-primary underline">Badge scans at the gate</Link>
       </div>
       {sheet.data && sheet.data.cards.length === 0 && <p className="text-sm text-muted-foreground">No badges match.</p>}
       {sheet.data && (
@@ -70,6 +73,7 @@ export function BadgePrintContent(): ReactNode {
           <BadgeSheet sheet={sheet.data} variant={variant} />
         </div>
       )}
+      {sheet.data && <BadgeQrCodes cards={sheet.data.cards} />}
     </div>
   );
 }

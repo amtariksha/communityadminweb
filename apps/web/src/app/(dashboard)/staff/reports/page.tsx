@@ -8,9 +8,14 @@ export default function StaffReportsPage(): ReactNode {
     <ModuleReportsPage
       module="staff_manager"
       footer={
-        <Link href="/staff/reports/badges" className="text-primary underline">
-          Print badges (cards with the ID card header, photos and QR)
-        </Link>
+        <span className="flex flex-wrap gap-4">
+          <Link href="/staff/reports/badges" className="text-primary underline">
+            Print badges (cards with the ID card header, photos and QR)
+          </Link>
+          <Link href="/staff/reports/badges/scans" className="text-primary underline">
+            Badge scans at the gate
+          </Link>
+        </span>
       }
     />
   );
