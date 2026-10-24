@@ -4,18 +4,18 @@ import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, Pencil, Search, Users, XCircle } from 'lucide-react';
 import type { Vendor } from '@communityos/shared';
+import { ExportStrip } from '@/components/data-table/export-strip';
+import { printableTable, toTsv, type TextColumn } from '@/components/data-table/table-text';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClickablePhone } from '@/components/ui/clickable-contact';
-import { ExportButton } from '@/components/ui/export-button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useVendors } from '@/hooks';
 import { tdsText } from './vendor-form';
-import { todayIST } from '@/lib/date';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -26,6 +26,25 @@ const IS_ACTIVE: Readonly<Record<VendorStatusFilter, boolean | undefined>> = {
   active: true,
   inactive: false,
 };
+
+const VENDOR_TEXT_COLUMNS: readonly TextColumn<Vendor>[] = [
+  { header: 'Vendor Name', text: (vendor) => vendor.name },
+  { header: 'Contact Name', text: (vendor) => vendor.contact_person ?? '' },
+  { header: 'PAN', text: (vendor) => vendor.pan ?? '' },
+  { header: 'GSTIN', text: (vendor) => vendor.gstin ?? '' },
+  { header: 'TDS', text: (vendor) => tdsText(vendor) },
+  { header: 'Phone', text: (vendor) => vendor.phone ?? '' },
+  { header: 'Email', text: (vendor) => vendor.email ?? '' },
+];
+
+/** The list's own filters, for GET /vendors/export. */
+export function vendorExportParams(status: VendorStatusFilter, search: string): Record<string, string> {
+  const params: Record<string, string> = {};
+  const active = IS_ACTIVE[status];
+  if (active !== undefined) params.is_active = String(active);
+  if (search) params.search = search;
+  return params;
+}
 
 interface VendorListProps {
   onOpen: (vendorId: string) => void;
@@ -155,24 +174,17 @@ export function VendorList(props: VendorListProps): ReactNode {
                 <option value="inactive">In-Active</option>
               </Select>
               <SearchBar onSearch={(value) => { setSearch(value); setPage(1); }} />
-              <ExportButton
-                data={vendors as unknown as Record<string, unknown>[]}
-                filename={`vendors-${todayIST()}`}
-                columns={[
-                  { key: 'name', label: 'Vendor Name' },
-                  { key: 'contact_person', label: 'Contact Name' },
-                  { key: 'pan', label: 'PAN' },
-                  { key: 'gstin', label: 'GSTIN' },
-                  { key: 'tds_section', label: 'TDS Section' },
-                  { key: 'tds_rate', label: 'TDS Rate %' },
-                  { key: 'phone', label: 'Phone' },
-                  { key: 'email', label: 'Email' },
-                ]}
-              />
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* The whole filtered list from the server (SB-04), not just this page. */}
+          <ExportStrip
+            config={{ path: '/vendors/export', params: vendorExportParams(status, search), filename: 'vendors' }}
+            copyText={() => toTsv(VENDOR_TEXT_COLUMNS, vendors)}
+            printPage={() => printableTable('Vendors', VENDOR_TEXT_COLUMNS, vendors)}
+            rowCount={vendors.length}
+          />
           <Table>
             <TableHeader>
               <TableRow>
