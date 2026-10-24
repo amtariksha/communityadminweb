@@ -107,7 +107,7 @@ vi.mock('@/hooks/use-user-search', () => ({
   useUserSearch: (q: string) => ({
     data:
       q.trim().length >= 3
-        ? [{ id: mocks.RAVI_USER_ID, phone: '+919900000001', name: 'Ravi Kumar', email: null, units: [], roles: ['security_guard'] }]
+        ? [{ id: mocks.RAVI_USER_ID, phone: '+910000000041', name: 'Ravi Kumar', email: null, units: [], roles: ['security_guard'] }]
         : [],
     isLoading: false,
   }),
@@ -151,7 +151,12 @@ function serverAssets(filters?: Record<string, unknown>) {
   return { data: { data: hits.slice((page - 1) * limit, page * limit), total: hits.length }, isLoading: false };
 }
 
-describe('AssetsContent', () => {
+// The page renders every tab's dialogs: about a second per test alone, well
+// past the 5 s default when the whole suite runs in parallel.
+const SLOW_RENDER = { timeout: 30_000 } as const;
+const FIND = { timeout: 10_000 } as const;
+
+describe('AssetsContent', SLOW_RENDER, () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.useAssets.mockImplementation(serverAssets);
@@ -260,10 +265,10 @@ describe('AssetsContent', () => {
         target: { value: 'Ravi' },
       });
       // The matched part of the name is highlighted, so match the whole row.
-      fireEvent.mouseDown(await screen.findByRole('button', { name: /Ravi Kumar/ }));
+      fireEvent.mouseDown(await screen.findByRole('button', { name: /Ravi Kumar/ }, FIND));
       fireEvent.click(within(dialog).getByRole('button', { name: /schedule/i }));
 
-      await waitFor(() => expect(mocks.createSchedule.mutateAsync).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(mocks.createSchedule.mutateAsync).toHaveBeenCalledTimes(1), FIND);
       expect(mocks.createSchedule.mutateAsync).toHaveBeenCalledWith({
         checklist_id: 'cl-1',
         checklist: 'Fire Safety',
@@ -280,10 +285,12 @@ describe('AssetsContent', () => {
       setField(/scheduled date/i, '2026-11-01');
       fireEvent.click(within(dialog).getByRole('button', { name: /schedule/i }));
 
-      await waitFor(() =>
-        expect(mocks.addToast).toHaveBeenCalledWith(
-          expect.objectContaining({ variant: 'destructive' }),
-        ),
+      await waitFor(
+        () =>
+          expect(mocks.addToast).toHaveBeenCalledWith(
+            expect.objectContaining({ variant: 'destructive' }),
+          ),
+        FIND,
       );
       expect(mocks.createSchedule.mutateAsync).not.toHaveBeenCalled();
     });
