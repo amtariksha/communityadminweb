@@ -540,7 +540,6 @@ export {
   useCreateMeter,
   useUpdateMeter,
   useSubmitReading,
-  useSubmitBulkReadings,
   useCreateSlab,
   useUpdateSlab,
   useDeleteSlab,

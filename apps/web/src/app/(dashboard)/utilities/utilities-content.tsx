@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
   TableBody,
@@ -20,15 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from '@/components/ui/dialog';
 import { PageHeader } from '@/components/layout/page-header';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
@@ -37,7 +27,6 @@ import {
   useUtilityStats,
   useMeters,
   useSubmitReading,
-  useSubmitBulkReadings,
   useReadings,
 } from '@/hooks';
 import type { Meter } from '@/hooks/use-utilities';
@@ -263,13 +252,10 @@ export function ReadingsTab(): ReactNode {
   const ocrMeter = useOcrMeterReading();
   const MAX_OCR_BYTES = 10 * 1024 * 1024;
   const [readingDate, setReadingDate] = useState(today());
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkCsv, setBulkCsv] = useState('');
 
   const metersQuery = useMeters();
   const readingsQuery = useReadings(selectedMeterId);
   const submitMutation = useSubmitReading();
-  const bulkMutation = useSubmitBulkReadings();
 
   const meters = metersQuery.data ?? [];
   const readings = readingsQuery.data?.data ?? [];
@@ -336,83 +322,6 @@ export function ReadingsTab(): ReactNode {
     );
   }
 
-  function handleBulkUpload(): void {
-    if (!bulkCsv.trim()) {
-      addToast({ title: 'Paste CSV data', variant: 'destructive' });
-      return;
-    }
-
-    const lines = bulkCsv
-      .trim()
-      .split('\n')
-      .filter((line) => line.trim() !== '');
-
-    const readings: Array<{
-      meter_number: string;
-      reading_value: number;
-      reading_date: string;
-    }> = [];
-
-    for (const line of lines) {
-      const parts = line.split(',').map((p) => p.trim());
-      if (parts.length < 3) continue;
-      if (parts[0].toLowerCase() === 'meter_number') continue;
-
-      const val = parseFloat(parts[1]);
-      if (isNaN(val)) continue;
-
-      readings.push({
-        meter_number: parts[0],
-        reading_value: val,
-        reading_date: parts[2],
-      });
-    }
-
-    if (readings.length === 0) {
-      addToast({ title: 'No valid readings found in CSV', variant: 'destructive' });
-      return;
-    }
-
-    bulkMutation.mutate(
-      { readings },
-      {
-        onSuccess(res) {
-          const result = res.data;
-          // QA #50 — when rows are skipped, show the per-row reasons
-          // in the toast description so the user can fix the CSV and
-          // retry. The backend now returns structured
-          // {row, meter_number, error} objects.
-          const description =
-            result.errors && result.errors.length > 0
-              ? result.errors
-                  .slice(0, 5)
-                  .map(
-                    (e) => `Row ${e.row} (${e.meter_number}): ${e.error}`,
-                  )
-                  .join('\n') +
-                (result.errors.length > 5
-                  ? `\n…and ${result.errors.length - 5} more`
-                  : '')
-              : undefined;
-          addToast({
-            title: `Bulk upload: ${result.submitted} submitted, ${result.skipped} skipped`,
-            description,
-            variant: result.skipped > 0 ? 'warning' : 'success',
-          });
-          // Keep the dialog open when rows were skipped so the user
-          // can correct and resubmit without re-uploading everything.
-          if (result.skipped === 0) {
-            setBulkOpen(false);
-            setBulkCsv('');
-          }
-        },
-        onError(error) {
-          addToast({ title: 'Bulk upload failed', description: friendlyError(error), variant: 'destructive' });
-        },
-      },
-    );
-  }
-
   return (
     <div className="space-y-4">
       {/* Single reading entry */}
@@ -421,13 +330,10 @@ export function ReadingsTab(): ReactNode {
           <div className="flex items-center justify-between">
             <CardTitle>Submit Reading</CardTitle>
             <div className="flex flex-wrap gap-2">
-              {/* UTIL-16: the readings upload (SB-13). The paste dialog stays until the API with it is live. */}
+              {/* UTIL-16: the readings upload (SB-13) replaced the old paste-CSV dialog. */}
               <Link href="/utilities/bulk-posting/excel" className={buttonVariants({ variant: 'outline' })}>
                 <Upload className="mr-2 h-4 w-4" /> Upload readings (Excel)
               </Link>
-              <Button variant="ghost" onClick={() => setBulkOpen(true)}>
-                Paste CSV
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -547,32 +453,6 @@ export function ReadingsTab(): ReactNode {
         </Card>
       )}
 
-      {/* Bulk upload dialog */}
-      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Bulk CSV Upload</DialogTitle>
-            <DialogDescription>
-              Paste CSV data with columns: meter_number, reading_value, reading_date (YYYY-MM-DD)
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Textarea
-              rows={10}
-              placeholder={`meter_number,reading_value,reading_date\nWM-101,1250,${today()}\nEM-201,4530,${today()}`}
-              value={bulkCsv}
-              onChange={(e) => setBulkCsv(e.target.value)}
-              className="font-mono text-xs"
-            />
-          </div>
-          <DialogFooter>
-            <DialogClose><Button variant="outline">Cancel</Button></DialogClose>
-            <Button disabled={bulkMutation.isPending} onClick={handleBulkUpload}>
-              {bulkMutation.isPending ? 'Uploading...' : 'Upload Readings'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
