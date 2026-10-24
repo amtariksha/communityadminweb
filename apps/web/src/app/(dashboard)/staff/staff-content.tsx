@@ -80,7 +80,7 @@ import {
   employeeExportRows,
   formatDuration,
 } from './staff-fields';
-import { ShiftTemplatesCard } from './shift-templates-card';
+import { ShiftManagementCard } from './setup/shift-management-card';
 import { EmployeeForm } from './employee-form/employee-form';
 import { todayIST } from '@/lib/date';
 
@@ -538,7 +538,8 @@ export default function StaffContent(): ReactNode {
       {/* ================================================================= */}
       {activeTab === 'shifts' && (
         <div className="space-y-6">
-          <ShiftTemplatesCard />
+          {/* STAFF-11: the shifts grid, as on classic Setup (the old templates card went with release 4). */}
+          <ShiftManagementCard />
 
           {/* Assignments */}
           <Card>

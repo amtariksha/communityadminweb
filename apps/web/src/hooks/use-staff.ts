@@ -217,17 +217,6 @@ interface UpdateEmployeeInput {
   data: Partial<Omit<CreateEmployeeInput, 'phone'>> & { exit_date?: string | null };
 }
 
-interface CreateShiftInput {
-  name: string;
-  start_time: string;
-  end_time: string;
-}
-
-interface UpdateShiftInput {
-  id: string;
-  data: Partial<CreateShiftInput>;
-}
-
 // POST /staff/assignments (assignStaffSchema): effective_from is required.
 interface AssignStaffInput {
   staff_id: string;
@@ -596,49 +585,6 @@ export function useChangeStaffStatus() {
     },
     onSuccess: function invalidate() {
       queryClient.invalidateQueries({ queryKey: staffKeys.employees() });
-    },
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Mutations — Shifts
-// ---------------------------------------------------------------------------
-
-export function useCreateShift() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: function createShift(input: CreateShiftInput) {
-      return api.post<{ data: Shift }>('/staff/shifts', input);
-    },
-    onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: staffKeys.shifts() });
-    },
-  });
-}
-
-export function useUpdateShift() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: function updateShift(input: UpdateShiftInput) {
-      return api.patch<{ data: Shift }>(`/staff/shifts/${input.id}`, input.data);
-    },
-    onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: staffKeys.shifts() });
-    },
-  });
-}
-
-export function useDeleteShift() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: function deleteShift(id: string) {
-      return api.delete<void>(`/staff/shifts/${id}`);
-    },
-    onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: staffKeys.shifts() });
     },
   });
 }

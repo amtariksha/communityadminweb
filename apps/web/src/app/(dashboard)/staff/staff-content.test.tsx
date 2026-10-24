@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   assign: vi.fn(),
   update: vi.fn(),
   create: vi.fn(),
+  saveShifts: vi.fn(),
   exportArgs: { data: [] as Record<string, unknown>[], columns: [] as Array<{ key: string }> },
 }));
 
@@ -94,9 +95,13 @@ vi.mock('@/hooks/use-staff', async (importOriginal) => {
   return {
     ...actual,
     useStaffShifts: () => ({ data: [{ id: 'shift-1', name: 'Morning', start_time: '06:00:00', end_time: '14:00:00' }], isLoading: false }),
-    useCreateShift: () => ({ mutate: vi.fn(), isPending: false }),
-    useUpdateShift: () => ({ mutate: vi.fn(), isPending: false }),
-    useDeleteShift: () => ({ mutate: vi.fn(), isPending: false }),
+    useShiftGrid: () => ({
+      data: [{ id: 'shift-1', tenant_id: 't1', name: 'Morning', start_time: '06:00:00', end_time: '14:00:00', is_active: true, created_at: '2026-09-01T00:00:00Z' }],
+      isLoading: false,
+      isError: false,
+      dataUpdatedAt: 1,
+    }),
+    useSaveShiftGrid: () => ({ mutateAsync: mocks.saveShifts, isPending: false }),
   };
 });
 
@@ -125,6 +130,14 @@ describe('StaffContent', () => {
     const payload = mocks.assign.mock.calls[0][0] as Record<string, unknown>;
     expect(payload).toEqual({ staff_id: 'staff-1', gate_id: 'g1', shift_id: 'shift-1', effective_from: '2026-11-01', effective_until: undefined });
     expect(payload).not.toHaveProperty('from_date');
+  });
+
+  it('edits shifts in the Staff Shift Management grid on the Shifts tab (STAFF-11)', () => {
+    render(<StaffContent />);
+    openTab('Shifts & Assignments');
+    expect(screen.getByText('Staff Shift Management')).toBeTruthy();
+    expect(screen.getByDisplayValue('Morning')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Create Shift/ })).toBeNull();
   });
 
   it('shows an assignment’s From and Until dates', () => {
