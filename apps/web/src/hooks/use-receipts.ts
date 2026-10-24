@@ -1,10 +1,11 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { Receipt, CreditNote } from '@communityos/shared';
 import { invoiceKeys } from '@/hooks/use-invoices';
 import { ledgerKeys } from '@/hooks/use-ledger';
+import { unitLedgerKeys } from '@/hooks/use-unit-ledger';
 
 // ---------------------------------------------------------------------------
 // Response types
@@ -157,6 +158,18 @@ interface CreateCreditNoteInput {
 // Query keys
 // ---------------------------------------------------------------------------
 
+/**
+ * What a collection, credit note or advance changes: the receipt and
+ * invoice lists, the books and every member's dues (Member Income ›
+ * SubLedgers, the unit posting header, statements) — the dues list was
+ * left stale after a collection from the standard dialog.
+ */
+function invalidateCollectionViews(queryClient: QueryClient): void {
+  for (const queryKey of [receiptKeys.all, invoiceKeys.all, ledgerKeys.journalEntries(), ledgerKeys.reports(), unitLedgerKeys.all]) {
+    queryClient.invalidateQueries({ queryKey });
+  }
+}
+
 export const receiptKeys = {
   all: ['receipts'] as const,
   lists: () => [...receiptKeys.all, 'list'] as const,
@@ -264,10 +277,7 @@ export function useCreateReceipt() {
       return api.post<{ data: CreatedReceipt }>('/receipts', input);
     },
     onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+      invalidateCollectionViews(queryClient);
     },
   });
 }
@@ -280,10 +290,7 @@ export function useBulkImportReceipts() {
       return api.post<{ message: string }>('/receipts/import', input);
     },
     onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+      invalidateCollectionViews(queryClient);
     },
   });
 }
@@ -296,10 +303,7 @@ export function useCreateCreditNote() {
       return api.post<{ data: CreditNote }>('/receipts/credit-notes', input);
     },
     onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+      invalidateCollectionViews(queryClient);
     },
   });
 }
@@ -447,10 +451,7 @@ export function useApplyAdvancesFifo() {
       );
     },
     onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
+      invalidateCollectionViews(queryClient);
     },
   });
 }
@@ -469,8 +470,7 @@ export function useApplyAdvance() {
       }>('/receipts/advances/apply', input);
     },
     onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: receiptKeys.all });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+      invalidateCollectionViews(queryClient);
     },
   });
 }
