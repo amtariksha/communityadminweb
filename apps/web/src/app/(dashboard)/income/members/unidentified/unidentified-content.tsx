@@ -7,7 +7,13 @@ import { useFormMode } from '@/components/form-page';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { useFinanceAccess } from '@/hooks/use-finance-access';
-import { useUnidentifiedCollections, type UnidentifiedCollection, type UnidentifiedFilters } from '@/hooks/use-unidentified-collections';
+import {
+  unidentifiedParams,
+  useUnidentifiedCollections,
+  visiblePage,
+  type UnidentifiedCollection,
+  type UnidentifiedFilters,
+} from '@/hooks/use-unidentified-collections';
 import { todayIST } from '@/lib/date';
 import type { FinanceAccess } from '@/lib/finance-roles';
 import { useAdminLayout } from '@/lib/layout-context';
@@ -28,7 +34,8 @@ export function unidentifiedActions(access: FinanceAccess, onIdentify: (row: Uni
 /**
  * Member Income › Unidentified Collection (INC-S22, INC-48): money received
  * without a flat reference — record it at once, identify it to a unit
- * later. Open rows by default; status, dates and a search by reference.
+ * later. Open rows by default; status, dates and a search by reference,
+ * a page at a time, with the whole filtered list as PDF / Excel / CSV.
  */
 export function UnidentifiedContent(): ReactNode {
   const classic = useAdminLayout() === 'classic';
@@ -40,8 +47,8 @@ export function UnidentifiedContent(): ReactNode {
   const [pageSize, setPageSize] = useState(25);
   const [identifying, setIdentifying] = useState<UnidentifiedCollection | null>(null);
   const [recording, setRecording] = useState(false);
-  const query = useUnidentifiedCollections(filters);
-  const rows = query.data?.data ?? [];
+  const query = useUnidentifiedCollections(filters, { page, limit: pageSize });
+  const rows = visiblePage(query.data?.data ?? [], { page, limit: pageSize });
   const change = (patch: Partial<UnidentifiedFilters>) => {
     setFilters((current) => ({ ...current, ...patch }));
     setPage(1);
@@ -61,9 +68,9 @@ export function UnidentifiedContent(): ReactNode {
       <DataTable<UnidentifiedCollection>
         title="Unidentified Collections"
         columns={UNIDENTIFIED_COLUMNS}
-        rows={rows.slice((page - 1) * pageSize, page * pageSize)}
+        rows={[...rows]}
         rowKey={(row) => row.id}
-        total={rows.length}
+        total={query.data?.total ?? rows.length}
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
@@ -71,6 +78,7 @@ export function UnidentifiedContent(): ReactNode {
         search={{ value: filters.search, onChange: (search) => change({ search }), placeholder: 'Payment number or narration' }}
         filters={<UnidentifiedFilterControls value={filters} onChange={change} />}
         actions={unidentifiedActions(access, setIdentifying)}
+        export={{ path: '/receipts/unidentified/export', params: unidentifiedParams(filters), filename: 'unidentified-collections' }}
         loading={query.isLoading}
         error={query.error}
         onRetry={() => void query.refetch()}

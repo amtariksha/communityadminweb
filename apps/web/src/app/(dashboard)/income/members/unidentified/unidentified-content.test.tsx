@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api-error';
-import type { UnidentifiedFilters } from '@/hooks/use-unidentified-collections';
+import type { UnidentifiedFilters, UnidentifiedPaging } from '@/hooks/use-unidentified-collections';
 import { UnidentifiedContent } from './unidentified-content';
 import { recordErrors, toRecordPayload } from './record-form';
 import { emptyCollectionForm } from '@/components/unit-posting/collection-state';
@@ -13,15 +13,18 @@ const mocks = vi.hoisted(() => ({
   layout: 'classic' as 'classic' | 'standard',
   push: vi.fn(),
   calls: [] as UnidentifiedFilters[],
+  paging: [] as UnidentifiedPaging[],
   result: { data: undefined as unknown, isLoading: false, error: null as unknown, refetch: vi.fn() },
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock('@/hooks/use-finance-access', () => ({ useFinanceAccess: () => mocks.access }));
 vi.mock('@/lib/layout-context', () => ({ useAdminLayout: () => mocks.layout }));
-vi.mock('@/hooks/use-unidentified-collections', () => ({
-  useUnidentifiedCollections: (filters: UnidentifiedFilters) => {
+vi.mock('@/hooks/use-unidentified-collections', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-unidentified-collections')>()),
+  useUnidentifiedCollections: (filters: UnidentifiedFilters, paging: UnidentifiedPaging) => {
     mocks.calls.push(filters);
+    mocks.paging.push(paging);
     return mocks.result;
   },
 }));
@@ -54,6 +57,7 @@ describe('Unidentified Collection', () => {
     mocks.access = { canRead: true, canWrite: true };
     mocks.layout = 'classic';
     mocks.calls = [];
+    mocks.paging = [];
     mocks.result = {
       data: { data: [row({}), row({ id: 'r-2', receipt_number: 'RCT-0091', reference_number: 'UTR-78', status: 'identified', unit_number: '101', block: 'A' })], total: 2 },
       isLoading: false,
@@ -120,8 +124,26 @@ describe('Unidentified Collection', () => {
       bank_account_id: null,
       reference_number: 'UTR-77',
       payment_bank: null,
+      instrument_date: null,
       narration: 'NEFT without reference',
     });
     expect(recordErrors({ ...form, reference: '' }).reference).toBeTruthy();
+    // A cheque keeps its own date.
+    const cheque = { ...form, mode: 'cheque' as const, bank: 'Test Bank', instrumentDate: '2026-10-09' };
+    expect(toRecordPayload(cheque)).toMatchObject({ mode: 'cheque', payment_bank: 'Test Bank', instrument_date: '2026-10-09' });
+  });
+
+  it('asks the server for one page and exports the whole filtered list', () => {
+    render(<UnidentifiedContent />);
+    expect(mocks.paging[0]).toEqual({ page: 1, limit: 25 });
+    expect(screen.getByRole('button', { name: 'CSV' })).toBeTruthy();
+  });
+
+  it('pages the rows itself when an older API sends every row', () => {
+    const many = Array.from({ length: 30 }, (_, index) => row({ id: `r-${index}`, reference_number: `UTR-${100 + index}` }));
+    mocks.result = { data: { data: many, total: 30 }, isLoading: false, error: null, refetch: vi.fn() };
+    render(<UnidentifiedContent />);
+    expect(screen.getByText('UTR-100')).toBeTruthy();
+    expect(screen.queryByText('UTR-125')).toBeNull();
   });
 });

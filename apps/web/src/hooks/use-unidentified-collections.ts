@@ -22,6 +22,9 @@ export interface UnidentifiedCollection {
   amount: string;
   payment_mode: string;
   reference_number: string | null;
+  /** Release 4: the cheque's bank and own date (absent on an older API). */
+  payment_bank?: string | null;
+  instrument_date?: string | null;
   bank_account_name: string | null;
   narration: string | null;
   status: UnidentifiedStatus;
@@ -45,6 +48,8 @@ export interface RecordUnidentifiedInput {
   bank_account_id?: string | null;
   reference_number?: string | null;
   payment_bank?: string | null;
+  /** A cheque's or draft's own date (an older API ignores it). */
+  instrument_date?: string | null;
   narration?: string | null;
 }
 
@@ -55,9 +60,14 @@ export interface IdentifyInput {
   allocations?: Array<{ invoice_id: string; amount: number }>;
 }
 
+export interface UnidentifiedPaging {
+  page: number;
+  limit: number;
+}
+
 export const unidentifiedKeys = {
   all: ['unidentified-collections'] as const,
-  list: (filters: UnidentifiedFilters) => [...unidentifiedKeys.all, filters] as const,
+  list: (filters: UnidentifiedFilters, paging: UnidentifiedPaging) => [...unidentifiedKeys.all, filters, paging] as const,
 };
 
 export function unidentifiedParams(filters: UnidentifiedFilters): Record<string, string> {
@@ -68,14 +78,27 @@ export function unidentifiedParams(filters: UnidentifiedFilters): Record<string,
   return params;
 }
 
-export function useUnidentifiedCollections(filters: UnidentifiedFilters) {
+/**
+ * One page of the list. The API pages it (release 4: `page`, `limit`, the
+ * whole `total`); an older API ignores both and sends every row, which the
+ * screen pages itself (see visiblePage).
+ */
+export function useUnidentifiedCollections(filters: UnidentifiedFilters, paging: UnidentifiedPaging) {
   return useQuery({
-    queryKey: unidentifiedKeys.list(filters),
-    queryFn: () => api.get<{ data: UnidentifiedCollection[]; total: number }>('/receipts/unidentified', { params: unidentifiedParams(filters) }),
+    queryKey: unidentifiedKeys.list(filters, paging),
+    queryFn: () =>
+      api.get<{ data: UnidentifiedCollection[]; total: number }>('/receipts/unidentified', {
+        params: { ...unidentifiedParams(filters), page: String(paging.page), limit: String(paging.limit) },
+      }),
     placeholderData: keepPreviousData,
     meta: { suppressToast: true },
     retry: false,
   });
+}
+
+/** The rows to show: the API's page, or this page of every row an older API sent. */
+export function visiblePage<Row>(rows: readonly Row[], paging: UnidentifiedPaging): readonly Row[] {
+  return rows.length > paging.limit ? rows.slice((paging.page - 1) * paging.limit, paging.page * paging.limit) : rows;
 }
 
 function useInvalidateCollections(): () => void {

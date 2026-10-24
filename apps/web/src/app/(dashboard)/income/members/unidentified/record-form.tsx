@@ -26,6 +26,7 @@ export function toRecordPayload(form: CollectionForm): RecordUnidentifiedInput {
     bank_account_id: form.bankAccountId || null,
     reference_number: form.reference.trim() || null,
     payment_bank: needsBank(form.mode) ? form.bank.trim() : null,
+    instrument_date: needsBank(form.mode) && form.instrumentDate ? form.instrumentDate : null,
     narration: form.comments.trim() || null,
   };
 }
@@ -85,7 +86,7 @@ export function RecordUnidentifiedForm({ mode, open, today, onClose, onRecorded 
         <Input id="unidentified-amount" inputMode="decimal" value={form.amount} onChange={(e) => set({ amount: e.target.value })} />
         <FormFieldError message={shown.amount} />
       </div>
-      <PaymentFields form={form} set={set} errors={shown} commentsLabel="Narration" instrumentDate={false} />
+      <PaymentFields form={form} set={set} errors={shown} commentsLabel="Narration" />
     </FormFrame>
   );
 }
