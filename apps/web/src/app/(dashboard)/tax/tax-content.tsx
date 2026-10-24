@@ -33,8 +33,6 @@ import {
   useGstr1Export,
   useTdsSummary,
   useTdsVendors,
-  useChallans,
-  useRemittances,
   useComplianceCalendar,
   // QA #232 — Form 16A picker now has a vendor + FY selector and a
   // printable view that the operator can browser-print to PDF.
@@ -44,6 +42,7 @@ import {
 } from '@/hooks';
 import type { ComplianceItem, Form16AData } from '@/hooks';
 import { Select } from '@/components/ui/select';
+import { ChallansAndRemittances } from './remittance-tables';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -477,114 +476,6 @@ function TdsVendorsTable({
         </Table>
       </CardContent>
     </Card>
-  );
-}
-
-function ChallansAndRemittances(): ReactNode {
-  const challansQuery = useChallans();
-  const remittancesQuery = useRemittances();
-
-  const challans = challansQuery.data ?? [];
-  const remittances = remittancesQuery.data ?? [];
-
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>TDS Challans</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Challan #</TableHead>
-                <TableHead>Section</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {challansQuery.isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: 4 }).map((__, j) => (
-                      <TableCell key={j}>
-                        <Skeleton className="h-4 w-20" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : challans.length > 0 ? (
-                challans.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-mono text-xs">{c.challan_number}</TableCell>
-                    <TableCell>{c.tds_section}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(c.payment_date)}
-                    </TableCell>
-                    <TableCell className="text-right">{formatCurrency(c.amount)}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
-                    No challans recorded.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Remittances (GST + TDS payments)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Period</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {remittancesQuery.isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: 4 }).map((__, j) => (
-                      <TableCell key={j}>
-                        <Skeleton className="h-4 w-20" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : remittances.length > 0 ? (
-                remittances.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="uppercase font-mono text-xs">{r.type}</TableCell>
-                    <TableCell>{r.period}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(r.payment_date)}
-                    </TableCell>
-                    <TableCell className="text-right">{formatCurrency(r.amount)}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
-                    No remittances recorded.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
   );
 }
 

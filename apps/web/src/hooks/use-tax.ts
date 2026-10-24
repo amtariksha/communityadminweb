@@ -124,6 +124,10 @@ export interface TdsChallan {
   payment_date: string;
   bsr_code: string | null;
   bank_name: string | null;
+  /** BANK-16 / migration 298 (absent on older rows or APIs). */
+  journal_entry_id?: string | null;
+  is_reversed?: boolean;
+  reversal_reason?: string | null;
 }
 
 export interface Remittance {
@@ -134,6 +138,9 @@ export interface Remittance {
   payment_date: string;
   reference_number: string | null;
   notes: string | null;
+  journal_entry_id?: string | null;
+  is_reversed?: boolean;
+  reversal_reason?: string | null;
 }
 
 // ---------------------------------------------------------------------------

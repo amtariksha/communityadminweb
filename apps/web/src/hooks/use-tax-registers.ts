@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { ApiError } from '@/lib/api-error';
 import { bankKeys } from './use-bank';
 import { ledgerKeys } from './use-ledger';
+import { taxKeys } from './use-tax';
 
 export type TaxRegisterKind = 'tds' | 'sgst' | 'cgst' | 'igst';
 
@@ -84,4 +85,31 @@ function useTaxWrite<Input>(call: (input: Input) => Promise<unknown>) {
 /** POST /bank/tax-registers/remit (BANK-16): the journal and the challan / remittance together. */
 export function useRemitTax() {
   return useTaxWrite((input: RemitInput) => api.post('/bank/tax-registers/remit', input));
+}
+
+/** The answer of a reversal; `note` is set when no journal was reversed (the remittance posted none). */
+export interface ReversedRemittance {
+  id: string;
+  reversed: true;
+  reversal_journal_entry_id?: string | null;
+  note?: string | null;
+}
+
+/**
+ * POST /bank/tax-registers/remittances/:id/reverse (BANK-16): the inverse
+ * entry of a challan or remittance, or — one recorded without a journal
+ * (before migration 266, or PF / ESI / PT / other) — its withdrawal from
+ * the tax figures. Never deleted.
+ */
+export function useReverseRemittance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api.post<{ data: ReversedRemittance }>(`/bank/tax-registers/remittances/${id}/reverse`, { reason }).then((res) => res.data),
+    onSuccess: () => {
+      for (const queryKey of [taxKeys.all, bankKeys.all, ledgerKeys.reports(), ledgerKeys.journalEntries()]) {
+        queryClient.invalidateQueries({ queryKey });
+      }
+    },
+  });
 }
