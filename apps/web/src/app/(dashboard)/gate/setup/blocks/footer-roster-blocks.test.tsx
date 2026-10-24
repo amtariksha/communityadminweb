@@ -19,7 +19,6 @@ vi.mock('@/hooks/use-gate-desk', () => ({ useGuardRoster: () => roster.value }))
 
 const SWITCHES = {
   capture_vehicle_details: false,
-  guard_may_call_resident: false,
   block_visitor_photos: false,
   unit_checkin_alert_threshold: null,
   auto_checkout_hours: null,

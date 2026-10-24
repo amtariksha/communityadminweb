@@ -5,18 +5,13 @@ import { friendlyError } from '@/lib/api-error';
 import type { GateSwitches } from '@/hooks/use-gate-settings';
 import { BlockForm, NotAvailableYet, SetupBlock } from './setup-block';
 
-type Tick = 'capture_vehicle_details' | 'guard_may_call_resident' | 'block_visitor_photos' | 'investigator_lock';
+type Tick = 'capture_vehicle_details' | 'block_visitor_photos' | 'investigator_lock';
 
 const TICKS: ReadonlyArray<{ key: Tick; label: string; hint: string }> = [
   {
     key: 'capture_vehicle_details',
     label: 'Capture complete vehicle details',
     hint: 'The guard must enter the vehicle number for every walk-in, or tick "No vehicle".',
-  },
-  {
-    key: 'guard_may_call_resident',
-    label: 'Guard may call the resident',
-    hint: 'Guards see the full phone number of the flat’s people; otherwise only the last four digits.',
   },
   {
     key: 'block_visitor_photos',
@@ -37,7 +32,11 @@ interface GuardAppBlockProps {
   save: (changes: Partial<GateSwitches>) => Promise<unknown>;
 }
 
-/** Block 1 — Guard App Settings (GATE-40): what the guard app asks for and shows. */
+/**
+ * Block 1 — Guard App Settings (GATE-40): what the guard app asks for and shows.
+ * There is no "guard may call the resident" switch: guards only ever see the
+ * last four digits of a resident's number (decision Q5).
+ */
 export function GuardAppBlock({ switches, editable, save }: GuardAppBlockProps): ReactNode {
   return (
     <SetupBlock
@@ -52,7 +51,6 @@ export function GuardAppBlock({ switches, editable, save }: GuardAppBlockProps):
 function GuardAppForm({ switches, editable, save }: GuardAppBlockProps & { switches: GateSwitches }): ReactNode {
   const pick = (from: GateSwitches): Record<Tick, boolean> => ({
     capture_vehicle_details: from.capture_vehicle_details,
-    guard_may_call_resident: from.guard_may_call_resident,
     block_visitor_photos: from.block_visitor_photos,
     investigator_lock: from.investigator_lock !== false,
   });

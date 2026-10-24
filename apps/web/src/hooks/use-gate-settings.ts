@@ -6,7 +6,6 @@ import { getCurrentTenant } from '@/lib/auth';
 /** The guard-app switches, `gate_settings` (GATE-40); null = off. */
 export interface GateSwitches {
   capture_vehicle_details: boolean;
-  guard_may_call_resident: boolean;
   block_visitor_photos: boolean;
   unit_checkin_alert_threshold: number | null;
   auto_checkout_hours: number | null;

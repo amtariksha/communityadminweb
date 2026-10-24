@@ -14,7 +14,6 @@ import { readOptionalWholeNumber } from './number-setting';
 
 const SWITCHES: GateSwitches = {
   capture_vehicle_details: false,
-  guard_may_call_resident: false,
   block_visitor_photos: false,
   unit_checkin_alert_threshold: null,
   auto_checkout_hours: null,
@@ -27,7 +26,7 @@ const click = async (name: string) => {
 };
 
 describe('Guard App Settings block', () => {
-  it('saves the three ticks together', async () => {
+  it('saves the ticks together', async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     render(<GuardAppBlock switches={SWITCHES} editable save={save} />);
 
@@ -37,20 +36,25 @@ describe('Guard App Settings block', () => {
 
     expect(save).toHaveBeenCalledWith({
       capture_vehicle_details: true,
-      guard_may_call_resident: false,
       block_visitor_photos: true,
     });
+  });
+
+  it('offers no switch that would show guards a resident\'s full number (Q5)', () => {
+    render(<GuardAppBlock switches={SWITCHES} editable save={vi.fn()} />);
+    expect(screen.queryByLabelText(/call the resident/i)).toBeNull();
+    expect(screen.queryByText(/full phone number/i)).toBeNull();
   });
 
   it('keeps the ticks and shows the error inside the block when the save fails', async () => {
     const save = vi.fn().mockRejectedValue(new Error('Network down'));
     render(<GuardAppBlock switches={SWITCHES} editable save={save} />);
 
-    fireEvent.click(screen.getByLabelText(/Guard may call the resident/));
+    fireEvent.click(screen.getByLabelText(/Do not allow visitor photos/));
     await click('Save');
 
     expect(screen.getByRole('alert').textContent).toBeTruthy();
-    expect((screen.getByLabelText(/Guard may call the resident/) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText(/Do not allow visitor photos/) as HTMLInputElement).checked).toBe(true);
   });
 
   it('turns the investigator lock off with the other ticks (GATE-43)', async () => {
