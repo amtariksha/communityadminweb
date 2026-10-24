@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useMemo, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import {
   Plus,
   ShoppingCart,
@@ -10,18 +10,14 @@ import {
   ChevronRight,
   Check,
   X,
-  ArrowRightLeft,
   CreditCard,
   Clock,
-  Sparkles,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { GstRateSelect } from '@/components/ui/gst-rate-select';
-import { AccountSearchSelect } from '@/components/ui/account-search-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -48,36 +44,23 @@ import type { VendorBill } from '@communityos/shared';
 import { DirectExpenseDialog } from './direct-expense-dialog';
 import { DebitNoteDialog } from './debit-note-dialog';
 import { ExportButton } from '@/components/ui/export-button';
-import { formatCurrency, formatDate, financialDateBounds, clampDateString } from '@/lib/utils';
-import { VENDOR_PAYMENT_MODE_OPTIONS } from '@/lib/vendor-payment-modes';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { BILL_STATUS_FILTER_OPTIONS, getBillStatusLabel, getBillStatusVariant } from './bill-status';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import {
   usePurchaseRequests,
-  useCreatePR,
   useApprovePR,
   useRejectPR,
-  useConvertPRToBill,
   useVendorBills,
-  useVendorPayments,
-  useCreateBill,
   useEditBill,
   useCancelBill,
-  useRecordBillPayment,
   useVendorAging,
   useVendors,
-  useCreateVendor,
-  useLedgerAccounts,
-  useBankAccounts,
-  useTdsConfig,
 } from '@/hooks';
-import type { TdsConfig, VendorPaymentRow } from '@/hooks';
-import { useOcrInvoice } from '@/hooks/use-ocr';
 import { useWord } from '@/lib/vocabulary';
 import Link from 'next/link';
 import { ConvertToInvoiceButton, CreatePurchaseRequestButton, ViewPurchaseRequestButton } from './create-request-button';
-import { useVendorInvoicesAvailable } from '@/hooks/use-vendor-bills';
 import { VendorInvoiceForm } from './vendor-invoice/vendor-invoice-form';
 import { VendorPaymentForm } from './vendor-payment/vendor-payment-form';
 import { NumberingForm } from './vendor-ledger/numbering-form';
@@ -220,8 +203,6 @@ export default function PurchasesContent(): ReactNode {
   const { addToast } = useToast();
   // EXP-20: the classic words inside Expense Tracker (standard as written).
   const word = useWord();
-  // Clamp date inputs to prev FY start → next month end.
-  const dateBounds = useMemo(() => financialDateBounds(), []);
   const [activeTab, setActiveTab] = useState<ActiveTab>('requests');
 
   // Purchase Request state
@@ -229,18 +210,11 @@ export default function PurchasesContent(): ReactNode {
   const [prStatusFilter, setPrStatusFilter] = useState('');
   const [prSearch, setPrSearch] = useState('');
   const [prSearchInput, setPrSearchInput] = useState('');
-  const [createPRDialogOpen, setCreatePRDialogOpen] = useState(false);
   const [directExpenseDialogOpen, setDirectExpenseDialogOpen] = useState(false);
   const [debitNoteDialogOpen, setDebitNoteDialogOpen] = useState(false);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedPRId, setSelectedPRId] = useState('');
-
-  // PR form state
-  const [prTitle, setPrTitle] = useState('');
-  const [prDescription, setPrDescription] = useState('');
-  const [prVendorId, setPrVendorId] = useState('');
-  const [prEstimatedAmount, setPrEstimatedAmount] = useState('');
 
   // Approve/reject form
   const [approveRemarks, setApproveRemarks] = useState('');
@@ -250,13 +224,9 @@ export default function PurchasesContent(): ReactNode {
   const [billPage, setBillPage] = useState(1);
   const [billStatusFilter, setBillStatusFilter] = useState('');
   const [billVendorFilter, setBillVendorFilter] = useState('');
-  const [createBillDialogOpen, setCreateBillDialogOpen] = useState(false);
   const [newInvoiceOpen, setNewInvoiceOpen] = useState(false);
   const [payBill, setPayBill] = useState<{ vendorId: string; billId: string } | null>(null);
-  const invoicesAvailable = useVendorInvoicesAvailable();
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [agingDialogOpen, setAgingDialogOpen] = useState(false);
-  const [selectedBillId, setSelectedBillId] = useState('');
   // Phase D.1 — Edit + Cancel bill dialogs.
   const [editBillDialogOpen, setEditBillDialogOpen] = useState(false);
   const [cancelBillDialogOpen, setCancelBillDialogOpen] = useState(false);
@@ -272,75 +242,6 @@ export default function PurchasesContent(): ReactNode {
   const [cancelBillNumberDisplay, setCancelBillNumberDisplay] = useState('');
   const [cancelReason, setCancelReason] = useState('');
 
-  // Bill form state
-  const [billVendorId, setBillVendorId] = useState('');
-  const [billDate, setBillDate] = useState('');
-  const [billDueDate, setBillDueDate] = useState('');
-  const [billNarration, setBillNarration] = useState('');
-  const [billLineAccount, setBillLineAccount] = useState('');
-  const [billLineDescription, setBillLineDescription] = useState('');
-  const [billLineAmount, setBillLineAmount] = useState('');
-  const [billLineGstRate, setBillLineGstRate] = useState('');
-  const [billTdsRate, setBillTdsRate] = useState('');
-  const [billExpenseAccountId, setBillExpenseAccountId] = useState('');
-  const [billPayableAccountId, setBillPayableAccountId] = useState('');
-  // AI scan — populates the fields above from a vendor invoice photo/PDF.
-  // 10 MiB cap keeps us well under Gemini's ~20 MiB base64 limit.
-  const billFileInputRef = useRef<HTMLInputElement | null>(null);
-  const [billScanConfidence, setBillScanConfidence] = useState<number | null>(null);
-  const [billScanVendorName, setBillScanVendorName] = useState<string | null>(null);
-  const ocrInvoice = useOcrInvoice();
-  const MAX_OCR_BYTES = 10 * 1024 * 1024;
-
-  // Convert PR form state.
-  // `convertSubtotal` is the goods/services value before GST. The
-  // displayed total = subtotal + gst_amount; the vendor's payable =
-  // total - tds_amount. The server-side service derives the same
-  // splits and posts a 4-line JE (expense + gst_input vs payable +
-  // tds_payable) when GST or TDS is non-zero.
-  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
-  const [convertPRId, setConvertPRId] = useState('');
-  const [convertVendorId, setConvertVendorId] = useState('');
-  const [convertBillNumber, setConvertBillNumber] = useState('');
-  const [convertBillDate, setConvertBillDate] = useState('');
-  const [convertDueDate, setConvertDueDate] = useState('');
-  const [convertSubtotal, setConvertSubtotal] = useState('');
-  const [convertGstRate, setConvertGstRate] = useState<number | null>(null);
-  const [convertTdsRate, setConvertTdsRate] = useState('');
-  const [convertExpenseAccountId, setConvertExpenseAccountId] = useState('');
-  const [convertPayableAccountId, setConvertPayableAccountId] = useState('');
-
-  // Quick "+ Add Vendor" inline dialog state. Used by both the
-  // Convert and the Direct-Bill dialogs to avoid making the operator
-  // navigate to /vendors mid-flow.
-  const [quickVendorDialogOpen, setQuickVendorDialogOpen] = useState(false);
-  const [quickVendorTarget, setQuickVendorTarget] = useState<
-    'convert' | 'bill' | 'pr' | null
-  >(null);
-  const [quickVendorName, setQuickVendorName] = useState('');
-  const [quickVendorPhone, setQuickVendorPhone] = useState('');
-  const [quickVendorGstin, setQuickVendorGstin] = useState('');
-
-  // Derived totals for the convert dialog. Memoized so we don't
-  // re-parse on every keystroke for downstream consumers (the form
-  // uses the values for both the read-only summary AND the submit
-  // payload).
-  const convertSubtotalNum = Number(convertSubtotal) || 0;
-  const convertGstAmount = convertGstRate
-    ? Math.round(convertSubtotalNum * convertGstRate) / 100
-    : 0;
-  const convertTotalNum = convertSubtotalNum + convertGstAmount;
-  const convertTdsRateNum = convertTdsRate ? Number(convertTdsRate) : 0;
-  const convertTdsAmount = Math.round(convertTotalNum * convertTdsRateNum) / 100;
-  const convertPayableNum = convertTotalNum - convertTdsAmount;
-
-  // Payment form state
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [paymentMode, setPaymentMode] = useState('bank_transfer');
-  const [paymentReference, setPaymentReference] = useState('');
-  const [paymentBankAccountId, setPaymentBankAccountId] = useState('');
-  const [paymentDate, setPaymentDate] = useState('');
-
   // Data queries
   const prQuery = usePurchaseRequests({
     status: prStatusFilter || undefined,
@@ -355,109 +256,13 @@ export default function PurchasesContent(): ReactNode {
     limit: ITEMS_PER_PAGE,
   });
   const vendorsQuery = useVendors({ limit: 200 });
-  const accountsQuery = useLedgerAccounts({ limit: 200 });
-  const bankAccountsQuery = useBankAccounts();
   const agingQuery = useVendorAging();
-  // Resolved TDS config for this tenant — drives the auto-suggest in
-  // the convert-PR-to-bill dialog. Falls through to the platform
-  // default when the tenant hasn't customized.
-  const tdsConfigQuery = useTdsConfig();
-  const tdsConfig: TdsConfig | null = tdsConfigQuery.data?.config ?? null;
 
   // Mutations
-  const createPR = useCreatePR();
   const approvePR = useApprovePR();
   const rejectPR = useRejectPR();
-  const convertPR = useConvertPRToBill();
-  const createBill = useCreateBill();
   const editBill = useEditBill();
   const cancelBill = useCancelBill();
-  const recordPayment = useRecordBillPayment();
-  const createVendorMut = useCreateVendor();
-
-  /**
-   * Suggest a TDS rate (%) for a given subtotal + vendor. Returns 0
-   * when:
-   *   - The TDS auto-suggest is disabled for this tenant
-   *   - The subtotal is below the matching threshold
-   *   - No config has loaded yet (mid-fetch)
-   *
-   * Pure client-side computation against the resolved TDS config.
-   * Mirrors the server-side suggestTds(), but avoids a round-trip on
-   * every keystroke.
-   */
-  function suggestTdsRate(
-    subtotalGross: number,
-    vendor?: { tds_section?: string | null } | null,
-  ): number {
-    if (!tdsConfig || !tdsConfig.enabled || subtotalGross <= 0) return 0;
-    const section = vendor?.tds_section?.trim();
-    let threshold = tdsConfig.default_threshold;
-    let rate = tdsConfig.default_rate;
-    if (section) {
-      const match = tdsConfig.sections.find(
-        (s) => s.code.toLowerCase() === section.toLowerCase(),
-      );
-      if (match) {
-        threshold = match.threshold;
-        rate = match.rate;
-      }
-    }
-    return subtotalGross >= threshold ? rate : 0;
-  }
-
-  function openQuickVendorDialog(target: 'convert' | 'bill' | 'pr'): void {
-    setQuickVendorTarget(target);
-    setQuickVendorName('');
-    setQuickVendorPhone('');
-    setQuickVendorGstin('');
-    setQuickVendorDialogOpen(true);
-  }
-
-  function handleQuickVendorSubmit(e: FormEvent): void {
-    e.preventDefault();
-    if (!quickVendorName.trim()) {
-      addToast({ title: 'Vendor name is required', variant: 'destructive' });
-      return;
-    }
-    createVendorMut.mutate(
-      {
-        name: quickVendorName.trim(),
-        phone: quickVendorPhone.trim() || undefined,
-        gstin: quickVendorGstin.trim() || undefined,
-      },
-      {
-        onSuccess(res) {
-          // res.data is the created vendor (the hook unwraps the
-          // `{ data: ... }` envelope). Use the new id to auto-select
-          // in the parent dialog the operator was on.
-          const newId = res.data.id;
-          if (quickVendorTarget === 'convert') {
-            setConvertVendorId(newId);
-            if (res.data.ledger_account_id) {
-              setConvertPayableAccountId(res.data.ledger_account_id);
-            }
-          } else if (quickVendorTarget === 'bill') {
-            setBillVendorId(newId);
-            if (res.data.ledger_account_id) {
-              setBillPayableAccountId(res.data.ledger_account_id);
-            }
-          } else if (quickVendorTarget === 'pr') {
-            setPrVendorId(newId);
-          }
-          setQuickVendorDialogOpen(false);
-          addToast({ title: `Vendor "${res.data.name}" created`, variant: 'success' });
-        },
-        onError(error) {
-          addToast({
-            title: 'Failed to create vendor',
-            description: friendlyError(error),
-            variant: 'destructive',
-          });
-        },
-      },
-    );
-  }
 
   // Derived data
   const purchaseRequests = (prQuery.data?.data ?? []) as unknown as PRRow[];
@@ -469,46 +274,15 @@ export default function PurchasesContent(): ReactNode {
   const totalBillPages = Math.max(1, Math.ceil(totalBills / ITEMS_PER_PAGE));
 
   const vendors = vendorsQuery.data?.data ?? [];
-  const accounts = accountsQuery.data?.data ?? [];
-  const bankAccounts = bankAccountsQuery.data ?? [];
   const agingData = agingQuery.data ?? [];
 
   // ---------------------------------------------------------------------------
   // PR handlers
   // ---------------------------------------------------------------------------
 
-  function resetPRForm(): void {
-    setPrTitle('');
-    setPrDescription('');
-    setPrVendorId('');
-    setPrEstimatedAmount('');
-  }
-
   function handlePRSearch(): void {
     setPrSearch(prSearchInput);
     setPrPage(1);
-  }
-
-  function handleCreatePR(e: FormEvent): void {
-    e.preventDefault();
-    createPR.mutate(
-      {
-        title: prTitle,
-        description: prDescription,
-        estimated_amount: Number(prEstimatedAmount),
-        vendor_id: prVendorId || null,
-      },
-      {
-        onSuccess() {
-          setCreatePRDialogOpen(false);
-          resetPRForm();
-          addToast({ title: 'Purchase request created', variant: 'success' });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to create purchase request', description: friendlyError(error), variant: 'destructive' });
-        },
-      },
-    );
   }
 
   function handleApprovePR(e: FormEvent): void {
@@ -547,273 +321,9 @@ export default function PurchasesContent(): ReactNode {
     );
   }
 
-  function openConvertDialog(pr: PRRow): void {
-    setConvertPRId(pr.id);
-    const vendorId = pr.vendor_id ?? '';
-    setConvertVendorId(vendorId);
-    setConvertBillNumber('');
-    setConvertBillDate('');
-    setConvertDueDate('');
-    // PR carries an estimated amount; treat it as the subtotal
-    // (operator can edit). Defaulting GST to zero so a straight
-    // passthrough click still works. TDS auto-suggests below.
-    const subtotalNum = Number(pr.estimated_amount ?? 0);
-    setConvertSubtotal(String(pr.estimated_amount ?? ''));
-    setConvertGstRate(null);
-    setConvertExpenseAccountId('');
-    // Auto-fill the payable account if the PR's vendor already has a
-    // linked Sundry Creditors ledger. Same logic as the vendor-onChange
-    // handler on the Select below — this makes the dialog open in a
-    // ready-to-submit state when no vendor change is needed.
-    const preselectedVendor = vendorId
-      ? vendors.find((v) => v.id === vendorId)
-      : undefined;
-    setConvertPayableAccountId(preselectedVendor?.ledger_account_id ?? '');
-    // Auto-suggest TDS rate from the resolved tenant TDS config. The
-    // operator can override before submitting; this just removes the
-    // manual lookup from "common case" PRs.
-    const suggestedRate = suggestTdsRate(subtotalNum, preselectedVendor);
-    setConvertTdsRate(suggestedRate > 0 ? String(suggestedRate) : '');
-    setConvertDialogOpen(true);
-  }
-
-  /**
-   * Re-run the TDS suggestion when the vendor or subtotal changes
-   * inside the convert dialog. Only fires for the dialog that's
-   * currently open. Skips when the operator has already typed a
-   * non-zero rate — we never overwrite manual edits.
-   */
-  function reSuggestTds(nextVendorId: string, nextSubtotal: string): void {
-    const subtotalNum = Number(nextSubtotal) || 0;
-    const vendor = nextVendorId
-      ? vendors.find((v) => v.id === nextVendorId)
-      : undefined;
-    const suggested = suggestTdsRate(subtotalNum, vendor);
-    setConvertTdsRate(suggested > 0 ? String(suggested) : '');
-  }
-
-  function handleConvertPR(e: FormEvent): void {
-    e.preventDefault();
-    convertPR.mutate(
-      {
-        id: convertPRId,
-        data: {
-          vendor_id: convertVendorId,
-          bill_number: convertBillNumber || undefined,
-          bill_date: convertBillDate,
-          due_date: convertDueDate,
-          // Server expects total_amount as the gross (subtotal + GST).
-          // It splits subtotal back out and posts the journal lines.
-          total_amount: convertTotalNum,
-          gst_amount: convertGstAmount > 0 ? convertGstAmount : undefined,
-          tds_amount: convertTdsAmount > 0 ? convertTdsAmount : undefined,
-          expense_account_id: convertExpenseAccountId,
-          payable_account_id: convertPayableAccountId,
-        },
-      },
-      {
-        onSuccess() {
-          setConvertDialogOpen(false);
-          setConvertPRId('');
-          addToast({ title: 'Purchase request converted to bill', variant: 'success' });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to convert', description: friendlyError(error), variant: 'destructive' });
-        },
-      },
-    );
-  }
-
   // ---------------------------------------------------------------------------
   // Bill handlers
   // ---------------------------------------------------------------------------
-
-  function resetBillForm(): void {
-    setBillVendorId('');
-    setBillDate('');
-    setBillDueDate('');
-    setBillNarration('');
-    setBillLineAccount('');
-    setBillLineDescription('');
-    setBillLineAmount('');
-    setBillLineGstRate('');
-    setBillTdsRate('');
-    setBillExpenseAccountId('');
-    setBillPayableAccountId('');
-    setBillScanConfidence(null);
-    setBillScanVendorName(null);
-  }
-
-  async function handleScanInvoice(
-    event: React.ChangeEvent<HTMLInputElement>,
-  ): Promise<void> {
-    const file = event.target.files?.[0];
-    event.target.value = ''; // allow re-selecting the same file later
-    if (!file) return;
-    if (file.size > MAX_OCR_BYTES) {
-      addToast({
-        title: 'File too large',
-        description: `Max ${MAX_OCR_BYTES / (1024 * 1024)} MiB for AI scanning.`,
-        variant: 'destructive',
-      });
-      return;
-    }
-    try {
-      const result = await ocrInvoice.mutateAsync(file);
-      // Match a known vendor by GSTIN first (most reliable), then by
-      // name contains match. If neither hits, leave blank + surface the
-      // extracted vendor name so the user can create or pick manually.
-      const byGstin = result.vendor_gstin
-        ? vendors.find((v) => (v.gstin ?? '').toLowerCase() === result.vendor_gstin!.toLowerCase())
-        : undefined;
-      const byName =
-        !byGstin && result.vendor_name
-          ? vendors.find((v) => v.name.toLowerCase().includes(result.vendor_name!.toLowerCase()))
-          : undefined;
-      const matchedVendor = byGstin ?? byName;
-      if (matchedVendor) {
-        setBillVendorId(matchedVendor.id);
-        // Phase D.5 — mirror what the vendor-dropdown onChange does:
-        // pre-fill the payable account from the matched vendor's
-        // linked Sundry Creditors ledger. Without this, the operator
-        // had to scroll to the Payable Account picker after every
-        // OCR scan to set it manually — defeats the auto-fill.
-        if (matchedVendor.ledger_account_id) {
-          setBillPayableAccountId(matchedVendor.ledger_account_id);
-        }
-      }
-      setBillScanVendorName(result.vendor_name ?? null);
-
-      if (result.invoice_date) {
-        setBillDate(clampDateString(result.invoice_date, dateBounds.min, dateBounds.max));
-      }
-      if (result.due_date) {
-        setBillDueDate(clampDateString(result.due_date, dateBounds.min, dateBounds.max));
-      }
-      // QA — the bill form's `Amount` is the pre-GST goods/services
-      // value. handleCreateBill multiplies it by gst_rate to derive
-      // gst_amount, then total = base + gst. The OCR previously
-      // populated `Amount` from `result.total_amount` (the grand
-      // total INCLUDING GST), which produced double-counted GST in
-      // the computed totals strip — e.g. ₹6,880 base + 18% GST
-      // landed as Amount=8,118 → recomputed Total=9,579 with
-      // GST=1,461. Use the line item's pre-GST amount (matches the
-      // "Rate × Quantity = Amount" cell on standard India invoices).
-      // Fall back to result.subtotal (also pre-GST), then derive
-      // base = total − gst_amount, and only as a last resort use
-      // total_amount with a warning.
-      let baseAmount: number | null = null;
-      if (
-        result.line_items?.length > 0 &&
-        result.line_items[0].amount != null
-      ) {
-        baseAmount = result.line_items[0].amount;
-      } else if (result.subtotal != null) {
-        baseAmount = result.subtotal;
-      } else if (
-        result.total_amount != null &&
-        result.gst_amount != null
-      ) {
-        baseAmount = Math.max(0, result.total_amount - result.gst_amount);
-      } else if (result.total_amount != null) {
-        baseAmount = result.total_amount;
-      }
-      if (baseAmount != null) {
-        // Round to 2 decimals — Gemini sometimes returns numbers
-        // like 6880.000001 from float math.
-        setBillLineAmount(String(Math.round(baseAmount * 100) / 100));
-      }
-      // Best-effort description: first line item, else invoice_number
-      if (result.line_items?.length > 0 && result.line_items[0].description) {
-        setBillLineDescription(result.line_items[0].description);
-      } else if (result.invoice_number) {
-        setBillLineDescription(`Invoice ${result.invoice_number}`);
-      }
-      // GST rate priority: line item rate first, else derive from
-      // (gst_amount / subtotal) — rounds to whole percent because
-      // India GST is always integer (5/12/18/28).
-      if (
-        result.line_items?.length > 0 &&
-        result.line_items[0].gst_rate != null
-      ) {
-        setBillLineGstRate(String(result.line_items[0].gst_rate));
-      } else if (
-        result.gst_amount != null &&
-        baseAmount != null &&
-        baseAmount > 0
-      ) {
-        const derivedRate = Math.round((result.gst_amount / baseAmount) * 100);
-        if (derivedRate >= 0 && derivedRate <= 28) {
-          setBillLineGstRate(String(derivedRate));
-        }
-      }
-      setBillScanConfidence(result.confidence);
-
-      addToast({
-        title: matchedVendor
-          ? `Extracted — vendor matched to ${matchedVendor.name}`
-          : result.vendor_name
-            ? `Extracted — vendor "${result.vendor_name}" not in list, pick manually`
-            : 'Extracted — review fields before saving',
-        description: `Confidence ${Math.round((result.confidence ?? 0) * 100)}%. Verify every field; AI can miss values.`,
-        variant: matchedVendor ? 'success' : 'default',
-      });
-    } catch (err) {
-      addToast({
-        title: 'AI extraction failed',
-        description:
-          (err as Error).message ?? 'Please fill the form manually.',
-        variant: 'destructive',
-      });
-    }
-  }
-
-  function handleCreateBill(e: FormEvent): void {
-    e.preventDefault();
-    // Phase D.2 — derive gst_amount + tds_amount from the rates
-    // before posting. Previously we posted only the per-line gst_rate
-    // and the backend received gst_amount=0, leaving every bill
-    // recorded as zero-GST in the GL. The rates are computed against
-    // the line amount (which is the goods/services subtotal — Tally
-    // semantics — so total_amount on the bill becomes subtotal+GST).
-    const baseAmount = Number(billLineAmount) || 0;
-    const gstRate = billLineGstRate ? Number(billLineGstRate) : 0;
-    const tdsRate = billTdsRate ? Number(billTdsRate) : 0;
-    const gstAmount = Math.round(baseAmount * gstRate) / 100;
-    const totalAmount = Math.round((baseAmount + gstAmount) * 100) / 100;
-    const tdsAmount = Math.round(totalAmount * tdsRate) / 100;
-    createBill.mutate(
-      {
-        vendor_id: billVendorId,
-        bill_date: billDate,
-        due_date: billDueDate,
-        total_amount: totalAmount,
-        gst_amount: gstAmount > 0 ? gstAmount : undefined,
-        tds_amount: tdsAmount > 0 ? tdsAmount : undefined,
-        expense_account_id: billExpenseAccountId,
-        payable_account_id: billPayableAccountId,
-        narration: billNarration || undefined,
-        lines: [
-          {
-            ledger_account_id: billLineAccount,
-            description: billLineDescription,
-            amount: baseAmount,
-            gst_rate: gstRate || undefined,
-          },
-        ],
-      },
-      {
-        onSuccess() {
-          setCreateBillDialogOpen(false);
-          resetBillForm();
-          addToast({ title: 'Vendor bill created', variant: 'success' });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to create bill', description: friendlyError(error), variant: 'destructive' });
-        },
-      },
-    );
-  }
 
   // Phase D.1 — open the edit dialog. Pre-fills from the bill row;
   // the operator can change any allowed metadata. The handler
@@ -945,43 +455,6 @@ export default function PurchasesContent(): ReactNode {
     );
   }
 
-  function resetPaymentForm(): void {
-    setPaymentAmount('');
-    setPaymentMode('bank_transfer');
-    setPaymentReference('');
-    setPaymentBankAccountId('');
-    setPaymentDate('');
-  }
-
-  function handleRecordPayment(e: FormEvent): void {
-    e.preventDefault();
-    recordPayment.mutate(
-      {
-        bill_id: selectedBillId,
-        payment_date: paymentDate,
-        amount: Number(paymentAmount),
-        // 2026-05-09 (QA #456) — backend Zod schema accepts only
-        // `payment_mode`, not `mode`. Sending `mode` failed
-        // validation with "payment_mode: Required" → bill payment
-        // recording was broken. Use the canonical key.
-        payment_mode: paymentMode,
-        reference_number: paymentReference || null,
-        bank_account_id: paymentBankAccountId || null,
-      },
-      {
-        onSuccess() {
-          setPaymentDialogOpen(false);
-          setSelectedBillId('');
-          resetPaymentForm();
-          addToast({ title: 'Payment recorded', variant: 'success' });
-        },
-        onError(error) {
-          addToast({ title: 'Failed to record payment', description: friendlyError(error), variant: 'destructive' });
-        },
-      },
-    );
-  }
-
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -1066,9 +539,8 @@ export default function PurchasesContent(): ReactNode {
           <CreditCard className="mr-2 inline-block h-4 w-4" />
           Vendor Payments
         </button>
-        {/* EXP-16 / EXP-18 / EXP-22: By Vendors, Numbering and Budget, once the API has them. */}
-        {invoicesAvailable.data &&
-          ([['vendors', 'By Vendors'], ['numbering', 'Numbering'], ['budget', 'Budget']] as const).map(([tab, label]) => (
+        {/* EXP-16 / EXP-18 / EXP-22: By Vendors, Numbering and Budget. */}
+        {([['vendors', 'By Vendors'], ['numbering', 'Numbering'], ['budget', 'Budget']] as const).map(([tab, label]) => (
             <button
               key={tab}
               type="button"
@@ -1121,99 +593,8 @@ export default function PurchasesContent(): ReactNode {
                   <option value="rejected">Rejected</option>
                   <option value="converted">Converted</option>
                 </Select>
-                {/* EXP-08 — the form with lines once the API has it; until then the old dialog. */}
-                <CreatePurchaseRequestButton legacy={
-                <Dialog open={createPRDialogOpen} onOpenChange={setCreatePRDialogOpen}>
-                  <DialogTrigger>
-                    <Button>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create PR
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <form onSubmit={handleCreatePR}>
-                      <DialogHeader>
-                        <DialogTitle>Create Purchase Request</DialogTitle>
-                        <DialogDescription>Submit a new purchase request for approval</DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="pr-title">Title</Label>
-                          <Input
-                            id="pr-title"
-                            placeholder="e.g., Annual Painting Work"
-                            required
-                            value={prTitle}
-                            onChange={(e) => setPrTitle(e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="pr-description">Description</Label>
-                          <Textarea
-                            id="pr-description"
-                            placeholder="Describe the purchase requirement..."
-                            required
-                            value={prDescription}
-                            onChange={(e) => setPrDescription(e.target.value)}
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="pr-vendor">Vendor</Label>
-                            <div className="flex gap-2">
-                              <Select
-                                id="pr-vendor"
-                                value={prVendorId}
-                                onChange={(e) => setPrVendorId(e.target.value)}
-                                className="flex-1"
-                              >
-                                <option value="">Select vendor (optional)</option>
-                                {vendors.map((v) => (
-                                  <option key={v.id} value={v.id} disabled={v.is_active === false}>
-                                    {v.name}
-                                    {v.is_active === false ? ' (inactive)' : ''}
-                                  </option>
-                                ))}
-                              </Select>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                onClick={() => openQuickVendorDialog('pr')}
-                                title="Add a new vendor"
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="pr-amount">Estimated Amount</Label>
-                            <Input
-                              id="pr-amount"
-                              type="number"
-                              min="0.01"
-                              step="0.01"
-                              required
-                              placeholder="0.00"
-                              title="Amount must be greater than zero"
-                              value={prEstimatedAmount}
-                              onChange={(e) => setPrEstimatedAmount(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <DialogClose>
-                          <Button type="button" variant="outline">Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={createPR.isPending}>
-                          {createPR.isPending ? 'Creating...' : 'Create Request'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-                } />
+                {/* EXP-08 — the purchase request form with lines. */}
+                <CreatePurchaseRequestButton />
               </div>
             </div>
           </CardHeader>
@@ -1290,21 +671,7 @@ export default function PurchasesContent(): ReactNode {
                             </>
                           )}
                           {pr.status === 'approved' && (
-                            <ConvertToInvoiceButton
-                              requestId={pr.id}
-                              legacy={
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 p-1 text-xs"
-                                  title="Convert to Bill"
-                                  onClick={() => openConvertDialog(pr)}
-                                >
-                                  <ArrowRightLeft className="mr-1 h-3 w-3" />
-                                  Convert
-                                </Button>
-                              }
-                            />
+                            <ConvertToInvoiceButton requestId={pr.id} />
                           )}
                         </div>
                       </TableCell>
@@ -1440,289 +807,17 @@ export default function PurchasesContent(): ReactNode {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                {/* EXP-12: the multi-line invoice form once the API has it; the single-head dialog until then. */}
-                {invoicesAvailable.data ? (
-                  <>
-                    <Button onClick={() => setNewInvoiceOpen(true)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      {word('Create Bill')}
-                    </Button>
-                    <VendorInvoiceForm
-                      mode="dialog"
-                      open={newInvoiceOpen}
-                      onClose={() => setNewInvoiceOpen(false)}
-                      onSaved={() => setNewInvoiceOpen(false)}
-                    />
-                  </>
-                ) : (
-                <Dialog open={createBillDialogOpen} onOpenChange={setCreateBillDialogOpen}>
-                  <DialogTrigger>
-                    <Button>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Bill
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <form onSubmit={handleCreateBill}>
-                      <DialogHeader>
-                        <DialogTitle>Create Vendor Bill</DialogTitle>
-                        <DialogDescription>Record a new vendor bill directly</DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="rounded-md border border-dashed border-muted-foreground/30 bg-muted/20 p-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex-1 text-sm">
-                              <div className="flex items-center gap-2 font-medium">
-                                <Sparkles className="h-4 w-4 text-primary" />
-                                Scan invoice with AI
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                Upload a vendor invoice (PDF / image). Gemini will pre-fill the fields below. Always review before saving.
-                              </p>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={ocrInvoice.isPending}
-                              onClick={() => billFileInputRef.current?.click()}
-                            >
-                              {ocrInvoice.isPending ? 'Extracting…' : 'Upload'}
-                            </Button>
-                            <input
-                              ref={billFileInputRef}
-                              type="file"
-                              className="hidden"
-                              accept="application/pdf,image/jpeg,image/png,image/webp"
-                              onChange={handleScanInvoice}
-                            />
-                          </div>
-                          {billScanConfidence != null && (
-                            <p className="mt-2 text-xs text-muted-foreground">
-                              Last scan confidence:{' '}
-                              <span className={billScanConfidence >= 0.7 ? 'text-success font-medium' : 'text-warning font-medium'}>
-                                {Math.round(billScanConfidence * 100)}%
-                              </span>
-                              {billScanVendorName && !billVendorId && (
-                                <span className="ml-2">
-                                  Vendor read as <strong>{billScanVendorName}</strong> — not in your list, pick manually below.
-                                </span>
-                              )}
-                            </p>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="bill-vendor">Vendor</Label>
-                          <div className="flex gap-2">
-                            <Select
-                              id="bill-vendor"
-                              required
-                              value={billVendorId}
-                              onChange={(e) => {
-                                const newVendorId = e.target.value;
-                                setBillVendorId(newVendorId);
-                                const vendor = vendors.find((v) => v.id === newVendorId);
-                                if (vendor?.ledger_account_id) {
-                                  setBillPayableAccountId(vendor.ledger_account_id);
-                                }
-                              }}
-                              className="flex-1"
-                            >
-                              <option value="">Select vendor</option>
-                              {vendors.map((v) => (
-                                <option key={v.id} value={v.id} disabled={v.is_active === false}>
-                                  {v.name}
-                                  {v.is_active === false ? ' (inactive)' : ''}
-                                </option>
-                              ))}
-                            </Select>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              onClick={() => openQuickVendorDialog('bill')}
-                              title="Add a new vendor"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="bill-date">Bill Date</Label>
-                            <Input
-                              id="bill-date"
-                              type="date"
-                              min={dateBounds.min}
-                              max={dateBounds.max}
-                              required
-                              value={billDate}
-                              onChange={(e) => setBillDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="bill-due-date">Due Date</Label>
-                            <Input
-                              id="bill-due-date"
-                              type="date"
-                              min={dateBounds.min}
-                              max={dateBounds.max}
-                              required
-                              value={billDueDate}
-                              onChange={(e) => setBillDueDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="bill-account">Expense Account</Label>
-                          <Select
-                            id="bill-account"
-                            required
-                            value={billLineAccount}
-                            onChange={(e) => setBillLineAccount(e.target.value)}
-                          >
-                            <option value="">Select account</option>
-                            {accounts.map((a) => (
-                              <option key={a.id} value={a.id}>
-                                {a.code} - {a.name}
-                              </option>
-                            ))}
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="bill-line-desc">Description</Label>
-                          <Input
-                            id="bill-line-desc"
-                            required
-                            placeholder="e.g., Security services for March"
-                            value={billLineDescription}
-                            onChange={(e) => setBillLineDescription(e.target.value)}
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="bill-line-amount">Amount</Label>
-                            <Input
-                              id="bill-line-amount"
-                              type="number"
-                              min="0.01"
-                              step="0.01"
-                              required
-                              placeholder="0.00"
-                              title="Amount must be greater than zero"
-                              value={billLineAmount}
-                              onChange={(e) => setBillLineAmount(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="bill-line-gst">GST Rate</Label>
-                            <GstRateSelect
-                              id="bill-line-gst"
-                              allowNone
-                              value={billLineGstRate ? Number(billLineGstRate) : null}
-                              onChange={(v) => setBillLineGstRate(v == null ? '' : String(v))}
-                            />
-                          </div>
-                        </div>
-                        {/* Phase D.2 — TDS rate field (was missing).
-                            Defaults to 0; the operator types a rate
-                            like 10 (for 194J) or 2 (for 194C). The
-                            handleCreateBill computes the absolute
-                            amount = total × rate / 100. */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="bill-tds-rate">
-                              TDS Rate (%){' '}
-                              <span className="text-xs font-normal text-muted-foreground">
-                                — leave 0 if not applicable
-                              </span>
-                            </Label>
-                            <Input
-                              id="bill-tds-rate"
-                              type="number"
-                              min="0"
-                              max="30"
-                              step="0.1"
-                              placeholder="0"
-                              value={billTdsRate}
-                              onChange={(e) => setBillTdsRate(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Computed totals</Label>
-                            {(() => {
-                              const base = Number(billLineAmount) || 0;
-                              const gstR = Number(billLineGstRate) || 0;
-                              const tdsR = Number(billTdsRate) || 0;
-                              const gst = Math.round(base * gstR) / 100;
-                              const total = Math.round((base + gst) * 100) / 100;
-                              const tds = Math.round(total * tdsR) / 100;
-                              const payable = total - tds;
-                              return (
-                                <div className="flex h-10 items-center gap-3 rounded-md border bg-muted/30 px-3 text-xs tabular-nums">
-                                  <span>
-                                    GST <strong>{formatCurrency(gst)}</strong>
-                                  </span>
-                                  <span>
-                                    Total <strong>{formatCurrency(total)}</strong>
-                                  </span>
-                                  <span>
-                                    TDS <strong>{formatCurrency(tds)}</strong>
-                                  </span>
-                                  <span>
-                                    Payable{' '}
-                                    <strong className="text-foreground">
-                                      {formatCurrency(payable)}
-                                    </strong>
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="bill-expense-account">Expense Account</Label>
-                            <AccountSearchSelect
-                              value={billExpenseAccountId}
-                              onChange={setBillExpenseAccountId}
-                              accountType={['expense']}
-                              placeholder="Search expense account..."
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="bill-payable-account">Payable Account</Label>
-                            <AccountSearchSelect
-                              value={billPayableAccountId}
-                              onChange={setBillPayableAccountId}
-                              accountType={['liability']}
-                              placeholder="Search payable account..."
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="bill-narration">Narration</Label>
-                          <Textarea
-                            id="bill-narration"
-                            placeholder="Optional notes..."
-                            maxLength={500}
-                            value={billNarration}
-                            onChange={(e) => setBillNarration(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <DialogClose>
-                          <Button type="button" variant="outline">Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={createBill.isPending}>
-                          {createBill.isPending ? 'Creating...' : 'Create Bill'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-                )}
+                {/* EXP-12: the multi-line vendor invoice form. */}
+                <Button onClick={() => setNewInvoiceOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {word('Create Bill')}
+                </Button>
+                <VendorInvoiceForm
+                  mode="dialog"
+                  open={newInvoiceOpen}
+                  onClose={() => setNewInvoiceOpen(false)}
+                  onSaved={() => setNewInvoiceOpen(false)}
+                />
               </div>
             </div>
           </CardHeader>
@@ -1752,7 +847,7 @@ export default function PurchasesContent(): ReactNode {
                         <span className="font-mono text-xs">{bill.bill_number ?? bill.id.slice(0, 8)}</span>
                       </TableCell>
                       <TableCell className="font-medium">
-                        {invoicesAvailable.data && bill.vendor_id ? (
+                        {bill.vendor_id ? (
                           <Link className="underline" href={`/expense-tracker/by-vendors/${bill.vendor_id}/statement?tab=full`}>{bill.vendor_name ?? '-'}</Link>
                         ) : (
                           bill.vendor_name ?? '-'
@@ -1833,15 +928,8 @@ export default function PurchasesContent(): ReactNode {
                               variant="ghost"
                               size="sm"
                               className="h-8 p-1 text-xs"
-                              onClick={() => {
-                                // EXP-14: the Pay vendor form once the API has it.
-                                if (invoicesAvailable.data) {
-                                  setPayBill({ vendorId: bill.vendor_id, billId: bill.id });
-                                  return;
-                                }
-                                setSelectedBillId(bill.id);
-                                setPaymentDialogOpen(true);
-                              }}
+                              // EXP-14: the Pay vendor form, this invoice ticked.
+                              onClick={() => setPayBill({ vendorId: bill.vendor_id, billId: bill.id })}
                             >
                               <CreditCard className="mr-1 h-3 w-3" />
                               Pay
@@ -1930,9 +1018,8 @@ export default function PurchasesContent(): ReactNode {
       {/* ------------------------------------------------------------------- */}
       {/* Vendor Payments Tab                                                  */}
       {/* ------------------------------------------------------------------- */}
-      {/* EXP-17: the register with Voucher, Bank A/c GL, Reverse and export once the API has it. */}
-      {activeTab === 'payments' &&
-        (invoicesAvailable.data ? <PaymentRegisterContent fetchFirst={false} /> : <VendorPaymentsTab vendors={vendors} />)}
+      {/* EXP-17: the payment register with Voucher, Bank A/c GL, Reverse and export. */}
+      {activeTab === 'payments' && <PaymentRegisterContent fetchFirst={false} />}
       {activeTab === 'vendors' && <VendorPayablesContent />}
       {activeTab === 'numbering' && (
         <div className="space-y-4">
@@ -2010,9 +1097,7 @@ export default function PurchasesContent(): ReactNode {
         </DialogContent>
       </Dialog>
 
-      {/* ------------------------------------------------------------------- */}
-      {/* Record Payment Dialog                                                */}
-      {/* ------------------------------------------------------------------- */}
+      {/* EXP-14: Pay vendor from a bill row. */}
       {payBill && (
         <VendorPaymentForm
           mode="dialog"
@@ -2023,394 +1108,6 @@ export default function PurchasesContent(): ReactNode {
           onSaved={() => setPayBill(null)}
         />
       )}
-      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleRecordPayment}>
-            <DialogHeader>
-              <DialogTitle>Record Bill Payment</DialogTitle>
-              <DialogDescription>Record a payment against this vendor bill</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pay-amount">Amount</Label>
-                  <Input
-                    id="pay-amount"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    required
-                    placeholder="0.00"
-                    title="Amount must be greater than zero"
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pay-date">Payment Date</Label>
-                  <Input
-                    id="pay-date"
-                    type="date"
-                    min={dateBounds.min}
-                    max={dateBounds.max}
-                    required
-                    value={paymentDate}
-                    onChange={(e) => setPaymentDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pay-mode">Payment Mode</Label>
-                <Select
-                  id="pay-mode"
-                  value={paymentMode}
-                  onChange={(e) => setPaymentMode(e.target.value)}
-                >
-                  {VENDOR_PAYMENT_MODE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pay-bank">Bank Account</Label>
-                <Select
-                  id="pay-bank"
-                  value={paymentBankAccountId}
-                  onChange={(e) => setPaymentBankAccountId(e.target.value)}
-                >
-                  <option value="">Select bank account</option>
-                  {bankAccounts.map((ba) => (
-                    <option key={ba.id} value={ba.id}>
-                      {ba.bank_name} - {ba.account_number}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pay-ref">{word('Reference Number')}</Label>
-                <Input
-                  id="pay-ref"
-                  placeholder="Cheque / UTR number"
-                  value={paymentReference}
-                  onChange={(e) => setPaymentReference(e.target.value)}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose>
-                <Button type="button" variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit" disabled={recordPayment.isPending}>
-                {recordPayment.isPending ? 'Recording...' : 'Record Payment'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* ------------------------------------------------------------------- */}
-      {/* Convert PR to Bill Dialog                                            */}
-      {/* ------------------------------------------------------------------- */}
-      <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleConvertPR}>
-            <DialogHeader>
-              <DialogTitle>Convert PR to Bill</DialogTitle>
-              <DialogDescription>Fill in bill details to convert this purchase request</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="convert-vendor">Vendor</Label>
-                <div className="flex gap-2">
-                  <Select
-                    id="convert-vendor"
-                    required
-                    value={convertVendorId}
-                    onChange={(e) => {
-                      const newVendorId = e.target.value;
-                      setConvertVendorId(newVendorId);
-                      // Auto-fill the Payable Account picker with the
-                      // vendor's own Sundry Creditors ledger. Operator
-                      // can override by clicking into the picker.
-                      // Skips legacy vendors that pre-date migration 059.
-                      const vendor = vendors.find((v) => v.id === newVendorId);
-                      if (vendor?.ledger_account_id) {
-                        setConvertPayableAccountId(vendor.ledger_account_id);
-                      }
-                      // Refresh TDS suggestion — different vendor may
-                      // map to a different IT-Act section (194C vs 194J
-                      // vs 194I) with a different threshold/rate.
-                      reSuggestTds(newVendorId, convertSubtotal);
-                    }}
-                    className="flex-1"
-                  >
-                    <option value="">Select vendor</option>
-                    {vendors.map((v) => (
-                      <option key={v.id} value={v.id} disabled={v.is_active === false}>
-                        {v.name}
-                        {v.is_active === false ? ' (inactive)' : ''}
-                      </option>
-                    ))}
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => openQuickVendorDialog('convert')}
-                    title="Add a new vendor"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="convert-bill-number">Bill Number (optional)</Label>
-                <Input
-                  id="convert-bill-number"
-                  placeholder="Vendor invoice number"
-                  value={convertBillNumber}
-                  onChange={(e) => setConvertBillNumber(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="convert-bill-date">Bill Date</Label>
-                  <Input
-                    id="convert-bill-date"
-                    type="date"
-                    min={dateBounds.min}
-                    max={dateBounds.max}
-                    required
-                    value={convertBillDate}
-                    onChange={(e) => setConvertBillDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="convert-due-date">Due Date</Label>
-                  <Input
-                    id="convert-due-date"
-                    type="date"
-                    min={dateBounds.min}
-                    max={dateBounds.max}
-                    required
-                    value={convertDueDate}
-                    onChange={(e) => setConvertDueDate(clampDateString(e.target.value, dateBounds.min, dateBounds.max))}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="convert-subtotal">Subtotal (pre-GST)</Label>
-                  <Input
-                    id="convert-subtotal"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    required
-                    placeholder="0.00"
-                    value={convertSubtotal}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      setConvertSubtotal(next);
-                      // Re-evaluate TDS suggestion — crossing the
-                      // threshold flips deduction on/off.
-                      reSuggestTds(convertVendorId, next);
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="convert-gst">GST Rate</Label>
-                  <GstRateSelect
-                    id="convert-gst"
-                    allowNone
-                    value={convertGstRate}
-                    onChange={(v) => setConvertGstRate(v ?? null)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="convert-tds">TDS %</Label>
-                    {tdsConfig?.enabled && (
-                      <button
-                        type="button"
-                        className="text-xs text-primary hover:underline"
-                        onClick={() =>
-                          reSuggestTds(convertVendorId, convertSubtotal)
-                        }
-                        title="Reset to the suggested rate based on this vendor's TDS section + the platform/tenant config"
-                      >
-                        Auto-suggest
-                      </button>
-                    )}
-                  </div>
-                  <Input
-                    id="convert-tds"
-                    type="number"
-                    min="0"
-                    max="50"
-                    step="0.01"
-                    placeholder="0"
-                    value={convertTdsRate}
-                    onChange={(e) => setConvertTdsRate(e.target.value)}
-                  />
-                  {tdsConfig?.enabled && convertVendorId && (
-                    <p className="text-[11px] text-muted-foreground">
-                      {(() => {
-                        const v = vendors.find((x) => x.id === convertVendorId);
-                        const sec = v?.tds_section?.trim();
-                        if (!sec) {
-                          return `Default rate ${tdsConfig.default_rate}% over ₹${tdsConfig.default_threshold.toLocaleString()}.`;
-                        }
-                        const match = tdsConfig.sections.find(
-                          (s) =>
-                            s.code.toLowerCase() === sec.toLowerCase(),
-                        );
-                        if (!match) {
-                          return `Section ${sec} not in config — using default ${tdsConfig.default_rate}%.`;
-                        }
-                        return `Section ${match.code}: ${match.rate}% over ₹${match.threshold.toLocaleString()}.`;
-                      })()}
-                    </p>
-                  )}
-                </div>
-              </div>
-              {/* Live computation summary so the operator sees what
-                  posts to the journal before submit. */}
-              <div className="rounded-md border bg-muted/30 p-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span>{formatCurrency(convertSubtotalNum)}</span>
-                </div>
-                {convertGstAmount > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">
-                      GST ({convertGstRate ?? 0}%)
-                    </span>
-                    <span>{formatCurrency(convertGstAmount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-medium">
-                  <span>Total (gross)</span>
-                  <span>{formatCurrency(convertTotalNum)}</span>
-                </div>
-                {convertTdsAmount > 0 && (
-                  <div className="flex justify-between text-orange-600 dark:text-orange-400">
-                    <span>
-                      TDS withheld ({convertTdsRateNum}%)
-                    </span>
-                    <span>− {formatCurrency(convertTdsAmount)}</span>
-                  </div>
-                )}
-                <div className="mt-1 flex justify-between border-t pt-1 font-semibold">
-                  <span>Payable to vendor</span>
-                  <span>{formatCurrency(convertPayableNum)}</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="convert-expense-account">Expense Account</Label>
-                  <AccountSearchSelect
-                    value={convertExpenseAccountId}
-                    onChange={setConvertExpenseAccountId}
-                    accountType={['expense']}
-                    placeholder="Search expense account..."
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Where the cost gets booked. Examples: Repairs &amp;
-                    Maintenance, Housekeeping, Electricity.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="convert-payable-account">Payable Account</Label>
-                  <AccountSearchSelect
-                    value={convertPayableAccountId}
-                    onChange={setConvertPayableAccountId}
-                    accountType={['liability']}
-                    placeholder="Search payable account..."
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    What we owe the vendor — typically under Sundry
-                    Creditors, or the vendor&apos;s own ledger if one
-                    exists.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose>
-                <Button type="button" variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit" disabled={convertPR.isPending}>
-                {convertPR.isPending ? 'Converting...' : 'Convert to Bill'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* ------------------------------------------------------------------- */}
-      {/* Quick "+ Add Vendor" Dialog                                          */}
-      {/* Tiny inline form so the operator can add a vendor mid-flow without */}
-      {/* navigating to /vendors. The created vendor's id is auto-selected   */}
-      {/* in whichever parent dialog (convert / bill / pr) opened this.      */}
-      {/* ------------------------------------------------------------------- */}
-      <Dialog open={quickVendorDialogOpen} onOpenChange={setQuickVendorDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleQuickVendorSubmit}>
-            <DialogHeader>
-              <DialogTitle>Add Vendor</DialogTitle>
-              <DialogDescription>
-                Quick-create a vendor. They&apos;ll also get a Sundry
-                Creditors ledger automatically. Edit further details
-                anytime on the Vendors page.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="quick-vendor-name">Name</Label>
-                <Input
-                  id="quick-vendor-name"
-                  required
-                  autoFocus
-                  placeholder="e.g., Acme Cleaning Services"
-                  value={quickVendorName}
-                  onChange={(e) => setQuickVendorName(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="quick-vendor-phone">Phone (optional)</Label>
-                  <Input
-                    id="quick-vendor-phone"
-                    placeholder="+91…"
-                    value={quickVendorPhone}
-                    onChange={(e) => setQuickVendorPhone(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="quick-vendor-gstin">GSTIN (optional)</Label>
-                  <Input
-                    id="quick-vendor-gstin"
-                    placeholder="22AAAAA0000A1Z5"
-                    value={quickVendorGstin}
-                    onChange={(e) => setQuickVendorGstin(e.target.value.toUpperCase())}
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose>
-                <Button type="button" variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit" disabled={createVendorMut.isPending}>
-                {createVendorMut.isPending ? 'Creating…' : 'Add Vendor'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Direct-expense payment dialog — for petty cash, freight,
           courier, one-off reimbursements that don't go through the
@@ -2582,229 +1279,5 @@ export default function PurchasesContent(): ReactNode {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-// ===========================================================================
-// VendorPaymentsTab — standalone vendor-payments view.
-// ===========================================================================
-//
-// Surfaces the `/purchases/payments` endpoint (purchase.service.getPayments),
-// which is the only place the operator can see every vendor_payment
-// regardless of bill linkage. Bill-linked payments ALSO appear inline on
-// the Vendor Bills tab as a sub-column per bill, but Tally-imported
-// direct-expense payments (vendor_bill_id IS NULL) only show up here.
-//
-// Filters: vendor, payment mode, date range. Same shape as the bills
-// filter row above so the two tabs feel consistent.
-
-interface VendorPaymentsTabProps {
-  vendors: Array<{ id: string; name: string }>;
-}
-
-function VendorPaymentsTab({ vendors }: VendorPaymentsTabProps): ReactNode {
-  const ITEMS_PER_PAGE = 25;
-  const word = useWord();
-  const [page, setPage] = useState(1);
-  const [vendorFilter, setVendorFilter] = useState('');
-  const [modeFilter, setModeFilter] = useState('');
-  const [filterStartDate, setFilterStartDate] = useState('');
-  const [filterEndDate, setFilterEndDate] = useState('');
-
-  const { data, isLoading, isError } = useVendorPayments({
-    vendor_id: vendorFilter || undefined,
-    payment_mode: modeFilter || undefined,
-    start_date: filterStartDate || undefined,
-    end_date: filterEndDate || undefined,
-    page,
-    limit: ITEMS_PER_PAGE,
-  });
-
-  const rows: VendorPaymentRow[] = data?.data ?? [];
-  const total = data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle className="text-lg">Vendor Payments</CardTitle>
-            <CardDescription className="mt-1">
-              Every payment recorded against any vendor — including
-              Tally-imported direct-expense payments not linked to a bill.
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Select
-              className="w-44"
-              value={vendorFilter}
-              onChange={(e) => {
-                setVendorFilter(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">All Vendors</option>
-              {vendors.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
-            </Select>
-            <Select
-              className="w-40"
-              value={modeFilter}
-              onChange={(e) => {
-                setModeFilter(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">All Modes</option>
-              {VENDOR_PAYMENT_MODE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.value === 'bank_transfer' ? 'Bank Transfer (NEFT/RTGS)' : option.label}
-                </option>
-              ))}
-            </Select>
-            <Input
-              type="date"
-              value={filterStartDate}
-              onChange={(e) => {
-                setFilterStartDate(e.target.value);
-                setPage(1);
-              }}
-              className="w-40"
-              aria-label="From date"
-            />
-            <span className="text-xs text-muted-foreground">to</span>
-            <Input
-              type="date"
-              value={filterEndDate}
-              onChange={(e) => {
-                setFilterEndDate(e.target.value);
-                setPage(1);
-              }}
-              className="w-40"
-              aria-label="To date"
-            />
-            {(vendorFilter || modeFilter || filterStartDate || filterEndDate) && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setVendorFilter('');
-                  setModeFilter('');
-                  setFilterStartDate('');
-                  setFilterEndDate('');
-                  setPage(1);
-                }}
-              >
-                Clear
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {isError ? (
-          <p className="py-8 text-center text-sm text-destructive">
-            Failed to load vendor payments.
-          </p>
-        ) : isLoading ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            Loading…
-          </p>
-        ) : rows.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            No payments match the current filters.
-          </p>
-        ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>{word('Bill #')}</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead>Mode</TableHead>
-                  <TableHead>{word('Reference')}</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(r.payment_date)}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {r.vendor_name ?? <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell>
-                      {/* Bill # only present when this payment was
-                          linked via /bills/:id/pay or a Phase E.7
-                          BILLALLOCATIONS match. Direct-expense + Tally
-                          payments leave it blank. */}
-                      {r.bill_number ? (
-                        <span className="font-mono text-xs">{r.bill_number}</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          Direct expense
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {r.expense_account_name ?? '—'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">
-                        {r.payment_mode.replace(/_/g, ' ')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {r.reference_number ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">
-                      {formatCurrency(Number(r.amount))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-              <span>
-                {(page - 1) * ITEMS_PER_PAGE + 1}–
-                {Math.min(page * ITEMS_PER_PAGE, total)} of {total}
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span>
-                  Page {page} of {totalPages}
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
   );
 }

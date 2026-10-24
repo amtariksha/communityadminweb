@@ -2,8 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { PurchaseRequest, VendorBill, VendorPayment } from '@communityos/shared';
-import { vendorKeys } from '@/hooks/use-vendors';
+import type { PurchaseRequest, VendorBill } from '@communityos/shared';
 import { ledgerKeys } from '@/hooks/use-ledger';
 
 // ---------------------------------------------------------------------------
@@ -53,37 +52,9 @@ interface VendorPaymentFilters {
   limit?: number;
 }
 
-// Shape returned by GET /purchases/payments. Mirrors the SQL
-// projection in purchase.service.getPayments — keep them in sync.
-export interface VendorPaymentRow {
-  id: string;
-  payment_date: string;
-  amount: number;
-  payment_mode: string;
-  reference_number: string | null;
-  notes: string | null;
-  journal_entry_id: string | null;
-  created_at: string;
-  vendor_bill_id: string | null;
-  expense_account_id: string | null;
-  bank_account_id: string | null;
-  bill_number: string | null;
-  vendor_id: string | null;
-  vendor_name: string | null;
-  expense_account_name: string | null;
-  bank_account_name: string | null;
-}
-
 // ---------------------------------------------------------------------------
 // Input types
 // ---------------------------------------------------------------------------
-
-interface CreatePurchaseRequestInput {
-  title: string;
-  description: string;
-  estimated_amount: number;
-  vendor_id?: string | null;
-}
 
 interface ApprovePRInput {
   comments?: string;
@@ -93,29 +64,6 @@ interface ApprovePRInput {
 interface RejectPRInput {
   comments: string;
   level: number;
-}
-
-interface BillLine {
-  ledger_account_id: string;
-  description: string;
-  amount: number;
-  gst_rate?: number;
-}
-
-interface CreateBillInput {
-  vendor_id: string;
-  bill_date: string;
-  due_date: string;
-  total_amount: number;
-  expense_account_id: string;
-  payable_account_id: string;
-  bill_number?: string;
-  // Phase D.2 — gst_amount was missing from the type even though
-  // the backend has always accepted it. Bills now post their GST.
-  gst_amount?: number;
-  tds_amount?: number;
-  narration?: string;
-  lines?: BillLine[];
 }
 
 // Phase D.1 — edit bill metadata (only allowed before any payment).
@@ -133,17 +81,6 @@ interface EditBillInput {
 
 interface CancelBillInput {
   reason: string;
-}
-
-interface RecordBillPaymentInput {
-  bill_id: string;
-  payment_date: string;
-  amount: number;
-  // Admin-web uses `mode`; accept both to avoid a churn-wide rename.
-  mode?: string;
-  payment_mode?: string;
-  reference_number?: string | null;
-  bank_account_id: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,21 +141,6 @@ function billFiltersToParams(
   return params;
 }
 
-function paymentFiltersToParams(
-  filters?: VendorPaymentFilters,
-): Record<string, string> | undefined {
-  if (!filters) return undefined;
-
-  const params: Record<string, string> = {};
-  if (filters.vendor_id) params.vendor_id = filters.vendor_id;
-  if (filters.start_date) params.start_date = filters.start_date;
-  if (filters.end_date) params.end_date = filters.end_date;
-  if (filters.payment_mode) params.payment_mode = filters.payment_mode;
-  if (filters.page !== undefined) params.page = String(filters.page);
-  if (filters.limit !== undefined) params.limit = String(filters.limit);
-  return params;
-}
-
 // ---------------------------------------------------------------------------
 // Purchase Request queries
 // ---------------------------------------------------------------------------
@@ -251,19 +173,6 @@ export function usePurchaseRequest(id: string) {
 // ---------------------------------------------------------------------------
 // Purchase Request mutations
 // ---------------------------------------------------------------------------
-
-export function useCreatePR() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: function createPR(input: CreatePurchaseRequestInput) {
-      return api.post<{ data: PurchaseRequest }>('/purchases/requests', input);
-    },
-    onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: purchaseKeys.requests() });
-    },
-  });
-}
 
 export function useApprovePR() {
   const queryClient = useQueryClient();
@@ -299,45 +208,6 @@ export function useRejectPR() {
   });
 }
 
-interface ConvertPRToBillInput {
-  vendor_id: string;
-  bill_number?: string;
-  bill_date: string;
-  due_date: string;
-  // Gross total (subtotal + GST). Server splits subtotal back out for
-  // posting + storage.
-  total_amount: number;
-  expense_account_id: string;
-  payable_account_id: string;
-  // GST input claimable on this bill (amount, not rate). Optional;
-  // when omitted server treats as 0.
-  gst_amount?: number;
-  // TDS withheld on this bill (amount). Optional; when omitted server
-  // treats as 0.
-  tds_amount?: number;
-  narration?: string;
-}
-
-export function useConvertPRToBill() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: function convertPRToBill(params: {
-      id: string;
-      data: ConvertPRToBillInput;
-    }) {
-      return api.post<{ data: VendorBill }>(
-        `/purchases/requests/${params.id}/convert`,
-        params.data,
-      );
-    },
-    onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: purchaseKeys.requests() });
-      queryClient.invalidateQueries({ queryKey: purchaseKeys.bills() });
-    },
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Vendor Bill queries
 // ---------------------------------------------------------------------------
@@ -367,24 +237,6 @@ export function useVendorBill(id: string) {
   });
 }
 
-/**
- * List ALL vendor_payments (bill-linked + direct-expense + Tally-
- * imported). Distinct from the payments_summary nested under each
- * bill in useVendorBills — this hook is the only way to surface
- * Tally direct-expense payments where vendor_bill_id IS NULL.
- */
-export function useVendorPayments(filters?: VendorPaymentFilters) {
-  return useQuery({
-    queryKey: purchaseKeys.paymentList(filters),
-    queryFn: function fetchVendorPayments() {
-      return api.get<PaginatedResponse<VendorPaymentRow>>(
-        '/purchases/payments',
-        { params: paymentFiltersToParams(filters) },
-      );
-    },
-  });
-}
-
 export function useVendorAging() {
   return useQuery({
     queryKey: purchaseKeys.aging(),
@@ -401,23 +253,6 @@ export function useVendorAging() {
 // ---------------------------------------------------------------------------
 // Vendor Bill mutations
 // ---------------------------------------------------------------------------
-
-export function useCreateBill() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: function createBill(input: CreateBillInput) {
-      return api.post<{ data: VendorBill }>('/purchases/bills', input);
-    },
-    onSuccess: function invalidate() {
-      queryClient.invalidateQueries({ queryKey: purchaseKeys.bills() });
-      queryClient.invalidateQueries({ queryKey: purchaseKeys.aging() });
-      queryClient.invalidateQueries({ queryKey: vendorKeys.all });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
-    },
-  });
-}
 
 // Phase D.1 — edit a bill (allowed before any payment).
 export function useEditBill() {
@@ -457,26 +292,6 @@ export function useCancelBill() {
       queryClient.invalidateQueries({
         queryKey: purchaseKeys.bill(variables.id),
       });
-      queryClient.invalidateQueries({ queryKey: purchaseKeys.bills() });
-      queryClient.invalidateQueries({ queryKey: purchaseKeys.aging() });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });
-      queryClient.invalidateQueries({ queryKey: ledgerKeys.reports() });
-    },
-  });
-}
-
-export function useRecordBillPayment() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: function recordBillPayment(input: RecordBillPaymentInput) {
-      return api.post<{ data: VendorPayment }>(
-        `/purchases/bills/${input.bill_id}/pay`,
-        input,
-      );
-    },
-    onSuccess: function invalidate(_data, variables) {
-      queryClient.invalidateQueries({ queryKey: purchaseKeys.bill(variables.bill_id) });
       queryClient.invalidateQueries({ queryKey: purchaseKeys.bills() });
       queryClient.invalidateQueries({ queryKey: purchaseKeys.aging() });
       queryClient.invalidateQueries({ queryKey: ledgerKeys.journalEntries() });

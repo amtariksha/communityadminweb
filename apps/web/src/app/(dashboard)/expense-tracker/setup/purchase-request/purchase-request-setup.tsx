@@ -24,7 +24,8 @@ export function PurchaseRequestSetup(): ReactNode {
       <h2 className="text-base font-semibold">Assign approver levels for purchase requests</h2>
       {grid.data && !grid.data.configured && (
         <p className="text-sm text-muted-foreground">
-          Nobody is at a level yet, so requests follow the approval levels and roles in Settings › Purchase Request Approvals.
+          Nobody is at a level yet, so requests follow the approval levels and roles saved before approvers could be named (shown
+          in Settings › Purchase Request Approvals) until someone is placed at a level here.
         </p>
       )}
       <ApproverGridEditor type="purchase_request" peopleHeader="Purchase Request Approvers" canEdit={canEdit} />
