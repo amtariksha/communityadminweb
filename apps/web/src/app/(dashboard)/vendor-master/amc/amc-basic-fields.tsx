@@ -7,8 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useAssetCategories } from '@/hooks/use-asset-categories';
-import { useAssetRegister } from '@/hooks/use-asset-register';
 import { useVendors } from '@/hooks/use-vendors';
+import { AmcAssetsField } from './amc-assets-field';
 import type { AmcFormValues } from './amc-form-values';
 
 export type SetAmc = (patch: Partial<AmcFormValues>) => void;
@@ -47,33 +47,6 @@ function VendorField({ values, set, onAddVendor }: { values: AmcFormValues; set:
   );
 }
 
-/** Assets of the chosen category, ticked to be covered (VEND-S8). */
-function AssetsField({ values, set }: { values: AmcFormValues; set: SetAmc }): ReactNode {
-  const assets = useAssetRegister({ category: values.categoryId || undefined, page: 1, limit: 100 });
-  const rows = values.categoryId ? (assets.data?.data ?? []) : [];
-  const toggle = (id: string): void =>
-    set({ assetIds: values.assetIds.includes(id) ? values.assetIds.filter((other) => other !== id) : [...values.assetIds, id] });
-  return (
-    <div className="col-span-2 space-y-2">
-      <Label>Assets</Label>
-      {!values.categoryId && <p className="text-xs text-muted-foreground">Choose an asset category to pick its assets.</p>}
-      {values.categoryId && rows.length === 0 && <p className="text-xs text-muted-foreground">No assets in this category.</p>}
-      <ul aria-label="Assets covered" className="max-h-40 space-y-1 overflow-y-auto">
-        {rows.map((asset) => (
-          <li key={asset.id}>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={values.assetIds.includes(asset.id)} onChange={() => toggle(asset.id)} />
-              {asset.name}
-              {asset.location ? <span className="text-muted-foreground"> · {asset.location}</span> : null}
-            </label>
-          </li>
-        ))}
-      </ul>
-      {values.assetIds.length > 0 && <p className="text-xs text-muted-foreground">{values.assetIds.length} asset(s) covered.</p>}
-    </div>
-  );
-}
-
 interface BasicFieldsProps {
   values: AmcFormValues;
   set: SetAmc;
@@ -100,7 +73,7 @@ export function AmcBasicFields({ values, set, onAddVendor, onAddCategory }: Basi
           <Button type="button" variant="outline" onClick={onAddCategory}>+ Add Asset Category</Button>
         </div>
       </Field>
-      <AssetsField values={values} set={set} />
+      <AmcAssetsField values={values} set={set} />
       <Field id="amc-start" label="Contract Start Date *">
         <Input id="amc-start" type="date" value={values.startDate} onChange={(e) => set({ startDate: e.target.value })} />
       </Field>
