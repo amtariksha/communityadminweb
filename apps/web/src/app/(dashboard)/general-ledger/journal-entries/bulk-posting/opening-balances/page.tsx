@@ -9,7 +9,7 @@ export default function OpeningBalancesUploadPage(): ReactNode {
       <GlUploadPage
         type="gl_opening_balance"
         title="Batch Upload Opening Balances"
-        description="One row per account: GL Account No., Opening Balance and Dr/Cr. Each change posts an opening-balance entry against Retained Earnings (Opening), dated the first day of the current year; a balance already set posts nothing."
+        description="One row per account: GL Account No., Opening Balance, Dr/Cr and Opening Balance Date. Each change posts an opening-balance entry against Retained Earnings (Opening) on the row's date (in a year that is not frozen, on or after the accounting start date; blank: the account's own date, else the start of the year); a balance already set posts nothing."
         columns={GL_OPENING_COLUMNS}
         closeTo="/general-ledger/journal-entries/bulk-posting"
       />
