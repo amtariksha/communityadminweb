@@ -364,6 +364,8 @@ export function useTallyCsvImport() {
         | 'receipt_register'
         | 'payment_register';
       file_name?: string;
+      /** ledger_report: the ledger the report is for. */
+      ledger_name?: string;
     }) {
       return api.post<{ data: TallyImportParseResult }>(
         '/tally-import/csv',

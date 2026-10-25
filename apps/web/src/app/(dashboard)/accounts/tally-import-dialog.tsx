@@ -46,6 +46,7 @@ import {
   validateDecision,
   type DebtorDecisionMap,
 } from '@/components/tally/debtor-review-table';
+import { TallyCsvLedgerField, csvLedgerOption } from './tally-csv-ledger-field';
 
 interface TallyImportDialogProps {
   open: boolean;
@@ -84,6 +85,7 @@ export function TallyImportDialog({ open, onOpenChange }: TallyImportDialogProps
   const [tallyFormat, setTallyFormat] = useState<'xml' | 'csv'>('xml');
   const [tallyContent, setTallyContent] = useState('');
   const [tallyCsvType, setTallyCsvType] = useState<'trial_balance' | 'day_book' | 'ledger_report' | 'receipt_register' | 'payment_register'>('trial_balance');
+  const [tallyLedgerName, setTallyLedgerName] = useState('');
   // Parse response (import_id + records_parsed) — shown on the
   // preview step so the admin can review before committing.
   const [tallyParseResult, setTallyParseResult] =
@@ -148,6 +150,7 @@ export function TallyImportDialog({ open, onOpenChange }: TallyImportDialogProps
   function resetTallyForm(): void {
     setTallyContent('');
     setTallyCsvType('trial_balance');
+    setTallyLedgerName('');
     setTallyParseResult(null);
     setTallyCommitResult(null);
     setTallyStep('input');
@@ -285,7 +288,7 @@ export function TallyImportDialog({ open, onOpenChange }: TallyImportDialogProps
       );
     } else {
       tallyCsvImport.mutate(
-        { csv_content: tallyContent, import_type: tallyCsvType },
+        { csv_content: tallyContent, import_type: tallyCsvType, ...csvLedgerOption(tallyCsvType, tallyLedgerName) },
         {
           onSuccess(data) {
             setTallyParseResult(data.data);
@@ -819,6 +822,9 @@ export function TallyImportDialog({ open, onOpenChange }: TallyImportDialogProps
                       <option value="payment_register">Payment Register</option>
                     </Select>
                   </div>
+                )}
+                {tallyFormat === 'csv' && tallyCsvType === 'ledger_report' && (
+                  <TallyCsvLedgerField value={tallyLedgerName} onChange={setTallyLedgerName} />
                 )}
 
                 {/* Upload (XML only) — preferred path for files
