@@ -17,17 +17,27 @@ export interface GstSummary {
   net_gst_payable: number;
 }
 
+/**
+ * One GST-bearing invoice line of `GET /tax/gst/report` (communityos
+ * gst-report.ts). An invoice with several taxed lines comes as several rows.
+ * Amounts read from NUMERIC columns arrive as strings; the CGST / SGST / IGST
+ * split is worked out by the API and arrives as numbers.
+ */
 export interface GstReportRow {
   invoice_id: string;
   invoice_number: string;
   invoice_date: string;
-  unit_number: string;
-  taxable_amount: number;
-  gst_rate: number;
-  gst_amount: number;
+  /** Null on a non-member payer's invoice; customer_name is set instead. */
+  unit_number: string | null;
+  customer_name: string | null;
+  taxable_amount: number | string;
+  gst_percentage: number | string;
+  gst_amount: number | string;
   cgst: number;
   sgst: number;
-  total: number;
+  igst: number;
+  total: number | string;
+  hsn_sac: string | null;
 }
 
 /** One rate's taxable value and tax heads in the GSTR-1 JSON (INC-63: IGST and cess too). */

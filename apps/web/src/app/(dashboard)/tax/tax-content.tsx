@@ -29,7 +29,6 @@ import { ExportButton } from '@/components/ui/export-button';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
   useGstSummary,
-  useGstReport,
   useGstr1Export,
   useTdsSummary,
   useTdsVendors,
@@ -43,6 +42,7 @@ import {
 import type { ComplianceItem, Form16AData } from '@/hooks';
 import { Select } from '@/components/ui/select';
 import { ChallansAndRemittances } from './remittance-tables';
+import { GstReportSection } from './gst-report-table';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -124,105 +124,6 @@ function GstSummaryCards({
         </Card>
       ))}
     </div>
-  );
-}
-
-function GstReportSection({
-  from,
-  to,
-}: {
-  from: string;
-  to: string;
-}): ReactNode {
-  const query = useGstReport({ from_date: from, to_date: to });
-  const rows = query.data ?? [];
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>GST Invoice Report</CardTitle>
-          <ExportButton
-            data={rows as unknown as Record<string, unknown>[]}
-            filename={`gst-report-${from}-to-${to}`}
-            columns={[
-              { key: 'invoice_number', label: 'Invoice' },
-              { key: 'invoice_date', label: 'Date' },
-              { key: 'unit_number', label: 'Unit' },
-              { key: 'taxable_amount', label: 'Taxable' },
-              { key: 'gst_rate', label: 'Rate %' },
-              { key: 'cgst', label: 'CGST' },
-              { key: 'sgst', label: 'SGST' },
-              { key: 'gst_amount', label: 'GST Total' },
-              { key: 'total', label: 'Total' },
-            ]}
-          />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Invoice</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Unit</TableHead>
-              <TableHead className="text-right">Taxable</TableHead>
-              <TableHead className="text-right">Rate</TableHead>
-              <TableHead className="text-right">CGST</TableHead>
-              <TableHead className="text-right">SGST</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  {Array.from({ length: 8 }).map((__, j) => (
-                    <TableCell key={j}>
-                      <Skeleton className="h-4 w-20" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : query.isError ? (
-              <TableRow>
-                <TableCell colSpan={8} className="py-6 text-center text-destructive">
-                  Failed to load GST report —{' '}
-                  {(query.error as Error)?.message ?? 'unknown error'}.{' '}
-                  <Button
-                    size="sm"
-                    variant="link"
-                    className="px-1 text-destructive underline"
-                    onClick={() => query.refetch()}
-                  >
-                    Retry
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ) : rows.length > 0 ? (
-              rows.map((r) => (
-                <TableRow key={r.invoice_id}>
-                  <TableCell className="font-mono text-xs">{r.invoice_number}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(r.invoice_date)}</TableCell>
-                  <TableCell>{r.unit_number ?? '—'}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(r.taxable_amount)}</TableCell>
-                  <TableCell className="text-right">{r.gst_rate}%</TableCell>
-                  <TableCell className="text-right">{formatCurrency(r.cgst)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(r.sgst)}</TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(r.total)}</TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
-                  No GST-bearing invoices in this period.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
   );
 }
 
