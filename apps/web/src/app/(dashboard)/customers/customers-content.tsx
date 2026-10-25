@@ -45,6 +45,7 @@ import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { friendlyError } from '@/lib/api-error';
 import { normalizePhone } from '@/lib/validation';
+import { editedPartyStateCodeError, partyStateCodeError } from '@/lib/gst-state-code';
 import {
   ClickableEmail,
   ClickablePhone,
@@ -204,6 +205,11 @@ export default function CustomersContent(): ReactNode {
       });
       return;
     }
+    const stateError = partyStateCodeError(formStateCode, formGstin);
+    if (stateError) {
+      addToast({ title: 'Check the state code', description: stateError, variant: 'destructive' });
+      return;
+    }
 
     createCustomer.mutate(
       {
@@ -249,6 +255,11 @@ export default function CustomersContent(): ReactNode {
         description: phone.error,
         variant: 'destructive',
       });
+      return;
+    }
+    const stateError = editedPartyStateCodeError(detail ?? {}, { stateCode: editStateCode, gstin: editGstin });
+    if (stateError) {
+      addToast({ title: 'Check the state code', description: stateError, variant: 'destructive' });
       return;
     }
 
