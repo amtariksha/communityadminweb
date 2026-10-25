@@ -42,11 +42,16 @@ export function mayReverse(role: string | null): boolean {
   return role !== null && REVERSE_ROLES.has(role);
 }
 
-/** Only a manual entry not yet reversed (decision G6): documents reverse from their own screens. */
-export function isReversible(row: JournalEntryRow): boolean {
-  return row.source_type === 'manual' && !row.is_reversed;
+// Sources Reverse takes here (decision G6, widened by Q8): a manual entry and a
+// Tally CSV import's entry. Documents (and XML imports) reverse from their own screens.
+const REVERSIBLE_SOURCES: ReadonlySet<string> = new Set(['manual', 'tally_csv']);
+
+/** A manual or Tally CSV entry not yet reversed. */
+export function isReversible(row: Pick<JournalEntryRow, 'source_type' | 'is_reversed'>): boolean {
+  return REVERSIBLE_SOURCES.has(row.source_type) && !row.is_reversed;
 }
 
-export function reverseConfirmText(row: Pick<JournalEntryRow, 'entry_number'>): string {
-  return `This posts a new entry dated today that mirrors #${row.entry_number}. The original stays in the books.`;
+export function reverseConfirmText(row: Pick<JournalEntryRow, 'entry_number'> & Partial<Pick<JournalEntryRow, 'source_type'>>): string {
+  const text = `This posts a new entry dated today that mirrors #${row.entry_number}. The original stays in the books.`;
+  return row.source_type === 'tally_csv' ? `${text} Importing the same Tally file again does not post it back.` : text;
 }

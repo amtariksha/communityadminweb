@@ -113,6 +113,23 @@ describe('Old Journal Entries', () => {
     await waitFor(() => expect(post).toHaveBeenCalledWith('/ledger/journal-entries/je-3/reverse'));
   });
 
+  it.each(['fetch', 'live'] as const)('offers Reverse on a Tally CSV entry, not an XML import one (Q8, %s list)', async (mode) => {
+    const csv = { ...base, id: 'je-5', entry_number: 5, entry_date: '2026-04-14', narration: 'Gate repair', source_type: 'tally_csv', total_debit: '40.00', total_credit: '40.00', posted_by_name: 'Asha Rao' };
+    const xml = { ...csv, id: 'je-4', entry_number: 4, narration: 'Pump repair', source_type: 'tally_voucher' };
+    get.mockResolvedValue({ data: [csv, xml], total: 2 });
+    renderList(mode);
+    const table = mode === 'fetch' ? await fetchApril() : screen.getByRole('table', { name: 'Journal Entries' });
+    await within(table).findByText('Gate repair');
+    const rows = within(table).getAllByRole('row').slice(1);
+
+    expect(rows[0].textContent).toContain('Tally import (CSV)');
+    expect(within(rows[1]).queryByRole('button', { name: 'Reverse' })).toBeNull();
+    fireEvent.click(within(rows[0]).getByRole('button', { name: 'Reverse' }));
+    expect(screen.getByText(/Importing the same Tally file again does not post it back\./)).toBeTruthy();
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Reverse' }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/ledger/journal-entries/je-5/reverse'));
+  });
+
   it('shows the list to a committee member without Reverse', async () => {
     signIn('committee_member');
     renderList();

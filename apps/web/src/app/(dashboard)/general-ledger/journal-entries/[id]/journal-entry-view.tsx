@@ -96,7 +96,7 @@ function Lines({ entry }: { entry: Entry }): ReactNode {
   );
 }
 
-/** One posted entry (GL-S7 entry view): header, lines with totals, Reverse for a manual entry. */
+/** One posted entry (GL-S7 entry view): header, lines with totals, Reverse for a manual or Tally CSV entry. */
 export function JournalEntryViewPage({ id }: { id: string }): ReactNode {
   const query = useJournalEntry(id);
   const [reversing, setReversing] = useState(false);
