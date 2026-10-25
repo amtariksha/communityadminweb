@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { ApiError } from '@/lib/api-error';
 import { ledgerKeys } from '@/hooks/use-ledger';
 import { purchaseKeys } from '@/hooks/use-purchases';
 import { vendorKeys } from '@/hooks/use-vendors';
@@ -69,7 +68,6 @@ export const vendorBillKeys = {
   all: ['vendor-bills'] as const,
   preview: (input: VendorInvoiceInput | null) => [...vendorBillKeys.all, 'preview', input] as const,
   heads: () => [...vendorBillKeys.all, 'heads'] as const,
-  available: () => [...vendorBillKeys.all, 'available'] as const,
 };
 
 /** The entries an invoice would post, recomputed by the server (no writes). Null input = nothing to preview. */
@@ -89,27 +87,6 @@ export function useInvoiceHeads() {
     queryKey: vendorBillKeys.heads(),
     meta: { suppressToast: true },
     queryFn: () => api.get<InvoiceHeads>('/purchases/expense-heads/summary'),
-  });
-}
-
-/**
- * Whether the server posts multi-line invoices yet: an API older than EXP-11
- * has no preview route (404); a current one answers an empty body with 400.
- */
-export function useVendorInvoicesAvailable() {
-  return useQuery({
-    queryKey: vendorBillKeys.available(),
-    staleTime: Infinity,
-    retry: false,
-    meta: { suppressToast: true },
-    queryFn: async (): Promise<boolean> => {
-      try {
-        await api.post('/purchases/bills/preview', {});
-        return true;
-      } catch (err) {
-        return !(err instanceof ApiError && err.status === 404);
-      }
-    },
   });
 }
 
