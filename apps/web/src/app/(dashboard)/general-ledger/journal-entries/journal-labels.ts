@@ -20,6 +20,7 @@ const SOURCE_LABELS: Readonly<Record<string, string>> = {
   cheque: 'Cheque',
   bank_transfer: 'Transfer',
   tally_voucher: 'Tally Import',
+  tally_csv: 'Tally import (CSV)',
 };
 
 /** "Collection" for a receipt's entry; an unknown source as stored. */
